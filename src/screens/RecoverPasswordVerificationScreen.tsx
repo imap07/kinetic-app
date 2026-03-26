@@ -1,0 +1,262 @@
+import React, { useState, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  Platform,
+  KeyboardAvoidingView,
+} from 'react-native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import { TopAppBar, PrimaryButton } from '../components';
+import { colors, typography, spacing, borderRadius } from '../theme';
+import { AuthStackParamList, RootStackParamList } from '../navigation/types';
+
+const CODE_LENGTH = 6;
+
+type Props = {
+  navigation: NativeStackNavigationProp<AuthStackParamList, 'RecoverPasswordVerification'>;
+};
+
+export function RecoverPasswordVerificationScreen({ navigation }: Props) {
+  const rootNavigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const insets = useSafeAreaInsets();
+
+  const [code, setCode] = useState<string[]>(Array(CODE_LENGTH).fill(''));
+  const inputs = useRef<(TextInput | null)[]>([]);
+
+  const handleCodeChange = (text: string, index: number) => {
+    const next = [...code];
+    next[index] = text;
+    setCode(next);
+    if (text && index < CODE_LENGTH - 1) {
+      inputs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleKeyPress = (key: string, index: number) => {
+    if (key === 'Backspace' && !code[index] && index > 0) {
+      inputs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleVerify = () => {
+    rootNavigation.reset({ index: 0, routes: [{ name: 'Main' }] });
+  };
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <View style={{ paddingTop: insets.top }}>
+        <TopAppBar
+          showBack
+          onBack={() => navigation.goBack()}
+          leftLabel="VERIFICATION"
+        />
+      </View>
+
+      <ScrollView
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: insets.bottom + 24 },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.iconCircle}>
+          <MaterialCommunityIcons name="shield-lock" size={32} color={colors.primary} />
+        </View>
+
+        <Text style={styles.title}>Check your email</Text>
+
+        <Text style={styles.description}>
+          We've sent a 6-digit verification code to{'\n'}
+          <Text style={styles.emailHighlight}>m***e@kinetic.io</Text>. Enter it
+          below to secure your account.
+        </Text>
+
+        <View style={styles.codeSection}>
+          {code.map((digit, index) => (
+            <TextInput
+              key={index}
+              ref={(ref) => {
+                inputs.current[index] = ref;
+              }}
+              style={[styles.codeInput, digit ? styles.codeInputFilled : null]}
+              value={digit}
+              onChangeText={(text) => handleCodeChange(text, index)}
+              onKeyPress={({ nativeEvent }) =>
+                handleKeyPress(nativeEvent.key, index)
+              }
+              keyboardType="number-pad"
+              maxLength={1}
+              selectTextOnFocus
+              textContentType="oneTimeCode"
+            />
+          ))}
+        </View>
+
+        <PrimaryButton
+          title="VERIFY & CONTINUE"
+          onPress={handleVerify}
+          style={styles.verifyButton}
+        />
+
+        <Text style={styles.resendLabel}>DIDN'T RECEIVE THE CODE?</Text>
+        <TouchableOpacity style={styles.resendBtn}>
+          <MaterialCommunityIcons name="refresh" size={14} color={colors.primary} />
+          <Text style={styles.resendLink}>Resend Code</Text>
+        </TouchableOpacity>
+
+        <View style={styles.spacer} />
+
+        <View style={styles.securityTip}>
+          <Ionicons
+            name="diamond"
+            size={18}
+            color={colors.tertiary}
+            style={styles.securityIcon}
+          />
+          <View style={styles.securityContent}>
+            <Text style={styles.securityTitle}>SECURITY TIP</Text>
+            <Text style={styles.securityText}>
+              Never share your 6-digit verification code with anyone, including
+              Kinetic support staff.
+            </Text>
+          </View>
+        </View>
+
+        <Text style={styles.footerText}>
+          {'\u00A9'} {new Date().getFullYear()} KINETIC GAMING PLATFORMS. ALL
+          RIGHTS RESERVED.
+        </Text>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  content: {
+    flexGrow: 1,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+    paddingTop: 24,
+  },
+  iconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.surfaceContainerHighest,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  title: {
+    ...typography.headlineLg,
+    color: colors.onSurface,
+    textAlign: 'center',
+    marginBottom: 12,
+    fontSize: 26,
+  },
+  description: {
+    ...typography.bodyMd,
+    color: colors.onSurfaceVariant,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 32,
+  },
+  emailHighlight: {
+    color: colors.primary,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  codeSection: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 28,
+  },
+  codeInput: {
+    width: 48,
+    height: 56,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.surfaceContainerHighest,
+    textAlign: 'center',
+    fontSize: 22,
+    fontFamily: 'SpaceGrotesk_700Bold',
+    color: colors.onSurface,
+  },
+  codeInputFilled: {
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  verifyButton: {
+    width: '100%',
+    marginBottom: 20,
+  },
+  resendLabel: {
+    ...typography.bodySm,
+    color: colors.onSurfaceDim,
+    marginBottom: 8,
+    letterSpacing: 0.3,
+  },
+  resendBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 24,
+  },
+  resendLink: {
+    ...typography.labelLg,
+    color: colors.primary,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  spacer: {
+    flexGrow: 1,
+    minHeight: 32,
+  },
+  securityTip: {
+    flexDirection: 'row',
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: borderRadius.md,
+    padding: 16,
+    gap: 12,
+    width: '100%',
+    marginBottom: 24,
+  },
+  securityIcon: {
+    marginTop: 2,
+  },
+  securityContent: {
+    flex: 1,
+  },
+  securityTitle: {
+    ...typography.labelLg,
+    color: colors.onSurface,
+    fontFamily: 'Inter_700Bold',
+    marginBottom: 4,
+    fontSize: 13,
+  },
+  securityText: {
+    ...typography.bodySm,
+    color: colors.onSurfaceVariant,
+    lineHeight: 18,
+  },
+  footerText: {
+    ...typography.labelSm,
+    color: colors.onSurfaceDim,
+    textAlign: 'center',
+    letterSpacing: 0.5,
+    marginBottom: 20,
+    fontSize: 9,
+  },
+});
