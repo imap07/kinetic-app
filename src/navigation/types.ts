@@ -3,14 +3,17 @@ import type { NavigatorScreenParams } from '@react-navigation/native';
 // Auth flow screens
 export type AuthStackParamList = {
   Login: undefined;
+  EmailAuth: undefined;
   RecoverPasswordRequest: undefined;
-  RecoverPasswordVerification: undefined;
+  RecoverPasswordVerification: { email: string };
+  ResetPassword: { email: string; code: string };
 };
 
 // Home tab nested stack (Dashboard -> MatchPrediction -> PickSummary)
 export type HomeStackParamList = {
   DashboardHome: undefined;
-  MatchPrediction: undefined;
+  LeagueDetail: { leagueApiId: number; leagueName: string };
+  MatchPrediction: { fixtureApiId: number };
   PickSummary: undefined;
 };
 
@@ -28,10 +31,17 @@ export type ProfileStackParamList = {
   WalletRewards: undefined;
 };
 
+// Live tab nested stack
+export type LiveStackParamList = {
+  LiveHome: undefined;
+  LiveMatchPrediction: { fixtureApiId: number };
+  LivePickSummary: undefined;
+};
+
 // Bottom tab navigator
 export type MainTabParamList = {
   Home: NavigatorScreenParams<HomeStackParamList>;
-  Live: undefined;
+  Live: NavigatorScreenParams<LiveStackParamList>;
   MyPicks: undefined;
   Rewards: NavigatorScreenParams<LeaderboardStackParamList>;
   Profile: NavigatorScreenParams<ProfileStackParamList>;

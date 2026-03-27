@@ -1,40 +1,194 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Image,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Ionicons, MaterialCommunityIcons, MaterialIcons, Feather } from '@expo/vector-icons';
-import { colors, typography, spacing, borderRadius } from '../theme';
-import { HomeStackParamList } from '../navigation/types';
+import { useRoute } from '@react-navigation/native';
+import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
+import { colors, spacing, borderRadius } from '../theme';
+import { useAuth } from '../contexts/AuthContext';
+import { footballApi } from '../api';
+import type { Fixture, FixtureEvent, FixtureStatistic } from '../api';
 
 type Props = {
-  navigation: NativeStackNavigationProp<HomeStackParamList, 'MatchPrediction'>;
+  navigation: any;
 };
 
-const STATS = [
-  { label: 'POSSESSION (56%)', home: 56, away: 44, homeVal: '', awayVal: '' },
-  { label: 'SHOTS ON GOAL', home: 70, away: 30, homeVal: '12', awayVal: '05' },
-  { label: 'DANGEROUS ATTACKS', home: 58, away: 42, homeVal: '84', awayVal: '61' },
-  { label: 'CORNERS', home: 70, away: 30, homeVal: '07', awayVal: '03' },
-];
+const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'P', 'BT', 'LIVE'];
+const FINISHED_STATUSES = ['FT', 'AET', 'PEN'];
 
-const TIMELINE = [
-  { type: 'goal', player: 'M. Sterling', score: '2-1', iconName: 'football' as const, color: colors.primary },
-  { type: 'substitution', player: 'R. Benzema → J. Vinícius', score: '', iconName: 'swap-horizontal' as const, color: colors.onSurfaceVariant },
-  { type: 'yellowcard', player: 'L. Modric', score: '', iconName: 'card' as const, color: colors.warning },
-];
+function getStatusDisplay(fixture: Fixture): { label: string; isLive: boolean } {
+  if (LIVE_STATUSES.includes(fixture.status)) {
+    return {
+      label: fixture.elapsed ? `LIVE \u2022 ${fixture.elapsed}'` : 'LIVE',
+      isLive: true,
+    };
+  }
+  if (FINISHED_STATUSES.includes(fixture.status)) {
+    return { label: fixture.statusLong || 'Full Time', isLive: false };
+  }
+  if (fixture.status === 'HT') return { label: 'Half Time', isLive: true };
+  const time = new Date(fixture.date).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  return { label: time, isLive: false };
+}
 
-const PREDICTIONS = [
-  { label: 'PREDICT RESULT (1X2)', sublabel: 'LONDON FC v HE', value: '+15 pts' },
-  { label: '', sublabel: '', value: '+65 pts' },
-  { label: '', sublabel: '', value: '+100 pts' },
+function getEventIcon(event: FixtureEvent) {
+  const type = event.type?.toLowerCase();
+  const detail = event.detail?.toLowerCase() || '';
+
+  if (type === 'goal') {
+    return { icon: 'football', lib: 'ion' as const, color: colors.primary, bg: colors.primary };
+  }
+  if (type === 'card' && detail.includes('yellow')) {
+    return { icon: 'yellow', lib: 'card' as const, color: '#FACC15', bg: colors.surfaceContainerHighest };
+  }
+  if (type === 'card' && detail.includes('red')) {
+    return { icon: 'red', lib: 'card' as const, color: '#DC2626', bg: colors.surfaceContainerHighest };
+  }
+  if (type === 'subst') {
+    return { icon: 'swap-horizontal', lib: 'mci' as const, color: colors.onSurfaceVariant, bg: colors.surfaceContainerHighest };
+  }
+  if (type === 'var') {
+    return { icon: 'monitor', lib: 'mci' as const, color: colors.info, bg: colors.surfaceContainerHighest };
+  }
+  return { icon: 'ellipse', lib: 'ion' as const, color: colors.onSurfaceVariant, bg: colors.surfaceContainerHighest };
+}
+
+function TeamLogo({ uri, size = 64 }: { uri?: string; size?: number }) {
+  if (uri) {
+    return (
+      <Image
+        source={{ uri }}
+        style={{ width: size, height: size, borderRadius: size / 4 }}
+        resizeMode="contain"
+      />
+    );
+  }
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size / 4,
+        backgroundColor: colors.surfaceContainerHighest,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Ionicons name="football" size={size * 0.45} color={colors.onSurfaceVariant} />
+    </View>
+  );
+}
+
+function getStatValue(stats: FixtureStatistic[], key: string): [string | null, string | null] {
+  if (stats.length < 2) return [null, null];
+  const home = stats[0]?.stats?.[key] ?? null;
+  const away = stats[1]?.stats?.[key] ?? null;
+  return [home !== null ? String(home) : null, away !== null ? String(away) : null];
+}
+
+function parsePossession(val: string | null): number {
+  if (!val) return 50;
+  const num = parseInt(val, 10);
+  return isNaN(num) ? 50 : num;
+}
+
+const STAT_KEYS = [
+  { key: 'Shots on Goal', label: 'SHOTS ON GOAL' },
+  { key: 'Total Shots', label: 'TOTAL SHOTS' },
+  { key: 'Corner Kicks', label: 'CORNERS' },
+  { key: 'Fouls', label: 'FOULS' },
+  { key: 'Offsides', label: 'OFFSIDES' },
 ];
 
 export function MatchPredictionScreen({ navigation }: Props) {
+  const route = useRoute<any>();
+  const { fixtureApiId } = route.params as { fixtureApiId: number };
+  const { tokens } = useAuth();
+  const [fixture, setFixture] = useState<Fixture | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchFixture = useCallback(async () => {
+    if (!tokens?.accessToken) return;
+    try {
+      const { fixture: f } = await footballApi.getFixtureDetail(
+        tokens.accessToken,
+        fixtureApiId,
+      );
+      setFixture(f);
+    } catch (err) {
+      console.log('Fixture fetch error:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [tokens?.accessToken, fixtureApiId]);
+
+  useEffect(() => {
+    fetchFixture();
+  }, [fetchFixture]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchFixture();
+  }, [fetchFixture]);
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={22} color={colors.onSurface} />
+          </TouchableOpacity>
+          <Text style={styles.brandText}>KINETIC</Text>
+          <View style={{ width: 30 }} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </View>
+    );
+  }
+
+  if (!fixture) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={22} color={colors.onSurface} />
+          </TouchableOpacity>
+          <Text style={styles.brandText}>KINETIC</Text>
+          <View style={{ width: 30 }} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color={colors.onSurfaceVariant} />
+          <Text style={styles.emptyText}>Match not found</Text>
+        </View>
+      </View>
+    );
+  }
+
+  const status = getStatusDisplay(fixture);
+  const events = fixture.events || [];
+  const stats = fixture.statistics || [];
+  const [homePoss, awayPoss] = getStatValue(stats, 'Ball Possession');
+  const homePossNum = parsePossession(homePoss);
+  const awayPossNum = 100 - homePossNum;
+
+  const sortedEvents = [...events].sort(
+    (a, b) => (b.timeElapsed || 0) - (a.timeElapsed || 0),
+  );
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -48,145 +202,234 @@ export function MatchPredictionScreen({ navigation }: Props) {
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Live badge */}
-        <View style={styles.liveBadgeContainer}>
-          <View style={styles.liveBadge}>
-            <Text style={styles.liveBadgeText}>LIVE • 74'</Text>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
+        }
+      >
+        {/* Status Badge */}
+        <View style={styles.statusBadgeContainer}>
+          <View style={[styles.statusBadge, status.isLive && styles.statusBadgeLive]}>
+            {status.isLive && <View style={styles.statusDot} />}
+            <Text style={[styles.statusBadgeText, status.isLive && styles.statusBadgeTextLive]}>
+              {status.label}
+            </Text>
           </View>
         </View>
 
-        {/* Score section */}
+        {/* Score Section */}
         <View style={styles.scoreSection}>
-          <Text style={styles.homeTeam}>LONDON FC</Text>
-          <Text style={styles.homeSubtitle}>TOE ROYALS</Text>
+          <View style={styles.teamsRow}>
+            <View style={styles.teamCol}>
+              <TeamLogo uri={fixture.homeTeam.logo} size={72} />
+              <Text style={styles.teamName}>{fixture.homeTeam.name}</Text>
+            </View>
 
-          <View style={styles.scoreRow}>
-            <Text style={styles.scoreNum}>2</Text>
-            <Text style={styles.scoreDivider}> </Text>
-            <Text style={styles.scoreNum}>1</Text>
-          </View>
+            <View style={styles.scoreCol}>
+              <View style={styles.scoreRow}>
+                <Text style={styles.scoreNum}>{fixture.homeGoals}</Text>
+                <Text style={styles.scoreDivider}>:</Text>
+                <Text style={styles.scoreNum}>{fixture.awayGoals}</Text>
+              </View>
+              {fixture.goalsHalftime?.home !== null && (
+                <Text style={styles.halftimeText}>
+                  HT: {fixture.goalsHalftime.home} - {fixture.goalsHalftime.away}
+                </Text>
+              )}
+            </View>
 
-          <Text style={styles.leagueText}>Premier League</Text>
-
-          <View style={styles.awayTeamRow}>
-            <View style={styles.teamBadge}>
-              <Ionicons name="football" size={24} color={colors.onSurface} />
+            <View style={styles.teamCol}>
+              <TeamLogo uri={fixture.awayTeam.logo} size={72} />
+              <Text style={styles.teamName}>{fixture.awayTeam.name}</Text>
             </View>
           </View>
-          <Text style={styles.awayTeam}>MADRID UNITED</Text>
-          <Text style={styles.awaySubtitle}>LOS BLANCOS</Text>
+
+          <View style={styles.leaguePill}>
+            {fixture.leagueLogo ? (
+              <Image
+                source={{ uri: fixture.leagueLogo }}
+                style={styles.leaguePillLogo}
+                resizeMode="contain"
+              />
+            ) : null}
+            <Text style={styles.leaguePillText}>
+              {fixture.leagueName}
+              {fixture.leagueRound ? ` \u2022 ${fixture.leagueRound}` : ''}
+            </Text>
+          </View>
         </View>
 
         {/* Match Statistics */}
-        <View style={styles.statsSection}>
-          <Text style={styles.statsSectionTitle}>MATCH STATISTICS</Text>
-          {STATS.map((stat, idx) => (
-            <View key={idx} style={styles.statRow}>
-              <Text style={styles.statLabel}>{stat.label}</Text>
-              <View style={styles.statBarContainer}>
-                <View style={styles.statBarBg}>
-                  <View style={[styles.statBarHome, { width: `${stat.home}%` }]} />
-                </View>
-              </View>
-              {stat.homeVal ? (
-                <View style={styles.statValues}>
-                  <Text style={styles.statValue}>{stat.homeVal}</Text>
-                  <Text style={styles.statSeparator}>/</Text>
-                  <Text style={styles.statValue}>{stat.awayVal}</Text>
-                </View>
-              ) : null}
-            </View>
-          ))}
-        </View>
+        {stats.length >= 2 && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>MATCH STATISTICS</Text>
 
-        {/* Discipline */}
-        <View style={styles.disciplineSection}>
-          <Text style={styles.disciplineLabel}>DISCIPLINE</Text>
-          <View style={styles.disciplineRow}>
-            <View style={{ width: 12, height: 16, borderRadius: 2, backgroundColor: '#FFD600' }} />
-            <Text style={styles.disciplineValue}>2</Text>
-            <View style={{ width: 12, height: 16, borderRadius: 2, backgroundColor: '#FF4444' }} />
-            <Text style={styles.disciplineValue}>0</Text>
-          </View>
-        </View>
-
-        {/* Live Timeline */}
-        <View style={styles.timelineSection}>
-          <Text style={styles.timelineSectionTitle}>LIVE TIMELINE</Text>
-          {TIMELINE.map((event, idx) => (
-            <View key={idx} style={styles.timelineItem}>
-              <View style={[styles.timelineDot, { backgroundColor: event.color }]}>
-                {event.iconName === 'football' && <Ionicons name="football" size={14} color={colors.onPrimary} />}
-                {event.iconName === 'swap-horizontal' && <MaterialCommunityIcons name="swap-horizontal" size={14} color={colors.white} />}
-                {event.iconName === 'card' && <View style={{ width: 8, height: 12, borderRadius: 1, backgroundColor: '#FFD600' }} />}
-              </View>
-              <View style={styles.timelineContent}>
-                <Text style={styles.timelineType}>
-                  {event.type === 'goal' ? 'BY GOAL' : event.type === 'substitution' ? 'BY SUBSTITUTION' : 'BY YELLOWCARD'}
+            {/* Possession */}
+            <View style={styles.possessionBlock}>
+              <View style={styles.possessionHeader}>
+                <Text style={styles.possessionHomeLabel}>
+                  POSSESSION ({homePoss || `${homePossNum}%`})
                 </Text>
-                <Text style={styles.timelinePlayer}>{event.player}</Text>
+                <Text style={styles.possessionAwayLabel}>
+                  {awayPoss || `${awayPossNum}%`}
+                </Text>
               </View>
-              {event.score ? (
-                <Text style={styles.timelineScore}>{event.score}</Text>
-              ) : null}
+              <View style={styles.possessionTrack}>
+                <View style={[styles.possessionHome, { flex: homePossNum }]} />
+                <View style={[styles.possessionAway, { flex: awayPossNum }]} />
+              </View>
             </View>
+
+            {/* Other Stats */}
+            {STAT_KEYS.map(({ key, label }) => {
+              const [homeVal, awayVal] = getStatValue(stats, key);
+              if (homeVal === null && awayVal === null) return null;
+              const hNum = parseInt(homeVal || '0', 10);
+              const aNum = parseInt(awayVal || '0', 10);
+              const total = hNum + aNum || 1;
+              const homePercent = Math.round((hNum / total) * 100);
+              return (
+                <View key={key} style={styles.statRow}>
+                  <View style={styles.statHeader}>
+                    <Text style={styles.statLabel}>{label}</Text>
+                    <Text style={styles.statValue}>
+                      {homeVal || '0'} / {awayVal || '0'}
+                    </Text>
+                  </View>
+                  <View style={styles.statBarBg}>
+                    <View style={[styles.statBarHome, { width: `${homePercent}%` }]} />
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
+        {/* Events Timeline */}
+        {sortedEvents.length > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>MATCH EVENTS</Text>
+            <View style={styles.timeline}>
+              <View style={styles.timelineLine} />
+              {sortedEvents.map((event, idx) => {
+                const evtStyle = getEventIcon(event);
+                return (
+                  <View key={idx} style={styles.timelineEvent}>
+                    <View style={[styles.timelineDot, { backgroundColor: evtStyle.bg }]}>
+                      {evtStyle.lib === 'ion' && (
+                        <Ionicons name="football" size={12} color={colors.onPrimary} />
+                      )}
+                      {evtStyle.lib === 'mci' && (
+                        <MaterialCommunityIcons
+                          name={evtStyle.icon as any}
+                          size={12}
+                          color={evtStyle.color}
+                        />
+                      )}
+                      {evtStyle.lib === 'card' && (
+                        <View
+                          style={{
+                            width: 8,
+                            height: 12,
+                            borderRadius: 1,
+                            backgroundColor: evtStyle.color,
+                          }}
+                        />
+                      )}
+                    </View>
+                    <View style={styles.timelineCard}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.timelineMinute}>
+                          {event.timeElapsed}'
+                          {event.timeExtra ? `+${event.timeExtra}` : ''}{' '}
+                          {event.detail || event.type}
+                        </Text>
+                        <Text style={styles.timelinePlayer}>
+                          {event.playerName}
+                          {event.assistName ? ` (${event.assistName})` : ''}
+                        </Text>
+                        <Text style={styles.timelineTeam}>{event.teamName}</Text>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
+        {/* Predictions (static product feature) */}
+        <View style={styles.predictCard}>
+          <View style={styles.predictHeader}>
+            <Text style={styles.cardTitle}>MATCH PREDICTIONS</Text>
+            <MaterialCommunityIcons name="access-point" size={20} color={colors.onSurfaceVariant} />
+          </View>
+          <Text style={styles.predictSectionLabel}>PREDICT RESULT (1X2)</Text>
+          <Text style={styles.predictMatchLabel}>
+            {fixture.homeTeam.name} vs {fixture.awayTeam.name}
+          </Text>
+          {[
+            { label: `${fixture.homeTeam.name} WIN`, pts: '+15 pts' },
+            { label: 'DRAW OUTCOME', pts: '+45 pts' },
+            { label: `${fixture.awayTeam.name} WIN`, pts: '+120 pts' },
+          ].map((p, idx) => (
+            <TouchableOpacity key={idx} style={styles.predictBtn}>
+              <View>
+                <Text style={styles.predictBtnLabel}>{p.label}</Text>
+                <Text style={styles.predictBtnPts}>{p.pts}</Text>
+              </View>
+              <Feather name="chevron-right" size={18} color={colors.onSurfaceVariant} />
+            </TouchableOpacity>
           ))}
-        </View>
-
-        {/* Match Predictions */}
-        <View style={styles.predictionsSection}>
-          <View style={styles.predictionsHeader}>
-            <Text style={styles.predictionsSectionTitle}>MATCH PREDICTIONS</Text>
-            <Text style={styles.predictionsLive}>▶▶</Text>
-          </View>
-
-          <Text style={styles.predictionSubLabel}>PREDICT RESULT (1X2)</Text>
-          <Text style={styles.predictionMatch}>LONDON FC v HE</Text>
-
-          <View style={styles.predictionOptions}>
-            {['+15 pts', '+65 pts', '+100 pts'].map((pts, idx) => (
-              <TouchableOpacity key={idx} style={styles.predictionButton}>
-                <Text style={styles.predictionButtonText}>{pts}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <Text style={styles.nextPredLabel}>NEXT ZONE PREDICTIONS</Text>
-          <View style={styles.predictionOptions}>
-            <TouchableOpacity style={styles.predictionButton}>
-              <Text style={styles.predictionButtonText}>-35 pts</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.predictionButton}>
-              <Text style={styles.predictionButtonText}>+50 pts</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Submit */}
           <TouchableOpacity
             style={styles.submitButton}
-            onPress={() => navigation.navigate('PickSummary')}
+            onPress={() => {
+              const state = navigation.getState();
+              const currentRouteName = state?.routes?.[state.index]?.name;
+              if (currentRouteName === 'LiveMatchPrediction') {
+                navigation.navigate('LivePickSummary');
+              } else {
+                navigation.navigate('PickSummary');
+              }
+            }}
           >
             <Text style={styles.submitButtonText}>SUBMIT PICKS</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Join banner */}
-        <View style={styles.joinBanner}>
-          <MaterialIcons name="warning-amber" size={20} color={colors.tertiary} />
-          <View style={styles.joinContent}>
-            <Text style={styles.joinTitle}>JOIN TIMED DECAST</Text>
-            <Text style={styles.joinDesc}>Predict the next 5 minutes of play for bonus points.</Text>
+        {/* Match Info Footer */}
+        <View style={styles.infoCard}>
+          <View style={styles.infoRow}>
+            <Ionicons name="calendar-outline" size={16} color={colors.onSurfaceVariant} />
+            <Text style={styles.infoText}>
+              {new Date(fixture.date).toLocaleDateString([], {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })}
+            </Text>
           </View>
-          <Text style={styles.joinValue}>+45 pts</Text>
-        </View>
-
-        {/* Trending */}
-        <View style={styles.trendingSection}>
-          <Ionicons name="time-outline" size={16} color={colors.onSurfaceDim} />
-          <View>
-            <Text style={styles.trendingTitle}>London to Win (1X2) Our Prediction</Text>
+          <View style={styles.infoRow}>
+            <Ionicons name="time-outline" size={16} color={colors.onSurfaceVariant} />
+            <Text style={styles.infoText}>
+              {new Date(fixture.date).toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </Text>
           </View>
+          {fixture.referee && (
+            <View style={styles.infoRow}>
+              <Ionicons name="person-outline" size={16} color={colors.onSurfaceVariant} />
+              <Text style={styles.infoText}>Referee: {fixture.referee}</Text>
+            </View>
+          )}
         </View>
 
         <View style={{ height: 100 }} />
@@ -196,10 +439,16 @@ export function MatchPredictionScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
+  container: { flex: 1, backgroundColor: colors.background },
+  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
+  emptyText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 16,
+    lineHeight: 24,
+    color: colors.onSurfaceVariant,
   },
+
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -208,267 +457,291 @@ const styles = StyleSheet.create({
     paddingTop: 56,
     paddingBottom: 12,
   },
-  backBtn: {
-    padding: 4,
-  },
-  backArrow: {
-    color: colors.onSurface,
-    fontSize: 22,
-  },
+  backBtn: { padding: 4 },
   brandText: {
     fontFamily: 'SpaceGrotesk_700Bold',
     fontSize: 20,
     color: colors.primary,
     letterSpacing: 1,
   },
-  headerIcon: {
-    fontSize: 20,
-  },
-  liveBadgeContainer: {
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  liveBadge: {
-    backgroundColor: colors.tertiary,
+
+  // Status Badge
+  statusBadgeContainer: { alignItems: 'center', marginBottom: 12 },
+  statusBadge: {
+    backgroundColor: colors.surfaceContainerHighest,
     borderRadius: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
-  liveBadgeText: {
-    ...typography.labelMd,
-    color: colors.white,
+  statusBadgeLive: { backgroundColor: colors.tertiary },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#fff',
+  },
+  statusBadgeText: {
+    fontFamily: 'Inter_700Bold',
     fontSize: 11,
+    lineHeight: 15,
+    color: colors.onSurfaceVariant,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
+  statusBadgeTextLive: { color: '#220600' },
+
+  // Score
   scoreSection: {
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
     marginBottom: 24,
   },
-  homeTeam: {
-    ...typography.headlineLg,
-    color: colors.onSurface,
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 22,
-    letterSpacing: 1,
-  },
-  homeSubtitle: {
-    ...typography.labelSm,
-    color: colors.onSurfaceDim,
-    letterSpacing: 1,
-    marginBottom: 12,
-  },
-  scoreRow: {
+  teamsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 24,
-    marginBottom: 8,
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 16,
   },
+  teamCol: { flex: 1, alignItems: 'center', gap: 8 },
+  teamName: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 16,
+    lineHeight: 22,
+    color: colors.onSurface,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+  },
+  scoreCol: { alignItems: 'center', paddingHorizontal: 8 },
+  scoreRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   scoreNum: {
     fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 64,
+    fontSize: 56,
+    lineHeight: 60,
     color: colors.onSurface,
   },
   scoreDivider: {
-    width: 20,
+    fontFamily: 'SpaceGrotesk_400Regular',
+    fontSize: 28,
+    lineHeight: 32,
+    color: colors.onSurfaceVariant,
   },
-  leagueText: {
-    ...typography.bodySm,
+  halftimeText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 12,
+    lineHeight: 16,
     color: colors.onSurfaceDim,
-    marginBottom: 16,
+    marginTop: 4,
   },
-  awayTeamRow: {
-    marginBottom: 8,
-  },
-  teamBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.surfaceContainerHighest,
+  leaguePill: {
+    backgroundColor: 'rgba(34,38,43,0.5)',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 8,
   },
-  awayTeam: {
-    ...typography.headlineLg,
-    color: colors.onSurface,
+  leaguePillLogo: { width: 16, height: 16 },
+  leaguePillText: {
     fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 22,
-    letterSpacing: 1,
-  },
-  awaySubtitle: {
-    ...typography.labelSm,
-    color: colors.onSurfaceDim,
-    letterSpacing: 1,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.onSurfaceVariant,
+    letterSpacing: -0.35,
   },
 
-  // Stats
-  statsSection: {
-    paddingHorizontal: spacing.lg,
-    marginBottom: 16,
+  // Card base
+  card: {
+    marginHorizontal: 16,
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: 8,
+    padding: 24,
+    marginBottom: 24,
+    gap: 24,
   },
-  statsSectionTitle: {
-    ...typography.labelLg,
+  cardTitle: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 20,
+    lineHeight: 28,
     color: colors.onSurface,
-    fontFamily: 'Inter_700Bold',
-    marginBottom: 12,
-    letterSpacing: 0.5,
+    letterSpacing: -0.5,
+    textTransform: 'uppercase',
   },
-  statRow: {
-    marginBottom: 12,
+
+  // Possession
+  possessionBlock: { gap: 12 },
+  possessionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  possessionHomeLabel: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.primaryContainer,
+    letterSpacing: 0.35,
+    textTransform: 'uppercase',
+  },
+  possessionAwayLabel: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.onSurfaceVariant,
+    letterSpacing: 0.35,
+    textTransform: 'uppercase',
+  },
+  possessionTrack: {
+    flexDirection: 'row',
+    height: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  possessionHome: { backgroundColor: colors.primary },
+  possessionAway: { backgroundColor: '#45484C' },
+
+  // Stats
+  statRow: { gap: 8 },
+  statHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
   },
   statLabel: {
-    ...typography.labelSm,
-    color: colors.onSurfaceDim,
-    marginBottom: 4,
-    letterSpacing: 0.3,
+    fontFamily: 'Inter_700Bold',
+    fontSize: 12,
+    lineHeight: 16,
+    color: colors.onSurfaceVariant,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
   },
-  statBarContainer: {
-    marginBottom: 2,
+  statValue: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 18,
+    lineHeight: 24,
+    color: colors.onSurface,
   },
   statBarBg: {
-    height: 4,
-    backgroundColor: colors.surfaceVariant,
-    borderRadius: 2,
+    height: 6,
+    backgroundColor: colors.surfaceContainerHighest,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   statBarHome: {
     height: '100%',
     backgroundColor: colors.primary,
-    borderRadius: 2,
-  },
-  statValues: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 2,
-  },
-  statValue: {
-    ...typography.titleSm,
-    color: colors.onSurface,
-    fontFamily: 'SpaceGrotesk_700Bold',
-  },
-  statSeparator: {
-    color: colors.onSurfaceDim,
-    marginHorizontal: 4,
-  },
-  disciplineSection: {
-    paddingHorizontal: spacing.lg,
-    marginBottom: 20,
-  },
-  disciplineLabel: {
-    ...typography.labelSm,
-    color: colors.onSurfaceDim,
-    marginBottom: 6,
-  },
-  disciplineRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  disciplineIcon: {
-    fontSize: 14,
-  },
-  disciplineValue: {
-    ...typography.bodyMd,
-    color: colors.onSurface,
-    marginRight: 12,
+    borderRadius: 12,
   },
 
   // Timeline
-  timelineSection: {
-    paddingHorizontal: spacing.lg,
-    marginBottom: 24,
+  timeline: { gap: 16, position: 'relative' },
+  timelineLine: {
+    position: 'absolute',
+    left: 11,
+    top: 8,
+    bottom: 8,
+    width: 2,
+    backgroundColor: 'rgba(69,72,76,0.3)',
   },
-  timelineSectionTitle: {
-    ...typography.labelLg,
-    color: colors.onSurface,
-    fontFamily: 'Inter_700Bold',
-    marginBottom: 12,
-    letterSpacing: 0.5,
-  },
-  timelineItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 12,
-  },
+  timelineEvent: { flexDirection: 'row', alignItems: 'flex-start' },
   timelineDot: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 12,
+    borderWidth: 4,
+    borderColor: colors.background,
+    zIndex: 2,
   },
-  timelineContent: {
+  timelineCard: {
     flex: 1,
+    backgroundColor: 'rgba(34,38,43,0.4)',
+    borderRadius: 4,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  timelineType: {
-    ...typography.labelSm,
-    color: colors.onSurfaceDim,
-    fontSize: 9,
+  timelineMinute: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 10,
+    lineHeight: 15,
+    color: colors.onSurfaceVariant,
+    letterSpacing: -0.5,
+    textTransform: 'uppercase',
   },
   timelinePlayer: {
-    ...typography.bodyMd,
+    fontFamily: 'Inter_700Bold',
+    fontSize: 14,
+    lineHeight: 20,
     color: colors.onSurface,
-    fontFamily: 'Inter_500Medium',
   },
-  timelineScore: {
-    ...typography.titleMd,
-    color: colors.onSurface,
-    fontFamily: 'SpaceGrotesk_700Bold',
+  timelineTeam: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 11,
+    lineHeight: 15,
+    color: colors.onSurfaceDim,
   },
 
   // Predictions
-  predictionsSection: {
-    paddingHorizontal: spacing.lg,
-    marginBottom: 16,
+  predictCard: {
+    marginHorizontal: 16,
+    backgroundColor: 'rgba(34,38,43,0.4)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(69,72,76,0.1)',
+    padding: 25,
+    marginBottom: 24,
+    gap: 12,
   },
-  predictionsHeader: {
+  predictHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
   },
-  predictionsSectionTitle: {
-    ...typography.labelLg,
-    color: colors.onSurface,
+  predictSectionLabel: {
     fontFamily: 'Inter_700Bold',
-    letterSpacing: 0.5,
-  },
-  predictionsLive: {
-    color: colors.tertiary,
-    fontSize: 14,
-  },
-  predictionSubLabel: {
-    ...typography.labelSm,
-    color: colors.onSurfaceDim,
-    marginBottom: 2,
-    letterSpacing: 0.3,
-  },
-  predictionMatch: {
-    ...typography.bodySm,
+    fontSize: 10,
+    lineHeight: 15,
     color: colors.onSurfaceVariant,
-    marginBottom: 10,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
-  predictionOptions: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 16,
-  },
-  predictionButton: {
-    flex: 1,
-    backgroundColor: colors.surfaceContainerHighest,
-    borderRadius: borderRadius.sm,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  predictionButtonText: {
-    ...typography.titleSm,
-    color: colors.primary,
-    fontFamily: 'SpaceGrotesk_700Bold',
-  },
-  nextPredLabel: {
-    ...typography.labelSm,
+  predictMatchLabel: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 12,
+    lineHeight: 16,
     color: colors.onSurfaceDim,
-    marginBottom: 8,
-    letterSpacing: 0.3,
+    marginBottom: 4,
+  },
+  predictBtn: {
+    backgroundColor: colors.surfaceContainerHighest,
+    borderRadius: 8,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  predictBtnLabel: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 10,
+    lineHeight: 15,
+    color: colors.onSurfaceVariant,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  predictBtnPts: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 24,
+    lineHeight: 32,
+    color: colors.onSurface,
   },
   submitButton: {
     backgroundColor: colors.primary,
@@ -478,62 +751,28 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   submitButtonText: {
-    ...typography.labelMd,
+    fontFamily: 'Inter_700Bold',
+    fontSize: 14,
+    lineHeight: 20,
     color: colors.onPrimary,
-    fontFamily: 'Inter_700Bold',
     letterSpacing: 1,
+    textTransform: 'uppercase',
   },
 
-  // Join banner
-  joinBanner: {
-    marginHorizontal: spacing.lg,
+  // Info Footer
+  infoCard: {
+    marginHorizontal: 16,
     backgroundColor: colors.surfaceContainerLow,
-    borderRadius: borderRadius.md,
-    padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
+    borderRadius: 8,
+    padding: 20,
     gap: 12,
-    marginTop: 16,
-    marginBottom: 12,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.tertiary,
+    marginBottom: 24,
   },
-  joinIcon: {
-    fontSize: 18,
-  },
-  joinContent: {
-    flex: 1,
-  },
-  joinTitle: {
-    ...typography.labelLg,
-    color: colors.onSurface,
-    fontFamily: 'Inter_700Bold',
-    fontSize: 12,
-  },
-  joinDesc: {
-    ...typography.bodySm,
-    color: colors.onSurfaceVariant,
-    fontSize: 11,
-  },
-  joinValue: {
-    ...typography.titleSm,
-    color: colors.primary,
-    fontFamily: 'SpaceGrotesk_700Bold',
-  },
-
-  // Trending
-  trendingSection: {
-    marginHorizontal: spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    padding: 12,
-  },
-  trendingIcon: {
-    fontSize: 16,
-  },
-  trendingTitle: {
-    ...typography.bodySm,
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  infoText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 13,
+    lineHeight: 18,
     color: colors.onSurfaceVariant,
   },
 });

@@ -16,20 +16,17 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme';
 import { AppHeader } from '../components/AppHeader';
-import { RootStackParamList, ProfileStackParamList } from '../navigation/types';
+import { ProfileStackParamList } from '../navigation/types';
+import { useAuth } from '../contexts/AuthContext';
+import { usePurchases } from '../contexts/PurchasesContext';
 
-// ── Mock Data ──
-
-const STATS_SUMMARY = {
-  rank: 'Master Rank',
-  nextRank: 'Legend',
-  rankProgress: 8450,
-  rankMax: 10000,
-  winRate: 68,
-  winRateDelta: '+2.4% THIS MONTH',
-  totalCorrect: 842,
-  activeStreak: 7,
-  subscriptionPrice: '$1.00',
+const TIER_CONFIG: Record<string, { label: string; next: string; max: number }> = {
+  rookie: { label: 'Rookie', next: 'Bronze', max: 1000 },
+  bronze: { label: 'Bronze', next: 'Silver', max: 5000 },
+  silver: { label: 'Silver', next: 'Gold', max: 10000 },
+  gold: { label: 'Gold', next: 'Diamond', max: 25000 },
+  diamond: { label: 'Diamond', next: 'Legend', max: 50000 },
+  legend: { label: 'Legend', next: '', max: 100000 },
 };
 
 const ACHIEVEMENTS = [
@@ -141,12 +138,24 @@ function AchievementIcon({ item }: { item: typeof ACHIEVEMENTS[0] }) {
 // ── Main Screen ──
 
 export function ProfileScreen() {
-  const rootNavigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const profileNav = useNavigation<NativeStackNavigationProp<ProfileStackParamList>>();
-  const rankPercent = (STATS_SUMMARY.rankProgress / STATS_SUMMARY.rankMax) * 100;
+  const { logout, user } = useAuth();
+  const { isProMember, presentPaywall } = usePurchases();
 
-  const handleLogout = () => {
-    rootNavigation.reset({ index: 0, routes: [{ name: 'Auth' }] });
+  const tierKey = user?.tier ?? 'rookie';
+  const tierInfo = TIER_CONFIG[tierKey] ?? TIER_CONFIG.rookie;
+  const totalPoints = user?.totalPoints ?? 0;
+  const rankPercent = tierInfo.max > 0 ? Math.min((totalPoints / tierInfo.max) * 100, 100) : 0;
+
+  const totalPredictions = user?.totalPredictions ?? 0;
+  const correctPredictions = user?.correctPredictions ?? 0;
+  const winRate = totalPredictions > 0
+    ? Math.round((correctPredictions / totalPredictions) * 100)
+    : 0;
+  const activeStreak = user?.currentStreak ?? 0;
+
+  const handleLogout = async () => {
+    await logout();
   };
 
   return (
@@ -164,14 +173,18 @@ export function ProfileScreen() {
               <View style={styles.avatarLarge}>
                 <Ionicons name="person" size={48} color={colors.onSurfaceVariant} />
               </View>
-              <View style={styles.proBadge}>
-                <Text style={styles.proBadgeText}>PRO</Text>
-              </View>
+              {isProMember && (
+                <View style={styles.proBadge}>
+                  <Text style={styles.proBadgeText}>PRO</Text>
+                </View>
+              )}
             </View>
 
             {/* Name & Tier */}
-            <Text style={styles.username}>GHOSTKING</Text>
-            <Text style={styles.tierLabel}>PRO TIER MEMBER</Text>
+            <Text style={styles.username}>{user?.displayName ?? 'GHOSTKING'}</Text>
+            <Text style={styles.tierLabel}>
+              {isProMember ? 'PRO TIER MEMBER' : 'FREE TIER'}
+            </Text>
 
             {/* Meta */}
             <View style={styles.metaRow}>
@@ -180,12 +193,14 @@ export function ProfileScreen() {
                 size={12}
                 color={colors.onSurfaceVariant}
               />
-              <Text style={styles.metaText}>12,504 PTS</Text>
+              <Text style={styles.metaText}>{totalPoints.toLocaleString()} PTS</Text>
             </View>
-            <View style={styles.metaRow}>
-              <Ionicons name="time-outline" size={12} color={colors.onSurfaceVariant} />
-              <Text style={styles.metaText}>MEMBER FOR 2 YEARS</Text>
-            </View>
+            {user?.email && (
+              <View style={styles.metaRow}>
+                <Ionicons name="mail-outline" size={12} color={colors.onSurfaceVariant} />
+                <Text style={styles.metaText}>{user.email.toUpperCase()}</Text>
+              </View>
+            )}
 
             {/* Actions */}
             <View style={styles.heroActions}>
@@ -215,13 +230,17 @@ export function ProfileScreen() {
           <View style={styles.rankHeader}>
             <View style={{ gap: 4 }}>
               <Text style={styles.statMiniLabel}>CURRENT STANDING</Text>
-              <Text style={styles.rankValue}>MASTER RANK</Text>
+              <Text style={styles.rankValue}>{tierInfo.label.toUpperCase()}</Text>
             </View>
             <View style={{ gap: 4, alignItems: 'flex-end' }}>
-              <Text style={styles.statMiniLabel}>NEXT: LEGEND</Text>
+              {tierInfo.next ? (
+                <Text style={styles.statMiniLabel}>NEXT: {tierInfo.next.toUpperCase()}</Text>
+              ) : (
+                <Text style={styles.statMiniLabel}>MAX TIER</Text>
+              )}
               <Text style={styles.rankProgress}>
-                {STATS_SUMMARY.rankProgress.toLocaleString()} /{' '}
-                {STATS_SUMMARY.rankMax.toLocaleString()}
+                {totalPoints.toLocaleString()} /{' '}
+                {tierInfo.max.toLocaleString()}
               </Text>
             </View>
           </View>
@@ -240,8 +259,10 @@ export function ProfileScreen() {
         {/* ── Win Rate ── */}
         <View style={[styles.statCard, styles.statCardCenter]}>
           <Text style={styles.statMiniLabel}>WIN RATE</Text>
-          <Text style={styles.bigStat}>{STATS_SUMMARY.winRate}%</Text>
-          <Text style={styles.statDelta}>{STATS_SUMMARY.winRateDelta}</Text>
+          <Text style={styles.bigStat}>{winRate}%</Text>
+          <Text style={styles.statDelta}>
+            {totalPredictions} TOTAL PREDICTIONS
+          </Text>
         </View>
 
         {/* ── Total Correct ── */}
@@ -252,7 +273,7 @@ export function ProfileScreen() {
             </View>
             <Text style={styles.statMiniLabel}>TOTAL CORRECT</Text>
           </View>
-          <Text style={styles.bigStatLeft}>{STATS_SUMMARY.totalCorrect}</Text>
+          <Text style={styles.bigStatLeft}>{correctPredictions}</Text>
         </View>
 
         {/* ── Active Streak ── */}
@@ -264,7 +285,7 @@ export function ProfileScreen() {
             <Text style={styles.statMiniLabel}>ACTIVE STREAK</Text>
           </View>
           <Text style={styles.streakValue}>
-            {STATS_SUMMARY.activeStreak}{' '}
+            {activeStreak}{' '}
             <Text style={styles.streakUnit}>MATCHES</Text>
           </Text>
         </View>
@@ -273,18 +294,45 @@ export function ProfileScreen() {
         <View style={styles.statCard}>
           <View style={styles.subHeader}>
             <Text style={styles.statMiniLabel}>KINETIC+</Text>
-            <View style={styles.activeBadge}>
-              <Text style={styles.activeBadgeText}>ACTIVE</Text>
+            <View style={isProMember ? styles.activeBadge : styles.inactiveBadge}>
+              <Text style={isProMember ? styles.activeBadgeText : styles.inactiveBadgeText}>
+                {isProMember ? 'ACTIVE' : 'INACTIVE'}
+              </Text>
             </View>
           </View>
           <View style={{ gap: 8, marginTop: 16 }}>
-            <Text style={styles.subPrice}>
-              {STATS_SUMMARY.subscriptionPrice}
-              <Text style={styles.subPriceUnit}> / month</Text>
-            </Text>
-            <TouchableOpacity>
-              <Text style={styles.manageSub}>MANAGE SUBSCRIPTION</Text>
-            </TouchableOpacity>
+            {isProMember ? (
+              <>
+                <Text style={styles.subPrice}>
+                  Kinetic+
+                  <Text style={styles.subPriceUnit}> subscription</Text>
+                </Text>
+                <TouchableOpacity onPress={presentPaywall}>
+                  <Text style={styles.manageSub}>MANAGE SUBSCRIPTION</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={styles.subDesc}>
+                  Unlock premium predictions, exclusive insights, and ad-free
+                  experience.
+                </Text>
+                <TouchableOpacity
+                  style={styles.upgradeBtnWrap}
+                  activeOpacity={0.85}
+                  onPress={presentPaywall}
+                >
+                  <LinearGradient
+                    colors={['#F3FFCA', '#CAFD00']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.upgradeBtn}
+                  >
+                    <Text style={styles.upgradeBtnText}>UPGRADE TO PRO</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </View>
 
@@ -682,6 +730,43 @@ const styles = StyleSheet.create({
     color: colors.primaryContainer,
     textDecorationLine: 'underline',
     textDecorationColor: 'rgba(243,255,202,0.3)',
+  },
+  inactiveBadge: {
+    backgroundColor: 'rgba(255,115,81,0.15)',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  inactiveBadgeText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 10,
+    lineHeight: 15,
+    color: '#FF7351',
+  },
+  subDesc: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.onSurfaceVariant,
+  },
+  upgradeBtnWrap: {
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginTop: 4,
+  },
+  upgradeBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 4,
+    alignItems: 'center',
+  },
+  upgradeBtnText: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#4A5E00',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
 
   // Sections

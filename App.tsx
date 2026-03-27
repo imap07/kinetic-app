@@ -14,6 +14,8 @@ import {
   Inter_700Bold,
 } from '@expo-google-fonts/inter';
 import { AppNavigator } from './src/navigation/AppNavigator';
+import { AuthProvider } from './src/contexts/AuthContext';
+import { PurchasesProvider } from './src/contexts/PurchasesContext';
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -35,10 +37,12 @@ export default function App() {
   }
 
   return (
-    <>
-      <StatusBar style="light" />
-      <AppNavigator />
-    </>
+    <AuthProvider>
+      <PurchasesProvider>
+        <StatusBar style="light" />
+        <AppNavigator />
+      </PurchasesProvider>
+    </AuthProvider>
   );
 }
 

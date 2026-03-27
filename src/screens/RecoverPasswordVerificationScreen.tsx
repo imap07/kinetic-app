@@ -8,26 +8,30 @@ import {
   ScrollView,
   Platform,
   KeyboardAvoidingView,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useNavigation } from '@react-navigation/native';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { TopAppBar, PrimaryButton } from '../components';
 import { colors, typography, spacing, borderRadius } from '../theme';
-import { AuthStackParamList, RootStackParamList } from '../navigation/types';
+import { AuthStackParamList } from '../navigation/types';
+import { useAuth } from '../contexts/AuthContext';
+import { ApiError } from '../api';
 
 const CODE_LENGTH = 6;
 
-type Props = {
-  navigation: NativeStackNavigationProp<AuthStackParamList, 'RecoverPasswordVerification'>;
-};
+type Props = NativeStackScreenProps<AuthStackParamList, 'RecoverPasswordVerification'>;
 
-export function RecoverPasswordVerificationScreen({ navigation }: Props) {
-  const rootNavigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+export function RecoverPasswordVerificationScreen({ navigation, route }: Props) {
+  const { email } = route.params;
   const insets = useSafeAreaInsets();
+  const { verifyCode, forgotPassword } = useAuth();
 
   const [code, setCode] = useState<string[]>(Array(CODE_LENGTH).fill(''));
+  const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const inputs = useRef<(TextInput | null)[]>([]);
 
   const handleCodeChange = (text: string, index: number) => {
@@ -45,8 +49,36 @@ export function RecoverPasswordVerificationScreen({ navigation }: Props) {
     }
   };
 
-  const handleVerify = () => {
-    rootNavigation.reset({ index: 0, routes: [{ name: 'Main' }] });
+  const handleVerify = async () => {
+    const codeStr = code.join('');
+    if (codeStr.length !== CODE_LENGTH || loading) return;
+
+    setLoading(true);
+    try {
+      await verifyCode(email, codeStr);
+      navigation.navigate('ResetPassword', { email, code: codeStr });
+    } catch (err) {
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : 'Invalid or expired code. Please try again.';
+      Alert.alert('Error', message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (resending) return;
+    setResending(true);
+    try {
+      await forgotPassword(email);
+      Alert.alert('Code Sent', 'A new verification code has been sent to your email.');
+    } catch {
+      Alert.alert('Error', 'Failed to resend code. Please try again.');
+    } finally {
+      setResending(false);
+    }
   };
 
   return (
@@ -78,8 +110,10 @@ export function RecoverPasswordVerificationScreen({ navigation }: Props) {
 
         <Text style={styles.description}>
           We've sent a 6-digit verification code to{'\n'}
-          <Text style={styles.emailHighlight}>m***e@kinetic.io</Text>. Enter it
-          below to secure your account.
+          <Text style={styles.emailHighlight}>
+            {email.replace(/(.{2})(.*)(@.*)/, (_m, a, b, c) => a + '*'.repeat(b.length) + c)}
+          </Text>
+          . Enter it below to secure your account.
         </Text>
 
         <View style={styles.codeSection}>
@@ -104,14 +138,23 @@ export function RecoverPasswordVerificationScreen({ navigation }: Props) {
         </View>
 
         <PrimaryButton
-          title="VERIFY & CONTINUE"
+          title={loading ? '' : 'VERIFY & CONTINUE'}
           onPress={handleVerify}
           style={styles.verifyButton}
+          icon={
+            loading ? (
+              <ActivityIndicator size="small" color={colors.onPrimary} />
+            ) : undefined
+          }
         />
 
         <Text style={styles.resendLabel}>DIDN'T RECEIVE THE CODE?</Text>
-        <TouchableOpacity style={styles.resendBtn}>
-          <MaterialCommunityIcons name="refresh" size={14} color={colors.primary} />
+        <TouchableOpacity style={styles.resendBtn} onPress={handleResend} disabled={resending}>
+          {resending ? (
+            <ActivityIndicator size={14} color={colors.primary} />
+          ) : (
+            <MaterialCommunityIcons name="refresh" size={14} color={colors.primary} />
+          )}
           <Text style={styles.resendLink}>Resend Code</Text>
         </TouchableOpacity>
 

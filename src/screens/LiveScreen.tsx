@@ -1,381 +1,322 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Image,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../theme';
 import { AppHeader } from '../components/AppHeader';
+import { useAuth } from '../contexts/AuthContext';
+import { footballApi } from '../api';
+import type { Fixture, DashboardData } from '../api';
+import type { LiveStackParamList } from '../navigation/types';
 
-// ── Mock Data ──
+const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'P', 'BT', 'LIVE'];
+const FINISHED_STATUSES = ['FT', 'AET', 'PEN'];
+const REFRESH_INTERVAL = 30_000;
 
-const MATCH = {
-  homeTeam: 'London FC',
-  homeSubtitle: 'The Royals',
-  awayTeam: 'Madrid United',
-  awaySubtitle: 'Los Blancos',
-  homeScore: 2,
-  awayScore: 1,
-  league: 'Premier League',
-  liveMinute: "74'",
-};
+function getStatusLabel(fixture: Fixture): string {
+  if (LIVE_STATUSES.includes(fixture.status)) {
+    return fixture.elapsed ? `${fixture.elapsed}'` : 'LIVE';
+  }
+  if (FINISHED_STATUSES.includes(fixture.status)) return fixture.status;
+  if (fixture.status === 'NS') {
+    return new Date(fixture.date).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+  return fixture.statusLong || fixture.status;
+}
 
-const STATS = [
-  {
-    label: 'SHOTS ON GOAL',
-    value: '12 / 05',
-    homeFilled: 3,
-    totalDots: 5,
-  },
-  {
-    label: 'DANGEROUS ATTACKS',
-    value: '84 / 61',
-    homeFilled: 2,
-    totalDots: 4,
-    dimHome: true,
-  },
-  {
-    label: 'CORNERS',
-    value: '07 / 03',
-    homeFilled: 1,
-    totalDots: 2,
-  },
-];
+function isLive(fixture: Fixture): boolean {
+  return fixture.isLive || LIVE_STATUSES.includes(fixture.status);
+}
 
-const TIMELINE = [
-  {
-    type: 'goal' as const,
-    minute: "68'",
-    title: 'Goal!',
-    detail: 'M. Sterling',
-    score: '2-1',
-  },
-  {
-    type: 'substitution' as const,
-    minute: "55'",
-    title: 'Substitution',
-    detailParts: ['R. Benzema', 'J. Vinicius'],
-  },
-  {
-    type: 'yellowCard' as const,
-    minute: "41'",
-    title: 'Yellow Card',
-    detail: 'L. Modric',
-  },
-];
-
-const PREDICTIONS = [
-  { label: 'LONDON FC WIN', pts: '+15 pts' },
-  { label: 'DRAW OUTCOME', pts: '+45 pts' },
-  { label: 'MADRID UNITED WIN', pts: '+120 pts' },
-];
-
-const NEXT_GOAL = [
-  { name: 'H. KANE', pts: '+35 pts' },
-  { name: 'B. SAKA', pts: '+50 pts' },
-];
-
-// ── Stat Bar Component ──
-
-function StatDots({
-  filled,
-  total,
-  dim,
-}: {
-  filled: number;
-  total: number;
-  dim?: boolean;
-}) {
+function TeamLogo({ uri, size = 40 }: { uri?: string; size?: number }) {
+  if (uri) {
+    return (
+      <Image
+        source={{ uri }}
+        style={{ width: size, height: size, borderRadius: size / 4 }}
+        resizeMode="contain"
+      />
+    );
+  }
   return (
-    <View style={statStyles.dotRow}>
-      {Array.from({ length: total }).map((_, i) => (
-        <View
-          key={i}
-          style={[
-            statStyles.dot,
-            i < filled
-              ? [statStyles.dotFilled, dim && statStyles.dotDim]
-              : statStyles.dotEmpty,
-          ]}
-        />
-      ))}
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size / 4,
+        backgroundColor: colors.surfaceContainerHighest,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Ionicons name="football" size={size * 0.5} color={colors.onSurfaceVariant} />
     </View>
   );
 }
 
-const statStyles = StyleSheet.create({
-  dotRow: { flexDirection: 'row', gap: 4 },
-  dot: { flex: 1, height: 6, borderRadius: 12 },
-  dotFilled: { backgroundColor: colors.primaryContainer },
-  dotDim: { opacity: 0.6 },
-  dotEmpty: { backgroundColor: colors.surfaceContainerHighest },
-});
-
-// ── Main Screen ──
-
 export function LiveScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<LiveStackParamList>>();
+  const { tokens } = useAuth();
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const fetchData = useCallback(async () => {
+    if (!tokens?.accessToken) return;
+    try {
+      const result = await footballApi.getDashboard(tokens.accessToken);
+      setData(result);
+    } catch (err) {
+      console.log('Live fetch error:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [tokens?.accessToken]);
+
+  useEffect(() => {
+    fetchData();
+    intervalRef.current = setInterval(fetchData, REFRESH_INTERVAL);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [fetchData]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchData();
+  }, [fetchData]);
+
+  const liveMatches = data?.liveMatches ?? [];
+  const todayMatches = (data?.todayMatches ?? []).filter(
+    (f) => !isLive(f),
+  );
+  const recentMatches = data?.recentMatches ?? [];
+
+  const navigateToFixture = (fixtureApiId: number) => {
+    navigation.navigate('LiveMatchPrediction', { fixtureApiId });
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <AppHeader />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <AppHeader />
-
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* ── Live Match Hero ── */}
-        <View style={styles.heroCard}>
-          <LinearGradient
-            colors={['rgba(16,20,23,0)', 'rgba(16,20,23,0.6)', '#101417']}
-            style={StyleSheet.absoluteFill}
+      <ScrollView
+        style={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
           />
-
-          {/* Live Badge */}
-          <View style={styles.liveBadge}>
-            <View style={styles.liveBadgeDot} />
-            <Text style={styles.liveBadgeText}>
-              Live {'\u2022'} {MATCH.liveMinute}
-            </Text>
-          </View>
-
-          {/* Home Team */}
-          <View style={styles.teamBlock}>
-            <View style={[styles.teamLogo, styles.teamLogoHome]}>
-              <Ionicons name="football" size={36} color={colors.onSurface} />
+        }
+      >
+        {/* Live Matches */}
+        {liveMatches.length > 0 ? (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.liveDot} />
+              <Text style={styles.sectionTitle}>LIVE NOW</Text>
+              <Text style={styles.matchCount}>{liveMatches.length}</Text>
             </View>
-            <Text style={styles.teamName}>{MATCH.homeTeam}</Text>
-            <Text style={styles.teamSub}>{MATCH.homeSubtitle}</Text>
-          </View>
-
-          {/* Score */}
-          <View style={styles.scoreRow}>
-            <Text style={styles.scoreHome}>{MATCH.homeScore}</Text>
-            <Text style={styles.scoreDivider}>:</Text>
-            <Text style={styles.scoreAway}>{MATCH.awayScore}</Text>
-          </View>
-          <View style={styles.leaguePill}>
-            <Text style={styles.leaguePillText}>{MATCH.league}</Text>
-          </View>
-
-          {/* Away Team */}
-          <View style={styles.teamBlock}>
-            <View style={[styles.teamLogo, styles.teamLogoAway]}>
-              <MaterialCommunityIcons
-                name="shield-outline"
-                size={36}
-                color={colors.onSurface}
-              />
-            </View>
-            <Text style={styles.teamName}>{MATCH.awayTeam}</Text>
-            <Text style={styles.teamSub}>{MATCH.awaySubtitle}</Text>
-          </View>
-        </View>
-
-        {/* ── Match Statistics ── */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>MATCH STATISTICS</Text>
-
-          {/* Possession */}
-          <View style={styles.possessionBlock}>
-            <View style={styles.possessionHeader}>
-              <Text style={styles.possessionHomeLabel}>POSSESSION (58%)</Text>
-              <Text style={styles.possessionAwayLabel}>42%</Text>
-            </View>
-            <View style={styles.possessionTrack}>
-              <View style={[styles.possessionHome, { flex: 58 }]} />
-              <View style={[styles.possessionAway, { flex: 42 }]} />
-            </View>
-          </View>
-
-          {/* Stat rows */}
-          {STATS.map((stat, idx) => (
-            <View key={idx} style={styles.statRow}>
-              <View style={styles.statHeader}>
-                <Text style={styles.statLabel}>{stat.label}</Text>
-                <Text style={styles.statValue}>{stat.value}</Text>
-              </View>
-              <StatDots
-                filled={stat.homeFilled}
-                total={stat.totalDots}
-                dim={stat.dimHome}
-              />
-            </View>
-          ))}
-
-          {/* Discipline */}
-          <View style={styles.disciplineRow}>
-            <Text style={styles.statLabel}>DISCIPLINE</Text>
-            <View style={styles.cardsGroup}>
-              <View style={styles.cardBadge}>
-                <View style={[styles.cardRect, { backgroundColor: '#FACC15' }]} />
-                <Text style={styles.cardCount}>2</Text>
-              </View>
-              <View style={styles.cardBadge}>
-                <View style={[styles.cardRect, { backgroundColor: '#DC2626' }]} />
-                <Text style={styles.cardCount}>0</Text>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* ── Live Timeline ── */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>LIVE TIMELINE</Text>
-          <View style={styles.timeline}>
-            <View style={styles.timelineLine} />
-            {TIMELINE.map((evt, idx) => (
-              <View key={idx} style={styles.timelineEvent}>
-                {/* Dot */}
-                <View
-                  style={[
-                    styles.timelineDot,
-                    evt.type === 'goal' && styles.timelineDotGoal,
-                  ]}
-                >
-                  {evt.type === 'goal' && (
-                    <Ionicons name="football" size={12} color={colors.onPrimary} />
-                  )}
-                  {evt.type === 'substitution' && (
-                    <MaterialCommunityIcons
-                      name="swap-horizontal"
-                      size={10}
-                      color={colors.onSurfaceVariant}
+            {liveMatches.map((fixture) => (
+              <TouchableOpacity
+                key={fixture.apiId}
+                style={styles.matchCard}
+                onPress={() => navigateToFixture(fixture.apiId)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.liveAccent} />
+                <View style={styles.matchLeagueRow}>
+                  {fixture.leagueLogo ? (
+                    <Image
+                      source={{ uri: fixture.leagueLogo }}
+                      style={styles.matchLeagueLogo}
+                      resizeMode="contain"
                     />
-                  )}
-                  {evt.type === 'yellowCard' && (
-                    <View style={styles.yellowCardSmall} />
-                  )}
-                </View>
-
-                {/* Content */}
-                <View
-                  style={[
-                    styles.timelineCard,
-                    evt.type === 'goal' && styles.timelineCardGoal,
-                  ]}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text
-                      style={[
-                        styles.timelineMinute,
-                        evt.type === 'goal' && styles.timelineMinuteGoal,
-                      ]}
-                    >
-                      {evt.minute} {evt.title}
-                    </Text>
-                    {evt.detailParts ? (
-                      <Text style={styles.timelineDetail}>
-                        {evt.detailParts[0]}{' '}
-                        <Text style={{ color: colors.tertiaryLight }}>
-                          {'\u279C'}
-                        </Text>{' '}
-                        {evt.detailParts[1]}
-                      </Text>
-                    ) : (
-                      <Text
-                        style={[
-                          styles.timelineDetailBold,
-                          evt.type !== 'goal' && styles.timelineDetail,
-                        ]}
-                      >
-                        {evt.detail}
-                      </Text>
-                    )}
+                  ) : null}
+                  <Text style={styles.matchLeagueName}>{fixture.leagueName}</Text>
+                  <View style={styles.liveBadge}>
+                    <Text style={styles.liveBadgeText}>{getStatusLabel(fixture)}</Text>
                   </View>
-                  {evt.score && (
-                    <Text style={styles.timelineScore}>{evt.score}</Text>
-                  )}
                 </View>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* ── Match Predictions ── */}
-        <View style={styles.predictCard}>
-          <View style={styles.predictHeader}>
-            <Text style={styles.cardTitle}>MATCH PREDICTIONS</Text>
-            <MaterialCommunityIcons
-              name="access-point"
-              size={20}
-              color={colors.onSurfaceVariant}
-            />
-          </View>
-
-          <Text style={styles.predictSectionLabel}>PREDICT RESULT (1X2)</Text>
-          {PREDICTIONS.map((p, idx) => (
-            <TouchableOpacity key={idx} style={styles.predictBtn}>
-              <View>
-                <Text style={styles.predictBtnLabel}>{p.label}</Text>
-                <Text style={styles.predictBtnPts}>{p.pts}</Text>
-              </View>
-              <Feather name="chevron-right" size={18} color={colors.onSurfaceVariant} />
-            </TouchableOpacity>
-          ))}
-
-          <View style={styles.predictDivider} />
-
-          {/* Next Goal */}
-          <View style={styles.nextGoalHeader}>
-            <Text style={styles.nextGoalTitle}>NEXT GOAL PREDICTION</Text>
-            <View style={styles.skillBadge}>
-              <Text style={styles.skillBadgeText}>Skill Bonus</Text>
-            </View>
-          </View>
-          <View style={styles.nextGoalRow}>
-            {NEXT_GOAL.map((g, idx) => (
-              <TouchableOpacity key={idx} style={styles.nextGoalBtn}>
-                <Text style={styles.nextGoalName}>{g.name}</Text>
-                <Text style={styles.nextGoalPts}>{g.pts}</Text>
+                <View style={styles.matchTeamsRow}>
+                  <View style={styles.matchTeamCol}>
+                    <TeamLogo uri={fixture.homeTeam.logo} size={48} />
+                    <Text style={styles.matchTeamName} numberOfLines={1}>
+                      {fixture.homeTeam.name}
+                    </Text>
+                  </View>
+                  <View style={styles.matchScoreCol}>
+                    <Text style={styles.matchScoreHome}>{fixture.homeGoals}</Text>
+                    <Text style={styles.matchScoreDivider}>:</Text>
+                    <Text style={styles.matchScoreAway}>{fixture.awayGoals}</Text>
+                  </View>
+                  <View style={styles.matchTeamCol}>
+                    <TeamLogo uri={fixture.awayTeam.logo} size={48} />
+                    <Text style={styles.matchTeamName} numberOfLines={1}>
+                      {fixture.awayTeam.name}
+                    </Text>
+                  </View>
+                </View>
+                {fixture.elapsed && (
+                  <View style={styles.elapsedRow}>
+                    <MaterialCommunityIcons name="timer-outline" size={14} color={colors.tertiaryLight} />
+                    <Text style={styles.elapsedText}>{fixture.elapsed}' played</Text>
+                  </View>
+                )}
               </TouchableOpacity>
             ))}
           </View>
-
-          <TouchableOpacity activeOpacity={0.8} style={styles.submitWrap}>
-            <View style={styles.submitBtn}>
-              <Text style={styles.submitBtnText}>SUBMIT PICKS</Text>
+        ) : (
+          <View style={styles.emptyLive}>
+            <View style={styles.emptyIconWrap}>
+              <MaterialCommunityIcons name="access-point" size={48} color={colors.onSurfaceVariant} />
             </View>
-          </TouchableOpacity>
-        </View>
-
-        {/* ── Live Trend Insight ── */}
-        <View style={styles.insightCard}>
-          <View style={styles.insightHeader}>
-            <MaterialCommunityIcons
-              name="trending-up"
-              size={18}
-              color={colors.onSurface}
-            />
-            <Text style={styles.insightTitle}>LIVE TREND INSIGHT</Text>
-          </View>
-          <Text style={styles.insightBody}>
-            London FC has scored in the{' '}
-            <Text style={styles.insightBold}>final 15 minutes</Text>
-            {'\n'}in 80% of their home games this season.{'\n'}Prediction
-            points for "Over 3.5 Goals" are{'\n'}increasing in value.
-          </Text>
-          <View style={styles.insightPick}>
-            <Text style={styles.insightPickLabel}>OVER 3.5 GOALS PICK</Text>
-            <Text style={styles.insightPickPts}>+40 pts</Text>
-          </View>
-        </View>
-
-        {/* ── Sharp AI Predictor ── */}
-        <View style={styles.aiCard}>
-          <View style={styles.aiIcon}>
-            <MaterialCommunityIcons
-              name="lightning-bolt"
-              size={20}
-              color={colors.primary}
-            />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.aiLabel}>SHARP AI PREDICTOR</Text>
-            <Text style={styles.aiValue}>
-              London to Win (84% Confidence)
+            <Text style={styles.emptyTitle}>No live matches right now</Text>
+            <Text style={styles.emptySubtitle}>
+              Check back during match hours or pull down to refresh
             </Text>
           </View>
-        </View>
+        )}
+
+        {/* Today's Other Matches */}
+        {todayMatches.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="calendar" size={16} color={colors.primary} />
+              <Text style={styles.sectionTitle}>TODAY'S MATCHES</Text>
+            </View>
+            {todayMatches.map((fixture) => (
+              <TouchableOpacity
+                key={fixture.apiId}
+                style={styles.todayCard}
+                onPress={() => navigateToFixture(fixture.apiId)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.matchLeagueRow}>
+                  {fixture.leagueLogo ? (
+                    <Image
+                      source={{ uri: fixture.leagueLogo }}
+                      style={styles.matchLeagueLogo}
+                      resizeMode="contain"
+                    />
+                  ) : null}
+                  <Text style={styles.matchLeagueName}>{fixture.leagueName}</Text>
+                  <View style={styles.statusBadge}>
+                    <Text style={styles.statusBadgeText}>{getStatusLabel(fixture)}</Text>
+                  </View>
+                </View>
+                <View style={styles.todayTeamsRow}>
+                  <View style={styles.todayTeamInfo}>
+                    <TeamLogo uri={fixture.homeTeam.logo} size={28} />
+                    <Text style={styles.todayTeamName} numberOfLines={1}>
+                      {fixture.homeTeam.name}
+                    </Text>
+                  </View>
+                  <Text style={styles.todayScore}>
+                    {FINISHED_STATUSES.includes(fixture.status)
+                      ? `${fixture.homeGoals} - ${fixture.awayGoals}`
+                      : 'vs'}
+                  </Text>
+                  <View style={[styles.todayTeamInfo, { justifyContent: 'flex-end' }]}>
+                    <Text style={styles.todayTeamName} numberOfLines={1}>
+                      {fixture.awayTeam.name}
+                    </Text>
+                    <TeamLogo uri={fixture.awayTeam.logo} size={28} />
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* Recent Results */}
+        {recentMatches.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <MaterialCommunityIcons name="clock-check-outline" size={16} color={colors.primary} />
+              <Text style={styles.sectionTitle}>RECENT RESULTS</Text>
+              <Text style={styles.matchCount}>{recentMatches.length}</Text>
+            </View>
+            {recentMatches.slice(0, 20).map((fixture) => (
+              <TouchableOpacity
+                key={fixture.apiId}
+                style={styles.todayCard}
+                onPress={() => navigateToFixture(fixture.apiId)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.matchLeagueRow}>
+                  {fixture.leagueLogo ? (
+                    <Image
+                      source={{ uri: fixture.leagueLogo }}
+                      style={styles.matchLeagueLogo}
+                      resizeMode="contain"
+                    />
+                  ) : null}
+                  <Text style={styles.matchLeagueName}>{fixture.leagueName}</Text>
+                  <View style={styles.statusBadge}>
+                    <Text style={styles.statusBadgeText}>{fixture.status}</Text>
+                  </View>
+                </View>
+                <View style={styles.todayTeamsRow}>
+                  <View style={styles.todayTeamInfo}>
+                    <TeamLogo uri={fixture.homeTeam.logo} size={28} />
+                    <Text style={styles.todayTeamName} numberOfLines={1}>
+                      {fixture.homeTeam.name}
+                    </Text>
+                  </View>
+                  <Text style={styles.todayScore}>
+                    {fixture.homeGoals} - {fixture.awayGoals}
+                  </Text>
+                  <View style={[styles.todayTeamInfo, { justifyContent: 'flex-end' }]}>
+                    <Text style={styles.todayTeamName} numberOfLines={1}>
+                      {fixture.awayTeam.name}
+                    </Text>
+                    <TeamLogo uri={fixture.awayTeam.logo} size={28} />
+                  </View>
+                </View>
+                <View style={styles.recentDateRow}>
+                  <Text style={styles.recentDateText}>
+                    {new Date(fixture.date).toLocaleDateString([], {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
+                  </Text>
+                  {fixture.leagueRound ? (
+                    <Text style={styles.recentRoundText}>{fixture.leagueRound}</Text>
+                  ) : null}
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         <View style={{ height: 80 }} />
       </ScrollView>
@@ -383,520 +324,231 @@ export function LiveScreen() {
   );
 }
 
-// ── Styles ──
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-
+  container: { flex: 1, backgroundColor: colors.background },
+  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { flex: 1 },
+  section: { paddingHorizontal: 16, marginBottom: 24 },
 
-  // Hero Card
-  heroCard: {
-    marginHorizontal: 16,
-    backgroundColor: colors.surfaceContainerLow,
-    borderRadius: 8,
-    padding: 32,
-    minHeight: 400,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    overflow: 'hidden',
-    marginBottom: 24,
-  },
-  liveBadge: {
-    position: 'absolute',
-    top: 24,
-    right: 24,
-    backgroundColor: '#FC5B00',
-    borderRadius: 12,
+  sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
     gap: 8,
-    zIndex: 10,
+    marginBottom: 16,
   },
-  liveBadgeDot: {
+  sectionTitle: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 18,
+    lineHeight: 28,
+    color: colors.onSurface,
+    letterSpacing: -0.45,
+    textTransform: 'uppercase',
+    flex: 1,
+  },
+  matchCount: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 12,
+    lineHeight: 16,
+    color: colors.primary,
+    backgroundColor: 'rgba(202,253,0,0.1)',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+    overflow: 'hidden',
+  },
+  liveDot: {
     width: 8,
     height: 8,
     borderRadius: 12,
-    backgroundColor: colors.onSurface,
+    backgroundColor: colors.tertiaryLight,
+  },
+
+  // Match Card
+  matchCard: {
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: 8,
+    padding: 20,
+    marginBottom: 12,
+    overflow: 'hidden',
+    gap: 16,
+  },
+  liveAccent: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    backgroundColor: colors.tertiaryLight,
+  },
+  matchLeagueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  matchLeagueLogo: { width: 16, height: 16 },
+  matchLeagueName: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 10,
+    lineHeight: 15,
+    color: colors.onSurfaceVariant,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    flex: 1,
+  },
+  liveBadge: {
+    backgroundColor: colors.tertiary,
+    borderRadius: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
   },
   liveBadgeText: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 10,
+    lineHeight: 14,
     color: '#220600',
-    letterSpacing: 1.2,
+    letterSpacing: 1,
     textTransform: 'uppercase',
   },
 
-  teamBlock: { alignItems: 'center', gap: 4 },
-  teamLogo: {
-    width: 96,
-    height: 96,
-    borderRadius: 12,
-    backgroundColor: colors.surfaceContainerHighest,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  teamLogoHome: {
-    borderLeftWidth: 4,
-    borderLeftColor: colors.primaryContainer,
-  },
-  teamLogoAway: {
-    borderRightWidth: 4,
-    borderRightColor: '#45484C',
-  },
-  teamName: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 30,
-    lineHeight: 36,
-    color: colors.onSurface,
-    letterSpacing: -1.5,
-    textTransform: 'uppercase',
-    textAlign: 'center',
-    marginTop: 16,
-  },
-  teamSub: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.onSurfaceVariant,
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-    textAlign: 'center',
-  },
-
-  scoreRow: {
+  matchTeamsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 24,
-    marginVertical: 8,
+    justifyContent: 'space-between',
   },
-  scoreHome: {
+  matchTeamCol: { flex: 1, alignItems: 'center', gap: 8 },
+  matchTeamName: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.onSurface,
+    textAlign: 'center',
+  },
+  matchScoreCol: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  matchScoreHome: {
     fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 72,
-    lineHeight: 72,
-    color: colors.primaryContainer,
-    letterSpacing: -3.6,
-  },
-  scoreDivider: {
-    fontFamily: 'SpaceGrotesk_400Regular',
     fontSize: 36,
     lineHeight: 40,
-    color: '#45484C',
-  },
-  scoreAway: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 72,
-    lineHeight: 72,
-    color: colors.onSurface,
-    letterSpacing: -3.6,
-  },
-  leaguePill: {
-    backgroundColor: 'rgba(34,38,43,0.5)',
-    borderRadius: 8,
-    paddingHorizontal: 24,
-    paddingVertical: 8,
-    marginTop: 8,
-    marginBottom: 16,
-  },
-  leaguePillText: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 18,
-    lineHeight: 28,
-    color: colors.onSurfaceVariant,
-    letterSpacing: -0.45,
-  },
-
-  // Card base
-  card: {
-    marginHorizontal: 16,
-    backgroundColor: colors.surfaceContainerLow,
-    borderRadius: 8,
-    padding: 24,
-    marginBottom: 24,
-    gap: 32,
-  },
-  cardTitle: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 20,
-    lineHeight: 28,
-    color: colors.onSurface,
-    letterSpacing: -0.5,
-    textTransform: 'uppercase',
-  },
-
-  // Possession
-  possessionBlock: { gap: 12 },
-  possessionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  possessionHomeLabel: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 14,
-    lineHeight: 20,
     color: colors.primaryContainer,
-    letterSpacing: 0.35,
-    textTransform: 'uppercase',
   },
-  possessionAwayLabel: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.onSurfaceVariant,
-    letterSpacing: 0.35,
-    textTransform: 'uppercase',
-  },
-  possessionTrack: {
-    flexDirection: 'row',
-    height: 16,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  possessionHome: { backgroundColor: colors.primary },
-  possessionAway: { backgroundColor: '#45484C' },
-
-  // Stats
-  statRow: { gap: 8 },
-  statHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-  },
-  statLabel: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 12,
-    lineHeight: 16,
-    color: colors.onSurfaceVariant,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-  },
-  statValue: {
+  matchScoreDivider: {
     fontFamily: 'SpaceGrotesk_700Bold',
     fontSize: 24,
     lineHeight: 32,
-    color: colors.onSurface,
+    color: colors.onSurfaceVariant,
   },
-
-  // Discipline
-  disciplineRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  cardsGroup: { flexDirection: 'row', gap: 16 },
-  cardBadge: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  cardRect: { width: 12, height: 16, borderRadius: 2 },
-  cardCount: {
+  matchScoreAway: {
     fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 36,
+    lineHeight: 40,
     color: colors.onSurface,
   },
-
-  // Timeline
-  timeline: { gap: 24, position: 'relative' },
-  timelineLine: {
-    position: 'absolute',
-    left: 11,
-    top: 8,
-    bottom: 8,
-    width: 2,
-    backgroundColor: 'rgba(69,72,76,0.3)',
-  },
-  timelineEvent: {
+  elapsedRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  timelineDot: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: colors.surfaceContainerHighest,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16,
-    borderWidth: 4,
-    borderColor: colors.background,
-    zIndex: 2,
+    gap: 6,
   },
-  timelineDotGoal: {
-    backgroundColor: colors.primary,
-    borderColor: colors.background,
-  },
-  timelineCard: {
-    flex: 1,
-    backgroundColor: 'rgba(34,38,43,0.4)',
-    borderRadius: 4,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  timelineCardGoal: {
-    backgroundColor: colors.surfaceContainerHighest,
-  },
-  timelineMinute: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 10,
-    lineHeight: 15,
-    color: colors.onSurfaceVariant,
-    letterSpacing: -0.5,
-    textTransform: 'uppercase',
-  },
-  timelineMinuteGoal: {
-    color: colors.primaryContainer,
-  },
-  timelineDetailBold: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 16,
-    lineHeight: 24,
-    color: colors.onSurface,
-  },
-  timelineDetail: {
+  elapsedText: {
     fontFamily: 'Inter_500Medium',
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.onSurfaceVariant,
+    fontSize: 12,
+    lineHeight: 16,
+    color: colors.tertiaryLight,
   },
-  timelineScore: {
+
+  // Empty
+  emptyLive: {
+    alignItems: 'center',
+    paddingVertical: 64,
+    paddingHorizontal: 32,
+    gap: 16,
+  },
+  emptyIconWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.surfaceContainerLow,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  emptyTitle: {
     fontFamily: 'SpaceGrotesk_700Bold',
     fontSize: 20,
     lineHeight: 28,
     color: colors.onSurface,
-  },
-  yellowCardSmall: {
-    width: 10,
-    height: 14,
-    borderRadius: 2,
-    backgroundColor: '#FACC15',
-  },
-
-  // Predictions
-  predictCard: {
-    marginHorizontal: 16,
-    backgroundColor: 'rgba(34,38,43,0.4)',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(69,72,76,0.1)',
-    padding: 25,
-    marginBottom: 24,
-    gap: 12,
-  },
-  predictHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  predictSectionLabel: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 10,
-    lineHeight: 15,
-    color: colors.onSurfaceVariant,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  predictBtn: {
-    backgroundColor: colors.surfaceContainerHighest,
-    borderRadius: 8,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  predictBtnLabel: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 10,
-    lineHeight: 15,
-    color: colors.onSurfaceVariant,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  predictBtnPts: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 24,
-    lineHeight: 32,
-    color: colors.onSurface,
-  },
-  predictDivider: {
-    height: 1,
-    backgroundColor: 'rgba(69,72,76,0.2)',
-    marginVertical: 20,
-  },
-  nextGoalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  nextGoalTitle: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 12,
-    lineHeight: 16,
-    color: colors.onSurface,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-  },
-  skillBadge: {
-    backgroundColor: 'rgba(243,255,202,0.1)',
-    borderRadius: 2,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  skillBadgeText: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 10,
-    lineHeight: 15,
-    color: colors.primaryContainer,
-  },
-  nextGoalRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 4,
-  },
-  nextGoalBtn: {
-    flex: 1,
-    backgroundColor: '#1C2024',
-    borderWidth: 1,
-    borderColor: 'rgba(69,72,76,0.1)',
-    borderRadius: 4,
-    padding: 13,
-    alignItems: 'center',
-    gap: 4,
-  },
-  nextGoalName: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 10,
-    lineHeight: 15,
-    color: colors.onSurfaceVariant,
-    letterSpacing: -0.5,
-    textTransform: 'uppercase',
     textAlign: 'center',
   },
-  nextGoalPts: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 18,
-    lineHeight: 28,
-    color: colors.onSurface,
-    textAlign: 'center',
-  },
-  submitWrap: { marginTop: 4 },
-  submitBtn: {
-    backgroundColor: colors.primaryContainer,
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  submitBtnText: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 16,
-    lineHeight: 24,
-    color: '#516700',
-    letterSpacing: -0.8,
-    textTransform: 'uppercase',
-    textAlign: 'center',
-  },
-
-  // Insight card
-  insightCard: {
-    marginHorizontal: 16,
-    backgroundColor: colors.surfaceContainerHighest,
-    borderRadius: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.tertiaryLight,
-    paddingLeft: 28,
-    paddingRight: 24,
-    paddingVertical: 24,
-    marginBottom: 24,
-    gap: 16,
-  },
-  insightHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  insightTitle: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.onSurface,
-    letterSpacing: 0.35,
-    textTransform: 'uppercase',
-  },
-  insightBody: {
+  emptySubtitle: {
     fontFamily: 'Inter_400Regular',
     fontSize: 14,
     lineHeight: 22,
     color: colors.onSurfaceVariant,
-  },
-  insightBold: {
-    fontFamily: 'Inter_700Bold',
-    color: colors.onSurface,
-  },
-  insightPick: {
-    backgroundColor: 'rgba(0,0,0,0.2)',
-    borderRadius: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  insightPickLabel: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 10,
-    lineHeight: 15,
-    color: colors.onSurface,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    opacity: 0.6,
-  },
-  insightPickPts: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 16,
-    lineHeight: 24,
-    color: colors.tertiaryLight,
+    textAlign: 'center',
   },
 
-  // AI card
-  aiCard: {
-    marginHorizontal: 16,
+  // Today
+  todayCard: {
     backgroundColor: colors.surfaceContainerLow,
     borderRadius: 8,
     padding: 16,
+    marginBottom: 10,
+    gap: 12,
+  },
+  todayTeamsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
-    marginBottom: 24,
-    overflow: 'hidden',
+    justifyContent: 'space-between',
   },
-  aiIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 4,
-    backgroundColor: colors.surfaceContainerHighest,
+  todayTeamInfo: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 8,
+    flex: 1,
   },
-  aiLabel: {
+  todayTeamName: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 10,
-    lineHeight: 15,
-    color: colors.onSurfaceVariant,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.onSurface,
+    flex: 1,
   },
-  aiValue: {
+  todayScore: {
     fontFamily: 'SpaceGrotesk_700Bold',
     fontSize: 16,
     lineHeight: 24,
-    color: colors.primaryContainer,
+    color: colors.onSurface,
+    paddingHorizontal: 16,
+    textAlign: 'center',
+  },
+  statusBadge: {
+    backgroundColor: colors.surfaceContainerHighest,
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  statusBadgeText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 10,
+    lineHeight: 14,
+    color: colors.onSurfaceVariant,
+    letterSpacing: 0.5,
+  },
+  recentDateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255,255,255,0.06)',
+  },
+  recentDateText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 11,
+    color: colors.onSurfaceDim,
+  },
+  recentRoundText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 11,
+    color: colors.onSurfaceDim,
   },
 });

@@ -1,4 +1,5 @@
 import React from 'react';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -7,13 +8,18 @@ import {
   AuthStackParamList,
   MainTabParamList,
   HomeStackParamList,
+  LiveStackParamList,
   LeaderboardStackParamList,
   ProfileStackParamList,
 } from './types';
+import { useAuth } from '../contexts/AuthContext';
+import { colors } from '../theme';
 
 import { LoginScreen } from '../screens/LoginScreen';
+import { EmailAuthScreen } from '../screens/EmailAuthScreen';
 import { RecoverPasswordRequestScreen } from '../screens/RecoverPasswordRequestScreen';
 import { RecoverPasswordVerificationScreen } from '../screens/RecoverPasswordVerificationScreen';
+import { ResetPasswordScreen } from '../screens/ResetPasswordScreen';
 import { DashboardScreen } from '../screens/DashboardScreen';
 import { MatchPredictionScreen } from '../screens/MatchPredictionScreen';
 import { PickSummaryScreen } from '../screens/PickSummaryScreen';
@@ -25,6 +31,7 @@ import { EditProfileScreen } from '../screens/EditProfileScreen';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
 import { SecurityPrivacyScreen } from '../screens/SecurityPrivacyScreen';
 import { WalletRewardsScreen } from '../screens/WalletRewardsScreen';
+import { LeagueDetailScreen } from '../screens/LeagueDetailScreen';
 import { CustomTabBar } from '../components/CustomTabBar';
 
 const darkScreenOptions = {
@@ -40,8 +47,10 @@ function AuthNavigator() {
   return (
     <AuthStack.Navigator screenOptions={darkScreenOptions}>
       <AuthStack.Screen name="Login" component={LoginScreen} />
+      <AuthStack.Screen name="EmailAuth" component={EmailAuthScreen} />
       <AuthStack.Screen name="RecoverPasswordRequest" component={RecoverPasswordRequestScreen} />
       <AuthStack.Screen name="RecoverPasswordVerification" component={RecoverPasswordVerificationScreen} />
+      <AuthStack.Screen name="ResetPassword" component={ResetPasswordScreen} />
     </AuthStack.Navigator>
   );
 }
@@ -53,9 +62,23 @@ function HomeNavigator() {
   return (
     <HomeStack.Navigator screenOptions={darkScreenOptions}>
       <HomeStack.Screen name="DashboardHome" component={DashboardScreen} />
+      <HomeStack.Screen name="LeagueDetail" component={LeagueDetailScreen} />
       <HomeStack.Screen name="MatchPrediction" component={MatchPredictionScreen} />
       <HomeStack.Screen name="PickSummary" component={PickSummaryScreen} />
     </HomeStack.Navigator>
+  );
+}
+
+// ─── Live Stack ──────────────────────────────────────────
+const LiveStack = createNativeStackNavigator<LiveStackParamList>();
+
+function LiveNavigator() {
+  return (
+    <LiveStack.Navigator screenOptions={darkScreenOptions}>
+      <LiveStack.Screen name="LiveHome" component={LiveScreen} />
+      <LiveStack.Screen name="LiveMatchPrediction" component={MatchPredictionScreen} />
+      <LiveStack.Screen name="LivePickSummary" component={PickSummaryScreen} />
+    </LiveStack.Navigator>
   );
 }
 
@@ -98,7 +121,7 @@ function MainTabNavigator() {
       sceneContainerStyle={{ backgroundColor: '#0B0E11' }}
     >
       <Tab.Screen name="Home" component={HomeNavigator} />
-      <Tab.Screen name="Live" component={LiveScreen} />
+      <Tab.Screen name="Live" component={LiveNavigator} />
       <Tab.Screen name="MyPicks" component={MyPicksScreen} />
       <Tab.Screen name="Rewards" component={RewardsNavigator} />
       <Tab.Screen name="Profile" component={ProfileNavigator} />
@@ -110,16 +133,38 @@ function MainTabNavigator() {
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 
 export function AppNavigator() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <View style={loadingStyles.container}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
   return (
     <NavigationContainer>
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
-        <RootStack.Screen name="Auth" component={AuthNavigator} />
-        <RootStack.Screen
-          name="Main"
-          component={MainTabNavigator}
-          options={{ animation: 'fade' }}
-        />
+        {isAuthenticated ? (
+          <RootStack.Screen
+            name="Main"
+            component={MainTabNavigator}
+            options={{ animation: 'fade' }}
+          />
+        ) : (
+          <RootStack.Screen name="Auth" component={AuthNavigator} />
+        )}
       </RootStack.Navigator>
     </NavigationContainer>
   );
 }
+
+const loadingStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

@@ -8,23 +8,58 @@ import {
   TextInput,
   Platform,
   KeyboardAvoidingView,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius } from '../theme';
+import { useAuth } from '../contexts/AuthContext';
+import { ApiError } from '../api';
+
+const SPORTS = ['Football', 'Basketball', 'Baseball', 'Tennis', 'MMA', 'Cricket'];
 
 export function EditProfileScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+  const { user, updateProfile } = useAuth();
 
-  const [displayName, setDisplayName] = useState('Alex Thompson');
-  const [username, setUsername] = useState('@alexthompson');
-  const [email, setEmail] = useState('alex@example.com');
-  const [bio, setBio] = useState('Sports prediction enthusiast. Master rank.');
-  const [favoriteSport, setFavoriteSport] = useState('Football');
+  const [displayName, setDisplayName] = useState(user?.displayName ?? '');
+  const [username, setUsername] = useState(user?.username ?? '');
+  const [bio, setBio] = useState(user?.bio ?? '');
+  const [favoriteSports, setFavoriteSports] = useState<string[]>(
+    user?.favoriteSports ?? [],
+  );
+  const [saving, setSaving] = useState(false);
 
-  const SPORTS = ['Football', 'Basketball', 'Baseball', 'Tennis', 'MMA', 'Cricket'];
+  const toggleSport = (sport: string) => {
+    setFavoriteSports((prev) =>
+      prev.includes(sport) ? prev.filter((s) => s !== sport) : [...prev, sport],
+    );
+  };
+
+  const handleSave = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      await updateProfile({
+        displayName: displayName.trim() || undefined,
+        username: username.trim() || undefined,
+        bio: bio.trim(),
+        favoriteSports,
+      });
+      navigation.goBack();
+    } catch (err) {
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : 'Failed to update profile. Please try again.';
+      Alert.alert('Error', message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -33,8 +68,12 @@ export function EditProfileScreen() {
           <Feather name="arrow-left" size={22} color={colors.onSurface} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>EDIT PROFILE</Text>
-        <TouchableOpacity hitSlop={12}>
-          <Text style={styles.saveBtn}>SAVE</Text>
+        <TouchableOpacity hitSlop={12} onPress={handleSave} disabled={saving}>
+          {saving ? (
+            <ActivityIndicator size="small" color={colors.primary} />
+          ) : (
+            <Text style={styles.saveBtn}>SAVE</Text>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -69,8 +108,10 @@ export function EditProfileScreen() {
                 value={displayName}
                 onChangeText={setDisplayName}
                 placeholderTextColor={colors.onSurfaceDim}
+                placeholder="Your display name"
                 autoComplete="name"
                 textContentType="name"
+                editable={!saving}
               />
             </View>
           </View>
@@ -81,29 +122,27 @@ export function EditProfileScreen() {
               <Text style={styles.atSign}>@</Text>
               <TextInput
                 style={styles.input}
-                value={username.replace('@', '')}
-                onChangeText={(t) => setUsername(`@${t}`)}
+                value={username}
+                onChangeText={setUsername}
                 placeholderTextColor={colors.onSurfaceDim}
+                placeholder="username"
                 autoCapitalize="none"
                 autoComplete="username"
                 textContentType="username"
+                editable={!saving}
               />
             </View>
           </View>
 
           <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>EMAIL</Text>
-            <View style={styles.inputWrapper}>
+            <View style={[styles.inputWrapper, { opacity: 0.5 }]}>
               <Feather name="mail" size={16} color={colors.onSurfaceDim} />
               <TextInput
                 style={styles.input}
-                value={email}
-                onChangeText={setEmail}
+                value={user?.email ?? ''}
+                editable={false}
                 placeholderTextColor={colors.onSurfaceDim}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-                textContentType="emailAddress"
               />
             </View>
           </View>
@@ -117,31 +156,37 @@ export function EditProfileScreen() {
                 value={bio}
                 onChangeText={setBio}
                 placeholderTextColor={colors.onSurfaceDim}
+                placeholder="Tell us about yourself..."
                 multiline
                 maxLength={120}
+                editable={!saving}
               />
             </View>
             <Text style={styles.charCount}>{bio.length}/120</Text>
           </View>
 
-          {/* Favorite sport chips */}
+          {/* Favorite sports chips (multi-select) */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>FAVORITE SPORT</Text>
+            <Text style={styles.fieldLabel}>FAVORITE SPORTS</Text>
             <View style={styles.chipRow}>
-              {SPORTS.map((s) => (
-                <TouchableOpacity
-                  key={s}
-                  style={[styles.chip, favoriteSport === s && styles.chipActive]}
-                  onPress={() => setFavoriteSport(s)}
-                  activeOpacity={0.7}
-                >
-                  <Text
-                    style={[styles.chipText, favoriteSport === s && styles.chipTextActive]}
+              {SPORTS.map((s) => {
+                const isActive = favoriteSports.includes(s);
+                return (
+                  <TouchableOpacity
+                    key={s}
+                    style={[styles.chip, isActive && styles.chipActive]}
+                    onPress={() => toggleSport(s)}
+                    activeOpacity={0.7}
+                    disabled={saving}
                   >
-                    {s.toUpperCase()}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <Text
+                      style={[styles.chipText, isActive && styles.chipTextActive]}
+                    >
+                      {s.toUpperCase()}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
 

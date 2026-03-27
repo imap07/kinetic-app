@@ -1,164 +1,181 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Image,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
-import { colors, typography, spacing, borderRadius } from '../theme';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { colors, spacing } from '../theme';
 import { HomeStackParamList } from '../navigation/types';
 import { AppHeader } from '../components/AppHeader';
+import { ProUpgradeBanner } from '../components';
+import { useAuth } from '../contexts/AuthContext';
+import { footballApi } from '../api';
+import type { Fixture, DashboardData } from '../api';
 
 type Props = {
   navigation: NativeStackNavigationProp<HomeStackParamList, 'DashboardHome'>;
 };
 
-const SPORTS_TABS = [
-  { label: 'All', icon: null },
-  { label: 'Football', icon: 'football' as const },
-  { label: 'Basketball', icon: 'basketball' as const },
-  { label: 'Tennis', icon: 'tennis' as const },
-];
+const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'P', 'BT', 'LIVE'];
 
-const FAVORITES = [
-  { name: 'Real Madrid', league: 'La Liga', sport: 'football' },
-  { name: 'LA Lakers', league: 'NBA', sport: 'basketball' },
-];
+function formatFixtureTime(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const fixtureDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
-const FOLLOWED_SPORTS = [
-  'Champions\nLeague',
-  'Premier\nLeague',
-  'Grand\nSlam',
-  'UFC\nMain\nEvents',
-];
+  const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-const UPCOMING_GAMES = [
-  {
-    league: 'CHAMPIONS LEAGUE \u2022 TODAY 21:00',
-    team1: 'Real Madrid',
-    team2: 'Man City',
-    sport1: 'football',
-    sport2: 'football',
-    odds: [
-      { label: 'EASY', pts: '+15 pts' },
-      { label: 'HARD', pts: '+40 pts' },
-      { label: 'MEDIUM', pts: '+25 pts' },
-    ],
-  },
-  {
-    league: 'NBA \u2022 TOMORROW 02:00',
-    team1: 'LA Lakers',
-    team2: 'GS Warriors',
-    sport1: 'basketball',
-    sport2: 'basketball',
-    odds: [
-      { label: 'MEDIUM', pts: '+25 pts' },
-      { label: 'EASY', pts: '+15 pts' },
-    ],
-  },
-];
+  if (fixtureDay.getTime() === today.getTime()) return `Today ${time}`;
+  if (fixtureDay.getTime() === tomorrow.getTime()) return `Tomorrow ${time}`;
+  return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${time}`;
+}
 
-const LIVE_MATCHES = [
-  {
-    sport: 'PREMIER LEAGUE',
-    badge: "LIVE 64'",
-    rows: [
-      { name: 'Arsenal', sets: '', score: '2', isServing: true },
-      { name: 'Liverpool', sets: '', score: '1', isServing: false },
-    ],
-    prediction: '+20 pts',
-  },
-  {
-    sport: 'TENNIS \u2022 ATP\nPARIS',
-    badge: 'LIVE\nQ3',
-    rows: [
-      { name: 'Alcaraz C.', sets: '6 4', score: '40', isServing: true },
-      { name: 'Sinner J.', sets: '3 6', score: '15', isServing: false },
-    ],
-    prediction: '+20 pts',
-  },
-];
-
-const CHALLENGE_ITEMS = [
-  'Real Madrid win prediction',
-  'Bayern Munich Over 1.5 Goals',
-  'Inter Milan Clean Sheet',
-];
-
-const TRENDING = [
-  {
-    title: 'LeBron James Over 28.5\nPoints',
-    subtitle: 'BASKETBALL \u2022 LAKERS VS\nWARRIORS',
-    points: '+19\npts',
-    icon: 'basketball' as const,
-  },
-  {
-    title: 'Liverpool to Qualify',
-    subtitle: 'FOOTBALL \u2022 CHAMPIONS\nLEAGUE',
-    points: '+24\npts',
-    icon: 'football' as const,
-  },
-];
-
-function getSportIcon(sport: string, size: number, color: string) {
-  if (sport === 'football') {
-    return <Ionicons name="football" size={size} color={color} />;
+function getStatusLabel(fixture: Fixture): string {
+  if (LIVE_STATUSES.includes(fixture.status)) {
+    return fixture.elapsed ? `LIVE ${fixture.elapsed}'` : 'LIVE';
   }
-  if (sport === 'basketball') {
-    return <MaterialCommunityIcons name="basketball" size={size} color={color} />;
+  if (fixture.status === 'FT' || fixture.status === 'AET' || fixture.status === 'PEN') {
+    return 'FT';
   }
-  return null;
+  if (fixture.status === 'HT') return 'HT';
+  return formatFixtureTime(fixture.date);
+}
+
+function TeamLogo({ uri, size = 32 }: { uri?: string; size?: number }) {
+  if (uri) {
+    return (
+      <Image
+        source={{ uri }}
+        style={{ width: size, height: size, borderRadius: size / 4 }}
+        resizeMode="contain"
+      />
+    );
+  }
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size / 4,
+        backgroundColor: colors.surfaceContainerHighest,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Ionicons name="football" size={size * 0.5} color={colors.onSurfaceVariant} />
+    </View>
+  );
 }
 
 export function DashboardScreen({ navigation }: Props) {
-  const [activeTab, setActiveTab] = useState('All');
+  const { tokens } = useAuth();
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchDashboard = useCallback(async () => {
+    if (!tokens?.accessToken) return;
+    try {
+      const result = await footballApi.getDashboard(tokens.accessToken);
+      setData(result);
+    } catch (err) {
+      console.log('Dashboard fetch error:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [tokens?.accessToken]);
+
+  useEffect(() => {
+    fetchDashboard();
+  }, [fetchDashboard]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchDashboard();
+  }, [fetchDashboard]);
+
+  const filteredUpcoming = data?.upcomingMatches ?? [];
+  const filteredToday = data?.todayMatches ?? [];
+  const filteredRecent = data?.recentMatches ?? [];
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <AppHeader />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
       <AppHeader />
 
-      {/* Sports Filter Tabs */}
+      {/* League Filter Tabs */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.tabsScroll}
         contentContainerStyle={styles.tabsContent}
       >
-        {SPORTS_TABS.map((tab) => {
-          const isActive = activeTab === tab.label;
-          const iconColor = isActive ? '#4A5E00' : colors.onSurface;
-          return (
-            <TouchableOpacity
-              key={tab.label}
-              style={[styles.tab, isActive && styles.tabActive]}
-              onPress={() => setActiveTab(tab.label)}
-            >
-              <View style={styles.tabInner}>
-                {tab.icon === 'football' && (
-                  <Ionicons name="football" size={13} color={iconColor} />
-                )}
-                {tab.icon === 'basketball' && (
-                  <MaterialCommunityIcons name="basketball" size={13} color={iconColor} />
-                )}
-                {tab.icon === 'tennis' && (
-                  <MaterialCommunityIcons name="tennis" size={13} color={iconColor} />
-                )}
-                <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>
-                  {tab.label}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
+        <TouchableOpacity style={[styles.tab, styles.tabActive]} disabled>
+          <Text style={[styles.tabLabel, styles.tabLabelActive]}>All</Text>
+        </TouchableOpacity>
+        {(data?.featuredLeagues ?? []).map((league) => (
+          <TouchableOpacity
+            key={league.apiId}
+            style={styles.tab}
+            onPress={() =>
+              navigation.navigate('LeagueDetail', {
+                leagueApiId: league.apiId,
+                leagueName: league.name,
+              })
+            }
+          >
+            <View style={styles.tabInner}>
+              {league.logo ? (
+                <Image
+                  source={{ uri: league.logo }}
+                  style={styles.tabLeagueLogo}
+                  resizeMode="contain"
+                />
+              ) : null}
+              <Text style={styles.tabLabel} numberOfLines={1}>
+                {league.name}
+              </Text>
+              <Ionicons name="chevron-forward" size={12} color={colors.onSurfaceDim} />
+            </View>
+          </TouchableOpacity>
+        ))}
       </ScrollView>
 
       {/* Main Content */}
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* ── Top Predictor Card ── */}
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
+        }
+      >
+        {/* Top Predictor Card */}
         <View style={styles.predictorCard}>
           <View style={styles.predictorGlow} />
           <View>
@@ -168,7 +185,6 @@ export function DashboardScreen({ navigation }: Props) {
               <Text style={styles.predictorPts}>1,250 PTS</Text>
             </Text>
           </View>
-
           <View style={styles.goalBlock}>
             <View style={styles.goalLabelRow}>
               <Text style={styles.goalLabel}>DAILY GOAL: 3 CORRECT PICKS</Text>
@@ -183,199 +199,301 @@ export function DashboardScreen({ navigation }: Props) {
               />
             </View>
           </View>
-
           <TouchableOpacity style={styles.viewQuestsBtn}>
             <Text style={styles.viewQuestsLabel}>VIEW QUESTS</Text>
           </TouchableOpacity>
         </View>
 
-        {/* ── Favorites ── */}
-        <View style={styles.sectionWrap}>
-          <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="star" size={20} color={colors.primary} />
-            <Text style={styles.sectionHeading}>FAVORITES</Text>
-          </View>
+        <ProUpgradeBanner />
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.favRow}
-          >
-            {FAVORITES.map((fav) => (
-              <View key={fav.name} style={styles.favCard}>
-                <View style={styles.favIcon}>
-                  {getSportIcon(fav.sport, 18, colors.onSurface)}
+        {/* Live Action */}
+        {(data?.liveMatches ?? []).length > 0 && (
+          <View style={styles.sectionWrap}>
+            <View style={styles.liveHeaderRow}>
+              <View style={styles.liveDot} />
+              <Text style={styles.liveSectionTitle}>LIVE ACTION</Text>
+            </View>
+            {data!.liveMatches.map((fixture) => (
+              <TouchableOpacity
+                key={fixture.apiId}
+                style={styles.liveCard}
+                onPress={() => navigation.navigate('MatchPrediction', { fixtureApiId: fixture.apiId })}
+                activeOpacity={0.7}
+              >
+                <View style={styles.liveAccent} />
+                <View style={styles.liveBody}>
+                  <View style={styles.liveBadgeRow}>
+                    <View style={styles.liveBadge}>
+                      <Text style={styles.liveBadgeText}>{getStatusLabel(fixture)}</Text>
+                    </View>
+                    <Text style={styles.liveLeagueText}>{fixture.leagueName}</Text>
+                  </View>
+                  <View style={styles.liveScoresBlock}>
+                    <View style={styles.liveTeamRow}>
+                      <View style={styles.liveTeamLeft}>
+                        <TeamLogo uri={fixture.homeTeam.logo} size={24} />
+                        <Text style={styles.liveTeamName}>{fixture.homeTeam.name}</Text>
+                      </View>
+                      <Text style={styles.liveScoreValue}>{fixture.homeGoals}</Text>
+                    </View>
+                    <View style={styles.liveTeamRow}>
+                      <View style={styles.liveTeamLeft}>
+                        <TeamLogo uri={fixture.awayTeam.logo} size={24} />
+                        <Text style={styles.liveTeamName}>{fixture.awayTeam.name}</Text>
+                      </View>
+                      <Text style={styles.liveScoreValue}>{fixture.awayGoals}</Text>
+                    </View>
+                  </View>
                 </View>
-                <View>
-                  <Text style={styles.favName}>{fav.name}</Text>
-                  <Text style={styles.favLeague}>{fav.league}</Text>
-                </View>
-              </View>
+              </TouchableOpacity>
             ))}
-          </ScrollView>
+          </View>
+        )}
 
-          <View style={styles.followedBlock}>
-            <Text style={styles.followedLabel}>FOLLOWED SPORTS</Text>
+        {/* Today's Matches */}
+        {filteredToday.length > 0 && (
+          <View style={styles.sectionWrap}>
+            <Text style={styles.sectionHeading}>TODAY'S MATCHES</Text>
+            {filteredToday.map((fixture) => (
+              <TouchableOpacity
+                key={fixture.apiId}
+                style={styles.todayCard}
+                onPress={() => navigation.navigate('MatchPrediction', { fixtureApiId: fixture.apiId })}
+                activeOpacity={0.7}
+              >
+                <View style={styles.todayLeagueRow}>
+                  {fixture.leagueLogo ? (
+                    <Image
+                      source={{ uri: fixture.leagueLogo }}
+                      style={styles.todayLeagueLogo}
+                      resizeMode="contain"
+                    />
+                  ) : null}
+                  <Text style={styles.todayLeagueName}>{fixture.leagueName}</Text>
+                  <Text style={styles.todayRound}>{fixture.leagueRound}</Text>
+                </View>
+                <View style={styles.todayMatchRow}>
+                  <View style={styles.todayTeamCol}>
+                    <TeamLogo uri={fixture.homeTeam.logo} size={36} />
+                    <Text style={styles.todayTeamName} numberOfLines={1}>
+                      {fixture.homeTeam.name}
+                    </Text>
+                  </View>
+                  <View style={styles.todayScoreCol}>
+                    {fixture.status === 'NS' || fixture.status === 'TBD' ? (
+                      <Text style={styles.todayTimeText}>
+                        {new Date(fixture.date).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </Text>
+                    ) : (
+                      <View style={styles.todayScoreRow}>
+                        <Text style={styles.todayScore}>{fixture.homeGoals}</Text>
+                        <Text style={styles.todayScoreDivider}>-</Text>
+                        <Text style={styles.todayScore}>{fixture.awayGoals}</Text>
+                      </View>
+                    )}
+                    <View
+                      style={[
+                        styles.todayStatusBadge,
+                        LIVE_STATUSES.includes(fixture.status) && styles.todayStatusLive,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.todayStatusText,
+                          LIVE_STATUSES.includes(fixture.status) && styles.todayStatusTextLive,
+                        ]}
+                      >
+                        {getStatusLabel(fixture)}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.todayTeamCol}>
+                    <TeamLogo uri={fixture.awayTeam.logo} size={36} />
+                    <Text style={styles.todayTeamName} numberOfLines={1}>
+                      {fixture.awayTeam.name}
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* Recent Results */}
+        {filteredRecent.length > 0 && (
+          <View style={styles.sectionWrap}>
+            <View style={styles.sectionHeader}>
+              <MaterialCommunityIcons name="clock-check-outline" size={18} color={colors.primary} />
+              <Text style={styles.sectionHeadingRow}>RECENT RESULTS</Text>
+            </View>
+            {filteredRecent.slice(0, 15).map((fixture) => (
+              <TouchableOpacity
+                key={fixture.apiId}
+                style={styles.todayCard}
+                onPress={() => navigation.navigate('MatchPrediction', { fixtureApiId: fixture.apiId })}
+                activeOpacity={0.7}
+              >
+                <View style={styles.todayLeagueRow}>
+                  {fixture.leagueLogo ? (
+                    <Image
+                      source={{ uri: fixture.leagueLogo }}
+                      style={styles.todayLeagueLogo}
+                      resizeMode="contain"
+                    />
+                  ) : null}
+                  <Text style={styles.todayLeagueName}>{fixture.leagueName}</Text>
+                  <Text style={styles.recentDateText}>{formatFixtureTime(fixture.date)}</Text>
+                </View>
+                <View style={styles.todayMatchRow}>
+                  <View style={styles.todayTeamCol}>
+                    <TeamLogo uri={fixture.homeTeam.logo} size={28} />
+                    <Text style={styles.todayTeamName} numberOfLines={1}>
+                      {fixture.homeTeam.name}
+                    </Text>
+                  </View>
+                  <View style={styles.todayScoreCol}>
+                    <Text style={styles.todayScoreText}>
+                      {fixture.homeGoals ?? '-'}
+                    </Text>
+                    <Text style={styles.todayScoreDivider}>-</Text>
+                    <Text style={styles.todayScoreText}>
+                      {fixture.awayGoals ?? '-'}
+                    </Text>
+                  </View>
+                  <View style={styles.todayTeamCol}>
+                    <TeamLogo uri={fixture.awayTeam.logo} size={28} />
+                    <Text style={styles.todayTeamName} numberOfLines={1}>
+                      {fixture.awayTeam.name}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.recentStatusRow}>
+                  <Text style={styles.recentStatusText}>FT</Text>
+                  {fixture.leagueRound ? (
+                    <Text style={styles.recentRoundText}>{fixture.leagueRound}</Text>
+                  ) : null}
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* Upcoming Thrillers */}
+        {filteredUpcoming.length > 0 && (
+          <View style={styles.sectionWrap}>
+            <Text style={styles.thrillersHeading}>UPCOMING MATCHES</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.followedRow}
+              contentContainerStyle={styles.gameCardsRow}
             >
-              {FOLLOWED_SPORTS.map((sport) => (
-                <View key={sport} style={styles.followedChip}>
-                  <Text style={styles.followedChipText}>{sport}</Text>
-                </View>
+              {filteredUpcoming.map((fixture) => (
+                <TouchableOpacity
+                  key={fixture.apiId}
+                  style={styles.gameCard}
+                  onPress={() =>
+                    navigation.navigate('MatchPrediction', { fixtureApiId: fixture.apiId })
+                  }
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.gameCardTop}>
+                    <Text style={styles.gameCardLeague}>
+                      {fixture.leagueName} {'\u2022'} {formatFixtureTime(fixture.date)}
+                    </Text>
+                  </View>
+                  <View style={styles.gameTeamsRow}>
+                    <View style={styles.gameTeamCol}>
+                      <TeamLogo uri={fixture.homeTeam.logo} size={40} />
+                      <Text style={styles.gameTeamName} numberOfLines={2}>
+                        {fixture.homeTeam.name}
+                      </Text>
+                    </View>
+                    <Text style={styles.gameVsLabel}>VS</Text>
+                    <View style={styles.gameTeamCol}>
+                      <TeamLogo uri={fixture.awayTeam.logo} size={40} />
+                      <Text style={styles.gameTeamName} numberOfLines={2}>
+                        {fixture.awayTeam.name}
+                      </Text>
+                    </View>
+                  </View>
+                  {fixture.leagueRound ? (
+                    <Text style={styles.gameRound}>{fixture.leagueRound}</Text>
+                  ) : null}
+                </TouchableOpacity>
               ))}
             </ScrollView>
           </View>
-        </View>
+        )}
 
-        {/* ── Upcoming Thrillers ── */}
+        {/* Featured Leagues */}
         <View style={styles.sectionWrap}>
-          <View style={styles.thrillersHeaderRow}>
-            <Text style={styles.thrillersHeading}>UPCOMING THRILLERS</Text>
-            <TouchableOpacity>
-              <Text style={styles.viewScheduleLink}>VIEW SCHEDULE</Text>
-            </TouchableOpacity>
+          <View style={styles.sectionHeader}>
+            <MaterialCommunityIcons name="trophy" size={20} color={colors.primary} />
+            <Text style={styles.sectionHeadingRow}>FEATURED LEAGUES</Text>
           </View>
-
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.gameCardsRow}
+            contentContainerStyle={styles.leaguesRow}
           >
-            {UPCOMING_GAMES.map((game, idx) => (
-              <View key={idx} style={styles.gameCard}>
-                <View style={styles.gameCardTop}>
-                  <Text style={styles.gameCardLeague}>{game.league}</Text>
-                  <TouchableOpacity>
-                    <Ionicons name="star-outline" size={20} color={colors.onSurfaceVariant} />
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.gameTeamsRow}>
-                  <View style={styles.gameTeamCol}>
-                    <View style={styles.gameTeamBadge}>
-                      {getSportIcon(game.sport1, 22, colors.onSurface)}
-                    </View>
-                    <Text style={styles.gameTeamName}>{game.team1}</Text>
+            {(data?.featuredLeagues ?? []).map((league) => (
+              <TouchableOpacity
+                key={league.apiId}
+                style={styles.leagueCard}
+                onPress={() =>
+                  navigation.navigate('LeagueDetail', {
+                    leagueApiId: league.apiId,
+                    leagueName: league.name,
+                  })
+                }
+                activeOpacity={0.7}
+              >
+                {league.logo ? (
+                  <Image
+                    source={{ uri: league.logo }}
+                    style={styles.leagueCardLogo}
+                    resizeMode="contain"
+                  />
+                ) : (
+                  <View style={styles.leagueCardFallback}>
+                    <Ionicons name="football" size={24} color={colors.onSurfaceVariant} />
                   </View>
-                  <Text style={styles.gameVsLabel}>VS</Text>
-                  <View style={styles.gameTeamCol}>
-                    <View style={styles.gameTeamBadge}>
-                      {getSportIcon(game.sport2, 22, colors.onSurface)}
-                    </View>
-                    <Text style={styles.gameTeamName}>{game.team2}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.oddsRow}>
-                  {game.odds.map((odd, oidx) => (
-                    <TouchableOpacity key={oidx} style={styles.oddBtn}>
-                      <Text style={styles.oddLabel}>{odd.label}</Text>
-                      <Text style={styles.oddPts}>{odd.pts}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
+                )}
+                <Text style={styles.leagueCardName} numberOfLines={2}>
+                  {league.name}
+                </Text>
+                {league.countryFlag ? (
+                  <Text style={styles.leagueCardCountry}>{league.countryName}</Text>
+                ) : null}
+              </TouchableOpacity>
             ))}
           </ScrollView>
         </View>
 
-        {/* ── Live Action ── */}
-        <View style={styles.sectionWrap}>
-          <View style={styles.liveHeaderRow}>
-            <View style={styles.liveDot} />
-            <Text style={styles.liveSectionTitle}>LIVE ACTION</Text>
-          </View>
-
-          {LIVE_MATCHES.map((match, idx) => (
-            <TouchableOpacity
-              key={idx}
-              style={styles.liveCard}
-              onPress={() => navigation.navigate('MatchPrediction')}
-              activeOpacity={0.7}
-            >
-              <View style={styles.liveAccent} />
-              <View style={styles.liveBody}>
-                <View style={styles.liveBadgeRow}>
-                  <View style={styles.liveBadge}>
-                    <Text style={styles.liveBadgeText}>{match.badge}</Text>
-                  </View>
-                  <Text style={styles.liveLeagueText}>{match.sport}</Text>
-                </View>
-                <View style={styles.liveScoresBlock}>
-                  {match.rows.map((row, ridx) => (
-                    <View key={ridx} style={styles.liveTeamRow}>
-                      <View style={styles.liveTeamLeft}>
-                        <View
-                          style={[
-                            styles.servingDot,
-                            !row.isServing && styles.servingDotHidden,
-                          ]}
-                        />
-                        <Text style={styles.liveTeamName}>{row.name}</Text>
-                      </View>
-                      <View style={styles.liveScoreGroup}>
-                        {row.sets ? (
-                          <Text style={styles.liveSetsText}>{row.sets}</Text>
-                        ) : null}
-                        <Text style={styles.liveScoreValue}>{row.score}</Text>
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              </View>
-              <View style={styles.livePredictCol}>
-                <Text style={styles.predictLiveLabel}>PREDICT LIVE NOW</Text>
-                <View style={styles.predictPtsBtn}>
-                  <Text style={styles.predictPtsBtnText}>{match.prediction}</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* ── Challenge of the Day ── */}
+        {/* Challenge of the Day (kept static - product feature) */}
         <View style={styles.challengeCard}>
           <View style={styles.challengeGlow} />
-
           <View style={styles.challengeTitleRow}>
             <Ionicons name="trophy" size={16} color={colors.primary} />
             <Text style={styles.challengeHeading}>CHALLENGE OF THE DAY</Text>
           </View>
-
           <View style={styles.challengeContent}>
             <Text style={styles.challengeBoostTag}>DOUBLE BOOST</Text>
-            <Text style={styles.challengeName}>
-              European Giants{'\n'}Challenge
-            </Text>
-
+            <Text style={styles.challengeName}>European Giants{'\n'}Challenge</Text>
             <View style={styles.challengeChecklist}>
-              {CHALLENGE_ITEMS.map((item, idx) => (
-                <View key={idx} style={styles.challengeCheckRow}>
-                  <Ionicons
-                    name="checkmark-circle-outline"
-                    size={15}
-                    color={colors.primary}
-                  />
-                  <Text style={styles.challengeCheckText}>{item}</Text>
-                </View>
-              ))}
+              {['Real Madrid win prediction', 'Bayern Munich Over 1.5 Goals', 'Inter Milan Clean Sheet'].map(
+                (item, idx) => (
+                  <View key={idx} style={styles.challengeCheckRow}>
+                    <Ionicons name="checkmark-circle-outline" size={15} color={colors.primary} />
+                    <Text style={styles.challengeCheckText}>{item}</Text>
+                  </View>
+                ),
+              )}
             </View>
           </View>
-
-          <View style={styles.challengeScoreBox}>
-            <View style={styles.challengeScoreTopRow}>
-              <Text style={styles.challengeOldPrice}>420 PTS</Text>
-              <Text style={styles.challengeComboBonus}>+25% Combo Bonus</Text>
-            </View>
-            <View style={styles.challengeScoreBottomRow}>
-              <Text style={styles.challengeMaxLabel}>Max Score:</Text>
-              <Text style={styles.challengeMaxValue}>525 pts</Text>
-            </View>
-          </View>
-
           <TouchableOpacity activeOpacity={0.8} style={styles.submitWrap}>
             <LinearGradient
               colors={[colors.primaryContainer, colors.primary]}
@@ -388,38 +506,25 @@ export function DashboardScreen({ navigation }: Props) {
           </TouchableOpacity>
         </View>
 
-        {/* ── Trending Now ── */}
-        <View style={styles.sectionWrap}>
-          <Text style={styles.trendingHeading}>TRENDING NOW</Text>
-
-          <View style={styles.trendingList}>
-            {TRENDING.map((item, idx) => (
-              <View key={idx} style={styles.trendingRow}>
-                <View style={styles.trendingLeft}>
-                  <View style={styles.trendingIconBox}>
-                    {getSportIcon(item.icon, 20, colors.onSurface)}
-                  </View>
-                  <View style={styles.trendingInfo}>
-                    <Text style={styles.trendingItemTitle}>{item.title}</Text>
-                    <Text style={styles.trendingItemSub}>{item.subtitle}</Text>
-                  </View>
-                </View>
-                <View style={styles.trendingPtsBadge}>
-                  <Text style={styles.trendingPtsText}>{item.points}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        </View>
+        {/* Empty State */}
+        {!data?.liveMatches?.length &&
+          !filteredToday.length &&
+          !filteredUpcoming.length &&
+          !filteredRecent.length && (
+            <View style={styles.emptyState}>
+              <Ionicons name="football-outline" size={48} color={colors.onSurfaceVariant} />
+              <Text style={styles.emptyTitle}>No matches found</Text>
+              <Text style={styles.emptySubtitle}>
+                Pull down to refresh or check back later
+              </Text>
+            </View>
+          )}
 
         <View style={{ height: 80 }} />
       </ScrollView>
 
       {/* FAB */}
-      <TouchableOpacity
-        activeOpacity={0.85}
-        style={[styles.fabWrap, { bottom: 16 }]}
-      >
+      <TouchableOpacity activeOpacity={0.85} style={[styles.fabWrap, { bottom: 16 }]}>
         <LinearGradient
           colors={[colors.primaryContainer, colors.primary]}
           start={{ x: 0, y: 0 }}
@@ -434,55 +539,34 @@ export function DashboardScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
+  container: { flex: 1, backgroundColor: colors.background },
+  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
-  // ── Sports Filter Tabs ──
-  tabsScroll: {
-    maxHeight: 40,
-    marginBottom: 8,
-  },
-  tabsContent: {
-    paddingHorizontal: 24,
-    gap: 8,
-    alignItems: 'center',
-  },
+  // Tabs
+  tabsScroll: { maxHeight: 40, marginBottom: 8 },
+  tabsContent: { paddingHorizontal: 24, gap: 8, alignItems: 'center' },
   tab: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 12,
     backgroundColor: colors.surfaceContainerHighest,
   },
-  tabActive: {
-    backgroundColor: colors.primary,
-  },
-  tabInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
+  tabActive: { backgroundColor: colors.primary },
+  tabInner: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   tabLabel: {
     fontFamily: 'Inter_700Bold',
     fontSize: 12,
     lineHeight: 16,
     color: colors.onSurface,
+    maxWidth: 100,
   },
-  tabLabelActive: {
-    color: '#4A5E00',
-  },
+  tabLabelActive: { color: '#4A5E00' },
+  tabLeagueLogo: { width: 16, height: 16 },
 
-  scrollView: {
-    flex: 1,
-  },
+  scrollView: { flex: 1 },
+  sectionWrap: { paddingHorizontal: 16, marginBottom: 24 },
 
-  sectionWrap: {
-    paddingHorizontal: 16,
-    marginBottom: 24,
-  },
-
-  // ── Top Predictor ──
+  // Predictor Card
   predictorCard: {
     marginHorizontal: 16,
     backgroundColor: colors.surfaceContainerLow,
@@ -521,14 +605,8 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: colors.primary,
   },
-  goalBlock: {
-    gap: 8,
-  },
-  goalLabelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-  },
+  goalBlock: { gap: 8 },
+  goalLabelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
   goalLabel: {
     fontFamily: 'Inter_700Bold',
     fontSize: 10,
@@ -537,22 +615,14 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     textTransform: 'uppercase',
   },
-  goalRatio: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 10,
-    lineHeight: 15,
-    color: colors.primaryContainer,
-  },
+  goalRatio: { fontFamily: 'Inter_700Bold', fontSize: 10, lineHeight: 15, color: colors.primaryContainer },
   progressTrack: {
     height: 6,
     backgroundColor: colors.surfaceContainerHighest,
     borderRadius: 12,
     overflow: 'hidden',
   },
-  progressFill: {
-    height: '100%',
-    borderRadius: 12,
-  },
+  progressFill: { height: '100%', borderRadius: 12 },
   viewQuestsBtn: {
     backgroundColor: colors.surfaceContainerHighest,
     borderRadius: 4,
@@ -569,13 +639,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // ── Favorites ──
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 16,
-  },
+  // Section Headers
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
   sectionHeading: {
     fontFamily: 'SpaceGrotesk_700Bold',
     fontSize: 18,
@@ -583,195 +648,20 @@ const styles = StyleSheet.create({
     color: colors.onSurface,
     letterSpacing: -0.45,
     textTransform: 'uppercase',
-  },
-  favRow: {
-    gap: 12,
-    paddingRight: 16,
-  },
-  favCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surfaceContainerLow,
-    borderWidth: 1,
-    borderColor: 'rgba(69,72,76,0.05)',
-    borderRadius: 8,
-    paddingVertical: 13,
-    paddingLeft: 17,
-    paddingRight: 20,
-    gap: 12,
-    minWidth: 180,
-  },
-  favIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 12,
-    backgroundColor: colors.surfaceContainerHighest,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  favName: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 12,
-    lineHeight: 16,
-    color: colors.onSurface,
-  },
-  favLeague: {
-    fontFamily: 'Inter_400Regular',
-    fontSize: 10,
-    lineHeight: 15,
-    color: colors.onSurfaceVariant,
-  },
-  followedBlock: {
-    marginTop: 16,
-    gap: 12,
-  },
-  followedLabel: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 10,
-    lineHeight: 15,
-    color: colors.onSurfaceVariant,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    paddingHorizontal: 4,
-  },
-  followedRow: {
-    gap: 8,
-  },
-  followedChip: {
-    backgroundColor: 'rgba(34,38,43,0.5)',
-    borderWidth: 1,
-    borderColor: 'rgba(69,72,76,0.1)',
-    borderRadius: 4,
-    paddingVertical: 16,
-    paddingHorizontal: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  followedChipText: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 12,
-    lineHeight: 16,
-    color: colors.onSurface,
-    textAlign: 'center',
-  },
-
-  // ── Upcoming Thrillers ──
-  thrillersHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    marginBottom: 16,
-    paddingTop: 8,
-  },
-  thrillersHeading: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 24,
-    lineHeight: 32,
-    color: colors.onSurface,
-    letterSpacing: -0.6,
-    textTransform: 'uppercase',
-  },
-  viewScheduleLink: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 10,
-    lineHeight: 15,
-    color: colors.primary,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  gameCardsRow: {
-    gap: 16,
-  },
-  gameCard: {
-    backgroundColor: colors.surfaceContainerLow,
-    borderRadius: 8,
-    padding: 24,
-    minWidth: 300,
-    gap: 24,
-  },
-  gameCardTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  gameCardLeague: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 10,
-    lineHeight: 15,
-    color: colors.onSurfaceVariant,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    flex: 1,
-  },
-  gameTeamsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  gameTeamCol: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 8,
-  },
-  gameTeamBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: colors.surfaceContainerHighest,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  gameTeamName: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.onSurface,
-    textAlign: 'center',
-  },
-  gameVsLabel: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 16,
-    lineHeight: 24,
-    color: colors.onSurfaceVariant,
-  },
-  oddsRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  oddBtn: {
-    flex: 1,
-    backgroundColor: colors.surfaceContainerHighest,
-    borderRadius: 4,
-    paddingVertical: 8,
-    alignItems: 'center',
-  },
-  oddLabel: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 10,
-    lineHeight: 15,
-    color: colors.onSurfaceVariant,
-    textTransform: 'uppercase',
-  },
-  oddPts: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.onSurface,
-  },
-
-  // ── Live Action ──
-  liveHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
     marginBottom: 16,
   },
-  liveDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 12,
-    backgroundColor: colors.tertiaryLight,
+  sectionHeadingRow: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 18,
+    lineHeight: 28,
+    color: colors.onSurface,
+    letterSpacing: -0.45,
+    textTransform: 'uppercase',
   },
+
+  // Live Action
+  liveHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
+  liveDot: { width: 8, height: 8, borderRadius: 12, backgroundColor: colors.tertiaryLight },
   liveSectionTitle: {
     fontFamily: 'SpaceGrotesk_700Bold',
     fontSize: 18,
@@ -786,7 +676,6 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     overflow: 'hidden',
   },
   liveAccent: {
@@ -795,17 +684,10 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     width: 4,
-    backgroundColor: 'rgba(243,255,202,0.2)',
+    backgroundColor: colors.tertiaryLight,
   },
-  liveBody: {
-    flex: 1,
-    gap: 12,
-  },
-  liveBadgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
+  liveBody: { flex: 1, gap: 12 },
+  liveBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   liveBadge: {
     backgroundColor: 'rgba(255,116,57,0.1)',
     borderRadius: 2,
@@ -828,86 +710,209 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     textTransform: 'uppercase',
   },
-  liveScoresBlock: {
-    gap: 8,
-  },
+  liveScoresBlock: { gap: 8 },
   liveTeamRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingRight: 32,
+    paddingRight: 16,
   },
-  liveTeamLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  servingDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 12,
-    backgroundColor: colors.primaryContainer,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 8,
-  },
-  servingDotHidden: {
-    opacity: 0,
-  },
-  liveTeamName: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.onSurface,
-  },
-  liveScoreGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  liveSetsText: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.onSurfaceVariant,
-  },
+  liveTeamLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  liveTeamName: { fontFamily: 'Inter_700Bold', fontSize: 14, lineHeight: 20, color: colors.onSurface },
   liveScoreValue: {
     fontFamily: 'SpaceGrotesk_700Bold',
     fontSize: 20,
     lineHeight: 28,
     color: colors.onSurface,
   },
-  livePredictCol: {
-    alignItems: 'flex-end',
-    gap: 4,
-    minWidth: 140,
+
+  // Today's Matches
+  todayCard: {
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 12,
   },
-  predictLiveLabel: {
+  todayLeagueRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  todayLeagueLogo: { width: 16, height: 16 },
+  todayLeagueName: {
     fontFamily: 'Inter_700Bold',
     fontSize: 10,
     lineHeight: 15,
-    color: colors.primaryContainer,
-    letterSpacing: -0.25,
+    color: colors.onSurfaceVariant,
+    letterSpacing: 1,
     textTransform: 'uppercase',
+    flex: 1,
   },
-  predictPtsBtn: {
-    backgroundColor: colors.surfaceContainerHighest,
-    borderRadius: 4,
-    height: 40,
-    width: '100%',
+  todayRound: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 10,
+    lineHeight: 15,
+    color: colors.onSurfaceDim,
+  },
+  recentDateText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 10,
+    lineHeight: 15,
+    color: colors.onSurfaceDim,
+    marginLeft: 'auto',
+  },
+  recentStatusRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255,255,255,0.06)',
   },
-  predictPtsBtnText: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 14,
-    lineHeight: 20,
+  recentStatusText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 10,
+    color: colors.primary,
+    letterSpacing: 1,
+  },
+  recentRoundText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 10,
+    color: colors.onSurfaceDim,
+  },
+  todayMatchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  todayTeamCol: { flex: 1, alignItems: 'center', gap: 6 },
+  todayTeamName: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 12,
+    lineHeight: 16,
     color: colors.onSurface,
     textAlign: 'center',
   },
+  todayScoreCol: { alignItems: 'center', gap: 4, paddingHorizontal: 16 },
+  todayScoreRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  todayScore: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 24,
+    lineHeight: 32,
+    color: colors.onSurface,
+  },
+  todayScoreDivider: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 16,
+    lineHeight: 24,
+    color: colors.onSurfaceVariant,
+  },
+  todayTimeText: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 16,
+    lineHeight: 24,
+    color: colors.primary,
+  },
+  todayStatusBadge: {
+    backgroundColor: colors.surfaceContainerHighest,
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  todayStatusLive: { backgroundColor: 'rgba(255,116,57,0.15)' },
+  todayStatusText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 10,
+    lineHeight: 15,
+    color: colors.onSurfaceVariant,
+    letterSpacing: 0.5,
+  },
+  todayStatusTextLive: { color: colors.tertiaryLight },
 
-  // ── Challenge of the Day ──
+  // Upcoming
+  thrillersHeading: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 24,
+    lineHeight: 32,
+    color: colors.onSurface,
+    letterSpacing: -0.6,
+    textTransform: 'uppercase',
+    marginBottom: 16,
+    paddingTop: 8,
+  },
+  gameCardsRow: { gap: 16 },
+  gameCard: {
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: 8,
+    padding: 24,
+    minWidth: 280,
+    gap: 20,
+  },
+  gameCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  gameCardLeague: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 10,
+    lineHeight: 15,
+    color: colors.onSurfaceVariant,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    flex: 1,
+  },
+  gameTeamsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  gameTeamCol: { flex: 1, alignItems: 'center', gap: 8 },
+  gameTeamName: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.onSurface,
+    textAlign: 'center',
+  },
+  gameVsLabel: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 16,
+    lineHeight: 24,
+    color: colors.onSurfaceVariant,
+  },
+  gameRound: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 10,
+    lineHeight: 15,
+    color: colors.onSurfaceDim,
+    textAlign: 'center',
+  },
+
+  // Featured Leagues
+  leaguesRow: { gap: 12, paddingRight: 16 },
+  leagueCard: {
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: 8,
+    padding: 16,
+    alignItems: 'center',
+    gap: 8,
+    width: 110,
+  },
+  leagueCardLogo: { width: 48, height: 48 },
+  leagueCardFallback: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: colors.surfaceContainerHighest,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  leagueCardName: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 11,
+    lineHeight: 15,
+    color: colors.onSurface,
+    textAlign: 'center',
+  },
+  leagueCardCountry: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 10,
+    lineHeight: 14,
+    color: colors.onSurfaceVariant,
+    textAlign: 'center',
+  },
+
+  // Challenge
   challengeCard: {
     marginHorizontal: 16,
     backgroundColor: colors.surfaceContainerLow,
@@ -927,12 +932,7 @@ const styles = StyleSheet.create({
     borderRadius: 90,
     backgroundColor: 'rgba(243,255,202,0.03)',
   },
-  challengeTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 24,
-  },
+  challengeTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 24 },
   challengeHeading: {
     fontFamily: 'SpaceGrotesk_700Bold',
     fontSize: 18,
@@ -941,9 +941,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.45,
     textTransform: 'uppercase',
   },
-  challengeContent: {
-    marginBottom: 32,
-  },
+  challengeContent: { marginBottom: 32 },
   challengeBoostTag: {
     fontFamily: 'Inter_700Bold',
     fontSize: 10,
@@ -960,65 +958,9 @@ const styles = StyleSheet.create({
     color: colors.primaryContainer,
     marginBottom: 12,
   },
-  challengeChecklist: {
-    gap: 12,
-  },
-  challengeCheckRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  challengeCheckText: {
-    fontFamily: 'Inter_400Regular',
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.onSurface,
-  },
-  challengeScoreBox: {
-    backgroundColor: colors.surfaceContainerHighest,
-    borderRadius: 8,
-    padding: 16,
-    gap: 4,
-    marginBottom: 24,
-  },
-  challengeScoreTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  challengeOldPrice: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 10,
-    lineHeight: 15,
-    color: colors.onSurfaceVariant,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    textDecorationLine: 'line-through',
-  },
-  challengeComboBonus: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 12,
-    lineHeight: 16,
-    color: colors.tertiaryLight,
-    letterSpacing: 1.2,
-  },
-  challengeScoreBottomRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  challengeMaxLabel: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.onSurface,
-  },
-  challengeMaxValue: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 24,
-    lineHeight: 32,
-    color: colors.primaryContainer,
-  },
+  challengeChecklist: { gap: 12 },
+  challengeCheckRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  challengeCheckText: { fontFamily: 'Inter_400Regular', fontSize: 14, lineHeight: 20, color: colors.onSurface },
   submitWrap: {
     borderRadius: 8,
     overflow: 'hidden',
@@ -1028,12 +970,7 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 8,
   },
-  submitBtn: {
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-  },
+  submitBtn: { paddingVertical: 16, alignItems: 'center', justifyContent: 'center', borderRadius: 8 },
   submitBtnText: {
     fontFamily: 'SpaceGrotesk_700Bold',
     fontSize: 18,
@@ -1044,76 +981,23 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // ── Trending Now ──
-  trendingHeading: {
+  // Empty State
+  emptyState: { alignItems: 'center', paddingVertical: 48, gap: 12 },
+  emptyTitle: {
     fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 24,
-    lineHeight: 32,
+    fontSize: 18,
+    lineHeight: 28,
     color: colors.onSurface,
-    letterSpacing: -0.6,
-    textTransform: 'uppercase',
-    marginBottom: 16,
-    paddingTop: 16,
   },
-  trendingList: {
-    gap: 12,
-  },
-  trendingRow: {
-    backgroundColor: 'rgba(16,20,23,0.5)',
-    borderRadius: 8,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  trendingLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    flex: 1,
-  },
-  trendingIconBox: {
-    width: 36,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: colors.surfaceContainerHighest,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  trendingInfo: {
-    flex: 1,
-  },
-  trendingItemTitle: {
-    fontFamily: 'Inter_700Bold',
+  emptySubtitle: {
+    fontFamily: 'Inter_400Regular',
     fontSize: 14,
     lineHeight: 20,
-    color: colors.onSurface,
-  },
-  trendingItemSub: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 10,
-    lineHeight: 15,
     color: colors.onSurfaceVariant,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  trendingPtsBadge: {
-    backgroundColor: colors.surfaceContainerHighest,
-    borderRadius: 4,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  trendingPtsText: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 16,
-    lineHeight: 24,
-    color: colors.primaryContainer,
     textAlign: 'center',
   },
 
-  // ── FAB ──
+  // FAB
   fabWrap: {
     position: 'absolute',
     right: 24,
@@ -1124,11 +1008,5 @@ const styles = StyleSheet.create({
     shadowRadius: 25,
     elevation: 10,
   },
-  fab: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  fab: { width: 56, height: 56, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
 });

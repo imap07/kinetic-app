@@ -9,14 +9,19 @@ import {
   KeyboardAvoidingView,
   Modal,
   Pressable,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { KineticLogo, PrimaryButton, SocialButton } from '../components';
 import { colors, typography, spacing } from '../theme';
-import { AuthStackParamList, RootStackParamList } from '../navigation/types';
+import { AuthStackParamList } from '../navigation/types';
+import { useAuth } from '../contexts/AuthContext';
+import { ApiError } from '../api';
+import type { SocialProvider } from '../api';
+import { signInWithGoogle, isGoogleSignInCancelled } from '../services/googleAuth';
 
 type LoginScreenProps = {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'Login'>;
@@ -85,15 +90,56 @@ function LegalModal({ visible, title, onClose }: LegalModalProps) {
 }
 
 export function LoginScreen({ navigation }: LoginScreenProps) {
-  const rootNavigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
+  const { loginWithSocial } = useAuth();
   const [legalModal, setLegalModal] = useState<'terms' | 'privacy' | null>(null);
+  const [socialLoading, setSocialLoading] = useState<SocialProvider | null>(null);
 
-  const handleLogin = () => {
-    rootNavigation.reset({
-      index: 0,
-      routes: [{ name: 'Main' }],
-    });
+  const handleEmailContinue = () => {
+    navigation.navigate('EmailAuth');
+  };
+
+  const handleGoogleLogin = async () => {
+    setSocialLoading('google');
+    try {
+      const result = await signInWithGoogle();
+      await loginWithSocial('google', result.idToken, {
+        idToken: result.idToken,
+        email: result.email,
+        displayName: result.displayName,
+        avatar: result.avatar,
+      });
+    } catch (err) {
+      if (isGoogleSignInCancelled(err)) return;
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : 'Google sign-in failed. Please try again.';
+      Alert.alert('Error', message);
+    } finally {
+      setSocialLoading(null);
+    }
+  };
+
+  const handleSocialLogin = async (provider: SocialProvider) => {
+    if (provider === 'google') {
+      return handleGoogleLogin();
+    }
+    setSocialLoading(provider);
+    try {
+      await loginWithSocial(provider, `dev-${provider}-token`, {
+        email: `dev@${provider}.com`,
+        displayName: `${provider.charAt(0).toUpperCase() + provider.slice(1)} Dev User`,
+      });
+    } catch (err) {
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : 'Social login failed. Please try again.';
+      Alert.alert('Error', message);
+    } finally {
+      setSocialLoading(null);
+    }
   };
 
   return (
@@ -127,9 +173,25 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
         </View>
 
         <View style={styles.socialSection}>
-          <SocialButton provider="google" onPress={() => {}} />
-          <SocialButton provider="apple" onPress={() => {}} />
-          <SocialButton provider="x" onPress={() => {}} />
+          <SocialButton
+            provider="google"
+            onPress={() => handleSocialLogin('google')}
+          />
+          <SocialButton
+            provider="apple"
+            onPress={() => handleSocialLogin('apple')}
+          />
+          <SocialButton
+            provider="x"
+            onPress={() => handleSocialLogin('x')}
+          />
+          {socialLoading && (
+            <ActivityIndicator
+              size="small"
+              color={colors.primary}
+              style={{ marginTop: 4 }}
+            />
+          )}
         </View>
 
         <View style={styles.dividerSection}>
@@ -140,7 +202,7 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
 
         <PrimaryButton
           title="CONTINUE WITH EMAIL"
-          onPress={handleLogin}
+          onPress={handleEmailContinue}
           style={styles.emailButton}
         />
 

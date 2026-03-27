@@ -11,24 +11,51 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { TopAppBar, PrimaryButton } from '../components';
 import { colors, typography, spacing, borderRadius } from '../theme';
 import { AuthStackParamList } from '../navigation/types';
 import { useAuth } from '../contexts/AuthContext';
 import { ApiError } from '../api';
 
-type Props = {
-  navigation: NativeStackNavigationProp<AuthStackParamList, 'RecoverPasswordRequest'>;
-};
+type Props = NativeStackScreenProps<AuthStackParamList, 'ResetPassword'>;
 
-export function RecoverPasswordRequestScreen({ navigation }: Props) {
-  const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
+export function ResetPasswordScreen({ navigation, route }: Props) {
+  const { email, code } = route.params;
   const insets = useSafeAreaInsets();
-  const { forgotPassword } = useAuth();
+  const { resetPassword } = useAuth();
+
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const canSubmit =
+    password.length >= 6 && confirmPassword === password && !loading;
+
+  const handleReset = async () => {
+    if (!canSubmit) return;
+
+    if (password !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await resetPassword(email, code, password);
+    } catch (err) {
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : 'Something went wrong. Please try again.';
+      Alert.alert('Error', message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <KeyboardAvoidingView
@@ -39,7 +66,7 @@ export function RecoverPasswordRequestScreen({ navigation }: Props) {
         <TopAppBar
           showBack
           onBack={() => navigation.goBack()}
-          leftLabel="Recover Password"
+          leftLabel="New Password"
         />
       </View>
 
@@ -52,75 +79,87 @@ export function RecoverPasswordRequestScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.iconCircle}>
-          <MaterialCommunityIcons name="refresh" size={32} color={colors.primary} />
+          <MaterialCommunityIcons
+            name="lock-reset"
+            size={32}
+            color={colors.primary}
+          />
         </View>
 
-        <Text style={styles.title}>Reset your access.</Text>
+        <Text style={styles.title}>Set new password</Text>
 
         <Text style={styles.description}>
-          Enter the email address associated with your account and we'll send a
-          high-priority security code.
+          Choose a strong password with at least 6 characters to secure your
+          account.
         </Text>
 
         <View style={styles.inputSection}>
-          <Text style={styles.inputLabel}>EMAIL ADDRESS</Text>
+          <Text style={styles.inputLabel}>NEW PASSWORD</Text>
           <View style={styles.inputContainer}>
             <MaterialCommunityIcons
-              name="email-outline"
+              name="lock-outline"
               size={18}
               color={colors.onSurfaceDim}
             />
             <TextInput
               style={styles.input}
-              placeholder="name@example.com"
+              placeholder="Min. 6 characters"
               placeholderTextColor={colors.onSurfaceDim}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
               autoCapitalize="none"
-              autoComplete="email"
-              textContentType="emailAddress"
+              autoComplete="new-password"
+              textContentType="newPassword"
+              editable={!loading}
             />
+            <TouchableOpacity
+              onPress={() => setShowPassword(!showPassword)}
+              hitSlop={8}
+            >
+              <Feather
+                name={showPassword ? 'eye-off' : 'eye'}
+                size={18}
+                color={colors.onSurfaceDim}
+              />
+            </TouchableOpacity>
           </View>
         </View>
 
+        <View style={styles.inputSection}>
+          <Text style={styles.inputLabel}>CONFIRM PASSWORD</Text>
+          <View style={styles.inputContainer}>
+            <MaterialCommunityIcons
+              name="lock-check-outline"
+              size={18}
+              color={colors.onSurfaceDim}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Repeat your password"
+              placeholderTextColor={colors.onSurfaceDim}
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              editable={!loading}
+            />
+          </View>
+          {confirmPassword.length > 0 && confirmPassword !== password && (
+            <Text style={styles.errorHint}>Passwords do not match</Text>
+          )}
+        </View>
+
         <PrimaryButton
-          title={loading ? '' : 'SEND CODE >'}
-          onPress={async () => {
-            if (!email.trim() || loading) return;
-            setLoading(true);
-            try {
-              await forgotPassword(email.trim());
-              navigation.navigate('RecoverPasswordVerification', {
-                email: email.trim(),
-              });
-            } catch (err) {
-              const message =
-                err instanceof ApiError
-                  ? err.message
-                  : 'Something went wrong. Please try again.';
-              Alert.alert('Error', message);
-            } finally {
-              setLoading(false);
-            }
-          }}
-          style={styles.sendButton}
+          title={loading ? '' : 'RESET PASSWORD'}
+          onPress={handleReset}
+          style={styles.submitButton}
           icon={
             loading ? (
               <ActivityIndicator size="small" color={colors.onPrimary} />
             ) : undefined
           }
         />
-
-        <View style={styles.dividerSection}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>Remembered it?</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-          <Text style={styles.returnText}>Return to Sign In</Text>
-        </TouchableOpacity>
 
         <View style={styles.spacer} />
 
@@ -166,7 +205,7 @@ const styles = StyleSheet.create({
   },
   inputSection: {
     width: '100%',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   inputLabel: {
     ...typography.labelMd,
@@ -190,31 +229,16 @@ const styles = StyleSheet.create({
     color: colors.onSurface,
     padding: 0,
   },
-  sendButton: {
-    width: '100%',
-    marginBottom: 28,
-  },
-  dividerSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
-    marginBottom: 16,
-    paddingHorizontal: 20,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: colors.surfaceContainerHighest,
-  },
-  dividerText: {
+  errorHint: {
     ...typography.bodySm,
-    color: colors.onSurfaceDim,
-    marginHorizontal: 12,
+    color: '#FF7351',
+    marginTop: 6,
+    marginLeft: 4,
   },
-  returnText: {
-    ...typography.labelLg,
-    color: colors.onSurface,
-    fontFamily: 'Inter_700Bold',
+  submitButton: {
+    width: '100%',
+    marginTop: 16,
+    marginBottom: 28,
   },
   spacer: {
     flexGrow: 1,
