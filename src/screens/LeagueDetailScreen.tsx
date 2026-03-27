@@ -14,27 +14,27 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
-import { footballApi } from '../api';
-import type { LeagueDetail, Fixture, StandingEntry } from '../api';
+import { sportsApi } from '../api/sports';
+import type { SportKey, SportLeagueDetail, SportGame, SportStandingEntry } from '../api/sports';
 import type { HomeStackParamList } from '../navigation/types';
 
 type Nav = NativeStackNavigationProp<HomeStackParamList>;
 
-const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'P', 'BT', 'LIVE'];
-const FINISHED_STATUSES = ['FT', 'AET', 'PEN'];
+const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'P', 'BT', 'LIVE', 'Q1', 'Q2', 'Q3', 'Q4', 'OT', 'P1', 'P2', 'P3', 'IN1', 'IN2', 'IN3', 'IN4', 'IN5', 'IN6', 'IN7', 'IN8', 'IN9'];
+const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AOT', 'AP', 'POST', 'Completed'];
 
-function getStatusLabel(fixture: Fixture): string {
-  if (LIVE_STATUSES.includes(fixture.status)) {
-    return fixture.elapsed ? `${fixture.elapsed}'` : 'LIVE';
+function getStatusLabel(game: SportGame): string {
+  if (LIVE_STATUSES.includes(game.status)) {
+    return game.timer ? `${game.timer}'` : 'LIVE';
   }
-  if (FINISHED_STATUSES.includes(fixture.status)) return fixture.status;
-  if (fixture.status === 'NS') {
-    return new Date(fixture.date).toLocaleTimeString([], {
+  if (FINISHED_STATUSES.includes(game.status)) return game.status === 'Completed' ? 'FIN' : game.status;
+  if (game.status === 'NS') {
+    return new Date(game.date).toLocaleTimeString([], {
       hour: '2-digit',
       minute: '2-digit',
     });
   }
-  return fixture.statusLong || fixture.status;
+  return game.statusLong || game.status;
 }
 
 function TeamLogo({ uri, size = 28 }: { uri?: string; size?: number }) {
@@ -58,7 +58,7 @@ function TeamLogo({ uri, size = 28 }: { uri?: string; size?: number }) {
         justifyContent: 'center',
       }}
     >
-      <Ionicons name="football" size={size * 0.5} color={colors.onSurfaceVariant} />
+      <Ionicons name="trophy-outline" size={size * 0.5} color={colors.onSurfaceVariant} />
     </View>
   );
 }
@@ -68,21 +68,24 @@ type TabKey = 'matches' | 'standings';
 export function LeagueDetailScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<any>();
-  const { leagueApiId, leagueName } = route.params as {
+  const { leagueApiId, leagueName, sport } = route.params as {
     leagueApiId: number;
     leagueName: string;
+    sport: SportKey;
   };
   const { tokens } = useAuth();
 
-  const [data, setData] = useState<LeagueDetail | null>(null);
+  const [data, setData] = useState<SportLeagueDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>('matches');
 
+  const isF1 = sport === 'formula-1';
+
   const fetchLeague = useCallback(async () => {
     if (!tokens?.accessToken) return;
     try {
-      const result = await footballApi.getLeagueDetail(tokens.accessToken, leagueApiId);
+      const result = await sportsApi.getLeagueDetail(tokens.accessToken, sport, leagueApiId);
       setData(result);
     } catch (err) {
       console.log('League detail fetch error:', err);
@@ -90,7 +93,7 @@ export function LeagueDetailScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [tokens?.accessToken, leagueApiId]);
+  }, [tokens?.accessToken, leagueApiId, sport]);
 
   useEffect(() => {
     fetchLeague();
@@ -114,8 +117,8 @@ export function LeagueDetailScreen() {
 
   const league = data?.league;
   const standings = data?.standings;
-  const live = data?.liveFixtures ?? [];
-  const upcoming = data?.upcomingFixtures ?? [];
+  const live = data?.liveGames ?? [];
+  const upcoming = data?.upcomingGames ?? [];
   const recent = data?.recentResults ?? [];
 
   return (
@@ -133,7 +136,7 @@ export function LeagueDetailScreen() {
             <Text style={styles.headerTitle}>{leagueName}</Text>
             {league?.countryName ? (
               <Text style={styles.headerSubtitle}>
-                {league.countryFlag} {league.countryName}
+                {league.countryName}
               </Text>
             ) : null}
           </View>
@@ -159,7 +162,9 @@ export function LeagueDetailScreen() {
             onPress={() => setActiveTab(tab)}
           >
             <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-              {tab === 'matches' ? 'MATCHES' : 'STANDINGS'}
+              {tab === 'matches'
+                ? isF1 ? 'RACES' : 'MATCHES'
+                : isF1 ? 'DRIVER STANDINGS' : 'STANDINGS'}
             </Text>
           </TouchableOpacity>
         ))}
@@ -177,10 +182,11 @@ export function LeagueDetailScreen() {
             live={live}
             upcoming={upcoming}
             recent={recent}
-            onFixturePress={(id) => navigation.navigate('MatchPrediction', { fixtureApiId: id })}
+            sport={sport}
+            onGamePress={(id) => navigation.navigate('MatchPrediction', { fixtureApiId: id, sport })}
           />
         ) : (
-          <StandingsTab standings={standings} />
+          <StandingsTab standings={standings} sport={sport} />
         )}
         <View style={{ height: 80 }} />
       </ScrollView>
@@ -192,16 +198,19 @@ function MatchesTab({
   live,
   upcoming,
   recent,
-  onFixturePress,
+  sport,
+  onGamePress,
 }: {
-  live: Fixture[];
-  upcoming: Fixture[];
-  recent: Fixture[];
-  onFixturePress: (id: number) => void;
+  live: SportGame[];
+  upcoming: SportGame[];
+  recent: SportGame[];
+  sport: SportKey;
+  onGamePress: (id: number) => void;
 }) {
+  const isF1 = sport === 'formula-1';
+
   return (
     <>
-      {/* Live */}
       {live.length > 0 && (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -209,42 +218,40 @@ function MatchesTab({
             <Text style={styles.sectionTitle}>LIVE</Text>
             <Text style={styles.sectionCount}>{live.length}</Text>
           </View>
-          {live.map((f) => (
-            <FixtureCard key={f.apiId} fixture={f} isLive onPress={() => onFixturePress(f.apiId)} />
+          {live.map((g) => (
+            <GameCard key={g.apiId || g._id} game={g} isLive isF1={isF1} onPress={() => onGamePress(g.apiId)} />
           ))}
         </View>
       )}
 
-      {/* Upcoming */}
       {upcoming.length > 0 && (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="time-outline" size={16} color={colors.primary} />
-            <Text style={styles.sectionTitle}>UPCOMING</Text>
+            <Text style={styles.sectionTitle}>{isF1 ? 'UPCOMING RACES' : 'UPCOMING'}</Text>
           </View>
-          {upcoming.map((f) => (
-            <FixtureCard key={f.apiId} fixture={f} onPress={() => onFixturePress(f.apiId)} />
+          {upcoming.map((g) => (
+            <GameCard key={g.apiId || g._id} game={g} isF1={isF1} onPress={() => onGamePress(g.apiId)} />
           ))}
         </View>
       )}
 
-      {/* Recent Results */}
       {recent.length > 0 && (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <MaterialCommunityIcons name="clock-check-outline" size={16} color={colors.primary} />
-            <Text style={styles.sectionTitle}>RECENT RESULTS</Text>
+            <Text style={styles.sectionTitle}>{isF1 ? 'RACE RESULTS' : 'RECENT RESULTS'}</Text>
           </View>
-          {recent.map((f) => (
-            <FixtureCard key={f.apiId} fixture={f} onPress={() => onFixturePress(f.apiId)} />
+          {recent.map((g) => (
+            <GameCard key={g.apiId || g._id} game={g} isF1={isF1} onPress={() => onGamePress(g.apiId)} />
           ))}
         </View>
       )}
 
       {live.length === 0 && upcoming.length === 0 && recent.length === 0 && (
         <View style={styles.emptyState}>
-          <Ionicons name="football-outline" size={48} color={colors.onSurfaceVariant} />
-          <Text style={styles.emptyTitle}>No matches available</Text>
+          <Ionicons name="trophy-outline" size={48} color={colors.onSurfaceVariant} />
+          <Text style={styles.emptyTitle}>No data available</Text>
           <Text style={styles.emptySubtitle}>Pull down to refresh</Text>
         </View>
       )}
@@ -252,57 +259,88 @@ function MatchesTab({
   );
 }
 
-function FixtureCard({
-  fixture,
+function GameCard({
+  game,
   isLive,
+  isF1,
   onPress,
 }: {
-  fixture: Fixture;
+  game: SportGame;
   isLive?: boolean;
+  isF1?: boolean;
   onPress: () => void;
 }) {
-  const isFinished = FINISHED_STATUSES.includes(fixture.status);
+  const isFinished = FINISHED_STATUSES.includes(game.status);
   const showScore = isLive || isFinished;
+
+  if (isF1) {
+    return (
+      <TouchableOpacity style={styles.fixtureCard} onPress={onPress} activeOpacity={0.7}>
+        <View style={styles.f1Row}>
+          <View style={{ flex: 1, gap: 4 }}>
+            <Text style={styles.fixtureTeamName}>{game.competitionName || game.leagueName}</Text>
+            <Text style={styles.f1CircuitText}>
+              {game.circuit?.name ?? ''} {game.circuit?.country ? `- ${game.circuit.country}` : ''}
+            </Text>
+          </View>
+          <View style={[styles.fixtureBadge, isLive && styles.fixtureBadgeLive]}>
+            <Text style={[styles.fixtureBadgeText, isLive && styles.fixtureBadgeTextLive]}>
+              {game.status}
+            </Text>
+          </View>
+        </View>
+        <Text style={styles.fixtureDate}>
+          {new Date(game.date).toLocaleDateString([], {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
+        </Text>
+      </TouchableOpacity>
+    );
+  }
 
   return (
     <TouchableOpacity style={styles.fixtureCard} onPress={onPress} activeOpacity={0.7}>
       {isLive && <View style={styles.fixtureAccent} />}
       <View style={styles.fixtureTopRow}>
-        <Text style={styles.fixtureRound}>{fixture.leagueRound || ''}</Text>
+        <Text style={styles.fixtureRound}>{game.leagueName || ''}</Text>
         <View style={[styles.fixtureBadge, isLive && styles.fixtureBadgeLive]}>
           <Text style={[styles.fixtureBadgeText, isLive && styles.fixtureBadgeTextLive]}>
-            {getStatusLabel(fixture)}
+            {getStatusLabel(game)}
           </Text>
         </View>
       </View>
       <View style={styles.fixtureTeamsRow}>
         <View style={styles.fixtureTeamCol}>
-          <TeamLogo uri={fixture.homeTeam.logo} size={32} />
+          <TeamLogo uri={game.homeTeam?.logo} size={32} />
           <Text style={styles.fixtureTeamName} numberOfLines={1}>
-            {fixture.homeTeam.name}
+            {game.homeTeam?.name}
           </Text>
         </View>
         <View style={styles.fixtureScoreCol}>
           {showScore ? (
             <>
-              <Text style={styles.fixtureScore}>{fixture.homeGoals}</Text>
+              <Text style={styles.fixtureScore}>{game.homeTotal ?? '-'}</Text>
               <Text style={styles.fixtureScoreSep}>-</Text>
-              <Text style={styles.fixtureScore}>{fixture.awayGoals}</Text>
+              <Text style={styles.fixtureScore}>{game.awayTotal ?? '-'}</Text>
             </>
           ) : (
             <Text style={styles.fixtureVs}>VS</Text>
           )}
         </View>
         <View style={styles.fixtureTeamCol}>
-          <TeamLogo uri={fixture.awayTeam.logo} size={32} />
+          <TeamLogo uri={game.awayTeam?.logo} size={32} />
           <Text style={styles.fixtureTeamName} numberOfLines={1}>
-            {fixture.awayTeam.name}
+            {game.awayTeam?.name}
           </Text>
         </View>
       </View>
       {isFinished && (
         <Text style={styles.fixtureDate}>
-          {new Date(fixture.date).toLocaleDateString([], {
+          {new Date(game.date).toLocaleDateString([], {
             weekday: 'short',
             month: 'short',
             day: 'numeric',
@@ -313,7 +351,7 @@ function FixtureCard({
   );
 }
 
-function StandingsTab({ standings }: { standings: StandingEntry[] | null | undefined }) {
+function StandingsTab({ standings, sport }: { standings: SportStandingEntry[] | null | undefined; sport: SportKey }) {
   if (!standings || standings.length === 0) {
     return (
       <View style={styles.emptyState}>
@@ -324,17 +362,67 @@ function StandingsTab({ standings }: { standings: StandingEntry[] | null | undef
     );
   }
 
+  const isF1 = sport === 'formula-1';
+
+  if (isF1) {
+    return (
+      <View style={styles.standingsWrap}>
+        <View style={styles.standingsHeaderRow}>
+          <Text style={[styles.standingsHeaderCell, { width: 32 }]}>#</Text>
+          <Text style={[styles.standingsHeaderCell, { flex: 1 }]}>Driver</Text>
+          <Text style={[styles.standingsHeaderCell, styles.standingsNumCell]}>Team</Text>
+          <Text style={[styles.standingsHeaderCell, styles.standingsNumCell, { width: 48 }]}>Wins</Text>
+          <Text style={[styles.standingsHeaderCell, styles.standingsNumCell, { color: colors.primary }]}>
+            Pts
+          </Text>
+        </View>
+        {standings.map((entry) => (
+          <View key={entry.rank} style={styles.standingsRow}>
+            <Text style={[styles.standingsCell, { width: 32, fontFamily: 'Inter_700Bold' }]}>
+              {entry.rank}
+            </Text>
+            <View style={[styles.standingsTeamCell, { flex: 1 }]}>
+              {entry.driverImage ? (
+                <Image source={{ uri: entry.driverImage }} style={{ width: 20, height: 20, borderRadius: 10 }} resizeMode="contain" />
+              ) : (
+                <TeamLogo uri={entry.teamLogo} size={20} />
+              )}
+              <Text style={styles.standingsTeamName} numberOfLines={1}>
+                {entry.driverName || entry.teamName}
+              </Text>
+            </View>
+            <Text style={[styles.standingsCell, styles.standingsNumCell]} numberOfLines={1}>
+              {entry.teamName?.substring(0, 6) ?? ''}
+            </Text>
+            <Text style={[styles.standingsCell, styles.standingsNumCell, { width: 48 }]}>
+              {entry.wins ?? '-'}
+            </Text>
+            <Text
+              style={[
+                styles.standingsCell,
+                styles.standingsNumCell,
+                { fontFamily: 'Inter_700Bold', color: colors.primary },
+              ]}
+            >
+              {entry.points}
+            </Text>
+          </View>
+        ))}
+      </View>
+    );
+  }
+
+  const hasDrawn = standings.some((e) => e.drawn !== undefined && e.drawn !== null);
+
   return (
     <View style={styles.standingsWrap}>
-      {/* Header */}
       <View style={styles.standingsHeaderRow}>
         <Text style={[styles.standingsHeaderCell, { width: 32 }]}>#</Text>
         <Text style={[styles.standingsHeaderCell, { flex: 1 }]}>Team</Text>
         <Text style={[styles.standingsHeaderCell, styles.standingsNumCell]}>P</Text>
         <Text style={[styles.standingsHeaderCell, styles.standingsNumCell]}>W</Text>
-        <Text style={[styles.standingsHeaderCell, styles.standingsNumCell]}>D</Text>
+        {hasDrawn && <Text style={[styles.standingsHeaderCell, styles.standingsNumCell]}>D</Text>}
         <Text style={[styles.standingsHeaderCell, styles.standingsNumCell]}>L</Text>
-        <Text style={[styles.standingsHeaderCell, styles.standingsNumCell]}>GD</Text>
         <Text style={[styles.standingsHeaderCell, styles.standingsNumCell, { color: colors.primary }]}>
           Pts
         </Text>
@@ -357,13 +445,10 @@ function StandingsTab({ standings }: { standings: StandingEntry[] | null | undef
               {entry.teamName}
             </Text>
           </View>
-          <Text style={[styles.standingsCell, styles.standingsNumCell]}>{entry.played}</Text>
-          <Text style={[styles.standingsCell, styles.standingsNumCell]}>{entry.won}</Text>
-          <Text style={[styles.standingsCell, styles.standingsNumCell]}>{entry.drawn}</Text>
-          <Text style={[styles.standingsCell, styles.standingsNumCell]}>{entry.lost}</Text>
-          <Text style={[styles.standingsCell, styles.standingsNumCell]}>
-            {entry.goalDifference > 0 ? `+${entry.goalDifference}` : entry.goalDifference}
-          </Text>
+          <Text style={[styles.standingsCell, styles.standingsNumCell]}>{entry.played ?? '-'}</Text>
+          <Text style={[styles.standingsCell, styles.standingsNumCell]}>{entry.won ?? '-'}</Text>
+          {hasDrawn && <Text style={[styles.standingsCell, styles.standingsNumCell]}>{entry.drawn ?? '-'}</Text>}
+          <Text style={[styles.standingsCell, styles.standingsNumCell]}>{entry.lost ?? '-'}</Text>
           <Text
             style={[
               styles.standingsCell,
@@ -371,17 +456,10 @@ function StandingsTab({ standings }: { standings: StandingEntry[] | null | undef
               { fontFamily: 'Inter_700Bold', color: colors.primary },
             ]}
           >
-            {entry.points}
+            {entry.points ?? '-'}
           </Text>
         </View>
       ))}
-      {/* Form legend */}
-      <View style={styles.formLegend}>
-        <View style={[styles.formDot, { backgroundColor: '#4CAF50' }]} />
-        <Text style={styles.formLegendText}>Champions League</Text>
-        <View style={[styles.formDot, { backgroundColor: colors.error }]} />
-        <Text style={styles.formLegendText}>Relegation</Text>
-      </View>
     </View>
   );
 }
@@ -594,6 +672,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
+  f1Row: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
+  f1CircuitText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 11,
+    color: colors.onSurfaceVariant,
+  },
+
   // Standings
   standingsWrap: { paddingHorizontal: 16 },
   standingsHeaderRow: {
@@ -636,20 +725,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.onSurface,
     flex: 1,
-  },
-  formLegend: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 16,
-    paddingVertical: 12,
-  },
-  formDot: { width: 10, height: 10, borderRadius: 5 },
-  formLegendText: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 11,
-    color: colors.onSurfaceDim,
-    marginRight: 12,
   },
 
   // Empty

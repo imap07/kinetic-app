@@ -15,30 +15,26 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../theme';
 import { AppHeader } from '../components/AppHeader';
 import { useAuth } from '../contexts/AuthContext';
-import { footballApi } from '../api';
-import type { Fixture, DashboardData } from '../api';
+import { sportsApi, SPORT_TABS } from '../api/sports';
+import type { SportKey, SportDashboard, SportGame } from '../api/sports';
 import type { LiveStackParamList } from '../navigation/types';
 
-const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'P', 'BT', 'LIVE'];
-const FINISHED_STATUSES = ['FT', 'AET', 'PEN'];
+const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'P', 'BT', 'LIVE', 'Q1', 'Q2', 'Q3', 'Q4', 'OT', 'P1', 'P2', 'P3', 'IN1', 'IN2', 'IN3', 'IN4', 'IN5', 'IN6', 'IN7', 'IN8', 'IN9'];
+const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AOT', 'AP', 'POST', 'Completed'];
 const REFRESH_INTERVAL = 30_000;
 
-function getStatusLabel(fixture: Fixture): string {
-  if (LIVE_STATUSES.includes(fixture.status)) {
-    return fixture.elapsed ? `${fixture.elapsed}'` : 'LIVE';
+function getGameStatusLabel(game: SportGame): string {
+  if (LIVE_STATUSES.includes(game.status)) {
+    return game.timer ? `${game.timer}'` : 'LIVE';
   }
-  if (FINISHED_STATUSES.includes(fixture.status)) return fixture.status;
-  if (fixture.status === 'NS') {
-    return new Date(fixture.date).toLocaleTimeString([], {
+  if (FINISHED_STATUSES.includes(game.status)) return game.status === 'Completed' ? 'FIN' : game.status;
+  if (game.status === 'NS') {
+    return new Date(game.date).toLocaleTimeString([], {
       hour: '2-digit',
       minute: '2-digit',
     });
   }
-  return fixture.statusLong || fixture.status;
-}
-
-function isLive(fixture: Fixture): boolean {
-  return fixture.isLive || LIVE_STATUSES.includes(fixture.status);
+  return game.statusLong || game.status;
 }
 
 function TeamLogo({ uri, size = 40 }: { uri?: string; size?: number }) {
@@ -62,7 +58,7 @@ function TeamLogo({ uri, size = 40 }: { uri?: string; size?: number }) {
         justifyContent: 'center',
       }}
     >
-      <Ionicons name="football" size={size * 0.5} color={colors.onSurfaceVariant} />
+      <Ionicons name="trophy-outline" size={size * 0.5} color={colors.onSurfaceVariant} />
     </View>
   );
 }
@@ -70,7 +66,8 @@ function TeamLogo({ uri, size = 40 }: { uri?: string; size?: number }) {
 export function LiveScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<LiveStackParamList>>();
   const { tokens } = useAuth();
-  const [data, setData] = useState<DashboardData | null>(null);
+  const [activeSport, setActiveSport] = useState<SportKey>('football');
+  const [data, setData] = useState<SportDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -78,7 +75,7 @@ export function LiveScreen() {
   const fetchData = useCallback(async () => {
     if (!tokens?.accessToken) return;
     try {
-      const result = await footballApi.getDashboard(tokens.accessToken);
+      const result = await sportsApi.getDashboard(tokens.accessToken, activeSport);
       setData(result);
     } catch (err) {
       console.log('Live fetch error:', err);
@@ -86,9 +83,10 @@ export function LiveScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [tokens?.accessToken]);
+  }, [tokens?.accessToken, activeSport]);
 
   useEffect(() => {
+    setLoading(true);
     fetchData();
     intervalRef.current = setInterval(fetchData, REFRESH_INTERVAL);
     return () => {
@@ -101,20 +99,36 @@ export function LiveScreen() {
     fetchData();
   }, [fetchData]);
 
-  const liveMatches = data?.liveMatches ?? [];
-  const todayMatches = (data?.todayMatches ?? []).filter(
-    (f) => !isLive(f),
-  );
-  const recentMatches = data?.recentMatches ?? [];
+  const handleSportChange = useCallback((sport: SportKey) => {
+    if (sport === activeSport) return;
+    setActiveSport(sport);
+    setData(null);
+  }, [activeSport]);
 
-  const navigateToFixture = (fixtureApiId: number) => {
-    navigation.navigate('LiveMatchPrediction', { fixtureApiId });
+  const liveGames = data?.liveGames ?? [];
+  const recentGames = data?.recentGames ?? [];
+
+  const navigateToGame = (gameApiId: number) => {
+    navigation.navigate('LiveMatchPrediction', { fixtureApiId: gameApiId, sport: activeSport });
   };
 
   if (loading) {
     return (
       <View style={styles.container}>
         <AppHeader />
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.sportTabsScroll} contentContainerStyle={styles.sportTabsContent}>
+          {SPORT_TABS.map((tab) => (
+            <TouchableOpacity
+              key={tab.key}
+              style={[styles.sportTab, activeSport === tab.key && styles.sportTabActive]}
+              onPress={() => handleSportChange(tab.key)}
+            >
+              <Text style={[styles.sportTabLabel, activeSport === tab.key && styles.sportTabLabelActive]}>
+                {tab.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -125,6 +139,22 @@ export function LiveScreen() {
   return (
     <View style={styles.container}>
       <AppHeader />
+
+      {/* Sport Tabs */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.sportTabsScroll} contentContainerStyle={styles.sportTabsContent}>
+        {SPORT_TABS.map((tab) => (
+          <TouchableOpacity
+            key={tab.key}
+            style={[styles.sportTab, activeSport === tab.key && styles.sportTabActive]}
+            onPress={() => handleSportChange(tab.key)}
+          >
+            <Text style={[styles.sportTabLabel, activeSport === tab.key && styles.sportTabLabelActive]}>
+              {tab.name}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
       <ScrollView
         style={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -137,59 +167,53 @@ export function LiveScreen() {
         }
       >
         {/* Live Matches */}
-        {liveMatches.length > 0 ? (
+        {liveGames.length > 0 ? (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <View style={styles.liveDot} />
               <Text style={styles.sectionTitle}>LIVE NOW</Text>
-              <Text style={styles.matchCount}>{liveMatches.length}</Text>
+              <Text style={styles.matchCount}>{liveGames.length}</Text>
             </View>
-            {liveMatches.map((fixture) => (
+            {liveGames.map((game) => (
               <TouchableOpacity
-                key={fixture.apiId}
+                key={game.apiId || game._id}
                 style={styles.matchCard}
-                onPress={() => navigateToFixture(fixture.apiId)}
+                onPress={() => navigateToGame(game.apiId)}
                 activeOpacity={0.7}
               >
                 <View style={styles.liveAccent} />
                 <View style={styles.matchLeagueRow}>
-                  {fixture.leagueLogo ? (
+                  {game.leagueLogo ? (
                     <Image
-                      source={{ uri: fixture.leagueLogo }}
+                      source={{ uri: game.leagueLogo }}
                       style={styles.matchLeagueLogo}
                       resizeMode="contain"
                     />
                   ) : null}
-                  <Text style={styles.matchLeagueName}>{fixture.leagueName}</Text>
+                  <Text style={styles.matchLeagueName}>{game.leagueName}</Text>
                   <View style={styles.liveBadge}>
-                    <Text style={styles.liveBadgeText}>{getStatusLabel(fixture)}</Text>
+                    <Text style={styles.liveBadgeText}>{getGameStatusLabel(game)}</Text>
                   </View>
                 </View>
                 <View style={styles.matchTeamsRow}>
                   <View style={styles.matchTeamCol}>
-                    <TeamLogo uri={fixture.homeTeam.logo} size={48} />
+                    <TeamLogo uri={game.homeTeam?.logo} size={48} />
                     <Text style={styles.matchTeamName} numberOfLines={1}>
-                      {fixture.homeTeam.name}
+                      {game.homeTeam?.name}
                     </Text>
                   </View>
                   <View style={styles.matchScoreCol}>
-                    <Text style={styles.matchScoreHome}>{fixture.homeGoals}</Text>
+                    <Text style={styles.matchScoreHome}>{game.homeTotal ?? '-'}</Text>
                     <Text style={styles.matchScoreDivider}>:</Text>
-                    <Text style={styles.matchScoreAway}>{fixture.awayGoals}</Text>
+                    <Text style={styles.matchScoreAway}>{game.awayTotal ?? '-'}</Text>
                   </View>
                   <View style={styles.matchTeamCol}>
-                    <TeamLogo uri={fixture.awayTeam.logo} size={48} />
+                    <TeamLogo uri={game.awayTeam?.logo} size={48} />
                     <Text style={styles.matchTeamName} numberOfLines={1}>
-                      {fixture.awayTeam.name}
+                      {game.awayTeam?.name}
                     </Text>
                   </View>
                 </View>
-                {fixture.elapsed && (
-                  <View style={styles.elapsedRow}>
-                    <MaterialCommunityIcons name="timer-outline" size={14} color={colors.tertiaryLight} />
-                    <Text style={styles.elapsedText}>{fixture.elapsed}' played</Text>
-                  </View>
-                )}
               </TouchableOpacity>
             ))}
           </View>
@@ -198,120 +222,66 @@ export function LiveScreen() {
             <View style={styles.emptyIconWrap}>
               <MaterialCommunityIcons name="access-point" size={48} color={colors.onSurfaceVariant} />
             </View>
-            <Text style={styles.emptyTitle}>No live matches right now</Text>
+            <Text style={styles.emptyTitle}>No live games right now</Text>
             <Text style={styles.emptySubtitle}>
-              Check back during match hours or pull down to refresh
+              Check back during game hours or pull down to refresh
             </Text>
           </View>
         )}
 
-        {/* Today's Other Matches */}
-        {todayMatches.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="calendar" size={16} color={colors.primary} />
-              <Text style={styles.sectionTitle}>TODAY'S MATCHES</Text>
-            </View>
-            {todayMatches.map((fixture) => (
-              <TouchableOpacity
-                key={fixture.apiId}
-                style={styles.todayCard}
-                onPress={() => navigateToFixture(fixture.apiId)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.matchLeagueRow}>
-                  {fixture.leagueLogo ? (
-                    <Image
-                      source={{ uri: fixture.leagueLogo }}
-                      style={styles.matchLeagueLogo}
-                      resizeMode="contain"
-                    />
-                  ) : null}
-                  <Text style={styles.matchLeagueName}>{fixture.leagueName}</Text>
-                  <View style={styles.statusBadge}>
-                    <Text style={styles.statusBadgeText}>{getStatusLabel(fixture)}</Text>
-                  </View>
-                </View>
-                <View style={styles.todayTeamsRow}>
-                  <View style={styles.todayTeamInfo}>
-                    <TeamLogo uri={fixture.homeTeam.logo} size={28} />
-                    <Text style={styles.todayTeamName} numberOfLines={1}>
-                      {fixture.homeTeam.name}
-                    </Text>
-                  </View>
-                  <Text style={styles.todayScore}>
-                    {FINISHED_STATUSES.includes(fixture.status)
-                      ? `${fixture.homeGoals} - ${fixture.awayGoals}`
-                      : 'vs'}
-                  </Text>
-                  <View style={[styles.todayTeamInfo, { justifyContent: 'flex-end' }]}>
-                    <Text style={styles.todayTeamName} numberOfLines={1}>
-                      {fixture.awayTeam.name}
-                    </Text>
-                    <TeamLogo uri={fixture.awayTeam.logo} size={28} />
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-
         {/* Recent Results */}
-        {recentMatches.length > 0 && (
+        {recentGames.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <MaterialCommunityIcons name="clock-check-outline" size={16} color={colors.primary} />
               <Text style={styles.sectionTitle}>RECENT RESULTS</Text>
-              <Text style={styles.matchCount}>{recentMatches.length}</Text>
+              <Text style={styles.matchCount}>{recentGames.length}</Text>
             </View>
-            {recentMatches.slice(0, 20).map((fixture) => (
+            {recentGames.slice(0, 20).map((game) => (
               <TouchableOpacity
-                key={fixture.apiId}
+                key={game.apiId || game._id}
                 style={styles.todayCard}
-                onPress={() => navigateToFixture(fixture.apiId)}
+                onPress={() => navigateToGame(game.apiId)}
                 activeOpacity={0.7}
               >
                 <View style={styles.matchLeagueRow}>
-                  {fixture.leagueLogo ? (
+                  {game.leagueLogo ? (
                     <Image
-                      source={{ uri: fixture.leagueLogo }}
+                      source={{ uri: game.leagueLogo }}
                       style={styles.matchLeagueLogo}
                       resizeMode="contain"
                     />
                   ) : null}
-                  <Text style={styles.matchLeagueName}>{fixture.leagueName}</Text>
+                  <Text style={styles.matchLeagueName}>{game.leagueName}</Text>
                   <View style={styles.statusBadge}>
-                    <Text style={styles.statusBadgeText}>{fixture.status}</Text>
+                    <Text style={styles.statusBadgeText}>{game.status}</Text>
                   </View>
                 </View>
                 <View style={styles.todayTeamsRow}>
                   <View style={styles.todayTeamInfo}>
-                    <TeamLogo uri={fixture.homeTeam.logo} size={28} />
+                    <TeamLogo uri={game.homeTeam?.logo} size={28} />
                     <Text style={styles.todayTeamName} numberOfLines={1}>
-                      {fixture.homeTeam.name}
+                      {game.homeTeam?.name}
                     </Text>
                   </View>
                   <Text style={styles.todayScore}>
-                    {fixture.homeGoals} - {fixture.awayGoals}
+                    {game.homeTotal ?? '-'} - {game.awayTotal ?? '-'}
                   </Text>
                   <View style={[styles.todayTeamInfo, { justifyContent: 'flex-end' }]}>
                     <Text style={styles.todayTeamName} numberOfLines={1}>
-                      {fixture.awayTeam.name}
+                      {game.awayTeam?.name}
                     </Text>
-                    <TeamLogo uri={fixture.awayTeam.logo} size={28} />
+                    <TeamLogo uri={game.awayTeam?.logo} size={28} />
                   </View>
                 </View>
                 <View style={styles.recentDateRow}>
                   <Text style={styles.recentDateText}>
-                    {new Date(fixture.date).toLocaleDateString([], {
+                    {new Date(game.date).toLocaleDateString([], {
                       month: 'short',
                       day: 'numeric',
                       year: 'numeric',
                     })}
                   </Text>
-                  {fixture.leagueRound ? (
-                    <Text style={styles.recentRoundText}>{fixture.leagueRound}</Text>
-                  ) : null}
                 </View>
               </TouchableOpacity>
             ))}
@@ -329,6 +299,23 @@ const styles = StyleSheet.create({
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { flex: 1 },
   section: { paddingHorizontal: 16, marginBottom: 24 },
+
+  sportTabsScroll: { maxHeight: 44, marginBottom: 8 },
+  sportTabsContent: { paddingHorizontal: 16, gap: 6, alignItems: 'center' },
+  sportTab: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: colors.surfaceContainerHighest,
+  },
+  sportTabActive: { backgroundColor: colors.primary },
+  sportTabLabel: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.onSurface,
+  },
+  sportTabLabelActive: { color: '#4A5E00' },
 
   sectionHeader: {
     flexDirection: 'row',
@@ -363,7 +350,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.tertiaryLight,
   },
 
-  // Match Card
   matchCard: {
     backgroundColor: colors.surfaceContainerLow,
     borderRadius: 8,
@@ -442,20 +428,7 @@ const styles = StyleSheet.create({
     lineHeight: 40,
     color: colors.onSurface,
   },
-  elapsedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  elapsedText: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 12,
-    lineHeight: 16,
-    color: colors.tertiaryLight,
-  },
 
-  // Empty
   emptyLive: {
     alignItems: 'center',
     paddingVertical: 64,
@@ -486,7 +459,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // Today
   todayCard: {
     backgroundColor: colors.surfaceContainerLow,
     borderRadius: 8,
@@ -542,11 +514,6 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(255,255,255,0.06)',
   },
   recentDateText: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 11,
-    color: colors.onSurfaceDim,
-  },
-  recentRoundText: {
     fontFamily: 'Inter_500Medium',
     fontSize: 11,
     color: colors.onSurfaceDim,

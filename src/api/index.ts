@@ -14,3 +14,14 @@ export type {
   LeagueDetail,
   StandingEntry,
 } from './football';
+export { sportsApi, SPORT_TABS } from './sports';
+export type {
+  SportKey,
+  SportMeta,
+  SportDashboard,
+  SportLeagueDetail,
+  SportStandingEntry,
+  SportGame,
+  SportLeague,
+  SportTeamInfo,
+} from './sports';

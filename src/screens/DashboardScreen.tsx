@@ -17,39 +17,39 @@ import { HomeStackParamList } from '../navigation/types';
 import { AppHeader } from '../components/AppHeader';
 import { ProUpgradeBanner } from '../components';
 import { useAuth } from '../contexts/AuthContext';
-import { footballApi } from '../api';
-import type { Fixture, DashboardData } from '../api';
+import { sportsApi, SPORT_TABS } from '../api/sports';
+import type { SportKey, SportDashboard, SportGame } from '../api/sports';
 
 type Props = {
   navigation: NativeStackNavigationProp<HomeStackParamList, 'DashboardHome'>;
 };
 
-const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'P', 'BT', 'LIVE'];
+const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'P', 'BT', 'LIVE', 'Q1', 'Q2', 'Q3', 'Q4', 'OT', 'P1', 'P2', 'P3', 'IN1', 'IN2', 'IN3', 'IN4', 'IN5', 'IN6', 'IN7', 'IN8', 'IN9'];
 
-function formatFixtureTime(dateStr: string): string {
+function formatGameTime(dateStr: string): string {
   const date = new Date(dateStr);
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
-  const fixtureDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const gameDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
   const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-  if (fixtureDay.getTime() === today.getTime()) return `Today ${time}`;
-  if (fixtureDay.getTime() === tomorrow.getTime()) return `Tomorrow ${time}`;
+  if (gameDay.getTime() === today.getTime()) return `Today ${time}`;
+  if (gameDay.getTime() === tomorrow.getTime()) return `Tomorrow ${time}`;
   return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${time}`;
 }
 
-function getStatusLabel(fixture: Fixture): string {
-  if (LIVE_STATUSES.includes(fixture.status)) {
-    return fixture.elapsed ? `LIVE ${fixture.elapsed}'` : 'LIVE';
+function getGameStatusLabel(game: SportGame): string {
+  if (LIVE_STATUSES.includes(game.status)) {
+    return game.timer ? `LIVE ${game.timer}'` : 'LIVE';
   }
-  if (fixture.status === 'FT' || fixture.status === 'AET' || fixture.status === 'PEN') {
+  if (['FT', 'AET', 'PEN', 'AOT', 'AP', 'POST', 'Completed'].includes(game.status)) {
     return 'FT';
   }
-  if (fixture.status === 'HT') return 'HT';
-  return formatFixtureTime(fixture.date);
+  if (game.status === 'HT') return 'HT';
+  return formatGameTime(game.date);
 }
 
 function TeamLogo({ uri, size = 32 }: { uri?: string; size?: number }) {
@@ -73,21 +73,22 @@ function TeamLogo({ uri, size = 32 }: { uri?: string; size?: number }) {
         justifyContent: 'center',
       }}
     >
-      <Ionicons name="football" size={size * 0.5} color={colors.onSurfaceVariant} />
+      <Ionicons name="trophy-outline" size={size * 0.5} color={colors.onSurfaceVariant} />
     </View>
   );
 }
 
 export function DashboardScreen({ navigation }: Props) {
   const { tokens } = useAuth();
-  const [data, setData] = useState<DashboardData | null>(null);
+  const [activeSport, setActiveSport] = useState<SportKey>('football');
+  const [data, setData] = useState<SportDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchDashboard = useCallback(async () => {
     if (!tokens?.accessToken) return;
     try {
-      const result = await footballApi.getDashboard(tokens.accessToken);
+      const result = await sportsApi.getDashboard(tokens.accessToken, activeSport);
       setData(result);
     } catch (err) {
       console.log('Dashboard fetch error:', err);
@@ -95,9 +96,10 @@ export function DashboardScreen({ navigation }: Props) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [tokens?.accessToken]);
+  }, [tokens?.accessToken, activeSport]);
 
   useEffect(() => {
+    setLoading(true);
     fetchDashboard();
   }, [fetchDashboard]);
 
@@ -106,14 +108,41 @@ export function DashboardScreen({ navigation }: Props) {
     fetchDashboard();
   }, [fetchDashboard]);
 
-  const filteredUpcoming = data?.upcomingMatches ?? [];
-  const filteredToday = data?.todayMatches ?? [];
-  const filteredRecent = data?.recentMatches ?? [];
+  const handleSportChange = useCallback((sport: SportKey) => {
+    if (sport === activeSport) return;
+    setActiveSport(sport);
+    setData(null);
+  }, [activeSport]);
+
+  const liveGames = data?.liveGames ?? [];
+  const recentGames = data?.recentGames ?? [];
+  const upcomingGames = data?.upcomingGames ?? [];
+  const featuredLeagues = data?.featuredLeagues ?? [];
+
+  const isF1 = activeSport === 'formula-1';
 
   if (loading) {
     return (
       <View style={styles.container}>
         <AppHeader />
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.sportTabsScroll}
+          contentContainerStyle={styles.sportTabsContent}
+        >
+          {SPORT_TABS.map((tab) => (
+            <TouchableOpacity
+              key={tab.key}
+              style={[styles.sportTab, activeSport === tab.key && styles.sportTabActive]}
+              onPress={() => handleSportChange(tab.key)}
+            >
+              <Text style={[styles.sportTabLabel, activeSport === tab.key && styles.sportTabLabelActive]}>
+                {tab.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -125,40 +154,22 @@ export function DashboardScreen({ navigation }: Props) {
     <View style={styles.container}>
       <AppHeader />
 
-      {/* League Filter Tabs */}
+      {/* Sport Tabs */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={styles.tabsScroll}
-        contentContainerStyle={styles.tabsContent}
+        style={styles.sportTabsScroll}
+        contentContainerStyle={styles.sportTabsContent}
       >
-        <TouchableOpacity style={[styles.tab, styles.tabActive]} disabled>
-          <Text style={[styles.tabLabel, styles.tabLabelActive]}>All</Text>
-        </TouchableOpacity>
-        {(data?.featuredLeagues ?? []).map((league) => (
+        {SPORT_TABS.map((tab) => (
           <TouchableOpacity
-            key={league.apiId}
-            style={styles.tab}
-            onPress={() =>
-              navigation.navigate('LeagueDetail', {
-                leagueApiId: league.apiId,
-                leagueName: league.name,
-              })
-            }
+            key={tab.key}
+            style={[styles.sportTab, activeSport === tab.key && styles.sportTabActive]}
+            onPress={() => handleSportChange(tab.key)}
           >
-            <View style={styles.tabInner}>
-              {league.logo ? (
-                <Image
-                  source={{ uri: league.logo }}
-                  style={styles.tabLeagueLogo}
-                  resizeMode="contain"
-                />
-              ) : null}
-              <Text style={styles.tabLabel} numberOfLines={1}>
-                {league.name}
-              </Text>
-              <Ionicons name="chevron-forward" size={12} color={colors.onSurfaceDim} />
-            </View>
+            <Text style={[styles.sportTabLabel, activeSport === tab.key && styles.sportTabLabelActive]}>
+              {tab.name}
+            </Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -175,6 +186,49 @@ export function DashboardScreen({ navigation }: Props) {
           />
         }
       >
+        {/* Leagues */}
+        {featuredLeagues.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.leagueCardsScroll}
+          >
+            {featuredLeagues.map((league) => (
+              <TouchableOpacity
+                key={league.apiId}
+                style={styles.leagueNavCard}
+                onPress={() =>
+                  navigation.navigate('LeagueDetail', {
+                    leagueApiId: league.apiId,
+                    leagueName: league.name,
+                    sport: activeSport,
+                  })
+                }
+                activeOpacity={0.7}
+              >
+                {league.logo ? (
+                  <Image
+                    source={{ uri: league.logo }}
+                    style={styles.leagueNavLogo}
+                    resizeMode="contain"
+                  />
+                ) : (
+                  <View style={styles.leagueNavFallback}>
+                    <Ionicons name="trophy-outline" size={20} color={colors.onSurfaceVariant} />
+                  </View>
+                )}
+                <View style={styles.leagueNavInfo}>
+                  <Text style={styles.leagueNavName} numberOfLines={1}>{league.name}</Text>
+                  {league.countryName ? (
+                    <Text style={styles.leagueNavCountry} numberOfLines={1}>{league.countryName}</Text>
+                  ) : null}
+                </View>
+                <Ionicons name="chevron-forward" size={14} color={colors.onSurfaceDim} />
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
+
         {/* Top Predictor Card */}
         <View style={styles.predictorCard}>
           <View style={styles.predictorGlow} />
@@ -207,114 +261,42 @@ export function DashboardScreen({ navigation }: Props) {
         <ProUpgradeBanner />
 
         {/* Live Action */}
-        {(data?.liveMatches ?? []).length > 0 && (
+        {liveGames.length > 0 && (
           <View style={styles.sectionWrap}>
             <View style={styles.liveHeaderRow}>
               <View style={styles.liveDot} />
               <Text style={styles.liveSectionTitle}>LIVE ACTION</Text>
             </View>
-            {data!.liveMatches.map((fixture) => (
+            {liveGames.map((game) => (
               <TouchableOpacity
-                key={fixture.apiId}
+                key={game.apiId || game._id}
                 style={styles.liveCard}
-                onPress={() => navigation.navigate('MatchPrediction', { fixtureApiId: fixture.apiId })}
+                onPress={() => navigation.navigate('MatchPrediction', { fixtureApiId: game.apiId, sport: activeSport })}
                 activeOpacity={0.7}
               >
                 <View style={styles.liveAccent} />
                 <View style={styles.liveBody}>
                   <View style={styles.liveBadgeRow}>
                     <View style={styles.liveBadge}>
-                      <Text style={styles.liveBadgeText}>{getStatusLabel(fixture)}</Text>
+                      <Text style={styles.liveBadgeText}>{getGameStatusLabel(game)}</Text>
                     </View>
-                    <Text style={styles.liveLeagueText}>{fixture.leagueName}</Text>
+                    <Text style={styles.liveLeagueText}>{game.leagueName}</Text>
                   </View>
                   <View style={styles.liveScoresBlock}>
                     <View style={styles.liveTeamRow}>
                       <View style={styles.liveTeamLeft}>
-                        <TeamLogo uri={fixture.homeTeam.logo} size={24} />
-                        <Text style={styles.liveTeamName}>{fixture.homeTeam.name}</Text>
+                        <TeamLogo uri={game.homeTeam?.logo} size={24} />
+                        <Text style={styles.liveTeamName}>{game.homeTeam?.name}</Text>
                       </View>
-                      <Text style={styles.liveScoreValue}>{fixture.homeGoals}</Text>
+                      <Text style={styles.liveScoreValue}>{game.homeTotal ?? '-'}</Text>
                     </View>
                     <View style={styles.liveTeamRow}>
                       <View style={styles.liveTeamLeft}>
-                        <TeamLogo uri={fixture.awayTeam.logo} size={24} />
-                        <Text style={styles.liveTeamName}>{fixture.awayTeam.name}</Text>
+                        <TeamLogo uri={game.awayTeam?.logo} size={24} />
+                        <Text style={styles.liveTeamName}>{game.awayTeam?.name}</Text>
                       </View>
-                      <Text style={styles.liveScoreValue}>{fixture.awayGoals}</Text>
+                      <Text style={styles.liveScoreValue}>{game.awayTotal ?? '-'}</Text>
                     </View>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-
-        {/* Today's Matches */}
-        {filteredToday.length > 0 && (
-          <View style={styles.sectionWrap}>
-            <Text style={styles.sectionHeading}>TODAY'S MATCHES</Text>
-            {filteredToday.map((fixture) => (
-              <TouchableOpacity
-                key={fixture.apiId}
-                style={styles.todayCard}
-                onPress={() => navigation.navigate('MatchPrediction', { fixtureApiId: fixture.apiId })}
-                activeOpacity={0.7}
-              >
-                <View style={styles.todayLeagueRow}>
-                  {fixture.leagueLogo ? (
-                    <Image
-                      source={{ uri: fixture.leagueLogo }}
-                      style={styles.todayLeagueLogo}
-                      resizeMode="contain"
-                    />
-                  ) : null}
-                  <Text style={styles.todayLeagueName}>{fixture.leagueName}</Text>
-                  <Text style={styles.todayRound}>{fixture.leagueRound}</Text>
-                </View>
-                <View style={styles.todayMatchRow}>
-                  <View style={styles.todayTeamCol}>
-                    <TeamLogo uri={fixture.homeTeam.logo} size={36} />
-                    <Text style={styles.todayTeamName} numberOfLines={1}>
-                      {fixture.homeTeam.name}
-                    </Text>
-                  </View>
-                  <View style={styles.todayScoreCol}>
-                    {fixture.status === 'NS' || fixture.status === 'TBD' ? (
-                      <Text style={styles.todayTimeText}>
-                        {new Date(fixture.date).toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </Text>
-                    ) : (
-                      <View style={styles.todayScoreRow}>
-                        <Text style={styles.todayScore}>{fixture.homeGoals}</Text>
-                        <Text style={styles.todayScoreDivider}>-</Text>
-                        <Text style={styles.todayScore}>{fixture.awayGoals}</Text>
-                      </View>
-                    )}
-                    <View
-                      style={[
-                        styles.todayStatusBadge,
-                        LIVE_STATUSES.includes(fixture.status) && styles.todayStatusLive,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.todayStatusText,
-                          LIVE_STATUSES.includes(fixture.status) && styles.todayStatusTextLive,
-                        ]}
-                      >
-                        {getStatusLabel(fixture)}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={styles.todayTeamCol}>
-                    <TeamLogo uri={fixture.awayTeam.logo} size={36} />
-                    <Text style={styles.todayTeamName} numberOfLines={1}>
-                      {fixture.awayTeam.name}
-                    </Text>
                   </View>
                 </View>
               </TouchableOpacity>
@@ -323,157 +305,146 @@ export function DashboardScreen({ navigation }: Props) {
         )}
 
         {/* Recent Results */}
-        {filteredRecent.length > 0 && (
+        {recentGames.length > 0 && (
           <View style={styles.sectionWrap}>
             <View style={styles.sectionHeader}>
               <MaterialCommunityIcons name="clock-check-outline" size={18} color={colors.primary} />
-              <Text style={styles.sectionHeadingRow}>RECENT RESULTS</Text>
+              <Text style={styles.sectionHeadingRow}>
+                {isF1 ? 'RECENT RACES' : 'RECENT RESULTS'}
+              </Text>
             </View>
-            {filteredRecent.slice(0, 15).map((fixture) => (
+            {recentGames.slice(0, 15).map((game) => (
               <TouchableOpacity
-                key={fixture.apiId}
+                key={game.apiId || game._id}
                 style={styles.todayCard}
-                onPress={() => navigation.navigate('MatchPrediction', { fixtureApiId: fixture.apiId })}
+                onPress={() => navigation.navigate('MatchPrediction', { fixtureApiId: game.apiId, sport: activeSport })}
                 activeOpacity={0.7}
               >
-                <View style={styles.todayLeagueRow}>
-                  {fixture.leagueLogo ? (
-                    <Image
-                      source={{ uri: fixture.leagueLogo }}
-                      style={styles.todayLeagueLogo}
-                      resizeMode="contain"
-                    />
-                  ) : null}
-                  <Text style={styles.todayLeagueName}>{fixture.leagueName}</Text>
-                  <Text style={styles.recentDateText}>{formatFixtureTime(fixture.date)}</Text>
-                </View>
-                <View style={styles.todayMatchRow}>
-                  <View style={styles.todayTeamCol}>
-                    <TeamLogo uri={fixture.homeTeam.logo} size={28} />
-                    <Text style={styles.todayTeamName} numberOfLines={1}>
-                      {fixture.homeTeam.name}
-                    </Text>
+                {isF1 ? (
+                  <View style={styles.f1RaceRow}>
+                    <View style={styles.f1RaceInfo}>
+                      <Text style={styles.f1RaceName}>{game.competitionName || game.leagueName}</Text>
+                      <Text style={styles.f1CircuitName}>
+                        {game.circuit?.name ?? ''} {game.circuit?.country ? `- ${game.circuit.country}` : ''}
+                      </Text>
+                      <Text style={styles.recentDateText}>{formatGameTime(game.date)}</Text>
+                    </View>
+                    <View style={styles.f1StatusBadge}>
+                      <Text style={styles.f1StatusText}>{game.status}</Text>
+                    </View>
                   </View>
-                  <View style={styles.todayScoreCol}>
-                    <Text style={styles.todayScoreText}>
-                      {fixture.homeGoals ?? '-'}
-                    </Text>
-                    <Text style={styles.todayScoreDivider}>-</Text>
-                    <Text style={styles.todayScoreText}>
-                      {fixture.awayGoals ?? '-'}
-                    </Text>
-                  </View>
-                  <View style={styles.todayTeamCol}>
-                    <TeamLogo uri={fixture.awayTeam.logo} size={28} />
-                    <Text style={styles.todayTeamName} numberOfLines={1}>
-                      {fixture.awayTeam.name}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.recentStatusRow}>
-                  <Text style={styles.recentStatusText}>FT</Text>
-                  {fixture.leagueRound ? (
-                    <Text style={styles.recentRoundText}>{fixture.leagueRound}</Text>
-                  ) : null}
-                </View>
+                ) : (
+                  <>
+                    <View style={styles.todayLeagueRow}>
+                      {game.leagueLogo ? (
+                        <Image
+                          source={{ uri: game.leagueLogo }}
+                          style={styles.todayLeagueLogo}
+                          resizeMode="contain"
+                        />
+                      ) : null}
+                      <Text style={styles.todayLeagueName}>{game.leagueName}</Text>
+                      <Text style={styles.recentDateText}>{formatGameTime(game.date)}</Text>
+                    </View>
+                    <View style={styles.todayMatchRow}>
+                      <View style={styles.todayTeamCol}>
+                        <TeamLogo uri={game.homeTeam?.logo} size={28} />
+                        <Text style={styles.todayTeamName} numberOfLines={1}>
+                          {game.homeTeam?.name}
+                        </Text>
+                      </View>
+                      <View style={styles.todayScoreCol}>
+                        <Text style={styles.todayScoreText}>
+                          {game.homeTotal ?? '-'}
+                        </Text>
+                        <Text style={styles.todayScoreDivider}>-</Text>
+                        <Text style={styles.todayScoreText}>
+                          {game.awayTotal ?? '-'}
+                        </Text>
+                      </View>
+                      <View style={styles.todayTeamCol}>
+                        <TeamLogo uri={game.awayTeam?.logo} size={28} />
+                        <Text style={styles.todayTeamName} numberOfLines={1}>
+                          {game.awayTeam?.name}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.recentStatusRow}>
+                      <Text style={styles.recentStatusText}>FT</Text>
+                    </View>
+                  </>
+                )}
               </TouchableOpacity>
             ))}
           </View>
         )}
 
-        {/* Upcoming Thrillers */}
-        {filteredUpcoming.length > 0 && (
+        {/* Upcoming */}
+        {upcomingGames.length > 0 && (
           <View style={styles.sectionWrap}>
-            <Text style={styles.thrillersHeading}>UPCOMING MATCHES</Text>
+            <Text style={styles.thrillersHeading}>
+              {isF1 ? 'UPCOMING RACES' : 'UPCOMING MATCHES'}
+            </Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.gameCardsRow}
             >
-              {filteredUpcoming.map((fixture) => (
+              {upcomingGames.map((game) => (
                 <TouchableOpacity
-                  key={fixture.apiId}
+                  key={game.apiId || game._id}
                   style={styles.gameCard}
                   onPress={() =>
-                    navigation.navigate('MatchPrediction', { fixtureApiId: fixture.apiId })
+                    navigation.navigate('MatchPrediction', { fixtureApiId: game.apiId, sport: activeSport })
                   }
                   activeOpacity={0.7}
                 >
-                  <View style={styles.gameCardTop}>
-                    <Text style={styles.gameCardLeague}>
-                      {fixture.leagueName} {'\u2022'} {formatFixtureTime(fixture.date)}
-                    </Text>
-                  </View>
-                  <View style={styles.gameTeamsRow}>
-                    <View style={styles.gameTeamCol}>
-                      <TeamLogo uri={fixture.homeTeam.logo} size={40} />
-                      <Text style={styles.gameTeamName} numberOfLines={2}>
-                        {fixture.homeTeam.name}
+                  {isF1 ? (
+                    <View style={styles.f1UpcomingCard}>
+                      <Text style={styles.gameCardLeague}>
+                        {game.competitionName || game.leagueName}
                       </Text>
-                    </View>
-                    <Text style={styles.gameVsLabel}>VS</Text>
-                    <View style={styles.gameTeamCol}>
-                      <TeamLogo uri={fixture.awayTeam.logo} size={40} />
-                      <Text style={styles.gameTeamName} numberOfLines={2}>
-                        {fixture.awayTeam.name}
+                      <Text style={styles.f1CircuitName}>
+                        {game.circuit?.name ?? ''}
                       </Text>
+                      <Text style={styles.f1CircuitLocation}>
+                        {game.circuit?.city ?? ''}{game.circuit?.country ? `, ${game.circuit.country}` : ''}
+                      </Text>
+                      <Text style={styles.f1DateTime}>{formatGameTime(game.date)}</Text>
                     </View>
-                  </View>
-                  {fixture.leagueRound ? (
-                    <Text style={styles.gameRound}>{fixture.leagueRound}</Text>
-                  ) : null}
+                  ) : (
+                    <>
+                      <View style={styles.gameCardTop}>
+                        <Text style={styles.gameCardLeague}>
+                          {game.leagueName} {'\u2022'} {formatGameTime(game.date)}
+                        </Text>
+                      </View>
+                      <View style={styles.gameTeamsRow}>
+                        <View style={styles.gameTeamCol}>
+                          <TeamLogo uri={game.homeTeam?.logo} size={40} />
+                          <Text style={styles.gameTeamName} numberOfLines={2}>
+                            {game.homeTeam?.name}
+                          </Text>
+                        </View>
+                        <Text style={styles.gameVsLabel}>VS</Text>
+                        <View style={styles.gameTeamCol}>
+                          <TeamLogo uri={game.awayTeam?.logo} size={40} />
+                          <Text style={styles.gameTeamName} numberOfLines={2}>
+                            {game.awayTeam?.name}
+                          </Text>
+                        </View>
+                      </View>
+                    </>
+                  )}
                 </TouchableOpacity>
               ))}
             </ScrollView>
           </View>
         )}
 
-        {/* Featured Leagues */}
-        <View style={styles.sectionWrap}>
-          <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="trophy" size={20} color={colors.primary} />
-            <Text style={styles.sectionHeadingRow}>FEATURED LEAGUES</Text>
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.leaguesRow}
-          >
-            {(data?.featuredLeagues ?? []).map((league) => (
-              <TouchableOpacity
-                key={league.apiId}
-                style={styles.leagueCard}
-                onPress={() =>
-                  navigation.navigate('LeagueDetail', {
-                    leagueApiId: league.apiId,
-                    leagueName: league.name,
-                  })
-                }
-                activeOpacity={0.7}
-              >
-                {league.logo ? (
-                  <Image
-                    source={{ uri: league.logo }}
-                    style={styles.leagueCardLogo}
-                    resizeMode="contain"
-                  />
-                ) : (
-                  <View style={styles.leagueCardFallback}>
-                    <Ionicons name="football" size={24} color={colors.onSurfaceVariant} />
-                  </View>
-                )}
-                <Text style={styles.leagueCardName} numberOfLines={2}>
-                  {league.name}
-                </Text>
-                {league.countryFlag ? (
-                  <Text style={styles.leagueCardCountry}>{league.countryName}</Text>
-                ) : null}
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+        {/* (League navigation is now at the top of the scroll view) */}
 
-        {/* Challenge of the Day (kept static - product feature) */}
+        {/* Challenge of the Day */}
         <View style={styles.challengeCard}>
           <View style={styles.challengeGlow} />
           <View style={styles.challengeTitleRow}>
@@ -482,9 +453,9 @@ export function DashboardScreen({ navigation }: Props) {
           </View>
           <View style={styles.challengeContent}>
             <Text style={styles.challengeBoostTag}>DOUBLE BOOST</Text>
-            <Text style={styles.challengeName}>European Giants{'\n'}Challenge</Text>
+            <Text style={styles.challengeName}>Multi-Sport{'\n'}Challenge</Text>
             <View style={styles.challengeChecklist}>
-              {['Real Madrid win prediction', 'Bayern Munich Over 1.5 Goals', 'Inter Milan Clean Sheet'].map(
+              {['Pick 3 correct outcomes', 'Cover at least 2 sports', 'Earn bonus rewards'].map(
                 (item, idx) => (
                   <View key={idx} style={styles.challengeCheckRow}>
                     <Ionicons name="checkmark-circle-outline" size={15} color={colors.primary} />
@@ -507,18 +478,17 @@ export function DashboardScreen({ navigation }: Props) {
         </View>
 
         {/* Empty State */}
-        {!data?.liveMatches?.length &&
-          !filteredToday.length &&
-          !filteredUpcoming.length &&
-          !filteredRecent.length && (
-            <View style={styles.emptyState}>
-              <Ionicons name="football-outline" size={48} color={colors.onSurfaceVariant} />
-              <Text style={styles.emptyTitle}>No matches found</Text>
-              <Text style={styles.emptySubtitle}>
-                Pull down to refresh or check back later
-              </Text>
-            </View>
-          )}
+        {!liveGames.length && !recentGames.length && !upcomingGames.length && (
+          <View style={styles.emptyState}>
+            <Ionicons name="trophy-outline" size={48} color={colors.onSurfaceVariant} />
+            <Text style={styles.emptyTitle}>No games available</Text>
+            <Text style={styles.emptySubtitle}>
+              {featuredLeagues.length > 0
+                ? `Tap the ${featuredLeagues.length === 1 ? 'league above' : 'leagues'} to see standings and details`
+                : 'Pull down to refresh or check back later'}
+            </Text>
+          </View>
+        )}
 
         <View style={{ height: 80 }} />
       </ScrollView>
@@ -542,28 +512,60 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
-  // Tabs
-  tabsScroll: { maxHeight: 40, marginBottom: 8 },
-  tabsContent: { paddingHorizontal: 24, gap: 8, alignItems: 'center' },
-  tab: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 12,
+  // Sport Tabs
+  sportTabsScroll: { maxHeight: 44, marginBottom: 4 },
+  sportTabsContent: { paddingHorizontal: 16, gap: 6, alignItems: 'center' },
+  sportTab: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
     backgroundColor: colors.surfaceContainerHighest,
   },
-  tabActive: { backgroundColor: colors.primary },
-  tabInner: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  tabLabel: {
+  sportTabActive: { backgroundColor: colors.primary },
+  sportTabLabel: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 18,
     color: colors.onSurface,
-    maxWidth: 100,
   },
-  tabLabelActive: { color: '#4A5E00' },
-  tabLeagueLogo: { width: 16, height: 16 },
+  sportTabLabelActive: { color: '#4A5E00' },
+
 
   scrollView: { flex: 1 },
+
+  leagueCardsScroll: { paddingHorizontal: 16, gap: 10, paddingVertical: 12 },
+  leagueNavCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    minWidth: 180,
+  },
+  leagueNavLogo: { width: 32, height: 32 },
+  leagueNavFallback: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: colors.surfaceContainerHighest,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  leagueNavInfo: { flex: 1, gap: 1 },
+  leagueNavName: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.onSurface,
+  },
+  leagueNavCountry: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 10,
+    lineHeight: 14,
+    color: colors.onSurfaceVariant,
+  },
   sectionWrap: { paddingHorizontal: 16, marginBottom: 24 },
 
   // Predictor Card
@@ -641,15 +643,6 @@ const styles = StyleSheet.create({
 
   // Section Headers
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
-  sectionHeading: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 18,
-    lineHeight: 28,
-    color: colors.onSurface,
-    letterSpacing: -0.45,
-    textTransform: 'uppercase',
-    marginBottom: 16,
-  },
   sectionHeadingRow: {
     fontFamily: 'SpaceGrotesk_700Bold',
     fontSize: 18,
@@ -726,7 +719,7 @@ const styles = StyleSheet.create({
     color: colors.onSurface,
   },
 
-  // Today's Matches
+  // Game Cards (today/recent)
   todayCard: {
     backgroundColor: colors.surfaceContainerLow,
     borderRadius: 8,
@@ -743,12 +736,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     textTransform: 'uppercase',
     flex: 1,
-  },
-  todayRound: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 10,
-    lineHeight: 15,
-    color: colors.onSurfaceDim,
   },
   recentDateText: {
     fontFamily: 'Inter_500Medium',
@@ -772,11 +759,6 @@ const styles = StyleSheet.create({
     color: colors.primary,
     letterSpacing: 1,
   },
-  recentRoundText: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 10,
-    color: colors.onSurfaceDim,
-  },
   todayMatchRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -790,12 +772,11 @@ const styles = StyleSheet.create({
     color: colors.onSurface,
     textAlign: 'center',
   },
-  todayScoreCol: { alignItems: 'center', gap: 4, paddingHorizontal: 16 },
-  todayScoreRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  todayScore: {
+  todayScoreCol: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 16 },
+  todayScoreText: {
     fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 24,
-    lineHeight: 32,
+    fontSize: 20,
+    lineHeight: 28,
     color: colors.onSurface,
   },
   todayScoreDivider: {
@@ -804,27 +785,52 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     color: colors.onSurfaceVariant,
   },
-  todayTimeText: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 16,
-    lineHeight: 24,
-    color: colors.primary,
+
+  // F1 specific
+  f1RaceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
-  todayStatusBadge: {
+  f1RaceInfo: { flex: 1, gap: 4 },
+  f1RaceName: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.onSurface,
+  },
+  f1CircuitName: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 12,
+    lineHeight: 16,
+    color: colors.onSurfaceVariant,
+  },
+  f1CircuitLocation: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 11,
+    lineHeight: 16,
+    color: colors.onSurfaceDim,
+  },
+  f1DateTime: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 11,
+    lineHeight: 16,
+    color: colors.primary,
+    marginTop: 4,
+  },
+  f1StatusBadge: {
     backgroundColor: colors.surfaceContainerHighest,
     borderRadius: 4,
     paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingVertical: 4,
   },
-  todayStatusLive: { backgroundColor: 'rgba(255,116,57,0.15)' },
-  todayStatusText: {
+  f1StatusText: {
     fontFamily: 'Inter_700Bold',
     fontSize: 10,
-    lineHeight: 15,
-    color: colors.onSurfaceVariant,
+    color: colors.primary,
     letterSpacing: 0.5,
   },
-  todayStatusTextLive: { color: colors.tertiaryLight },
+  f1UpcomingCard: { gap: 6 },
 
   // Upcoming
   thrillersHeading: {
@@ -870,47 +876,7 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     color: colors.onSurfaceVariant,
   },
-  gameRound: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 10,
-    lineHeight: 15,
-    color: colors.onSurfaceDim,
-    textAlign: 'center',
-  },
 
-  // Featured Leagues
-  leaguesRow: { gap: 12, paddingRight: 16 },
-  leagueCard: {
-    backgroundColor: colors.surfaceContainerLow,
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-    gap: 8,
-    width: 110,
-  },
-  leagueCardLogo: { width: 48, height: 48 },
-  leagueCardFallback: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: colors.surfaceContainerHighest,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  leagueCardName: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 11,
-    lineHeight: 15,
-    color: colors.onSurface,
-    textAlign: 'center',
-  },
-  leagueCardCountry: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 10,
-    lineHeight: 14,
-    color: colors.onSurfaceVariant,
-    textAlign: 'center',
-  },
 
   // Challenge
   challengeCard: {

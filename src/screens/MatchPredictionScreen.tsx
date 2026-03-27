@@ -112,7 +112,7 @@ const STAT_KEYS = [
 
 export function MatchPredictionScreen({ navigation }: Props) {
   const route = useRoute<any>();
-  const { fixtureApiId } = route.params as { fixtureApiId: number };
+  const { fixtureApiId, sport } = route.params as { fixtureApiId: number; sport?: string };
   const { tokens } = useAuth();
   const [fixture, setFixture] = useState<Fixture | null>(null);
   const [loading, setLoading] = useState(true);

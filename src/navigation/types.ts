@@ -12,8 +12,8 @@ export type AuthStackParamList = {
 // Home tab nested stack (Dashboard -> MatchPrediction -> PickSummary)
 export type HomeStackParamList = {
   DashboardHome: undefined;
-  LeagueDetail: { leagueApiId: number; leagueName: string };
-  MatchPrediction: { fixtureApiId: number };
+  LeagueDetail: { leagueApiId: number; leagueName: string; sport: string };
+  MatchPrediction: { fixtureApiId: number; sport?: string };
   PickSummary: undefined;
 };
 
@@ -34,7 +34,7 @@ export type ProfileStackParamList = {
 // Live tab nested stack
 export type LiveStackParamList = {
   LiveHome: undefined;
-  LiveMatchPrediction: { fixtureApiId: number };
+  LiveMatchPrediction: { fixtureApiId: number; sport?: string };
   LivePickSummary: undefined;
 };
 
