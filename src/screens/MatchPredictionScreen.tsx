@@ -10,7 +10,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useRoute } from '@react-navigation/native';
-import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import { footballApi } from '../api';
@@ -148,10 +148,10 @@ export function MatchPredictionScreen({ navigation }: Props) {
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={22} color={colors.onSurface} />
+            <Ionicons name="chevron-back" size={22} color={colors.onSurface} />
           </TouchableOpacity>
-          <Text style={styles.brandText}>KINETIC</Text>
-          <View style={{ width: 30 }} />
+          <Text style={styles.headerTitle}>Match Details</Text>
+          <View style={{ width: 40 }} />
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
@@ -165,10 +165,10 @@ export function MatchPredictionScreen({ navigation }: Props) {
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={22} color={colors.onSurface} />
+            <Ionicons name="chevron-back" size={22} color={colors.onSurface} />
           </TouchableOpacity>
-          <Text style={styles.brandText}>KINETIC</Text>
-          <View style={{ width: 30 }} />
+          <Text style={styles.headerTitle}>Match Details</Text>
+          <View style={{ width: 40 }} />
         </View>
         <View style={styles.loadingContainer}>
           <Ionicons name="alert-circle-outline" size={48} color={colors.onSurfaceVariant} />
@@ -194,12 +194,20 @@ export function MatchPredictionScreen({ navigation }: Props) {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color={colors.onSurface} />
+          <Ionicons name="chevron-back" size={22} color={colors.onSurface} />
         </TouchableOpacity>
-        <Text style={styles.brandText}>KINETIC</Text>
-        <TouchableOpacity>
-          <Feather name="bell" size={22} color={colors.onSurface} />
-        </TouchableOpacity>
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {fixture.leagueName || 'Match Details'}
+        </Text>
+        {fixture.leagueLogo ? (
+          <Image
+            source={{ uri: fixture.leagueLogo }}
+            style={{ width: 28, height: 28 }}
+            resizeMode="contain"
+          />
+        ) : (
+          <View style={{ width: 28 }} />
+        )}
       </View>
 
       <ScrollView
@@ -457,12 +465,21 @@ const styles = StyleSheet.create({
     paddingTop: 56,
     paddingBottom: 12,
   },
-  backBtn: { padding: 4 },
-  brandText: {
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceContainerLow,
+  },
+  headerTitle: {
+    flex: 1,
     fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 20,
-    color: colors.primary,
-    letterSpacing: 1,
+    fontSize: 17,
+    color: colors.onSurface,
+    textAlign: 'center',
+    letterSpacing: -0.3,
   },
 
   // Status Badge

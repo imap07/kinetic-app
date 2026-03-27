@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Ionicons, Feather } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius } from '../theme';
 import { HomeStackParamList } from '../navigation/types';
 
@@ -53,12 +53,10 @@ export function PickSummaryScreen({ navigation }: Props) {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color={colors.onSurface} />
+          <Ionicons name="chevron-back" size={22} color={colors.onSurface} />
         </TouchableOpacity>
-        <Text style={styles.brandText}>KINETIC</Text>
-        <TouchableOpacity>
-          <Feather name="bell" size={22} color={colors.onSurface} />
-        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Pick Summary</Text>
+        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -211,15 +209,22 @@ const styles = StyleSheet.create({
     paddingTop: 56,
     paddingBottom: 12,
   },
-  backBtn: { padding: 4 },
-  backArrow: { color: colors.onSurface, fontSize: 22 },
-  brandText: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 20,
-    color: colors.primary,
-    letterSpacing: 1,
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceContainerLow,
   },
-  headerIcon: { fontSize: 20 },
+  headerTitle: {
+    flex: 1,
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 17,
+    color: colors.onSurface,
+    textAlign: 'center',
+    letterSpacing: -0.3,
+  },
 
   titleSection: {
     paddingHorizontal: spacing.lg,
