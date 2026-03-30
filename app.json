@@ -3,12 +3,6 @@
     "name": "Kinetic",
     "slug": "kinetic-app",
     "version": "1.0.0",
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/fa9ef7e4-a38e-414e-980e-965ddd976b1a"
-    },
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -22,6 +16,7 @@
       "bundleIdentifier": "io.kinetic.app",
       "usesAppleSignIn": true,
       "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "Kinetic uses your camera to update your profile photo.",
         "NSPhotoLibraryUsageDescription": "Kinetic accesses your photo library to update your profile photo."
       }
