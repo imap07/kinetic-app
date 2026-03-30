@@ -2,7 +2,7 @@ name: EAS Build
 
 on:
   push:
-    branches: [main, develop]
+    branches: [develop]
   workflow_dispatch:
     inputs:
       profile:
@@ -23,6 +23,11 @@ on:
           - all
           - ios
           - android
+      submit:
+        description: 'Auto-submit iOS to TestFlight/App Store'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   build:
@@ -47,7 +52,7 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      # develop → preview builds
+      # develop → preview builds (iOS + Android)
       - name: Build iOS preview (develop)
         if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
         run: eas build --platform ios --profile preview --non-interactive
@@ -56,24 +61,24 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
         run: eas build --platform android --profile preview --non-interactive
 
-      # main → production builds + auto-submit iOS to App Store/TestFlight
+      # Manual trigger
       - name: Write ASC API Key
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.submit == 'true'
         run: echo "${{ secrets.ASC_API_KEY }}" > /tmp/asc_api_key.p8
 
-      - name: Build iOS production + submit (main)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: eas build --platform ios --profile production --non-interactive --auto-submit
-
-      - name: Build Android production (main)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: eas build --platform android --profile production --non-interactive
-
-      # Manual trigger
-      - name: Build (manual trigger)
-        if: github.event_name == 'workflow_dispatch'
+      - name: Build (manual)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.submit != 'true'
         run: |
           eas build \
             --platform ${{ github.event.inputs.platform }} \
             --profile ${{ github.event.inputs.profile }} \
             --non-interactive
+
+      - name: Build + Submit (manual)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.submit == 'true'
+        run: |
+          eas build \
+            --platform ${{ github.event.inputs.platform }} \
+            --profile ${{ github.event.inputs.profile }} \
+            --non-interactive \
+            --auto-submit
