@@ -32,7 +32,7 @@
   "submit": {
     "preview": {
       "ios": {
-        "ascAppId": "3K83UJF3AS",
+        "ascAppId": "6761208961",
         "appleTeamId": "R54HZ7DNY8",
         "ascApiKeyPath": "/tmp/asc_api_key.p8",
         "ascApiKeyIssuerId": "5bd15d4c-01ca-4201-8412-665ce4fd76af",
@@ -41,7 +41,7 @@
     },
     "production": {
       "ios": {
-        "ascAppId": "3K83UJF3AS",
+        "ascAppId": "6761208961",
         "appleTeamId": "R54HZ7DNY8",
         "ascApiKeyPath": "/tmp/asc_api_key.p8",
         "ascApiKeyIssuerId": "5bd15d4c-01ca-4201-8412-665ce4fd76af",
