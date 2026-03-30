@@ -33,13 +33,11 @@
   "submit": {
     "production": {
       "ios": {
-        "appleId": "hello@redakcode.com",
         "ascAppId": "3K83UJF3AS",
-        "appleTeamId": "R54HZ7DNY8"
-      },
-      "android": {
-        "serviceAccountKeyPath": "./google-play-service-account.json",
-        "track": "internal"
+        "appleTeamId": "R54HZ7DNY8",
+        "ascApiKeyPath": "/tmp/asc_api_key.p8",
+        "ascApiKeyIssuerId": "5bd15d4c-01ca-4201-8412-665ce4fd76af",
+        "ascApiKeyId": "RJ5M2V7A6Y"
       }
     }
   }
