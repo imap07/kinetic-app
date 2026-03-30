@@ -47,20 +47,21 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Write ASC API Key
-        run: echo "${{ secrets.ASC_API_KEY }}" > /tmp/asc_api_key.p8
-
-      # develop → preview build + auto-submit iOS a TestFlight
-      - name: Build iOS preview + submit to TestFlight (develop)
+      # develop → preview builds
+      - name: Build iOS preview (develop)
         if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
-        run: eas build --platform ios --profile preview --non-interactive --auto-submit
+        run: eas build --platform ios --profile preview --non-interactive
 
       - name: Build Android preview (develop)
         if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
         run: eas build --platform android --profile preview --non-interactive
 
-      # main → production build + auto-submit iOS directo a App Store
-      - name: Build iOS production + submit to App Store (main)
+      # main → production builds + auto-submit iOS to App Store/TestFlight
+      - name: Write ASC API Key
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: echo "${{ secrets.ASC_API_KEY }}" > /tmp/asc_api_key.p8
+
+      - name: Build iOS production + submit (main)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: eas build --platform ios --profile production --non-interactive --auto-submit
 
@@ -75,5 +76,4 @@ jobs:
           eas build \
             --platform ${{ github.event.inputs.platform }} \
             --profile ${{ github.event.inputs.profile }} \
-            --non-interactive \
-            ${{ (github.event.inputs.profile == 'preview' || github.event.inputs.profile == 'production') && github.event.inputs.platform != 'android' && '--auto-submit' || '' }}
+            --non-interactive
