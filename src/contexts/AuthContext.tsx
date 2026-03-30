@@ -1,8 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authApi, ApiError } from '../api';
-import type { AuthTokens, User, SocialProvider, UpdateProfileData } from '../api';
+import type { AuthTokens, User, SocialProvider, UpdateProfileData, UpdatePreferencesData } from '../api';
 import { signOutFromGoogle } from '../services/googleAuth';
+import { ONBOARDING_COMPLETE_KEY } from '../screens/OnboardingScreen';
 
 const ACCESS_TOKEN_KEY = 'kinetic_access_token';
 const REFRESH_TOKEN_KEY = 'kinetic_refresh_token';
@@ -28,6 +30,9 @@ interface AuthContextValue extends AuthState {
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   updateProfile: (data: UpdateProfileData) => Promise<User>;
+  updatePreferences: (prefs: UpdatePreferencesData) => Promise<User>;
+  uploadAvatar: (fileUri: string, fileName: string, mimeType: string) => Promise<User>;
+  deleteAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -174,6 +179,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Ignore Google sign-out errors
     }
     await clearTokens();
+    await AsyncStorage.removeItem(ONBOARDING_COMPLETE_KEY);
     clearAuth();
   }, [clearAuth]);
 
@@ -195,6 +201,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  const updatePreferences = useCallback(
+    async (prefs: UpdatePreferencesData): Promise<User> => {
+      const token = tokensRef.current?.accessToken;
+      if (!token) throw new Error('Not authenticated');
+      const { user } = await authApi.updatePreferences(token, prefs);
+      setState((s) => ({ ...s, user }));
+      return user;
+    },
+    [],
+  );
+
+  const uploadAvatar = useCallback(
+    async (fileUri: string, fileName: string, mimeType: string): Promise<User> => {
+      const token = tokensRef.current?.accessToken;
+      if (!token) throw new Error('Not authenticated');
+      const { user } = await authApi.uploadAvatar(token, fileUri, fileName, mimeType);
+      setState((s) => ({ ...s, user }));
+      return user;
+    },
+    [],
+  );
+
+  const deleteAccount = useCallback(async () => {
+    const token = tokensRef.current?.accessToken;
+    if (!token) throw new Error('Not authenticated');
+    await authApi.deleteAccount(token);
+    await clearTokens();
+    clearAuth();
+  }, [clearAuth]);
+
   const value: AuthContextValue = {
     ...state,
     loginWithEmail,
@@ -206,6 +242,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     logout,
     refreshProfile,
     updateProfile,
+    updatePreferences,
+    uploadAvatar,
+    deleteAccount,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -2,19 +2,23 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, borderRadius, spacing } from '../theme';
 import { usePurchases } from '../contexts/PurchasesContext';
+import type { RootStackParamList } from '../navigation/types';
 
 const FEATURES = [
-  'Make picks on real matches',
-  'Compete on live leaderboards',
-  'Pro-grade market insights',
-  'Track results in real-time',
-  'Advanced analytics & trends',
+  'Unlimited daily predictions',
+  'All 6 sports unlocked',
+  'Exact Score predictions (2.5x bonus)',
+  'Detailed stats & weekly trends',
+  'Full leaderboard access',
 ];
 
 export function ProUpgradeBanner() {
-  const { isProMember, presentPaywall } = usePurchases();
+  const { isProMember } = usePurchases();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   if (isProMember) return null;
 
@@ -51,7 +55,7 @@ export function ProUpgradeBanner() {
         <TouchableOpacity
           activeOpacity={0.85}
           style={styles.ctaWrap}
-          onPress={presentPaywall}
+          onPress={() => navigation.navigate('Paywall', { trigger: 'general' })}
         >
           <LinearGradient
             colors={['#F3FFCA', '#CAFD00']}

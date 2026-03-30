@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,23 +12,51 @@ import {
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Image as ExpoImage } from 'expo-image';
 import { colors } from '../theme';
+import Toast from 'react-native-toast-message';
 import { AppHeader } from '../components/AppHeader';
+import { SportTabs } from '../components/SportTabs';
 import { useAuth } from '../contexts/AuthContext';
-import { sportsApi, SPORT_TABS } from '../api/sports';
+import { usePurchases } from '../contexts/PurchasesContext';
+import { sportsApi, SPORT_TABS, FREE_SPORT } from '../api/sports';
 import type { SportKey, SportDashboard, SportGame } from '../api/sports';
-import type { LiveStackParamList } from '../navigation/types';
+import type { LiveStackParamList, RootStackParamList } from '../navigation/types';
+import { useLiveSSE } from '../hooks/useLiveSSE';
 
 const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'P', 'BT', 'LIVE', 'Q1', 'Q2', 'Q3', 'Q4', 'OT', 'P1', 'P2', 'P3', 'IN1', 'IN2', 'IN3', 'IN4', 'IN5', 'IN6', 'IN7', 'IN8', 'IN9'];
 const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AOT', 'AP', 'POST', 'Completed'];
-const REFRESH_INTERVAL = 30_000;
+const POLLING_FALLBACK_INTERVAL = 60_000;
+
+type DateOption = { label: string; date: Date };
+
+function buildDateOptions(): DateOption[] {
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return [
+    { label: 'Yesterday', date: yesterday },
+    { label: 'Today', date: today },
+    { label: 'Tomorrow', date: tomorrow },
+  ];
+}
+
+function isSameDay(d1: Date, d2: Date): boolean {
+  return (
+    d1.getFullYear() === d2.getFullYear() &&
+    d1.getMonth() === d2.getMonth() &&
+    d1.getDate() === d2.getDate()
+  );
+}
 
 function getGameStatusLabel(game: SportGame): string {
   if (LIVE_STATUSES.includes(game.status)) {
     return game.timer ? `${game.timer}'` : 'LIVE';
   }
   if (FINISHED_STATUSES.includes(game.status)) return game.status === 'Completed' ? 'FIN' : game.status;
-  if (game.status === 'NS') {
+  if (game.status === 'NS' || game.status === 'TBD') {
     return new Date(game.date).toLocaleTimeString([], {
       hour: '2-digit',
       minute: '2-digit',
@@ -37,13 +65,22 @@ function getGameStatusLabel(game: SportGame): string {
   return game.statusLong || game.status;
 }
 
-function TeamLogo({ uri, size = 40 }: { uri?: string; size?: number }) {
+function getStatusType(game: SportGame): 'live' | 'finished' | 'upcoming' {
+  if (LIVE_STATUSES.includes(game.status)) return 'live';
+  if (FINISHED_STATUSES.includes(game.status)) return 'finished';
+  return 'upcoming';
+}
+
+function TeamLogo({ uri, size = 28 }: { uri?: string; size?: number }) {
   if (uri) {
     return (
-      <Image
+      <ExpoImage
         source={{ uri }}
         style={{ width: size, height: size, borderRadius: size / 4 }}
-        resizeMode="contain"
+        contentFit="contain"
+        placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
+        transition={200}
+        cachePolicy="memory-disk"
       />
     );
   }
@@ -63,14 +100,71 @@ function TeamLogo({ uri, size = 40 }: { uri?: string; size?: number }) {
   );
 }
 
+interface LeagueGroup {
+  leagueApiId: number;
+  leagueName: string;
+  leagueLogo?: string;
+  games: SportGame[];
+}
+
+function groupByLeague(games: SportGame[]): LeagueGroup[] {
+  const map = new Map<number, LeagueGroup>();
+  for (const game of games) {
+    const key = game.leagueApiId;
+    if (!map.has(key)) {
+      map.set(key, {
+        leagueApiId: key,
+        leagueName: game.leagueName,
+        leagueLogo: game.leagueLogo,
+        games: [],
+      });
+    }
+    map.get(key)!.games.push(game);
+  }
+  // Sort: leagues with live games first, then by game time
+  const groups = Array.from(map.values());
+  groups.sort((a, b) => {
+    const aHasLive = a.games.some((g) => LIVE_STATUSES.includes(g.status)) ? 0 : 1;
+    const bHasLive = b.games.some((g) => LIVE_STATUSES.includes(g.status)) ? 0 : 1;
+    if (aHasLive !== bHasLive) return aHasLive - bHasLive;
+    const aFirst = new Date(a.games[0].date).getTime();
+    const bFirst = new Date(b.games[0].date).getTime();
+    return aFirst - bFirst;
+  });
+  return groups;
+}
+
 export function LiveScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<LiveStackParamList>>();
+  const rootNav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { tokens } = useAuth();
+  const { isProMember } = usePurchases();
   const [activeSport, setActiveSport] = useState<SportKey>('football');
   const [data, setData] = useState<SportDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const dateOptions = useMemo(buildDateOptions, []);
+  const [selectedDateIdx, setSelectedDateIdx] = useState(1); // default = Today
+
+  // SSE: real-time push from backend
+  const {
+    liveMatches: sseLiveMatches,
+    connected: sseConnected,
+  } = useLiveSSE({
+    sport: activeSport,
+    token: tokens?.accessToken || null,
+    enabled: activeSport === 'football',
+  });
+
+  useEffect(() => {
+    if (sseConnected && sseLiveMatches.length > 0 && data) {
+      setData((prev) =>
+        prev ? { ...prev, liveGames: sseLiveMatches } : prev,
+      );
+    }
+  }, [sseLiveMatches, sseConnected]);
 
   const fetchData = useCallback(async () => {
     if (!tokens?.accessToken) return;
@@ -78,7 +172,7 @@ export function LiveScreen() {
       const result = await sportsApi.getDashboard(tokens.accessToken, activeSport);
       setData(result);
     } catch (err) {
-      console.log('Live fetch error:', err);
+      Toast.show({ type: 'error', text1: 'Error loading games', text2: 'Pull down to try again' });
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -88,11 +182,14 @@ export function LiveScreen() {
   useEffect(() => {
     setLoading(true);
     fetchData();
-    intervalRef.current = setInterval(fetchData, REFRESH_INTERVAL);
+    const pollInterval = sseConnected ? 0 : POLLING_FALLBACK_INTERVAL;
+    if (pollInterval > 0) {
+      intervalRef.current = setInterval(fetchData, pollInterval);
+    }
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [fetchData]);
+  }, [fetchData, sseConnected]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -101,12 +198,50 @@ export function LiveScreen() {
 
   const handleSportChange = useCallback((sport: SportKey) => {
     if (sport === activeSport) return;
+    if (!isProMember && sport !== FREE_SPORT) {
+      const sportMeta = SPORT_TABS.find((t) => t.key === sport);
+      rootNav.navigate('Paywall', {
+        trigger: 'sport_locked',
+        sportName: sportMeta?.name ?? sport,
+      });
+      return;
+    }
     setActiveSport(sport);
     setData(null);
-  }, [activeSport]);
+  }, [activeSport, isProMember, rootNav]);
 
-  const liveGames = data?.liveGames ?? [];
-  const recentGames = data?.recentGames ?? [];
+  // Filter games for selected date
+  const selectedDate = dateOptions[selectedDateIdx].date;
+  const allGames = useMemo(() => {
+    if (!data) return [];
+    const combined = [
+      ...(data.liveGames ?? []),
+      ...(data.recentGames ?? []),
+      ...(data.upcomingGames ?? []),
+    ];
+    // Deduplicate by apiId
+    const seen = new Set<number>();
+    return combined.filter((g) => {
+      if (seen.has(g.apiId)) return false;
+      seen.add(g.apiId);
+      return true;
+    });
+  }, [data]);
+
+  const todayGames = useMemo(() => {
+    return allGames
+      .filter((g) => isSameDay(new Date(g.date), selectedDate))
+      .sort((a, b) => {
+        // Live first, then upcoming by time, then finished
+        const order = { live: 0, upcoming: 1, finished: 2 };
+        const aType = order[getStatusType(a)];
+        const bType = order[getStatusType(b)];
+        if (aType !== bType) return aType - bType;
+        return new Date(a.date).getTime() - new Date(b.date).getTime();
+      });
+  }, [allGames, selectedDate]);
+
+  const leagueGroups = useMemo(() => groupByLeague(todayGames), [todayGames]);
 
   const navigateToGame = (gameApiId: number) => {
     navigation.navigate('LiveMatchPrediction', { fixtureApiId: gameApiId, sport: activeSport });
@@ -116,19 +251,7 @@ export function LiveScreen() {
     return (
       <View style={styles.container}>
         <AppHeader />
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.sportTabsScroll} contentContainerStyle={styles.sportTabsContent}>
-          {SPORT_TABS.map((tab) => (
-            <TouchableOpacity
-              key={tab.key}
-              style={[styles.sportTab, activeSport === tab.key && styles.sportTabActive]}
-              onPress={() => handleSportChange(tab.key)}
-            >
-              <Text style={[styles.sportTabLabel, activeSport === tab.key && styles.sportTabLabelActive]}>
-                {tab.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        <SportTabs activeSport={activeSport} onSportChange={handleSportChange} isProMember={isProMember} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -136,155 +259,142 @@ export function LiveScreen() {
     );
   }
 
+  const liveCount = todayGames.filter((g) => LIVE_STATUSES.includes(g.status)).length;
+
   return (
     <View style={styles.container}>
       <AppHeader />
+      <SportTabs activeSport={activeSport} onSportChange={handleSportChange} isProMember={isProMember} />
 
-      {/* Sport Tabs */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.sportTabsScroll} contentContainerStyle={styles.sportTabsContent}>
-        {SPORT_TABS.map((tab) => (
+      {/* Date pills */}
+      <View style={styles.datePills}>
+        {dateOptions.map((opt, idx) => (
           <TouchableOpacity
-            key={tab.key}
-            style={[styles.sportTab, activeSport === tab.key && styles.sportTabActive]}
-            onPress={() => handleSportChange(tab.key)}
+            key={idx}
+            style={[styles.datePill, idx === selectedDateIdx && styles.datePillActive]}
+            onPress={() => setSelectedDateIdx(idx)}
+            activeOpacity={0.7}
           >
-            <Text style={[styles.sportTabLabel, activeSport === tab.key && styles.sportTabLabelActive]}>
-              {tab.name}
+            <Text style={[styles.datePillText, idx === selectedDateIdx && styles.datePillTextActive]}>
+              {opt.label}
             </Text>
           </TouchableOpacity>
         ))}
-      </ScrollView>
+      </View>
 
       <ScrollView
         style={styles.scroll}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
       >
-        {/* Live Matches */}
-        {liveGames.length > 0 ? (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.liveDot} />
-              <Text style={styles.sectionTitle}>LIVE NOW</Text>
-              <Text style={styles.matchCount}>{liveGames.length}</Text>
-            </View>
-            {liveGames.map((game) => (
-              <TouchableOpacity
-                key={game.apiId || game._id}
-                style={styles.matchCard}
-                onPress={() => navigateToGame(game.apiId)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.liveAccent} />
-                <View style={styles.matchLeagueRow}>
-                  {game.leagueLogo ? (
-                    <Image
-                      source={{ uri: game.leagueLogo }}
-                      style={styles.matchLeagueLogo}
-                      resizeMode="contain"
-                    />
-                  ) : null}
-                  <Text style={styles.matchLeagueName}>{game.leagueName}</Text>
-                  <View style={styles.liveBadge}>
-                    <Text style={styles.liveBadgeText}>{getGameStatusLabel(game)}</Text>
-                  </View>
-                </View>
-                <View style={styles.matchTeamsRow}>
-                  <View style={styles.matchTeamCol}>
-                    <TeamLogo uri={game.homeTeam?.logo} size={48} />
-                    <Text style={styles.matchTeamName} numberOfLines={1}>
-                      {game.homeTeam?.name}
-                    </Text>
-                  </View>
-                  <View style={styles.matchScoreCol}>
-                    <Text style={styles.matchScoreHome}>{game.homeTotal ?? '-'}</Text>
-                    <Text style={styles.matchScoreDivider}>:</Text>
-                    <Text style={styles.matchScoreAway}>{game.awayTotal ?? '-'}</Text>
-                  </View>
-                  <View style={styles.matchTeamCol}>
-                    <TeamLogo uri={game.awayTeam?.logo} size={48} />
-                    <Text style={styles.matchTeamName} numberOfLines={1}>
-                      {game.awayTeam?.name}
-                    </Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        ) : (
-          <View style={styles.emptyLive}>
-            <View style={styles.emptyIconWrap}>
-              <MaterialCommunityIcons name="access-point" size={48} color={colors.onSurfaceVariant} />
-            </View>
-            <Text style={styles.emptyTitle}>No live games right now</Text>
-            <Text style={styles.emptySubtitle}>
-              Check back during game hours or pull down to refresh
-            </Text>
+        {/* Live banner when there are live games */}
+        {liveCount > 0 && selectedDateIdx === 1 && (
+          <View style={styles.liveBanner}>
+            <View style={styles.liveDot} />
+            <Text style={styles.liveBannerText}>{liveCount} game{liveCount > 1 ? 's' : ''} live now</Text>
           </View>
         )}
 
-        {/* Recent Results */}
-        {recentGames.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <MaterialCommunityIcons name="clock-check-outline" size={16} color={colors.primary} />
-              <Text style={styles.sectionTitle}>RECENT RESULTS</Text>
-              <Text style={styles.matchCount}>{recentGames.length}</Text>
+        {/* Games grouped by league */}
+        {leagueGroups.length > 0 ? (
+          leagueGroups.map((group) => (
+            <View key={group.leagueApiId} style={styles.leagueGroup}>
+              {/* League header */}
+              <View style={styles.leagueHeader}>
+                {group.leagueLogo ? (
+                  <ExpoImage
+                    source={{ uri: group.leagueLogo }}
+                    style={styles.leagueLogo}
+                    contentFit="contain"
+                    cachePolicy="memory-disk"
+                  />
+                ) : null}
+                <Text style={styles.leagueName} numberOfLines={1}>{group.leagueName}</Text>
+                <Text style={styles.leagueCount}>{group.games.length}</Text>
+              </View>
+
+              {/* Games */}
+              {group.games.map((game) => {
+                const statusType = getStatusType(game);
+                const isLive = statusType === 'live';
+                const isUpcoming = statusType === 'upcoming';
+
+                return (
+                  <TouchableOpacity
+                    key={game.apiId || game._id}
+                    style={[styles.gameRow, isLive && styles.gameRowLive]}
+                    onPress={() => navigateToGame(game.apiId)}
+                    activeOpacity={0.7}
+                  >
+                    {/* Status column */}
+                    <View style={styles.statusCol}>
+                      {isLive ? (
+                        <View style={styles.liveStatusBadge}>
+                          <Text style={styles.liveStatusText}>{getGameStatusLabel(game)}</Text>
+                        </View>
+                      ) : isUpcoming ? (
+                        <Text style={styles.timeText}>{getGameStatusLabel(game)}</Text>
+                      ) : (
+                        <Text style={styles.ftText}>{getGameStatusLabel(game)}</Text>
+                      )}
+                    </View>
+
+                    {/* Teams + scores */}
+                    <View style={styles.teamsCol}>
+                      <View style={styles.teamRow}>
+                        <TeamLogo uri={game.homeTeam?.logo} size={20} />
+                        <Text style={[styles.teamName, isLive && styles.teamNameLive]} numberOfLines={1}>
+                          {game.homeTeam?.name}
+                        </Text>
+                        <Text style={[styles.score, isLive && styles.scoreLive]}>
+                          {game.homeTotal ?? '-'}
+                        </Text>
+                      </View>
+                      <View style={styles.teamRow}>
+                        <TeamLogo uri={game.awayTeam?.logo} size={20} />
+                        <Text style={[styles.teamName, isLive && styles.teamNameLive]} numberOfLines={1}>
+                          {game.awayTeam?.name}
+                        </Text>
+                        <Text style={[styles.score, isLive && styles.scoreLive]}>
+                          {game.awayTotal ?? '-'}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Action hint for upcoming */}
+                    {isUpcoming && (
+                      <View style={styles.predictBadge}>
+                        <Text style={styles.predictBadgeText}>PREDICT</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
-            {recentGames.slice(0, 20).map((game) => (
-              <TouchableOpacity
-                key={game.apiId || game._id}
-                style={styles.todayCard}
-                onPress={() => navigateToGame(game.apiId)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.matchLeagueRow}>
-                  {game.leagueLogo ? (
-                    <Image
-                      source={{ uri: game.leagueLogo }}
-                      style={styles.matchLeagueLogo}
-                      resizeMode="contain"
-                    />
-                  ) : null}
-                  <Text style={styles.matchLeagueName}>{game.leagueName}</Text>
-                  <View style={styles.statusBadge}>
-                    <Text style={styles.statusBadgeText}>{game.status}</Text>
-                  </View>
-                </View>
-                <View style={styles.todayTeamsRow}>
-                  <View style={styles.todayTeamInfo}>
-                    <TeamLogo uri={game.homeTeam?.logo} size={28} />
-                    <Text style={styles.todayTeamName} numberOfLines={1}>
-                      {game.homeTeam?.name}
-                    </Text>
-                  </View>
-                  <Text style={styles.todayScore}>
-                    {game.homeTotal ?? '-'} - {game.awayTotal ?? '-'}
-                  </Text>
-                  <View style={[styles.todayTeamInfo, { justifyContent: 'flex-end' }]}>
-                    <Text style={styles.todayTeamName} numberOfLines={1}>
-                      {game.awayTeam?.name}
-                    </Text>
-                    <TeamLogo uri={game.awayTeam?.logo} size={28} />
-                  </View>
-                </View>
-                <View style={styles.recentDateRow}>
-                  <Text style={styles.recentDateText}>
-                    {new Date(game.date).toLocaleDateString([], {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric',
-                    })}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+          ))
+        ) : (
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIconWrap}>
+              <Ionicons
+                name={selectedDateIdx === 1 ? 'football-outline' : 'calendar-outline'}
+                size={40}
+                color={colors.onSurfaceVariant}
+              />
+            </View>
+            <Text style={styles.emptyTitle}>
+              {selectedDateIdx === 0
+                ? 'No games yesterday'
+                : selectedDateIdx === 1
+                  ? 'No games today'
+                  : 'No games tomorrow'}
+            </Text>
+            <Text style={styles.emptySubtitle}>
+              {selectedDateIdx === 1
+                ? 'Pull down to refresh or check another day'
+                : 'Try a different date or sport'}
+            </Text>
           </View>
         )}
 
@@ -298,147 +408,180 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { flex: 1 },
-  section: { paddingHorizontal: 16, marginBottom: 24 },
 
-  sportTabsScroll: { maxHeight: 44, marginBottom: 8 },
-  sportTabsContent: { paddingHorizontal: 16, gap: 6, alignItems: 'center' },
-  sportTab: {
+  // Date pills
+  datePills: {
+    flexDirection: 'row',
     paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  datePill: {
+    flex: 1,
+    alignItems: 'center',
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: colors.surfaceContainerHighest,
+    backgroundColor: colors.surfaceContainerLow,
   },
-  sportTabActive: { backgroundColor: colors.primary },
-  sportTabLabel: {
-    fontFamily: 'Inter_700Bold',
+  datePillActive: {
+    backgroundColor: colors.primary,
+  },
+  datePillText: {
+    fontFamily: 'Inter_600SemiBold',
     fontSize: 13,
-    lineHeight: 18,
-    color: colors.onSurface,
+    color: colors.onSurfaceVariant,
   },
-  sportTabLabelActive: { color: '#4A5E00' },
+  datePillTextActive: {
+    color: '#0B0E11',
+    fontFamily: 'Inter_700Bold',
+  },
 
-  sectionHeader: {
+  // Live banner
+  liveBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 18,
-    lineHeight: 28,
-    color: colors.onSurface,
-    letterSpacing: -0.45,
-    textTransform: 'uppercase',
-    flex: 1,
-  },
-  matchCount: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 12,
-    lineHeight: 16,
-    color: colors.primary,
-    backgroundColor: 'rgba(202,253,0,0.1)',
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 2,
-    overflow: 'hidden',
+    marginHorizontal: 16,
+    marginBottom: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: 'rgba(239,68,68,0.1)',
   },
   liveDot: {
     width: 8,
     height: 8,
-    borderRadius: 12,
-    backgroundColor: colors.tertiaryLight,
+    borderRadius: 4,
+    backgroundColor: '#EF4444',
+  },
+  liveBannerText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 13,
+    color: '#EF4444',
   },
 
-  matchCard: {
+  // League groups
+  leagueGroup: {
+    marginHorizontal: 16,
+    marginBottom: 20,
+  },
+  leagueHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+    paddingVertical: 6,
+  },
+  leagueLogo: { width: 18, height: 18, borderRadius: 2 },
+  leagueName: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 11,
+    color: colors.onSurfaceVariant,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    flex: 1,
+  },
+  leagueCount: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 11,
+    color: colors.onSurfaceVariant,
+  },
+
+  // Game rows
+  gameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.surfaceContainerLow,
     borderRadius: 8,
-    padding: 20,
-    marginBottom: 12,
-    overflow: 'hidden',
-    gap: 16,
+    padding: 12,
+    marginBottom: 6,
+    gap: 12,
   },
-  liveAccent: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 4,
-    backgroundColor: colors.tertiaryLight,
+  gameRowLive: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#EF4444',
   },
-  matchLeagueRow: {
+
+  statusCol: {
+    width: 48,
+    alignItems: 'center',
+  },
+  liveStatusBadge: {
+    backgroundColor: '#EF4444',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  liveStatusText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 10,
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  timeText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12,
+    color: colors.primary,
+  },
+  ftText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12,
+    color: colors.onSurfaceVariant,
+  },
+
+  teamsCol: {
+    flex: 1,
+    gap: 4,
+  },
+  teamRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  matchLeagueLogo: { width: 16, height: 16 },
-  matchLeagueName: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 10,
-    lineHeight: 15,
-    color: colors.onSurfaceVariant,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
+  teamName: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 13,
+    color: colors.onSurface,
     flex: 1,
   },
-  liveBadge: {
-    backgroundColor: colors.tertiary,
+  teamNameLive: {
+    fontFamily: 'Inter_700Bold',
+  },
+  score: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 15,
+    color: colors.onSurface,
+    width: 24,
+    textAlign: 'right',
+  },
+  scoreLive: {
+    color: '#FFFFFF',
+  },
+
+  predictBadge: {
+    backgroundColor: 'rgba(202,253,0,0.1)',
     borderRadius: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
-  liveBadgeText: {
+  predictBadgeText: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 10,
-    lineHeight: 14,
-    color: '#220600',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
+    fontSize: 9,
+    color: colors.primary,
+    letterSpacing: 0.8,
   },
 
-  matchTeamsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  matchTeamCol: { flex: 1, alignItems: 'center', gap: 8 },
-  matchTeamName: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 13,
-    lineHeight: 18,
-    color: colors.onSurface,
-    textAlign: 'center',
-  },
-  matchScoreCol: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  matchScoreHome: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 36,
-    lineHeight: 40,
-    color: colors.primaryContainer,
-  },
-  matchScoreDivider: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 24,
-    lineHeight: 32,
-    color: colors.onSurfaceVariant,
-  },
-  matchScoreAway: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 36,
-    lineHeight: 40,
-    color: colors.onSurface,
-  },
-
-  emptyLive: {
+  // Empty state
+  emptyState: {
     alignItems: 'center',
     paddingVertical: 64,
     paddingHorizontal: 32,
-    gap: 16,
+    gap: 12,
   },
   emptyIconWrap: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     backgroundColor: colors.surfaceContainerLow,
     alignItems: 'center',
     justifyContent: 'center',
@@ -446,76 +589,14 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 20,
-    lineHeight: 28,
+    fontSize: 18,
     color: colors.onSurface,
     textAlign: 'center',
   },
   emptySubtitle: {
     fontFamily: 'Inter_400Regular',
     fontSize: 14,
-    lineHeight: 22,
     color: colors.onSurfaceVariant,
     textAlign: 'center',
-  },
-
-  todayCard: {
-    backgroundColor: colors.surfaceContainerLow,
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 10,
-    gap: 12,
-  },
-  todayTeamsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  todayTeamInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flex: 1,
-  },
-  todayTeamName: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 13,
-    lineHeight: 18,
-    color: colors.onSurface,
-    flex: 1,
-  },
-  todayScore: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 16,
-    lineHeight: 24,
-    color: colors.onSurface,
-    paddingHorizontal: 16,
-    textAlign: 'center',
-  },
-  statusBadge: {
-    backgroundColor: colors.surfaceContainerHighest,
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  statusBadgeText: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 10,
-    lineHeight: 14,
-    color: colors.onSurfaceVariant,
-    letterSpacing: 0.5,
-  },
-  recentDateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255,255,255,0.06)',
-  },
-  recentDateText: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 11,
-    color: colors.onSurfaceDim,
   },
 });

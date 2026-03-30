@@ -1,107 +1,81 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   Feather,
   Ionicons,
   MaterialCommunityIcons,
 } from '@expo/vector-icons';
 import { colors, spacing, borderRadius } from '../theme';
+import { useCoins } from '../contexts/CoinContext';
+import { useAuth } from '../contexts/AuthContext';
+import { coinsApi } from '../api/coins';
+import type { CoinTransaction } from '../api/coins';
+import type { ProfileStackParamList } from '../navigation/types';
 
-const BALANCE = {
-  total: 12450,
-  thisWeek: 850,
-  streak: 5,
-  streakBonus: 200,
-};
-
-type RewardTier = {
-  name: string;
-  threshold: number;
-  icon: string;
-  color: string;
-  unlocked: boolean;
-};
-
-const TIERS: RewardTier[] = [
-  { name: 'Bronze', threshold: 1000, icon: 'medal', color: '#CD7F32', unlocked: true },
-  { name: 'Silver', threshold: 5000, icon: 'medal', color: '#C0C0C0', unlocked: true },
-  { name: 'Gold', threshold: 10000, icon: 'medal', color: '#FFD700', unlocked: true },
-  { name: 'Diamond', threshold: 25000, icon: 'diamond-stone', color: '#B9F2FF', unlocked: false },
-  { name: 'Legend', threshold: 50000, icon: 'crown', color: colors.primary, unlocked: false },
-];
-
-type RedeemOption = {
-  id: string;
-  title: string;
-  description: string;
-  cost: number;
-  icon: string;
-};
-
-const REDEEM_OPTIONS: RedeemOption[] = [
-  {
-    id: '1',
-    title: 'Profile Badge',
-    description: 'Exclusive badge displayed on your profile',
-    cost: 500,
-    icon: 'award',
-  },
-  {
-    id: '2',
-    title: 'Custom Avatar Frame',
-    description: 'Animated frame around your profile picture',
-    cost: 1500,
-    icon: 'image',
-  },
-  {
-    id: '3',
-    title: 'Prediction Boost',
-    description: 'Earn 2x points on your next 5 predictions',
-    cost: 2000,
-    icon: 'zap',
-  },
-  {
-    id: '4',
-    title: 'Early Access',
-    description: 'Get early access to new features and events',
-    cost: 5000,
-    icon: 'star',
-  },
-];
-
-type TxItem = {
-  id: string;
-  label: string;
-  type: 'earn' | 'spend' | 'bonus';
-  pts: string;
-  time: string;
-};
-
-const TRANSACTIONS: TxItem[] = [
-  { id: '1', label: 'Correct Prediction - LAL vs BOS', type: 'earn', pts: '+150', time: '2 min ago' },
-  { id: '2', label: 'Streak Bonus (5 days)', type: 'bonus', pts: '+200', time: '2 min ago' },
-  { id: '3', label: 'Profile Badge Redeemed', type: 'spend', pts: '-500', time: '1 day ago' },
-  { id: '4', label: 'Correct Prediction - ARS vs MCI', type: 'earn', pts: '+120', time: '2 days ago' },
-  { id: '5', label: 'Weekly Top 10% Bonus', type: 'bonus', pts: '+300', time: '3 days ago' },
-  { id: '6', label: 'Incorrect Prediction - PSG vs BAY', type: 'earn', pts: '-50', time: '3 days ago' },
-];
+type Nav = NativeStackNavigationProp<ProfileStackParamList>;
 
 export function WalletRewardsScreen() {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation();
+  const navigation = useNavigation<Nav>();
+  const { tokens } = useAuth();
+  const {
+    balance,
+    lockedBalance,
+    available,
+    totalEarned,
+    totalSpent,
+    isLoading: balanceLoading,
+    refreshBalance,
+  } = useCoins();
 
-  const currentTier = TIERS.filter((t) => t.unlocked).pop()!;
-  const nextTier = TIERS.find((t) => !t.unlocked);
-  const progress = nextTier ? BALANCE.total / nextTier.threshold : 1;
+  const [transactions, setTransactions] = useState<CoinTransaction[]>([]);
+  const [txLoading, setTxLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchTransactions = useCallback(async () => {
+    if (!tokens?.accessToken) return;
+    try {
+      const res = await coinsApi.getTransactions(tokens.accessToken, 1, 10);
+      setTransactions(res.transactions);
+    } catch {
+      // Failed silently
+    }
+  }, [tokens?.accessToken]);
+
+  useEffect(() => {
+    setTxLoading(true);
+    fetchTransactions().finally(() => setTxLoading(false));
+  }, [fetchTransactions]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([refreshBalance(), fetchTransactions()]);
+    setRefreshing(false);
+  }, [refreshBalance, fetchTransactions]);
+
+  const txTypeDisplay = (type: string) => {
+    switch (type) {
+      case 'purchase': return { label: 'Coin Purchase', icon: 'arrow-down-left' as const, color: colors.primary };
+      case 'subscription_grant': return { label: 'Pro Bonus', icon: 'gift' as const, color: '#FC5B00' };
+      case 'league_entry': return { label: 'League Entry', icon: 'arrow-up-right' as const, color: '#FF4444' };
+      case 'league_winnings': return { label: 'League Winnings', icon: 'award' as const, color: '#FFD700' };
+      case 'giftcard_redemption': return { label: 'Gift Card', icon: 'shopping-bag' as const, color: '#FF4444' };
+      case 'refund': return { label: 'Refund', icon: 'rotate-ccw' as const, color: colors.info };
+      default: return { label: type, icon: 'circle' as const, color: colors.onSurfaceDim };
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -109,7 +83,7 @@ export function WalletRewardsScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
           <Feather name="arrow-left" size={22} color={colors.onSurface} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>WALLET & REWARDS</Text>
+        <Text style={styles.headerTitle}>WALLET</Text>
         <View style={{ width: 22 }} />
       </View>
 
@@ -117,219 +91,153 @@ export function WalletRewardsScreen() {
         style={styles.scroll}
         contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+        }
       >
-        {/* Balance card */}
         <LinearGradient
           colors={['rgba(202,253,0,0.12)', 'rgba(202,253,0,0.02)']}
           style={styles.balanceCard}
         >
-          <Text style={styles.balanceLabel}>TOTAL POINTS</Text>
-          <Text style={styles.balanceValue}>
-            {BALANCE.total.toLocaleString()}
-          </Text>
+          <Text style={styles.balanceLabel}>COIN BALANCE</Text>
+          <View style={styles.balanceMainRow}>
+            <MaterialCommunityIcons name="circle-multiple" size={28} color={colors.primary} />
+            <Text style={styles.balanceValue}>
+              {balanceLoading ? '...' : balance.toLocaleString()}
+            </Text>
+          </View>
           <View style={styles.balanceRow}>
             <View style={styles.balanceStat}>
-              <Ionicons name="trending-up" size={14} color={colors.primary} />
+              <Ionicons name="lock-closed" size={12} color={colors.warning} />
               <Text style={styles.balanceStatText}>
-                +{BALANCE.thisWeek} this week
+                {lockedBalance.toLocaleString()} locked
               </Text>
             </View>
             <View style={styles.balanceStat}>
-              <Ionicons name="flame" size={14} color="#FC5B00" />
+              <Ionicons name="wallet" size={12} color={colors.primary} />
               <Text style={styles.balanceStatText}>
-                {BALANCE.streak}-day streak (+{BALANCE.streakBonus} bonus)
+                {available.toLocaleString()} available
+              </Text>
+            </View>
+          </View>
+          <View style={styles.balanceRow}>
+            <View style={styles.balanceStat}>
+              <Ionicons name="trending-up" size={12} color={colors.secondary} />
+              <Text style={styles.balanceStatText}>
+                {totalEarned.toLocaleString()} earned
+              </Text>
+            </View>
+            <View style={styles.balanceStat}>
+              <Ionicons name="trending-down" size={12} color={colors.error} />
+              <Text style={styles.balanceStatText}>
+                {totalSpent.toLocaleString()} spent
               </Text>
             </View>
           </View>
         </LinearGradient>
 
-        {/* Tier progress */}
-        <View style={styles.tierSection}>
-          <View style={styles.tierHeader}>
-            <Text style={styles.sectionLabel}>REWARD TIER</Text>
-            <View style={styles.currentTierBadge}>
-              <MaterialCommunityIcons
-                name={currentTier.icon as any}
-                size={14}
-                color={currentTier.color}
-              />
-              <Text style={[styles.currentTierText, { color: currentTier.color }]}>
-                {currentTier.name.toUpperCase()}
-              </Text>
-            </View>
-          </View>
-
-          {nextTier && (
-            <View style={styles.tierProgressCard}>
-              <View style={styles.tierProgressLabels}>
-                <Text style={styles.tierProgressCurrent}>
-                  {BALANCE.total.toLocaleString()} pts
-                </Text>
-                <Text style={styles.tierProgressTarget}>
-                  {nextTier.threshold.toLocaleString()} pts
-                </Text>
-              </View>
-              <View style={styles.tierProgressTrack}>
-                <View
-                  style={[styles.tierProgressFill, { width: `${Math.min(progress * 100, 100)}%` }]}
-                />
-              </View>
-              <Text style={styles.tierProgressHint}>
-                {(nextTier.threshold - BALANCE.total).toLocaleString()} pts to{' '}
-                <Text style={{ color: nextTier.color }}>{nextTier.name}</Text>
-              </Text>
-            </View>
-          )}
-
-          {/* Tier badges row */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.tierBadgesRow}
+        <View style={styles.quickActions}>
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('CoinStore')}
+            activeOpacity={0.7}
           >
-            {TIERS.map((t) => (
-              <View
-                key={t.name}
-                style={[
-                  styles.tierBadge,
-                  t.unlocked && { borderColor: t.color },
-                  !t.unlocked && styles.tierBadgeLocked,
-                ]}
-              >
-                <MaterialCommunityIcons
-                  name={t.icon as any}
-                  size={20}
-                  color={t.unlocked ? t.color : colors.onSurfaceDim}
-                />
-                <Text
-                  style={[
-                    styles.tierBadgeName,
-                    { color: t.unlocked ? t.color : colors.onSurfaceDim },
-                  ]}
-                >
-                  {t.name.toUpperCase()}
-                </Text>
-                <Text style={styles.tierBadgePts}>
-                  {t.threshold >= 1000
-                    ? `${t.threshold / 1000}K`
-                    : t.threshold}
-                </Text>
-              </View>
-            ))}
-          </ScrollView>
+            <View style={[styles.actionIconWrap, { backgroundColor: 'rgba(202,253,0,0.1)' }]}>
+              <Feather name="plus-circle" size={22} color={colors.primary} />
+            </View>
+            <Text style={styles.actionTitle}>Buy Coins</Text>
+            <Text style={styles.actionDesc}>Get coins via in-app purchase</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('GiftcardRedeem')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.actionIconWrap, { backgroundColor: 'rgba(252,91,0,0.1)' }]}>
+              <Feather name="gift" size={22} color="#FC5B00" />
+            </View>
+            <Text style={styles.actionTitle}>Gift Cards</Text>
+            <Text style={styles.actionDesc}>Redeem coins for gift cards</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Redeem section */}
-        <Text style={[styles.sectionLabel, { paddingHorizontal: spacing['2xl'], marginTop: spacing['3xl'] }]}>
-          REDEEM POINTS
-        </Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.redeemRow}
-        >
-          {REDEEM_OPTIONS.map((r) => {
-            const canAfford = BALANCE.total >= r.cost;
-            return (
-              <View key={r.id} style={styles.redeemCard}>
-                <View style={styles.redeemIconWrap}>
-                  <Feather
-                    name={r.icon as any}
-                    size={22}
-                    color={canAfford ? colors.primary : colors.onSurfaceDim}
-                  />
-                </View>
-                <Text style={styles.redeemTitle}>{r.title}</Text>
-                <Text style={styles.redeemDesc}>{r.description}</Text>
-                <TouchableOpacity
-                  style={[styles.redeemBtn, !canAfford && styles.redeemBtnDisabled]}
-                  activeOpacity={0.7}
-                  disabled={!canAfford}
-                >
-                  <Text
-                    style={[
-                      styles.redeemBtnText,
-                      !canAfford && styles.redeemBtnTextDisabled,
-                    ]}
-                  >
-                    {r.cost.toLocaleString()} PTS
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            );
-          })}
-        </ScrollView>
-
-        {/* Transaction history */}
         <Text style={[styles.sectionLabel, { paddingHorizontal: spacing['2xl'], marginTop: spacing['3xl'] }]}>
           RECENT ACTIVITY
         </Text>
-        <View style={styles.txList}>
-          {TRANSACTIONS.map((tx) => {
-            const isNeg = tx.pts.startsWith('-');
-            const isBonus = tx.type === 'bonus';
-            return (
-              <View key={tx.id} style={styles.txRow}>
-                <View
-                  style={[
-                    styles.txIcon,
-                    {
-                      backgroundColor: isNeg
-                        ? 'rgba(255,68,68,0.12)'
-                        : isBonus
-                        ? 'rgba(252,91,0,0.12)'
-                        : 'rgba(202,253,0,0.12)',
-                    },
-                  ]}
-                >
-                  <Feather
-                    name={isNeg ? 'arrow-down-left' : isBonus ? 'gift' : 'arrow-up-right'}
-                    size={16}
-                    color={isNeg ? '#FF4444' : isBonus ? '#FC5B00' : colors.primary}
-                  />
-                </View>
-                <View style={styles.txContent}>
-                  <Text style={styles.txLabel} numberOfLines={1}>{tx.label}</Text>
-                  <Text style={styles.txTime}>{tx.time}</Text>
-                </View>
-                <Text
-                  style={[
-                    styles.txPts,
-                    {
-                      color: isNeg ? '#FF4444' : isBonus ? '#FC5B00' : colors.primary,
-                    },
-                  ]}
-                >
-                  {tx.pts}
-                </Text>
-              </View>
-            );
-          })}
-        </View>
 
-        {/* How it works */}
+        {txLoading ? (
+          <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: spacing.lg }} />
+        ) : transactions.length === 0 ? (
+          <View style={styles.emptyTx}>
+            <Text style={styles.emptyTxText}>
+              No transactions yet. Buy coins to get started!
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.txList}>
+            {transactions.map((tx) => {
+              const display = txTypeDisplay(tx.type);
+              const isNeg = tx.amount < 0;
+              return (
+                <View key={tx._id} style={styles.txRow}>
+                  <View
+                    style={[
+                      styles.txIcon,
+                      { backgroundColor: `${display.color}1A` },
+                    ]}
+                  >
+                    <Feather name={display.icon} size={16} color={display.color} />
+                  </View>
+                  <View style={styles.txContent}>
+                    <Text style={styles.txLabel} numberOfLines={1}>
+                      {tx.description || display.label}
+                    </Text>
+                    <Text style={styles.txTime}>
+                      {new Date(tx.createdAt).toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </Text>
+                  </View>
+                  <Text
+                    style={[
+                      styles.txPts,
+                      { color: isNeg ? colors.error : colors.primary },
+                    ]}
+                  >
+                    {isNeg ? '' : '+'}{tx.amount}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
         <View style={styles.howSection}>
           <Text style={styles.sectionLabel}>HOW IT WORKS</Text>
           <View style={styles.howCard}>
             <HowStep
               step="1"
-              title="Make Predictions"
-              desc="Pick outcomes for live and upcoming matches"
+              title="Buy or Earn Coins"
+              desc="Purchase coin packs or earn 30/month with Pro"
             />
             <HowStep
               step="2"
-              title="Earn Points"
-              desc="Get points for correct predictions, streaks, and weekly performance"
+              title="Join Leagues"
+              desc="Use coins to enter prediction leagues and compete"
             />
             <HowStep
               step="3"
-              title="Unlock Rewards"
-              desc="Redeem points for badges, boosts, and exclusive features"
+              title="Win Prizes"
+              desc="Top predictors win the prize pool (minus 10% fee)"
             />
             <HowStep
               step="4"
-              title="Climb Tiers"
-              desc="Accumulate lifetime points to reach higher reward tiers"
+              title="Redeem Rewards"
+              desc="Exchange coins for real gift cards"
               isLast
             />
           </View>
@@ -433,11 +341,16 @@ const styles = StyleSheet.create({
     color: colors.onSurfaceDim,
     letterSpacing: 1.5,
   },
+  balanceMainRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
   balanceValue: {
     fontFamily: 'SpaceGrotesk_700Bold',
     fontSize: 44,
     color: colors.primary,
-    marginTop: 4,
     letterSpacing: -1,
   },
   balanceRow: {
@@ -457,153 +370,52 @@ const styles = StyleSheet.create({
     color: colors.onSurfaceVariant,
   },
 
-  tierSection: { marginTop: spacing['3xl'] },
-  tierHeader: {
+  quickActions: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing['2xl'],
-    marginBottom: spacing.md,
+    paddingHorizontal: spacing.lg,
+    gap: spacing.md,
+    marginTop: spacing['2xl'],
   },
-  currentTierBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: colors.surfaceContainerHighest,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.full,
-  },
-  currentTierText: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 11,
-    letterSpacing: 0.5,
-  },
-
-  tierProgressCard: {
-    marginHorizontal: spacing.lg,
+  actionCard: {
+    flex: 1,
     backgroundColor: colors.surfaceContainerLow,
     borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: colors.outlineVariant,
     padding: spacing.lg,
-  },
-  tierProgressLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  tierProgressCurrent: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 13,
-    color: colors.primary,
-  },
-  tierProgressTarget: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 13,
-    color: colors.onSurfaceDim,
-  },
-  tierProgressTrack: {
-    height: 6,
-    backgroundColor: colors.surfaceContainerHighest,
-    borderRadius: 3,
-    marginTop: spacing.sm,
-    overflow: 'hidden',
-  },
-  tierProgressFill: {
-    height: 6,
-    backgroundColor: colors.primary,
-    borderRadius: 3,
-  },
-  tierProgressHint: {
-    fontFamily: 'Inter_400Regular',
-    fontSize: 12,
-    color: colors.onSurfaceDim,
-    marginTop: spacing.sm,
-  },
-
-  tierBadgesRow: {
-    paddingHorizontal: spacing.lg,
-    gap: spacing.sm,
-    marginTop: spacing.lg,
-  },
-  tierBadge: {
-    width: 80,
     alignItems: 'center',
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.outline,
-    backgroundColor: colors.surfaceContainerLow,
   },
-  tierBadgeLocked: {
-    opacity: 0.4,
+  actionIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
   },
-  tierBadgeName: {
+  actionTitle: {
     fontFamily: 'Inter_600SemiBold',
-    fontSize: 9,
-    letterSpacing: 0.5,
-    marginTop: 4,
+    fontSize: 12,
+    color: colors.onSurface,
+    textAlign: 'center',
   },
-  tierBadgePts: {
+  actionDesc: {
     fontFamily: 'Inter_400Regular',
     fontSize: 10,
     color: colors.onSurfaceDim,
+    textAlign: 'center',
     marginTop: 2,
   },
 
-  redeemRow: {
-    paddingHorizontal: spacing.lg,
-    gap: spacing.md,
-    marginTop: spacing.sm,
-  },
-  redeemCard: {
-    width: 160,
-    backgroundColor: colors.surfaceContainerLow,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.outlineVariant,
-    padding: spacing.lg,
-  },
-  redeemIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.surfaceContainerHighest,
+  emptyTx: {
+    paddingVertical: spacing['3xl'],
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
   },
-  redeemTitle: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 13,
-    color: colors.onSurface,
-  },
-  redeemDesc: {
+  emptyTxText: {
     fontFamily: 'Inter_400Regular',
-    fontSize: 11,
+    fontSize: 13,
     color: colors.onSurfaceDim,
-    marginTop: 4,
-    lineHeight: 15,
-    minHeight: 30,
-  },
-  redeemBtn: {
-    marginTop: spacing.md,
-    backgroundColor: 'rgba(202,253,0,0.12)',
-    borderRadius: borderRadius.full,
-    paddingVertical: spacing.sm,
-    alignItems: 'center',
-  },
-  redeemBtnDisabled: {
-    backgroundColor: colors.surfaceContainerHighest,
-  },
-  redeemBtnText: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 11,
-    color: colors.primary,
-    letterSpacing: 0.5,
-  },
-  redeemBtnTextDisabled: {
-    color: colors.onSurfaceDim,
+    textAlign: 'center',
   },
 
   txList: {

@@ -10,8 +10,10 @@ import Purchases, {
   LOG_LEVEL,
   CustomerInfo,
   PurchasesOffering,
+  PurchasesPackage,
 } from 'react-native-purchases';
 import RevenueCatUI, { PAYWALL_RESULT } from 'react-native-purchases-ui';
+import Toast from 'react-native-toast-message';
 import { useAuth } from './AuthContext';
 
 const API_KEY = 'test_QZBrSvEcPpbCyNxZsvWAQMpdOTF';
@@ -27,6 +29,7 @@ interface PurchasesState {
 
 interface PurchasesContextValue extends PurchasesState {
   presentPaywall: () => Promise<boolean>;
+  purchasePackage: (pkg: PurchasesPackage) => Promise<boolean>;
   restorePurchases: () => Promise<boolean>;
   refreshCustomerInfo: () => Promise<void>;
 }
@@ -141,6 +144,19 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
     }
   }, [updateFromCustomerInfo]);
 
+  const purchasePackage = useCallback(async (pkg: PurchasesPackage): Promise<boolean> => {
+    try {
+      const { customerInfo } = await Purchases.purchasePackage(pkg);
+      updateFromCustomerInfo(customerInfo);
+      return true;
+    } catch (e: any) {
+      if (!e.userCancelled) {
+        Toast.show({ type: 'error', text1: 'Purchase failed', text2: e.message || 'Please try again' });
+      }
+      return false;
+    }
+  }, [updateFromCustomerInfo]);
+
   const restorePurchases = useCallback(async (): Promise<boolean> => {
     try {
       const info = await Purchases.restorePurchases();
@@ -163,6 +179,7 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
   const value: PurchasesContextValue = {
     ...state,
     presentPaywall,
+    purchasePackage,
     restorePurchases,
     refreshCustomerInfo,
   };

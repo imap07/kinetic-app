@@ -12,14 +12,16 @@ export type AuthStackParamList = {
 // Home tab nested stack (Dashboard -> MatchPrediction -> PickSummary)
 export type HomeStackParamList = {
   DashboardHome: undefined;
-  LeagueDetail: { leagueApiId: number; leagueName: string; sport: string };
+  LeagueDetail: { leagueApiId: number; leagueName: string; sport: string; tier?: 'free' | 'premium' };
   MatchPrediction: { fixtureApiId: number; sport?: string };
   PickSummary: undefined;
+  Quests: undefined;
 };
 
-// Leaderboard tab nested stack
-export type LeaderboardStackParamList = {
-  LeaderboardHome: undefined;
+// Leagues tab nested stack
+export type LeaguesStackParamList = {
+  LeaguesHome: undefined;
+  Leaderboard: undefined;
 };
 
 // Profile tab nested stack
@@ -29,6 +31,8 @@ export type ProfileStackParamList = {
   Notifications: undefined;
   SecurityPrivacy: undefined;
   WalletRewards: undefined;
+  CoinStore: undefined;
+  GiftcardRedeem: undefined;
 };
 
 // Live tab nested stack
@@ -42,13 +46,34 @@ export type LiveStackParamList = {
 export type MainTabParamList = {
   Home: NavigatorScreenParams<HomeStackParamList>;
   Live: NavigatorScreenParams<LiveStackParamList>;
+  Leagues: NavigatorScreenParams<LeaguesStackParamList>;
   MyPicks: undefined;
-  Rewards: NavigatorScreenParams<LeaderboardStackParamList>;
   Profile: NavigatorScreenParams<ProfileStackParamList>;
 };
 
-// Root navigator that switches between Auth and Main
+export type PaywallTrigger =
+  | 'daily_limit'
+  | 'exact_score'
+  | 'sport_locked'
+  | 'detailed_stats'
+  | 'leaderboard'
+  | 'premium_league'
+  | 'quest_multi_sport'
+  | 'general';
+
+// Root navigator that switches between Auth, Onboarding, and Main
 export type RootStackParamList = {
   Auth: NavigatorScreenParams<AuthStackParamList>;
+  Onboarding: undefined;
+  SportSelection: undefined;
+  LeagueSelection: { selectedSports?: string[] };
   Main: NavigatorScreenParams<MainTabParamList>;
+  Notifications: undefined;
+  Paywall: {
+    trigger: PaywallTrigger;
+    sportName?: string;
+    dailyUsed?: number;
+    dailyLimit?: number;
+  };
+  Search: undefined;
 };

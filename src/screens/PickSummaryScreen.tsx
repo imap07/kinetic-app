@@ -1,197 +1,231 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Share,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius } from '../theme';
 import { HomeStackParamList } from '../navigation/types';
+import { useAuth } from '../contexts/AuthContext';
+import { predictionsApi } from '../api/predictions';
+import type { PredictionData } from '../api/predictions';
+import Toast from 'react-native-toast-message';
 
 type Props = {
   navigation: NativeStackNavigationProp<HomeStackParamList, 'PickSummary'>;
 };
 
-const PICKS = [
-  {
-    status: 'ACTIVE',
-    time: 'STARTING IN 5M',
-    match: 'Manchester City vs Arsenal',
-    league: 'English Premier League',
-    type: 'TV MULTIPLIER',
-    multiplier: '2.45x',
-  },
-  {
-    status: 'ACTIVE',
-    time: 'STARTING IN 15M',
-    match: 'Lakers vs Warriors',
-    league: 'NBA Regular Season',
-    type: 'TV MULTIPLIER',
-    multiplier: '1.90x',
-  },
-  {
-    status: 'UPCOMING',
-    time: 'SAT 16:00',
-    match: 'Real Madrid vs Barcelona',
-    league: '',
-    type: 'TV MULTIPLIER',
-    multiplier: '3.25x',
-  },
-];
+function formatOutcome(p: PredictionData): string {
+  if (p.predictionType === 'exact_score' && p.predictedHomeScore != null && p.predictedAwayScore != null) {
+    return `${p.predictedHomeScore}-${p.predictedAwayScore}`;
+  }
+  if (p.predictedOutcome === 'home') return p.homeTeamName;
+  if (p.predictedOutcome === 'away') return p.awayTeamName;
+  return 'Draw';
+}
 
-const RISK_LEVELS = ['LOW', 'MED', 'HIGH'];
+function getPickStatusLabel(p: PredictionData): string {
+  if (p.status === 'pending') return 'PENDING';
+  if (p.status === 'won') return 'WON';
+  if (p.status === 'lost') return 'LOST';
+  return p.status.toUpperCase();
+}
+
+function formatPickDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const gameDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (gameDay.getTime() === today.getTime()) return `Today ${time}`;
+  return `${d.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${time}`;
+}
 
 export function PickSummaryScreen({ navigation }: Props) {
-  const [activeRisk, setActiveRisk] = useState('MED');
+  const { tokens } = useAuth();
+  const [picks, setPicks] = useState<PredictionData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchPicks = useCallback(async () => {
+    if (!tokens?.accessToken) return;
+    try {
+      const res = await predictionsApi.getMyPicks(tokens.accessToken, { limit: 20 });
+      setPicks(res.predictions);
+    } catch {
+      Toast.show({ type: 'error', text1: 'Error loading picks', text2: 'Pull down to try again' });
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [tokens?.accessToken]);
+
+  useEffect(() => { fetchPicks(); }, [fetchPicks]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchPicks();
+  }, [fetchPicks]);
+
+  const pendingPicks = picks.filter((p) => p.status === 'pending');
+  const resolvedPicks = picks.filter((p) => p.status !== 'pending');
+  const [activeTab, setActiveTab] = useState<'current' | 'history'>('current');
+  const displayPicks = activeTab === 'current' ? pendingPicks : resolvedPicks;
+
+  const totalPoints = picks.reduce((sum, p) => sum + p.pointsAwarded, 0);
+  const wonCount = picks.filter((p) => p.status === 'won').length;
+
+  const handleShare = async () => {
+    if (pendingPicks.length === 0) {
+      Toast.show({ type: 'info', text1: 'No active picks to share' });
+      return;
+    }
+    const picksText = pendingPicks
+      .map((p) => `${p.homeTeamName} vs ${p.awayTeamName} -- ${formatOutcome(p)}`)
+      .join('\n');
+    try {
+      await Share.share({
+        message: `My Kinetic Picks:\n\n${picksText}\n\nPredict sports on Kinetic!`,
+      });
+    } catch {
+      // user cancelled
+    }
+  };
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={22} color={colors.onSurface} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Pick Summary</Text>
-        <View style={{ width: 40 }} />
+        <TouchableOpacity onPress={handleShare} style={styles.backBtn}>
+          <Ionicons name="share-outline" size={20} color={colors.onSurface} />
+        </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Title */}
+      {loading ? (
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : (
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+        }
+      >
         <View style={styles.titleSection}>
-          <View style={styles.activeBadge}>
-            <Text style={styles.activeBadgeText}>ACTIVE NOW</Text>
-          </View>
+          {pendingPicks.length > 0 && (
+            <View style={styles.activeBadge}>
+              <Text style={styles.activeBadgeText}>{pendingPicks.length} ACTIVE</Text>
+            </View>
+          )}
           <Text style={styles.title}>PICK SUMMARY</Text>
           <View style={styles.tabRow}>
-            <TouchableOpacity style={styles.tabActive}>
-              <Text style={styles.tabActiveText}>Current Picks (3)</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.tabInactive}>
-              <Text style={styles.tabInactiveText}>My History</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Selected Predictions */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>SELECTED PREDICTIONS</Text>
-          <TouchableOpacity>
-            <Text style={styles.clearAll}>CLEAR ALL</Text>
-          </TouchableOpacity>
-        </View>
-
-        {PICKS.map((pick, idx) => (
-          <View key={idx} style={styles.pickCard}>
-            <View style={styles.pickHeader}>
-              <View style={[
-                styles.statusBadge,
-                pick.status === 'UPCOMING' && styles.statusUpcoming,
-              ]}>
-                <Text style={styles.statusText}>{pick.status}</Text>
-              </View>
-              <Text style={styles.pickTime}>{pick.time}</Text>
-            </View>
-            <Text style={styles.pickMatch}>{pick.match}</Text>
-            {pick.league ? <Text style={styles.pickLeague}>{pick.league}</Text> : null}
-            <View style={styles.multiplierRow}>
-              <Text style={styles.multiplierLabel}>{pick.type}</Text>
-              <View style={styles.multiplierBadge}>
-                <Text style={styles.multiplierValue}>{pick.multiplier}</Text>
-              </View>
-            </View>
-          </View>
-        ))}
-
-        {/* Streak Bonus */}
-        <View style={styles.streakBanner}>
-          <View style={styles.streakContent}>
-            <Text style={styles.streakTitle}>Streak Bonus Activated</Text>
-            <Text style={styles.streakDesc}>
-              Your streak is increasing by 15% →
-            </Text>
-          </View>
-          <Text style={styles.streakValue}>+15%</Text>
-        </View>
-
-        {/* Prediction Summary */}
-        <View style={styles.summarySection}>
-          <Ionicons name="bar-chart" size={16} color={colors.onSurfaceVariant} />
-          <Text style={styles.summaryTitle}>Prediction Summary</Text>
-
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Overall    solo Play</Text>
-            <Text style={styles.summaryVal}>76/24</Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Active Parlays</Text>
-            <Text style={styles.summaryVal}>4 Series</Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Key Performers</Text>
-            <Text style={styles.summaryVal}>+10.5%</Text>
-          </View>
-        </View>
-
-        {/* Risk level */}
-        <Text style={styles.riskLabel}>SET PERFORMANCE LEVEL</Text>
-        <View style={styles.riskRow}>
-          {RISK_LEVELS.map((level) => (
             <TouchableOpacity
-              key={level}
-              style={[
-                styles.riskButton,
-                activeRisk === level && styles.riskButtonActive,
-              ]}
-              onPress={() => setActiveRisk(level)}
+              style={activeTab === 'current' ? styles.tabActive : styles.tabInactive}
+              onPress={() => setActiveTab('current')}
             >
-              <Text
-                style={[
-                  styles.riskText,
-                  activeRisk === level && styles.riskTextActive,
-                ]}
-              >
-                {level}
+              <Text style={activeTab === 'current' ? styles.tabActiveText : styles.tabInactiveText}>
+                Current Picks ({pendingPicks.length})
               </Text>
             </TouchableOpacity>
-          ))}
+            <TouchableOpacity
+              style={activeTab === 'history' ? styles.tabActive : styles.tabInactive}
+              onPress={() => setActiveTab('history')}
+            >
+              <Text style={activeTab === 'history' ? styles.tabActiveText : styles.tabInactiveText}>
+                History ({resolvedPicks.length})
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Potential */}
-        <View style={styles.summaryRow2}>
-          <Text style={styles.potLabel}>Potential Outcome:</Text>
-          <Text style={styles.potValue}>+BONUS</Text>
-        </View>
-        <View style={styles.summaryRow2}>
-          <Text style={styles.potLabel}>Performance Index:</Text>
-          <Text style={styles.potValue}>+120 pts</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>
+            {activeTab === 'current' ? 'ACTIVE PREDICTIONS' : 'RESOLVED PREDICTIONS'}
+          </Text>
         </View>
 
-        {/* Max Score */}
-        <View style={styles.maxScoreCard}>
-          <Text style={styles.maxScoreLabel}>MAX SCORE</Text>
-          <Text style={styles.maxScoreValue}>8,520 PTS</Text>
-        </View>
+        {displayPicks.length === 0 ? (
+          <View style={styles.emptyWrap}>
+            <Ionicons name="document-text-outline" size={40} color={colors.onSurfaceVariant} />
+            <Text style={styles.emptyText}>
+              {activeTab === 'current' ? 'No active picks right now' : 'No history yet'}
+            </Text>
+          </View>
+        ) : (
+          displayPicks.map((pick) => (
+            <View key={pick._id} style={styles.pickCard}>
+              <View style={styles.pickHeader}>
+                <View style={[
+                  styles.statusBadge,
+                  pick.status === 'won' && styles.statusWon,
+                  pick.status === 'lost' && styles.statusLost,
+                ]}>
+                  <Text style={styles.statusText}>{getPickStatusLabel(pick)}</Text>
+                </View>
+                <Text style={styles.pickTime}>{formatPickDate(pick.gameDate)}</Text>
+              </View>
+              <Text style={styles.pickMatch}>
+                {pick.homeTeamName} vs {pick.awayTeamName}
+              </Text>
+              {pick.leagueName ? <Text style={styles.pickLeague}>{pick.leagueName}</Text> : null}
+              <View style={styles.multiplierRow}>
+                <Text style={styles.multiplierLabel}>YOUR PICK</Text>
+                <View style={styles.multiplierBadge}>
+                  <Text style={styles.multiplierValue}>{formatOutcome(pick)}</Text>
+                </View>
+              </View>
+              {pick.pointsAwarded > 0 && (
+                <Text style={styles.pointsAwarded}>+{pick.pointsAwarded} PTS</Text>
+              )}
+            </View>
+          ))
+        )}
 
-        {/* Confirm button */}
-        <TouchableOpacity style={styles.confirmButton}>
-          <LinearGradient
-            colors={[colors.primaryGradientStart, colors.primaryGradientEnd]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.confirmGradient}
-          >
-            <Text style={styles.confirmText}>CONFIRM PREDICTIONS ✓</Text>
-          </LinearGradient>
+        {picks.length > 0 && (
+          <View style={styles.summarySection}>
+            <Ionicons name="bar-chart" size={16} color={colors.onSurfaceVariant} />
+            <Text style={styles.summaryTitle}>Prediction Summary</Text>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Total Predictions</Text>
+              <Text style={styles.summaryVal}>{picks.length}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Won</Text>
+              <Text style={[styles.summaryVal, { color: '#16A34A' }]}>{wonCount}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Points Earned</Text>
+              <Text style={[styles.summaryVal, { color: colors.primary }]}>{totalPoints.toLocaleString()}</Text>
+            </View>
+          </View>
+        )}
+
+        {totalPoints > 0 && (
+          <View style={styles.maxScoreCard}>
+            <Text style={styles.maxScoreLabel}>TOTAL POINTS</Text>
+            <Text style={styles.maxScoreValue}>{totalPoints.toLocaleString()} PTS</Text>
+          </View>
+        )}
+
+        <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
+          <Ionicons name="share-outline" size={18} color={colors.primary} />
+          <Text style={styles.shareButtonText}>SHARE MY PICKS</Text>
         </TouchableOpacity>
-
-        <Text style={styles.confirmSubtext}>1/3 DAILY PREDICTIONS</Text>
 
         <View style={{ height: 24 }} />
       </ScrollView>
+      )}
     </View>
   );
 }
@@ -225,6 +259,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     letterSpacing: -0.3,
   },
+  loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   titleSection: {
     paddingHorizontal: spacing.lg,
@@ -283,10 +318,13 @@ const styles = StyleSheet.create({
     color: colors.onSurfaceVariant,
     letterSpacing: 0.5,
   },
-  clearAll: {
-    ...typography.labelSm,
-    color: colors.primary,
-    letterSpacing: 0.5,
+
+  emptyWrap: { alignItems: 'center', gap: 12, paddingVertical: 40 },
+  emptyText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 14,
+    color: colors.onSurfaceVariant,
+    textAlign: 'center',
   },
 
   pickCard: {
@@ -303,17 +341,16 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   statusBadge: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.surfaceContainerHighest,
     borderRadius: 4,
     paddingHorizontal: 8,
     paddingVertical: 2,
   },
-  statusUpcoming: {
-    backgroundColor: colors.surfaceContainerHighest,
-  },
+  statusWon: { backgroundColor: '#16A34A' },
+  statusLost: { backgroundColor: '#DC2626' },
   statusText: {
     ...typography.labelSm,
-    color: colors.onPrimary,
+    color: '#fff',
     fontSize: 9,
   },
   pickTime: {
@@ -354,42 +391,19 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontFamily: 'SpaceGrotesk_700Bold',
   },
-
-  streakBanner: {
-    marginHorizontal: spacing.lg,
-    backgroundColor: colors.surfaceContainerLow,
-    borderRadius: borderRadius.md,
-    padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-    marginTop: 4,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.primary,
-  },
-  streakContent: { flex: 1 },
-  streakTitle: {
-    ...typography.labelLg,
-    color: colors.onSurface,
+  pointsAwarded: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 13,
-  },
-  streakDesc: {
-    ...typography.bodySm,
-    color: colors.onSurfaceVariant,
-    fontSize: 11,
-  },
-  streakValue: {
-    ...typography.titleLg,
+    fontSize: 12,
     color: colors.primary,
-    fontFamily: 'SpaceGrotesk_700Bold',
+    marginTop: 6,
+    textAlign: 'right',
   },
 
   summarySection: {
     marginHorizontal: spacing.lg,
+    marginTop: 12,
     marginBottom: 16,
   },
-  summaryIcon: { fontSize: 16, marginBottom: 4 },
   summaryTitle: {
     ...typography.labelLg,
     color: colors.onSurface,
@@ -411,61 +425,13 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_600SemiBold',
   },
 
-  riskLabel: {
-    ...typography.labelSm,
-    color: colors.onSurfaceDim,
-    paddingHorizontal: spacing.lg,
-    marginBottom: 8,
-    letterSpacing: 0.5,
-  },
-  riskRow: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
-    gap: 8,
-    marginBottom: 16,
-  },
-  riskButton: {
-    flex: 1,
-    backgroundColor: colors.surfaceContainerHighest,
-    borderRadius: borderRadius.sm,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  riskButtonActive: {
-    backgroundColor: colors.primary,
-  },
-  riskText: {
-    ...typography.labelMd,
-    color: colors.onSurfaceVariant,
-    fontSize: 12,
-  },
-  riskTextActive: {
-    color: colors.onPrimary,
-  },
-
-  summaryRow2: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    marginBottom: 6,
-  },
-  potLabel: {
-    ...typography.bodySm,
-    color: colors.onSurfaceVariant,
-  },
-  potValue: {
-    ...typography.bodySm,
-    color: colors.primary,
-    fontFamily: 'Inter_600SemiBold',
-  },
-
   maxScoreCard: {
     marginHorizontal: spacing.lg,
     backgroundColor: colors.surfaceContainerHighest,
     borderRadius: borderRadius.md,
     padding: 16,
     alignItems: 'center',
-    marginTop: 16,
+    marginTop: 4,
     marginBottom: 16,
   },
   maxScoreLabel: {
@@ -479,28 +445,22 @@ const styles = StyleSheet.create({
     color: colors.onSurface,
   },
 
-  confirmButton: {
+  shareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
     marginHorizontal: spacing.lg,
+    paddingVertical: 14,
+    borderRadius: borderRadius.md,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
     marginBottom: 8,
   },
-  confirmGradient: {
-    paddingVertical: 16,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-  },
-  confirmText: {
-    ...typography.labelMd,
-    color: colors.onPrimary,
+  shareButtonText: {
     fontFamily: 'Inter_700Bold',
+    fontSize: 13,
+    color: colors.primary,
     letterSpacing: 1,
-    fontSize: 14,
   },
-  confirmSubtext: {
-    ...typography.labelSm,
-    color: colors.onSurfaceDim,
-    textAlign: 'center',
-    marginBottom: 20,
-    letterSpacing: 0.5,
-  },
-
 });

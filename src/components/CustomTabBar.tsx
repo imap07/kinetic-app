@@ -4,12 +4,13 @@ import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme';
+import { useLiveGames } from '../contexts/LiveGamesContext';
 
 const TAB_CONFIG: Record<string, { label: string }> = {
   Home: { label: 'HOME' },
-  Live: { label: 'LIVE' },
+  Live: { label: 'TODAY' },
+  Leagues: { label: 'LEAGUES' },
   MyPicks: { label: 'MY PICKS' },
-  Rewards: { label: 'REWARDS' },
   Profile: { label: 'PROFILE' },
 };
 
@@ -17,17 +18,17 @@ const INACTIVE_COLOR = 'rgba(248,249,254,0.6)';
 
 function getTabIcon(routeName: string, focused: boolean) {
   const iconColor = focused ? colors.onPrimary : INACTIVE_COLOR;
-  const size = focused ? 16 : 20;
+  const size = focused ? 20 : 16;
 
   switch (routeName) {
     case 'Home':
       return <Ionicons name={focused ? 'home' : 'home-outline'} size={size} color={iconColor} />;
     case 'Live':
-      return <MaterialCommunityIcons name="access-point" size={size} color={iconColor} />;
+      return <Ionicons name={focused ? 'today' : 'today-outline'} size={size} color={iconColor} />;
+    case 'Leagues':
+      return <MaterialCommunityIcons name="trophy" size={size} color={iconColor} />;
     case 'MyPicks':
       return <MaterialCommunityIcons name="ticket-confirmation" size={size} color={iconColor} />;
-    case 'Rewards':
-      return <MaterialCommunityIcons name="medal" size={size} color={iconColor} />;
     case 'Profile':
       return <Ionicons name={focused ? 'person' : 'person-outline'} size={size} color={iconColor} />;
     default:
@@ -38,6 +39,7 @@ function getTabIcon(routeName: string, focused: boolean) {
 export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const bottomPadding = Math.max(insets.bottom, 8);
+  const { liveCount } = useLiveGames();
 
   return (
     <View style={styles.wrapper}>
@@ -67,7 +69,12 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
                 activeOpacity={0.7}
               >
                 <View style={[styles.tabContent, isFocused && styles.tabContentActive]}>
-                  {getTabIcon(route.name, isFocused)}
+                  <View>
+                    {getTabIcon(route.name, isFocused)}
+                    {route.name === 'Live' && liveCount > 0 && !isFocused && (
+                      <View style={styles.liveDot} />
+                    )}
+                  </View>
                   <Text
                     style={[styles.label, isFocused && styles.labelActive]}
                     numberOfLines={1}
@@ -137,5 +144,16 @@ const styles = StyleSheet.create({
   },
   labelActive: {
     color: colors.onPrimary,
+  },
+  liveDot: {
+    position: 'absolute',
+    top: -2,
+    right: -4,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#DC2626',
+    borderWidth: 1.5,
+    borderColor: 'rgba(11,14,17,0.95)',
   },
 });

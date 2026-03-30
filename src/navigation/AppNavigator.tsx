@@ -1,19 +1,23 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   RootStackParamList,
   AuthStackParamList,
   MainTabParamList,
   HomeStackParamList,
   LiveStackParamList,
-  LeaderboardStackParamList,
+  LeaguesStackParamList,
   ProfileStackParamList,
 } from './types';
 import { useAuth } from '../contexts/AuthContext';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 import { colors } from '../theme';
+import { OnboardingScreen, ONBOARDING_COMPLETE_KEY } from '../screens/OnboardingScreen';
+import { SportSelectionScreen } from '../screens/SportSelectionScreen';
 
 import { LoginScreen } from '../screens/LoginScreen';
 import { EmailAuthScreen } from '../screens/EmailAuthScreen';
@@ -33,6 +37,13 @@ import { SecurityPrivacyScreen } from '../screens/SecurityPrivacyScreen';
 import { WalletRewardsScreen } from '../screens/WalletRewardsScreen';
 import { LeagueDetailScreen } from '../screens/LeagueDetailScreen';
 import { CustomTabBar } from '../components/CustomTabBar';
+import { PaywallScreen } from '../screens/PaywallScreen';
+import { SearchScreen } from '../screens/SearchScreen';
+import { CoinStoreScreen } from '../screens/CoinStoreScreen';
+import { CoinLeaguesScreen } from '../screens/CoinLeaguesScreen';
+import { GiftcardRedeemScreen } from '../screens/GiftcardRedeemScreen';
+import { QuestsScreen } from '../screens/QuestsScreen';
+import { LeagueSelectionScreen } from '../screens/LeagueSelectionScreen';
 
 const darkScreenOptions = {
   headerShown: false as const,
@@ -65,6 +76,7 @@ function HomeNavigator() {
       <HomeStack.Screen name="LeagueDetail" component={LeagueDetailScreen} />
       <HomeStack.Screen name="MatchPrediction" component={MatchPredictionScreen} />
       <HomeStack.Screen name="PickSummary" component={PickSummaryScreen} />
+      <HomeStack.Screen name="Quests" component={QuestsScreen} />
     </HomeStack.Navigator>
   );
 }
@@ -82,14 +94,15 @@ function LiveNavigator() {
   );
 }
 
-// ─── Rewards Stack (Leaderboard tab) ─────────────────────
-const RewardsStack = createNativeStackNavigator<LeaderboardStackParamList>();
+// ─── Leagues Stack (Leagues tab) ─────────────────────────
+const LeaguesStack = createNativeStackNavigator<LeaguesStackParamList>();
 
-function RewardsNavigator() {
+function LeaguesNavigator() {
   return (
-    <RewardsStack.Navigator screenOptions={darkScreenOptions}>
-      <RewardsStack.Screen name="LeaderboardHome" component={LeaderboardScreen} />
-    </RewardsStack.Navigator>
+    <LeaguesStack.Navigator screenOptions={darkScreenOptions}>
+      <LeaguesStack.Screen name="LeaguesHome" component={CoinLeaguesScreen} />
+      <LeaguesStack.Screen name="Leaderboard" component={LeaderboardScreen} />
+    </LeaguesStack.Navigator>
   );
 }
 
@@ -104,6 +117,8 @@ function ProfileNavigator() {
       <ProfileStack.Screen name="Notifications" component={NotificationsScreen} />
       <ProfileStack.Screen name="SecurityPrivacy" component={SecurityPrivacyScreen} />
       <ProfileStack.Screen name="WalletRewards" component={WalletRewardsScreen} />
+      <ProfileStack.Screen name="CoinStore" component={CoinStoreScreen} />
+      <ProfileStack.Screen name="GiftcardRedeem" component={GiftcardRedeemScreen} />
     </ProfileStack.Navigator>
   );
 }
@@ -112,30 +127,84 @@ function ProfileNavigator() {
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 function MainTabNavigator() {
+  const { tokens } = useAuth();
+  usePushNotifications(tokens?.accessToken);
+
   return (
     <Tab.Navigator
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
         headerShown: false,
       }}
-      sceneContainerStyle={{ backgroundColor: '#0B0E11' }}
     >
       <Tab.Screen name="Home" component={HomeNavigator} />
       <Tab.Screen name="Live" component={LiveNavigator} />
+      <Tab.Screen name="Leagues" component={LeaguesNavigator} />
       <Tab.Screen name="MyPicks" component={MyPicksScreen} />
-      <Tab.Screen name="Rewards" component={RewardsNavigator} />
       <Tab.Screen name="Profile" component={ProfileNavigator} />
     </Tab.Navigator>
   );
+}
+
+// ─── Onboarding Wrapper ──────────────────────────────────
+function OnboardingWrapper({ navigation }: any) {
+  const handleComplete = useCallback(() => {
+    navigation.replace('SportSelection');
+  }, [navigation]);
+
+  return <OnboardingScreen onComplete={handleComplete} />;
+}
+
+// ─── Sport Selection Wrapper ─────────────────────────────
+function SportSelectionWrapper({ navigation }: any) {
+  const handleComplete = useCallback((selectedSports: string[]) => {
+    navigation.replace('LeagueSelection', { selectedSports });
+  }, [navigation]);
+
+  return <SportSelectionScreen onComplete={handleComplete} />;
+}
+
+// ─── League Selection Wrapper ────────────────────────────
+function LeagueSelectionWrapper({ navigation, route }: any) {
+  const { refreshProfile } = useAuth();
+  const selectedSports: string[] | undefined = route?.params?.selectedSports;
+
+  const handleComplete = useCallback(async () => {
+    await AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, 'true');
+    try { await refreshProfile(); } catch {}
+    navigation.replace('Main');
+  }, [navigation, refreshProfile]);
+
+  return <LeagueSelectionScreen onComplete={handleComplete} selectedSports={selectedSports} />;
 }
 
 // ─── Root Navigator ──────────────────────────────────────
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 
 export function AppNavigator() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
+  const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
 
-  if (isLoading) {
+  useEffect(() => {
+    if (!isAuthenticated || !user) {
+      // Not logged in yet — reset to null so we re-evaluate after login
+      setOnboardingDone(null);
+      return;
+    }
+
+    // Use backend as source of truth: if user.onboardingCompleted is true,
+    // they've already completed it (possibly on another device)
+    if (user.onboardingCompleted) {
+      AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, 'true');
+      setOnboardingDone(true);
+    } else {
+      // New user or hasn't finished onboarding — always show it
+      AsyncStorage.removeItem(ONBOARDING_COMPLETE_KEY);
+      setOnboardingDone(false);
+    }
+  }, [isAuthenticated, user]);
+
+  if (isLoading || (isAuthenticated && onboardingDone === null)) {
     return (
       <View style={loadingStyles.container}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -147,11 +216,68 @@ export function AppNavigator() {
     <NavigationContainer>
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         {isAuthenticated ? (
-          <RootStack.Screen
-            name="Main"
-            component={MainTabNavigator}
-            options={{ animation: 'fade' }}
-          />
+          onboardingDone ? (
+            <>
+              <RootStack.Screen
+                name="Main"
+                component={MainTabNavigator}
+                options={{ animation: 'fade' }}
+              />
+              <RootStack.Screen
+                name="Notifications"
+                component={NotificationsScreen}
+                options={{ animation: 'slide_from_right' }}
+              />
+              <RootStack.Screen
+                name="Paywall"
+                component={PaywallScreen}
+                options={{ animation: 'slide_from_bottom', presentation: 'modal' }}
+              />
+              <RootStack.Screen
+                name="Search"
+                component={SearchScreen}
+                options={{ animation: 'slide_from_bottom', presentation: 'fullScreenModal', headerShown: false }}
+              />
+            </>
+          ) : (
+            <>
+              <RootStack.Screen
+                name="Onboarding"
+                component={OnboardingWrapper}
+                options={{ animation: 'fade' }}
+              />
+              <RootStack.Screen
+                name="SportSelection"
+                component={SportSelectionWrapper}
+                options={{ animation: 'slide_from_right' }}
+              />
+              <RootStack.Screen
+                name="LeagueSelection"
+                component={LeagueSelectionWrapper}
+                options={{ animation: 'slide_from_right' }}
+              />
+              <RootStack.Screen
+                name="Main"
+                component={MainTabNavigator}
+                options={{ animation: 'fade' }}
+              />
+              <RootStack.Screen
+                name="Notifications"
+                component={NotificationsScreen}
+                options={{ animation: 'slide_from_right' }}
+              />
+              <RootStack.Screen
+                name="Paywall"
+                component={PaywallScreen}
+                options={{ animation: 'slide_from_bottom', presentation: 'modal' }}
+              />
+              <RootStack.Screen
+                name="Search"
+                component={SearchScreen}
+                options={{ animation: 'slide_from_bottom', presentation: 'fullScreenModal', headerShown: false }}
+              />
+            </>
+          )
         ) : (
           <RootStack.Screen name="Auth" component={AuthNavigator} />
         )}

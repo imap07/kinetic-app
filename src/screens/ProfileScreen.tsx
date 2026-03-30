@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Share,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -16,9 +18,13 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme';
 import { AppHeader } from '../components/AppHeader';
-import { ProfileStackParamList } from '../navigation/types';
+import { ProfileStackParamList, RootStackParamList } from '../navigation/types';
 import { useAuth } from '../contexts/AuthContext';
 import { usePurchases } from '../contexts/PurchasesContext';
+import { predictionsApi } from '../api/predictions';
+import type { PredictionData } from '../api/predictions';
+import { achievementsApi } from '../api/achievements';
+import type { Achievement } from '../api/achievements';
 
 const TIER_CONFIG: Record<string, { label: string; next: string; max: number }> = {
   rookie: { label: 'Rookie', next: 'Bronze', max: 1000 },
@@ -29,76 +35,45 @@ const TIER_CONFIG: Record<string, { label: string; next: string; max: number }> 
   legend: { label: 'Legend', next: '', max: 100000 },
 };
 
-const ACHIEVEMENTS = [
-  {
-    id: '1',
-    title: 'Premier Prodigy',
-    desc: '10 Consecutive Premier League Wins',
-    iconName: 'trophy' as const,
-    bgType: 'gradient' as const,
-  },
-  {
-    id: '2',
-    title: 'Hardwood Hero',
-    desc: 'Predicted NBA Playoff Sweep',
-    iconName: 'basketball' as const,
-    bgType: 'orange' as const,
-  },
-  {
-    id: '3',
-    title: 'Ultimate Kineticist',
-    desc: 'Earned 10,000 pts in a single week',
-    iconName: 'flash' as const,
-    bgType: 'outline' as const,
-  },
-];
+// Icon mapping for achievement keys from backend
+const ACHIEVEMENT_ICON_MAP: Record<string, keyof typeof Ionicons.glyphMap> = {
+  star: 'star',
+  flame: 'flame',
+  football: 'football',
+  'checkmark-done': 'checkmark-done',
+  trophy: 'trophy',
+  medal: 'medal',
+};
 
-const HISTORY = [
-  {
-    id: '1',
-    label: 'MCI VS ARS \u2022 OVER 2.5',
-    outcome: 'Outcome: WIN',
-    pts: '+450 PTS',
-    ptsColor: colors.primaryContainer,
-    time: '2H AGO',
-    isWin: true,
-  },
-  {
-    id: '2',
-    label: 'LAL VS GSW \u2022 CURRY\nO/28.5',
-    outcome: 'Outcome: WIN',
-    pts: '+220\nPTS',
-    ptsColor: colors.primaryContainer,
-    time: 'YESTERDAY',
-    isWin: true,
-  },
-  {
-    id: '3',
-    label: 'NYY VS BOS \u2022 RED SOX ML',
-    outcome: 'Outcome: LOSS',
-    pts: '-150 PTS',
-    ptsColor: '#FF7351',
-    time: '2D AGO',
-    isWin: false,
-  },
-];
+function formatOutcome(p: PredictionData): string {
+  if (p.predictionType === 'exact_score' && p.predictedHomeScore != null && p.predictedAwayScore != null) {
+    return `${p.predictedHomeScore}-${p.predictedAwayScore}`;
+  }
+  if (p.predictedOutcome === 'home') return p.homeTeamName;
+  if (p.predictedOutcome === 'away') return p.awayTeamName;
+  return 'Draw';
+}
+
+function formatPickDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+  if (diffHrs < 1) return 'JUST NOW';
+  if (diffHrs < 24) return `${diffHrs}H AGO`;
+  const diffDays = Math.floor(diffHrs / 24);
+  if (diffDays === 1) return 'YESTERDAY';
+  if (diffDays < 7) return `${diffDays}D AGO`;
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' }).toUpperCase();
+}
 
 // ── Achievement Icon ──
 
-function AchievementIcon({ item }: { item: typeof ACHIEVEMENTS[0] }) {
-  const iconSize = 20;
-  const iconColor = item.bgType === 'gradient' ? '#4A5E00' : '#FFFFFF';
+function AchievementIcon({ item }: { item: Achievement }) {
+  const iconName = ACHIEVEMENT_ICON_MAP[item.icon] ?? 'ribbon';
+  const iconSize = 22;
 
-  const icon =
-    item.iconName === 'trophy' ? (
-      <Ionicons name="trophy" size={iconSize} color={iconColor} />
-    ) : item.iconName === 'basketball' ? (
-      <Ionicons name="basketball" size={iconSize} color={iconColor} />
-    ) : (
-      <Ionicons name="flash" size={iconSize} color={colors.primary} />
-    );
-
-  if (item.bgType === 'gradient') {
+  if (item.unlocked) {
     return (
       <LinearGradient
         colors={['#F3FFCA', '#CAFD00']}
@@ -106,16 +81,8 @@ function AchievementIcon({ item }: { item: typeof ACHIEVEMENTS[0] }) {
         end={{ x: 1, y: 1 }}
         style={styles.achieveIconWrap}
       >
-        {icon}
+        <Ionicons name={iconName} size={iconSize} color="#4A5E00" />
       </LinearGradient>
-    );
-  }
-
-  if (item.bgType === 'orange') {
-    return (
-      <View style={[styles.achieveIconWrap, { backgroundColor: colors.tertiaryLight }]}>
-        {icon}
-      </View>
     );
   }
 
@@ -124,13 +91,13 @@ function AchievementIcon({ item }: { item: typeof ACHIEVEMENTS[0] }) {
       style={[
         styles.achieveIconWrap,
         {
-          backgroundColor: colors.surfaceContainerHighest,
+          backgroundColor: 'rgba(69,72,76,0.15)',
           borderWidth: 1,
-          borderColor: 'rgba(202,253,0,0.3)',
+          borderColor: 'rgba(69,72,76,0.2)',
         },
       ]}
     >
-      {icon}
+      <Ionicons name={iconName} size={iconSize} color="rgba(255,255,255,0.25)" />
     </View>
   );
 }
@@ -139,8 +106,14 @@ function AchievementIcon({ item }: { item: typeof ACHIEVEMENTS[0] }) {
 
 export function ProfileScreen() {
   const profileNav = useNavigation<NativeStackNavigationProp<ProfileStackParamList>>();
-  const { logout, user } = useAuth();
-  const { isProMember, presentPaywall } = usePurchases();
+  const rootNav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { logout, user, tokens } = useAuth();
+  const { isProMember } = usePurchases();
+
+  const [history, setHistory] = useState<PredictionData[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [achievementsLoading, setAchievementsLoading] = useState(true);
 
   const tierKey = user?.tier ?? 'rookie';
   const tierInfo = TIER_CONFIG[tierKey] ?? TIER_CONFIG.rookie;
@@ -154,8 +127,45 @@ export function ProfileScreen() {
     : 0;
   const activeStreak = user?.currentStreak ?? 0;
 
+  const fetchHistory = useCallback(async () => {
+    if (!tokens?.accessToken) return;
+    try {
+      const res = await predictionsApi.getMyPicks(tokens.accessToken, { status: 'resolved', limit: 6 });
+      setHistory(res.predictions);
+    } catch {
+      // silent
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [tokens?.accessToken]);
+
+  const fetchAchievements = useCallback(async () => {
+    if (!tokens?.accessToken) return;
+    try {
+      const data = await achievementsApi.getMyAchievements(tokens.accessToken);
+      setAchievements(data);
+    } catch {
+      // silent
+    } finally {
+      setAchievementsLoading(false);
+    }
+  }, [tokens?.accessToken]);
+
+  useEffect(() => {
+    fetchHistory();
+    fetchAchievements();
+  }, [fetchHistory, fetchAchievements]);
+
   const handleLogout = async () => {
     await logout();
+  };
+
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: `I'm on Kinetic with a ${winRate}% win rate! Download the app and challenge me.`,
+      });
+    } catch {}
   };
 
   return (
@@ -218,7 +228,7 @@ export function ProfileScreen() {
                   <Text style={styles.editBtnText}>EDIT PROFILE</Text>
                 </LinearGradient>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.shareBtn}>
+              <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
                 <Feather name="share-2" size={18} color={colors.onSurface} />
               </TouchableOpacity>
             </View>
@@ -307,7 +317,7 @@ export function ProfileScreen() {
                   Kinetic+
                   <Text style={styles.subPriceUnit}> subscription</Text>
                 </Text>
-                <TouchableOpacity onPress={presentPaywall}>
+                <TouchableOpacity onPress={() => rootNav.navigate('Paywall', { trigger: 'general' })}>
                   <Text style={styles.manageSub}>MANAGE SUBSCRIPTION</Text>
                 </TouchableOpacity>
               </>
@@ -320,7 +330,7 @@ export function ProfileScreen() {
                 <TouchableOpacity
                   style={styles.upgradeBtnWrap}
                   activeOpacity={0.85}
-                  onPress={presentPaywall}
+                  onPress={() => rootNav.navigate('Paywall', { trigger: 'general' })}
                 >
                   <LinearGradient
                     colors={['#F3FFCA', '#CAFD00']}
@@ -336,20 +346,44 @@ export function ProfileScreen() {
           </View>
         </View>
 
-        {/* ── Recent Achievements ── */}
+        {/* ── Achievements ── */}
         <View style={styles.sectionHeader}>
           <MaterialCommunityIcons name="medal" size={18} color={colors.onSurface} />
-          <Text style={styles.sectionTitle}>RECENT ACHIEVEMENTS</Text>
+          <Text style={styles.sectionTitle}>ACHIEVEMENTS</Text>
         </View>
-        {ACHIEVEMENTS.map((a) => (
-          <View key={a.id} style={styles.achieveCard}>
-            <AchievementIcon item={a} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.achieveTitle}>{a.title}</Text>
-              <Text style={styles.achieveDesc}>{a.desc}</Text>
-            </View>
+        {achievementsLoading ? (
+          <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 16 }} />
+        ) : achievements.length === 0 ? (
+          <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+            <Text style={styles.achieveDesc}>No achievements yet — keep predicting!</Text>
           </View>
-        ))}
+        ) : (
+          achievements.map((a) => (
+            <View
+              key={a.key}
+              style={[
+                styles.achieveCard,
+                !a.unlocked && { opacity: 0.5 },
+              ]}
+            >
+              <AchievementIcon item={a} />
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Text style={styles.achieveTitle}>{a.title}</Text>
+                  {a.unlocked && (
+                    <View style={styles.achieveUnlockedBadge}>
+                      <Text style={styles.achieveUnlockedText}>✓</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.achieveDesc}>{a.description}</Text>
+                <Text style={styles.achievePoints}>
+                  {a.unlocked ? `+${a.points} PTS EARNED` : `${a.points} PTS`}
+                </Text>
+              </View>
+            </View>
+          ))
+        )}
 
         {/* ── Prediction History ── */}
         <View style={[styles.sectionHeader, { marginTop: 32 }]}>
@@ -360,40 +394,62 @@ export function ProfileScreen() {
           />
           <Text style={styles.sectionTitle}>PREDICTION HISTORY</Text>
         </View>
-        <View style={styles.historyList}>
-          {HISTORY.map((h) => (
-            <View key={h.id} style={styles.historyRow}>
-              <View style={styles.historyLeft}>
-                <View
-                  style={[
-                    styles.historyIcon,
-                    {
-                      backgroundColor: h.isWin
-                        ? 'rgba(0,109,55,0.2)'
-                        : 'rgba(185,41,2,0.2)',
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name={h.isWin ? 'trending-up' : 'trending-down'}
-                    size={20}
-                    color={h.isWin ? '#5BEF90' : '#FF7351'}
-                  />
+        {historyLoading ? (
+          <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 16 }} />
+        ) : history.length === 0 ? (
+          <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+            <Text style={styles.historyOutcome}>No predictions yet</Text>
+          </View>
+        ) : (
+          <View style={styles.historyList}>
+            {history.map((p) => {
+              const isWin = p.status === 'won';
+              return (
+                <View key={p._id} style={styles.historyRow}>
+                  <View style={styles.historyLeft}>
+                    <View
+                      style={[
+                        styles.historyIcon,
+                        {
+                          backgroundColor: isWin
+                            ? 'rgba(0,109,55,0.2)'
+                            : 'rgba(185,41,2,0.2)',
+                        },
+                      ]}
+                    >
+                      <Ionicons
+                        name={isWin ? 'trending-up' : 'trending-down'}
+                        size={20}
+                        color={isWin ? '#5BEF90' : '#FF7351'}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.historyLabel}>
+                        {p.homeTeamName} VS {p.awayTeamName}
+                      </Text>
+                      <Text style={styles.historyOutcome}>
+                        Outcome: {p.status === 'won' ? 'WIN' : p.status === 'lost' ? 'LOSS' : p.status.toUpperCase()} · {formatOutcome(p)}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text
+                      style={[
+                        styles.historyPts,
+                        { color: isWin ? colors.primaryContainer : '#FF7351' },
+                      ]}
+                    >
+                      {isWin ? `+${p.pointsAwarded}` : '0'} PTS
+                    </Text>
+                    <Text style={styles.historyTime}>
+                      {formatPickDate(p.createdAt)}
+                    </Text>
+                  </View>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.historyLabel}>{h.label}</Text>
-                  <Text style={styles.historyOutcome}>{h.outcome}</Text>
-                </View>
-              </View>
-              <View style={{ alignItems: 'flex-end' }}>
-                <Text style={[styles.historyPts, { color: h.ptsColor }]}>
-                  {h.pts}
-                </Text>
-                <Text style={styles.historyTime}>{h.time}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
+              );
+            })}
+          </View>
+        )}
 
         {/* ── Security & Settings ── */}
         <View style={styles.settingsSection}>
@@ -428,7 +484,7 @@ export function ProfileScreen() {
                 size={18}
                 color={colors.onSurface}
               />
-              <Text style={styles.settingsRowText}>WALLET & REWARDS</Text>
+              <Text style={styles.settingsRowText}>WALLET</Text>
             </View>
             <Feather name="chevron-right" size={16} color={colors.onSurfaceVariant} />
           </TouchableOpacity>
@@ -820,6 +876,27 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
     color: colors.onSurfaceVariant,
+  },
+  achievePoints: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 10,
+    lineHeight: 15,
+    color: colors.primaryContainer,
+    letterSpacing: 1,
+    marginTop: 4,
+  },
+  achieveUnlockedBadge: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#006D37',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  achieveUnlockedText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 10,
+    color: '#E3FFE4',
   },
 
   // History

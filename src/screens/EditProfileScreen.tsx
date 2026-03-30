@@ -10,7 +10,10 @@ import {
   KeyboardAvoidingView,
   ActivityIndicator,
   Alert,
+  Modal,
 } from 'react-native';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Feather, Ionicons } from '@expo/vector-icons';
@@ -23,7 +26,7 @@ const SPORTS = ['Football', 'Basketball', 'Baseball', 'Tennis', 'MMA', 'Cricket'
 export function EditProfileScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile, uploadAvatar, deleteAccount, logout } = useAuth();
 
   const [displayName, setDisplayName] = useState(user?.displayName ?? '');
   const [username, setUsername] = useState(user?.username ?? '');
@@ -32,6 +35,9 @@ export function EditProfileScreen() {
     user?.favoriteSports ?? [],
   );
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteText, setDeleteText] = useState('');
 
   const toggleSport = (sport: string) => {
     setFavoriteSports((prev) =>
@@ -58,6 +64,75 @@ export function EditProfileScreen() {
       Alert.alert('Error', message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleChangePhoto = async () => {
+    const permResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permResult.granted) {
+      Alert.alert('Permission required', 'Please allow access to your photo library to change your avatar.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (result.canceled || !result.assets?.[0]) return;
+
+    const asset = result.assets[0];
+    const fileName = asset.fileName || `avatar.${asset.mimeType?.split('/')[1] || 'jpg'}`;
+    const mimeType = asset.mimeType || 'image/jpeg';
+
+    setUploadingAvatar(true);
+    try {
+      await uploadAvatar(asset.uri, fileName, mimeType);
+    } catch (err) {
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : 'Failed to upload avatar. Please try again.';
+      Alert.alert('Error', message);
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'Are you sure? This cannot be undone. Your account will be deactivated.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Continue',
+          style: 'destructive',
+          onPress: () => {
+            setDeleteText('');
+            setShowDeleteConfirm(true);
+          },
+        },
+      ],
+    );
+  };
+
+  const confirmDeleteAccount = async () => {
+    if (deleteText.trim() !== 'DELETE') {
+      Alert.alert('Cancelled', 'You must type DELETE exactly to confirm.');
+      return;
+    }
+    setShowDeleteConfirm(false);
+    try {
+      await deleteAccount();
+    } catch (err) {
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : 'Failed to delete account. Please try again.';
+      Alert.alert('Error', message);
     }
   };
 
@@ -90,11 +165,29 @@ export function EditProfileScreen() {
           {/* Avatar section */}
           <View style={styles.avatarSection}>
             <View style={styles.avatarLarge}>
-              <Ionicons name="person" size={40} color={colors.onSurfaceVariant} />
+              {user?.avatar ? (
+                <Image
+                  source={{ uri: user.avatar }}
+                  style={styles.avatarImage}
+                  contentFit="cover"
+                />
+              ) : (
+                <Ionicons name="person" size={40} color={colors.onSurfaceVariant} />
+              )}
             </View>
-            <TouchableOpacity style={styles.changePhotoBtn}>
-              <Feather name="camera" size={14} color={colors.onPrimary} />
-              <Text style={styles.changePhotoText}>CHANGE PHOTO</Text>
+            <TouchableOpacity
+              style={styles.changePhotoBtn}
+              onPress={handleChangePhoto}
+              disabled={uploadingAvatar || saving}
+            >
+              {uploadingAvatar ? (
+                <ActivityIndicator size="small" color={colors.onPrimary} />
+              ) : (
+                <>
+                  <Feather name="camera" size={14} color={colors.onPrimary} />
+                  <Text style={styles.changePhotoText}>CHANGE PHOTO</Text>
+                </>
+              )}
             </TouchableOpacity>
           </View>
 
@@ -193,13 +286,57 @@ export function EditProfileScreen() {
           {/* Danger zone */}
           <View style={styles.dangerSection}>
             <Text style={styles.dangerLabel}>DANGER ZONE</Text>
-            <TouchableOpacity style={styles.dangerBtn}>
+            <TouchableOpacity style={styles.dangerBtn} onPress={handleDeleteAccount}>
               <Feather name="trash-2" size={16} color="#FF4444" />
               <Text style={styles.dangerBtnText}>Delete Account</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Delete account confirmation modal */}
+      <Modal
+        visible={showDeleteConfirm}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDeleteConfirm(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>CONFIRM DELETION</Text>
+            <Text style={styles.modalDescription}>
+              Type DELETE to confirm account deletion.
+            </Text>
+            <TextInput
+              style={styles.modalInput}
+              value={deleteText}
+              onChangeText={setDeleteText}
+              placeholder="Type DELETE"
+              placeholderTextColor={colors.onSurfaceDim}
+              autoCapitalize="characters"
+              autoFocus
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setShowDeleteConfirm(false)}
+              >
+                <Text style={styles.modalCancelText}>CANCEL</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.modalDeleteBtn,
+                  deleteText.trim() !== 'DELETE' && { opacity: 0.4 },
+                ]}
+                onPress={confirmDeleteAccount}
+                disabled={deleteText.trim() !== 'DELETE'}
+              >
+                <Text style={styles.modalDeleteText}>DELETE ACCOUNT</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -243,6 +380,11 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   changePhotoBtn: {
     flexDirection: 'row',
@@ -353,5 +495,75 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_500Medium',
     fontSize: 14,
     color: '#FF4444',
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing['2xl'],
+  },
+  modalContent: {
+    width: '100%',
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: borderRadius.lg,
+    padding: spacing['2xl'],
+  },
+  modalTitle: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 16,
+    color: '#FF4444',
+    letterSpacing: 1,
+    marginBottom: spacing.md,
+  },
+  modalDescription: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 14,
+    color: colors.onSurfaceVariant,
+    marginBottom: spacing.xl,
+  },
+  modalInput: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 15,
+    color: colors.onSurface,
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: '#FF4444',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 12,
+    marginBottom: spacing.xl,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  modalCancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12,
+    color: colors.onSurfaceVariant,
+    letterSpacing: 0.5,
+  },
+  modalDeleteBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: borderRadius.md,
+    backgroundColor: '#FF4444',
+    alignItems: 'center',
+  },
+  modalDeleteText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12,
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
 });

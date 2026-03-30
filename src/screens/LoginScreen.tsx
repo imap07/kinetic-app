@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { legalApi } from '../api';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -22,27 +23,40 @@ import { useAuth } from '../contexts/AuthContext';
 import { ApiError } from '../api';
 import type { SocialProvider } from '../api';
 import { signInWithGoogle, isGoogleSignInCancelled } from '../services/googleAuth';
+import * as AppleAuthentication from 'expo-apple-authentication';
 
 type LoginScreenProps = {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 };
 
-const LOREM = `Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-
-Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-
-Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.
-
-Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet.`;
-
 type LegalModalProps = {
   visible: boolean;
-  title: string;
+  type: 'terms' | 'privacy';
   onClose: () => void;
 };
 
-function LegalModal({ visible, title, onClose }: LegalModalProps) {
+function LegalModal({ visible, type, onClose }: LegalModalProps) {
   const insets = useSafeAreaInsets();
+  const [content, setContent] = useState('');
+  const [title, setTitle] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!visible) return;
+
+    setLoading(true);
+    const fetcher = type === 'terms' ? legalApi.getTerms : legalApi.getPrivacy;
+    fetcher()
+      .then((doc) => {
+        setTitle(doc.title);
+        setContent(doc.content);
+      })
+      .catch(() => {
+        setTitle(type === 'terms' ? 'Terms of Service' : 'Privacy Policy');
+        setContent('Unable to load document. Please try again later.');
+      })
+      .finally(() => setLoading(false));
+  }, [visible, type]);
 
   return (
     <Modal
@@ -52,13 +66,13 @@ function LegalModal({ visible, title, onClose }: LegalModalProps) {
       statusBarTranslucent
       onRequestClose={onClose}
     >
-      <Pressable style={modalStyles.overlay} onPress={onClose}>
-        <Pressable
+      <View style={modalStyles.overlay}>
+        <Pressable style={modalStyles.overlayBg} onPress={onClose} />
+        <View
           style={[
             modalStyles.sheet,
             { paddingBottom: Math.max(insets.bottom, 16) },
           ]}
-          onPress={(e) => e.stopPropagation()}
         >
           <View style={modalStyles.handle} />
 
@@ -71,9 +85,17 @@ function LegalModal({ visible, title, onClose }: LegalModalProps) {
 
           <ScrollView
             style={modalStyles.body}
-            showsVerticalScrollIndicator={false}
+            showsVerticalScrollIndicator
           >
-            <Text style={modalStyles.bodyText}>{LOREM}</Text>
+            {loading ? (
+              <ActivityIndicator
+                size="small"
+                color={colors.primary}
+                style={{ marginTop: 32 }}
+              />
+            ) : (
+              <Text style={modalStyles.bodyText}>{content}</Text>
+            )}
           </ScrollView>
 
           <TouchableOpacity
@@ -83,8 +105,8 @@ function LegalModal({ visible, title, onClose }: LegalModalProps) {
           >
             <Text style={modalStyles.closeBtnText}>CLOSE</Text>
           </TouchableOpacity>
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }
@@ -94,6 +116,13 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
   const { loginWithSocial } = useAuth();
   const [legalModal, setLegalModal] = useState<'terms' | 'privacy' | null>(null);
   const [socialLoading, setSocialLoading] = useState<SocialProvider | null>(null);
+  const [appleAvailable, setAppleAvailable] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS === 'ios') {
+      AppleAuthentication.isAvailableAsync().then(setAppleAvailable).catch(() => {});
+    }
+  }, []);
 
   const handleEmailContinue = () => {
     navigation.navigate('EmailAuth');
@@ -121,25 +150,45 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
     }
   };
 
-  const handleSocialLogin = async (provider: SocialProvider) => {
-    if (provider === 'google') {
-      return handleGoogleLogin();
-    }
-    setSocialLoading(provider);
+  const handleAppleLogin = async () => {
+    setSocialLoading('apple');
     try {
-      await loginWithSocial(provider, `dev-${provider}-token`, {
-        email: `dev@${provider}.com`,
-        displayName: `${provider.charAt(0).toUpperCase() + provider.slice(1)} Dev User`,
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+        ],
       });
-    } catch (err) {
+
+      if (!credential.identityToken) {
+        Alert.alert('Error', 'Apple sign-in failed: no identity token received.');
+        return;
+      }
+
+      const fullName = [credential.fullName?.givenName, credential.fullName?.familyName]
+        .filter(Boolean)
+        .join(' ');
+
+      await loginWithSocial('apple', credential.identityToken, {
+        idToken: credential.identityToken,
+        email: credential.email ?? undefined,
+        displayName: fullName || undefined,
+      });
+    } catch (err: any) {
+      if (err?.code === 'ERR_REQUEST_CANCELED') return;
       const message =
         err instanceof ApiError
           ? err.message
-          : 'Social login failed. Please try again.';
+          : 'Apple sign-in failed. Please try again.';
       Alert.alert('Error', message);
     } finally {
       setSocialLoading(null);
     }
+  };
+
+  const handleSocialLogin = async (provider: SocialProvider) => {
+    if (provider === 'google') return handleGoogleLogin();
+    if (provider === 'apple') return handleAppleLogin();
   };
 
   return (
@@ -177,14 +226,12 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
             provider="google"
             onPress={() => handleSocialLogin('google')}
           />
-          <SocialButton
-            provider="apple"
-            onPress={() => handleSocialLogin('apple')}
-          />
-          <SocialButton
-            provider="x"
-            onPress={() => handleSocialLogin('x')}
-          />
+          {appleAvailable && (
+            <SocialButton
+              provider="apple"
+              onPress={() => handleSocialLogin('apple')}
+            />
+          )}
           {socialLoading && (
             <ActivityIndicator
               size="small"
@@ -235,12 +282,12 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
 
       <LegalModal
         visible={legalModal === 'terms'}
-        title="Terms of Service"
+        type="terms"
         onClose={() => setLegalModal(null)}
       />
       <LegalModal
         visible={legalModal === 'privacy'}
-        title="Privacy Policy"
+        type="privacy"
         onClose={() => setLegalModal(null)}
       />
     </KeyboardAvoidingView>
@@ -260,7 +307,7 @@ const styles = StyleSheet.create({
     height: 300,
     borderRadius: 150,
     backgroundColor: colors.tertiary,
-    opacity: 0.03,
+    opacity: 0.07,
   },
   orbBottomLeft: {
     position: 'absolute',
@@ -270,7 +317,7 @@ const styles = StyleSheet.create({
     height: 300,
     borderRadius: 150,
     backgroundColor: colors.primary,
-    opacity: 0.03,
+    opacity: 0.05,
   },
   content: {
     flexGrow: 1,
@@ -347,14 +394,17 @@ const styles = StyleSheet.create({
 const modalStyles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'flex-end',
+  },
+  overlayBg: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.6)',
   },
   sheet: {
     backgroundColor: colors.surfaceContainerLow,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '85%',
+    height: '85%',
     paddingTop: 8,
     paddingHorizontal: 24,
   },
@@ -380,6 +430,7 @@ const modalStyles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   body: {
+    flex: 1,
     marginBottom: 24,
   },
   bodyText: {

@@ -13,10 +13,14 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../theme';
+import Toast from 'react-native-toast-message';
 import { useAuth } from '../contexts/AuthContext';
+import { usePurchases } from '../contexts/PurchasesContext';
+import { leaguesApi } from '../api/leagues';
+import type { CoinLeague } from '../api/leagues';
 import { sportsApi } from '../api/sports';
 import type { SportKey, SportLeagueDetail, SportGame, SportStandingEntry } from '../api/sports';
-import type { HomeStackParamList } from '../navigation/types';
+import type { HomeStackParamList, RootStackParamList } from '../navigation/types';
 
 type Nav = NativeStackNavigationProp<HomeStackParamList>;
 
@@ -67,18 +71,34 @@ type TabKey = 'matches' | 'standings';
 
 export function LeagueDetailScreen() {
   const navigation = useNavigation<Nav>();
+  const rootNav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<any>();
-  const { leagueApiId, leagueName, sport } = route.params as {
+  const { leagueApiId, leagueName, sport, tier } = route.params as {
     leagueApiId: number;
     leagueName: string;
     sport: SportKey;
+    tier?: 'free' | 'premium';
   };
   const { tokens } = useAuth();
+  const { isProMember } = usePurchases();
+
+  // If this is a premium league and user isn't pro, redirect to paywall
+  useEffect(() => {
+    if (tier === 'premium' && !isProMember) {
+      rootNav.navigate('Paywall', {
+        trigger: 'premium_league',
+        sportName: leagueName,
+      });
+      navigation.goBack();
+    }
+  }, [tier, isProMember]);
 
   const [data, setData] = useState<SportLeagueDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>('matches');
+  const [coinLeagues, setCoinLeagues] = useState<CoinLeague[]>([]);
+  const [coinLeaguesLoading, setCoinLeaguesLoading] = useState(true);
 
   const isF1 = sport === 'formula-1';
 
@@ -88,16 +108,30 @@ export function LeagueDetailScreen() {
       const result = await sportsApi.getLeagueDetail(tokens.accessToken, sport, leagueApiId);
       setData(result);
     } catch (err) {
-      console.log('League detail fetch error:', err);
+      Toast.show({ type: 'error', text1: 'Error loading league', text2: 'Pull down to try again' });
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, [tokens?.accessToken, leagueApiId, sport]);
 
+  const fetchCoinLeagues = useCallback(async () => {
+    if (!tokens?.accessToken) return;
+    setCoinLeaguesLoading(true);
+    try {
+      const result = await leaguesApi.getThemedLeagues(tokens.accessToken, leagueApiId);
+      setCoinLeagues(result);
+    } catch {
+      // Silently fail - CoinLeagues are optional
+    } finally {
+      setCoinLeaguesLoading(false);
+    }
+  }, [tokens?.accessToken, leagueApiId]);
+
   useEffect(() => {
     fetchLeague();
-  }, [fetchLeague]);
+    fetchCoinLeagues();
+  }, [fetchLeague, fetchCoinLeagues]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -188,6 +222,68 @@ export function LeagueDetailScreen() {
         ) : (
           <StandingsTab standings={standings} sport={sport} />
         )}
+        {/* League CoinLeagues */}
+        <View style={styles.coinLeaguesSection}>
+          <View style={styles.coinLeaguesSectionHeader}>
+            <MaterialCommunityIcons name="trophy" size={18} color="#4FC3F7" />
+            <Text style={styles.coinLeaguesSectionTitle}>League CoinLeagues</Text>
+          </View>
+          {coinLeaguesLoading ? (
+            <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 16 }} />
+          ) : coinLeagues.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.coinLeaguesScroll}
+            >
+              {coinLeagues.map((cl) => (
+                <TouchableOpacity
+                  key={cl._id}
+                  style={styles.coinLeagueCard}
+                  onPress={() =>
+                    rootNav.navigate('Main', {
+                      screen: 'Leagues',
+                    } as any)
+                  }
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.coinLeagueName} numberOfLines={1}>{cl.name}</Text>
+                  <View style={styles.coinLeagueRow}>
+                    <Ionicons name="ticket-outline" size={12} color={colors.primary} />
+                    <Text style={styles.coinLeagueDetail}>{cl.entryFee} coins</Text>
+                  </View>
+                  <View style={styles.coinLeagueRow}>
+                    <Ionicons name="people-outline" size={12} color={colors.onSurfaceVariant} />
+                    <Text style={styles.coinLeagueDetail}>
+                      {cl.participants.length}/{cl.maxParticipants}
+                    </Text>
+                  </View>
+                  <View style={styles.coinLeagueRow}>
+                    <Ionicons name="trophy-outline" size={12} color={colors.primary} />
+                    <Text style={styles.coinLeaguePrize}>{cl.prizePool} coins</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          ) : (
+            <TouchableOpacity
+              style={styles.coinLeagueCta}
+              onPress={() => {
+                // Navigate to CoinLeagues tab — the create modal can be opened there
+                rootNav.navigate('Main', {
+                  screen: 'Leagues',
+                } as any);
+              }}
+              activeOpacity={0.7}
+            >
+              <MaterialCommunityIcons name="plus-circle-outline" size={20} color={colors.primary} />
+              <Text style={styles.coinLeagueCtaText}>
+                Create a CoinLeague for {leagueName}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
         <View style={{ height: 80 }} />
       </ScrollView>
     </View>
@@ -723,6 +819,76 @@ const styles = StyleSheet.create({
   standingsTeamName: {
     fontFamily: 'Inter_700Bold',
     fontSize: 12,
+    color: colors.onSurface,
+    flex: 1,
+  },
+
+  // CoinLeagues
+  coinLeaguesSection: {
+    paddingHorizontal: 16,
+    marginTop: 24,
+    marginBottom: 8,
+  },
+  coinLeaguesSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  coinLeaguesSectionTitle: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 16,
+    color: colors.onSurface,
+    letterSpacing: -0.3,
+  },
+  coinLeaguesScroll: {
+    gap: 10,
+  },
+  coinLeagueCard: {
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: 10,
+    padding: 14,
+    minWidth: 160,
+    gap: 8,
+  },
+  coinLeagueName: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.onSurface,
+    marginBottom: 2,
+  },
+  coinLeagueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  coinLeagueDetail: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 11,
+    lineHeight: 16,
+    color: colors.onSurfaceVariant,
+  },
+  coinLeaguePrize: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 11,
+    lineHeight: 16,
+    color: colors.primary,
+  },
+  coinLeagueCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(202,253,0,0.15)',
+    padding: 16,
+  },
+  coinLeagueCtaText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 13,
+    lineHeight: 18,
     color: colors.onSurface,
     flex: 1,
   },

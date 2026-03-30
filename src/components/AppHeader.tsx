@@ -1,9 +1,10 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Ionicons, Feather } from '@expo/vector-icons';
+import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme';
+import { useCoins } from '../contexts/CoinContext';
 
 interface AppHeaderProps {
   showSearch?: boolean;
@@ -12,24 +13,46 @@ interface AppHeaderProps {
 export function AppHeader({ showSearch = true }: AppHeaderProps) {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
+  const { balance, isLoading: balanceLoading } = useCoins();
 
   const handleBellPress = () => {
-    navigation.navigate('Profile', {
-      screen: 'Notifications',
+    navigation.navigate('Notifications');
+  };
+
+  const handleSearchPress = () => {
+    navigation.navigate('Search');
+  };
+
+  const handleAvatarPress = () => {
+    navigation.navigate('Main', { screen: 'Profile' });
+  };
+
+  const handleCoinPress = () => {
+    navigation.navigate('Main', {
+      screen: 'Profile',
+      params: { screen: 'WalletRewards' },
     });
   };
 
   return (
     <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
       <View style={styles.headerLeft}>
-        <View style={styles.avatar}>
-          <Ionicons name="person" size={20} color={colors.onSurfaceVariant} />
-        </View>
+        <TouchableOpacity onPress={handleAvatarPress} activeOpacity={0.7}>
+          <View style={styles.avatar}>
+            <Ionicons name="person" size={20} color={colors.onSurfaceVariant} />
+          </View>
+        </TouchableOpacity>
         <Text style={styles.brandText}>KINETIC</Text>
       </View>
       <View style={styles.headerRight}>
+        <TouchableOpacity style={styles.coinPill} onPress={handleCoinPress} activeOpacity={0.7}>
+          <MaterialCommunityIcons name="circle-multiple" size={14} color={colors.primary} />
+          <Text style={styles.coinPillText}>
+            {balanceLoading ? '...' : balance.toLocaleString()}
+          </Text>
+        </TouchableOpacity>
         {showSearch && (
-          <TouchableOpacity style={styles.headerIconBtn}>
+          <TouchableOpacity style={styles.headerIconBtn} onPress={handleSearchPress}>
             <Feather name="search" size={18} color={colors.onSurface} />
           </TouchableOpacity>
         )}
@@ -81,5 +104,20 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  coinPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(202,253,0,0.1)',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  coinPillText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 12,
+    color: colors.primary,
+    letterSpacing: -0.3,
   },
 });

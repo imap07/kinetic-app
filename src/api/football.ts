@@ -31,6 +31,25 @@ export interface FixtureStatistic {
   stats: Record<string, any>;
 }
 
+export interface LineupPlayer {
+  apiId: number;
+  name: string;
+  number: number;
+  pos: string; // G, D, M, F
+  grid: string | null; // "1:1", "2:3", etc.
+  photo: string | null;
+}
+
+export interface TeamLineup {
+  teamApiId: number;
+  teamName: string;
+  formation: string;
+  coachName: string | null;
+  coachPhoto: string | null;
+  startXI: LineupPlayer[];
+  substitutes: LineupPlayer[];
+}
+
 export interface Fixture {
   _id: string;
   apiId: number;
@@ -56,6 +75,9 @@ export interface Fixture {
   goalsPenalty: Score;
   events: FixtureEvent[];
   statistics: FixtureStatistic[];
+  lineups: TeamLineup[];
+  venueName?: string;
+  venueCity?: string;
   isFeatured: boolean;
   isLive: boolean;
   createdAt: string;

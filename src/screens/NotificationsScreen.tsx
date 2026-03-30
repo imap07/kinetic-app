@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,85 +6,92 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius } from '../theme';
+import { useAuth } from '../contexts/AuthContext';
+import { notificationsApi } from '../api/notifications';
+import type { NotificationLog } from '../api/notifications';
 
-const NOTIFICATIONS = [
-  {
-    id: '1',
-    type: 'prediction' as const,
-    title: 'Prediction Result',
-    message: 'Your prediction on Lakers vs Celtics was correct! +150 pts',
-    time: '2 min ago',
-    read: false,
-  },
-  {
-    id: '2',
-    type: 'streak' as const,
-    title: 'Streak Bonus',
-    message: 'You are on a 5-day prediction streak! Keep it going.',
-    time: '1 hr ago',
-    read: false,
-  },
-  {
-    id: '3',
-    type: 'live' as const,
-    title: 'Live Match Starting',
-    message: 'Arsenal vs Man City kicks off in 10 minutes. Make your pick!',
-    time: '3 hrs ago',
-    read: true,
-  },
-  {
-    id: '4',
-    type: 'rank' as const,
-    title: 'Rank Up!',
-    message: 'Congratulations! You reached Master Rank. 1,550 pts to Legend.',
-    time: '1 day ago',
-    read: true,
-  },
-  {
-    id: '5',
-    type: 'reward' as const,
-    title: 'Weekly Reward Unlocked',
-    message: 'You finished in the Top 10% this week. Claim your bonus.',
-    time: '2 days ago',
-    read: true,
-  },
-  {
-    id: '6',
-    type: 'prediction' as const,
-    title: 'Prediction Result',
-    message: 'Your prediction on PSG vs Bayern was incorrect. -50 pts',
-    time: '3 days ago',
-    read: true,
-  },
-];
+type NotifType = 'prediction_result' | 'league_update' | 'achievement' | 'system';
 
-type NotifType = 'prediction' | 'streak' | 'live' | 'rank' | 'reward';
-
-function getNotifIcon(type: NotifType, read: boolean) {
+function getNotifIcon(type: string, read: boolean) {
   const iconColor = read ? colors.onSurfaceDim : colors.primary;
   switch (type) {
-    case 'prediction':
+    case 'prediction_result':
       return <MaterialCommunityIcons name="poll" size={20} color={iconColor} />;
-    case 'streak':
-      return <Ionicons name="flame" size={20} color={read ? colors.onSurfaceDim : '#FC5B00'} />;
-    case 'live':
-      return <Feather name="radio" size={20} color={read ? colors.onSurfaceDim : '#FF4444'} />;
-    case 'rank':
+    case 'league_update':
       return <Ionicons name="trophy" size={20} color={read ? colors.onSurfaceDim : '#FFD700'} />;
-    case 'reward':
+    case 'achievement':
+      return <Ionicons name="flame" size={20} color={read ? colors.onSurfaceDim : '#FC5B00'} />;
+    case 'system':
+    default:
       return <MaterialCommunityIcons name="gift" size={20} color={iconColor} />;
   }
+}
+
+function formatNotifTime(dateStr: string): string {
+  const d = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return 'Just now';
+  if (diffMin < 60) return `${diffMin} min ago`;
+  const diffHrs = Math.floor(diffMin / 60);
+  if (diffHrs < 24) return `${diffHrs} hr${diffHrs > 1 ? 's' : ''} ago`;
+  const diffDays = Math.floor(diffHrs / 24);
+  if (diffDays === 1) return '1 day ago';
+  if (diffDays < 7) return `${diffDays} days ago`;
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
 export function NotificationsScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+  const { tokens } = useAuth();
   const [pushEnabled, setPushEnabled] = useState(true);
+  const [notifications, setNotifications] = useState<NotificationLog[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchNotifications = useCallback(async () => {
+    if (!tokens?.accessToken) return;
+    try {
+      const res = await notificationsApi.getHistory(tokens.accessToken);
+      setNotifications(res.notifications);
+    } catch {
+      // silent
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [tokens?.accessToken]);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchNotifications();
+  }, [fetchNotifications]);
+
+  const handleMarkAllRead = async () => {
+    if (!tokens?.accessToken) return;
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    try {
+      await notificationsApi.markAllRead(tokens.accessToken);
+    } catch {
+      // silent — already updated locally
+    }
+  };
+
+  const unreadNotifs = notifications.filter((n) => !n.read);
+  const readNotifs = notifications.filter((n) => n.read);
 
   return (
     <View style={styles.container}>
@@ -100,6 +107,9 @@ export function NotificationsScreen() {
         style={styles.scroll}
         contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+        }
       >
         {/* Push toggle */}
         <View style={styles.toggleRow}>
@@ -115,51 +125,62 @@ export function NotificationsScreen() {
           />
         </View>
 
-        {/* Unread section */}
-        {NOTIFICATIONS.some((n) => !n.read) && (
+        {loading ? (
+          <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 32 }} />
+        ) : notifications.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Feather name="bell-off" size={32} color={colors.onSurfaceVariant} />
+            <Text style={styles.emptyText}>No notifications yet</Text>
+          </View>
+        ) : (
           <>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionLabel}>NEW</Text>
-              <TouchableOpacity>
-                <Text style={styles.markRead}>Mark all read</Text>
-              </TouchableOpacity>
-            </View>
-            {NOTIFICATIONS.filter((n) => !n.read).map((n) => (
-              <View key={n.id} style={[styles.notifCard, styles.notifCardUnread]}>
-                <View style={[styles.iconCircle, { backgroundColor: 'rgba(202,253,0,0.1)' }]}>
-                  {getNotifIcon(n.type, false)}
+            {/* Unread section */}
+            {unreadNotifs.length > 0 && (
+              <>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionLabel}>NEW</Text>
+                  <TouchableOpacity onPress={handleMarkAllRead}>
+                    <Text style={styles.markRead}>Mark all read</Text>
+                  </TouchableOpacity>
                 </View>
-                <View style={styles.notifContent}>
-                  <View style={styles.notifTop}>
-                    <Text style={styles.notifTitle}>{n.title}</Text>
-                    <View style={styles.unreadDot} />
+                {unreadNotifs.map((n) => (
+                  <View key={n._id} style={[styles.notifCard, styles.notifCardUnread]}>
+                    <View style={[styles.iconCircle, { backgroundColor: 'rgba(202,253,0,0.1)' }]}>
+                      {getNotifIcon(n.type, false)}
+                    </View>
+                    <View style={styles.notifContent}>
+                      <View style={styles.notifTop}>
+                        <Text style={styles.notifTitle}>{n.title}</Text>
+                        <View style={styles.unreadDot} />
+                      </View>
+                      <Text style={styles.notifMessage}>{n.body}</Text>
+                      <Text style={styles.notifTime}>{formatNotifTime(n.createdAt)}</Text>
+                    </View>
                   </View>
-                  <Text style={styles.notifMessage}>{n.message}</Text>
-                  <Text style={styles.notifTime}>{n.time}</Text>
-                </View>
-              </View>
-            ))}
-          </>
-        )}
+                ))}
+              </>
+            )}
 
-        {/* Read section */}
-        {NOTIFICATIONS.some((n) => n.read) && (
-          <>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionLabel}>EARLIER</Text>
-            </View>
-            {NOTIFICATIONS.filter((n) => n.read).map((n) => (
-              <View key={n.id} style={styles.notifCard}>
-                <View style={styles.iconCircle}>
-                  {getNotifIcon(n.type, true)}
+            {/* Read section */}
+            {readNotifs.length > 0 && (
+              <>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionLabel}>EARLIER</Text>
                 </View>
-                <View style={styles.notifContent}>
-                  <Text style={styles.notifTitleRead}>{n.title}</Text>
-                  <Text style={styles.notifMessageRead}>{n.message}</Text>
-                  <Text style={styles.notifTime}>{n.time}</Text>
-                </View>
-              </View>
-            ))}
+                {readNotifs.map((n) => (
+                  <View key={n._id} style={styles.notifCard}>
+                    <View style={styles.iconCircle}>
+                      {getNotifIcon(n.type, true)}
+                    </View>
+                    <View style={styles.notifContent}>
+                      <Text style={styles.notifTitleRead}>{n.title}</Text>
+                      <Text style={styles.notifMessageRead}>{n.body}</Text>
+                      <Text style={styles.notifTime}>{formatNotifTime(n.createdAt)}</Text>
+                    </View>
+                  </View>
+                ))}
+              </>
+            )}
           </>
         )}
       </ScrollView>
@@ -209,6 +230,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.onSurfaceDim,
     marginTop: 2,
+  },
+
+  emptyState: {
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 48,
+  },
+  emptyText: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 14,
+    color: colors.onSurfaceVariant,
   },
 
   sectionHeader: {

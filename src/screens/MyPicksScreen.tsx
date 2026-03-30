@@ -1,696 +1,781 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
+  Image,
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
 } from 'react-native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import {
-  Ionicons,
-  MaterialCommunityIcons,
-  Feather,
-} from '@expo/vector-icons';
-import { colors } from '../theme';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { colors, spacing } from '../theme';
+import Toast from 'react-native-toast-message';
 import { AppHeader } from '../components/AppHeader';
+import { useAuth } from '../contexts/AuthContext';
+import { usePurchases } from '../contexts/PurchasesContext';
+import { predictionsApi, SPORT_TABS } from '../api';
+import type { PredictionData, MyStatsResponse, DetailedStatsResponse } from '../api';
+import type { RootStackParamList } from '../navigation/types';
 
-// ── Mock Data ──
+const TABS = ['Active', 'History'];
 
-const TABS = ['Current Picks (3)', 'My History'];
+function getOutcomeLabel(prediction: PredictionData): string {
+  if (prediction.predictedOutcome === 'home') return `${prediction.homeTeamName} Win`;
+  if (prediction.predictedOutcome === 'away') return `${prediction.awayTeamName} Win`;
+  return 'Draw';
+}
 
-const PICKS = [
-  {
-    id: '1',
-    status: 'live' as const,
-    statusLabel: "LIVE \u2022 74'",
-    title: 'Manchester City vs Arsenal',
-    league: 'English Premier League',
-    pick: 'PICK: MAN CITY',
-    multiplier: '2.45x',
-    hasAccent: true,
-  },
-  {
-    id: '2',
-    status: 'upcoming' as const,
-    statusLabel: 'STARTS IN 2H 15M',
-    title: 'Lakers vs Warriors',
-    league: 'NBA Regular Season',
-    pick: 'PICK: OVER 224.5',
-    multiplier: '1.90x',
-    hasAccent: false,
-  },
-  {
-    id: '3',
-    status: 'upcoming' as const,
-    statusLabel: 'UPCOMING \u2022 SAT 19:00',
-    title: 'Real Madrid vs Barcelona',
-    league: 'La Liga',
-    pick: 'PICK: DRAW',
-    multiplier: '3.25x',
-    hasAccent: false,
-  },
-];
+function getStatusColor(status: string): string {
+  if (status === 'won') return '#16A34A';
+  if (status === 'lost') return '#DC2626';
+  if (status === 'void') return colors.onSurfaceVariant;
+  return colors.primary;
+}
 
-const CONFIDENCE_LEVELS = ['LOW', 'MED', 'HIGH', 'ALL IN'];
+function getSportLabel(sport: string): string {
+  const tab = SPORT_TABS.find((t) => t.key === sport);
+  return tab?.name || sport;
+}
 
-// ── Main Screen ──
+// ── Weekly Trend Chart (Pro) ──
+
+function getWeekLabel(week: number): string {
+  // Convert ISO week number to short label
+  return `W${week}`;
+}
+
+function WeeklyTrendChart({ weeklyTrend }: { weeklyTrend: DetailedStatsResponse['weeklyTrend'] }) {
+  const maxTotal = Math.max(...weeklyTrend.map((w) => w.total), 1);
+  const barMaxHeight = 80;
+
+  if (weeklyTrend.length === 0) {
+    return (
+      <View style={trendStyles.empty}>
+        <Text style={trendStyles.emptyText}>Not enough data yet</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={trendStyles.container}>
+      <View style={trendStyles.header}>
+        <MaterialCommunityIcons name="chart-bar" size={16} color={colors.primary} />
+        <Text style={trendStyles.title}>WEEKLY TREND</Text>
+      </View>
+
+      {/* Legend */}
+      <View style={trendStyles.legend}>
+        <View style={trendStyles.legendItem}>
+          <View style={[trendStyles.legendDot, { backgroundColor: 'rgba(202,253,0,0.3)' }]} />
+          <Text style={trendStyles.legendText}>Total</Text>
+        </View>
+        <View style={trendStyles.legendItem}>
+          <View style={[trendStyles.legendDot, { backgroundColor: colors.primary }]} />
+          <Text style={trendStyles.legendText}>Won</Text>
+        </View>
+      </View>
+
+      {/* Bar Chart */}
+      <View style={trendStyles.chart}>
+        {weeklyTrend.map((w, i) => {
+          const totalHeight = Math.max((w.total / maxTotal) * barMaxHeight, 4);
+          const wonHeight = Math.max((w.won / maxTotal) * barMaxHeight, w.won > 0 ? 4 : 0);
+          return (
+            <View key={`${w.year}-${w.week}`} style={trendStyles.barGroup}>
+              <View style={trendStyles.barStack}>
+                {/* Total bar (background) */}
+                <View
+                  style={[
+                    trendStyles.barTotal,
+                    { height: totalHeight },
+                  ]}
+                />
+                {/* Won bar (overlay, positioned at bottom) */}
+                {w.won > 0 && (
+                  <View
+                    style={[
+                      trendStyles.barWon,
+                      { height: wonHeight },
+                    ]}
+                  />
+                )}
+              </View>
+              {/* Win rate label */}
+              <Text style={trendStyles.barWinRate}>
+                {w.total > 0 ? `${w.winRate}%` : '-'}
+              </Text>
+              {/* Week label */}
+              <Text style={trendStyles.barLabel}>{getWeekLabel(w.week)}</Text>
+            </View>
+          );
+        })}
+      </View>
+
+      {/* Summary row */}
+      {weeklyTrend.length >= 2 && (() => {
+        const latest = weeklyTrend[weeklyTrend.length - 1];
+        const prev = weeklyTrend[weeklyTrend.length - 2];
+        const ptsDiff = latest.points - prev.points;
+        const wrDiff = latest.winRate - prev.winRate;
+        return (
+          <View style={trendStyles.summaryRow}>
+            <Text style={trendStyles.summaryLabel}>vs last week</Text>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <Text style={[trendStyles.summaryValue, { color: ptsDiff >= 0 ? '#5BEF90' : '#FF7351' }]}>
+                {ptsDiff >= 0 ? '+' : ''}{ptsDiff} pts
+              </Text>
+              <Text style={[trendStyles.summaryValue, { color: wrDiff >= 0 ? '#5BEF90' : '#FF7351' }]}>
+                {wrDiff >= 0 ? '+' : ''}{wrDiff}% WR
+              </Text>
+            </View>
+          </View>
+        );
+      })()}
+    </View>
+  );
+}
+
+function PredictionCard({ prediction }: { prediction: PredictionData }) {
+  const isResolved = prediction.status !== 'pending';
+  const isVoid = prediction.status === 'void';
+
+  return (
+    <View style={[cardStyles.card, isResolved && prediction.status === 'won' && cardStyles.cardWon]}>
+      {/* Sport + League */}
+      <View style={cardStyles.topRow}>
+        <View style={cardStyles.sportBadge}>
+          <Text style={cardStyles.sportBadgeText}>{getSportLabel(prediction.sport)}</Text>
+        </View>
+        {prediction.leagueLogo ? (
+          <Image source={{ uri: prediction.leagueLogo }} style={cardStyles.leagueLogo} resizeMode="contain" />
+        ) : null}
+        <Text style={cardStyles.leagueName} numberOfLines={1}>{prediction.leagueName}</Text>
+      </View>
+
+      {/* Teams */}
+      <View style={cardStyles.teamsRow}>
+        <View style={cardStyles.teamSide}>
+          {prediction.homeTeamLogo ? (
+            <Image source={{ uri: prediction.homeTeamLogo }} style={cardStyles.teamLogo} resizeMode="contain" />
+          ) : (
+            <View style={cardStyles.teamLogoFallback}>
+              <Ionicons name="football" size={14} color={colors.onSurfaceVariant} />
+            </View>
+          )}
+          <Text style={cardStyles.teamName} numberOfLines={1}>{prediction.homeTeamName}</Text>
+        </View>
+        <Text style={cardStyles.vs}>VS</Text>
+        <View style={cardStyles.teamSide}>
+          {prediction.awayTeamLogo ? (
+            <Image source={{ uri: prediction.awayTeamLogo }} style={cardStyles.teamLogo} resizeMode="contain" />
+          ) : (
+            <View style={cardStyles.teamLogoFallback}>
+              <Ionicons name="football" size={14} color={colors.onSurfaceVariant} />
+            </View>
+          )}
+          <Text style={cardStyles.teamName} numberOfLines={1}>{prediction.awayTeamName}</Text>
+        </View>
+      </View>
+
+      {/* Prediction Detail */}
+      <View style={cardStyles.predRow}>
+        <View style={cardStyles.predInfo}>
+          <Text style={cardStyles.predLabel}>YOUR PICK</Text>
+          <Text style={cardStyles.predValue}>{getOutcomeLabel(prediction)}</Text>
+          {prediction.predictionType === 'exact_score' && (
+            <Text style={cardStyles.predScore}>
+              Score: {prediction.predictedHomeScore}-{prediction.predictedAwayScore}
+            </Text>
+          )}
+        </View>
+        <View style={cardStyles.multiplierBox}>
+          <Text style={cardStyles.multiplierLabel}>MULTIPLIER</Text>
+          <Text style={cardStyles.multiplierValue}>x{prediction.oddsMultiplier.toFixed(1)}</Text>
+        </View>
+      </View>
+
+      {/* Result / Status */}
+      {isResolved ? (
+        <View style={cardStyles.resultRow}>
+          <View style={[cardStyles.resultBadge, {
+            backgroundColor: isVoid
+              ? 'rgba(150,150,150,0.15)'
+              : prediction.status === 'won'
+                ? 'rgba(22,163,74,0.15)'
+                : 'rgba(220,38,38,0.15)',
+          }]}>
+            <Ionicons
+              name={isVoid ? 'ban-outline' : prediction.status === 'won' ? 'checkmark-circle' : 'close-circle'}
+              size={14}
+              color={getStatusColor(prediction.status)}
+            />
+            <Text style={[cardStyles.resultBadgeText, { color: getStatusColor(prediction.status) }]}>
+              {prediction.status.toUpperCase()}
+            </Text>
+          </View>
+          {isVoid ? (
+            <Text style={cardStyles.actualScore}>Match cancelled</Text>
+          ) : prediction.actualHomeScore != null ? (
+            <Text style={cardStyles.actualScore}>
+              Final: {prediction.actualHomeScore} - {prediction.actualAwayScore}
+            </Text>
+          ) : null}
+          {prediction.pointsAwarded > 0 && (
+            <Text style={cardStyles.pointsText}>+{prediction.pointsAwarded} pts</Text>
+          )}
+        </View>
+      ) : (
+        <View style={cardStyles.pendingRow}>
+          <View style={cardStyles.pendingBadge}>
+            <Ionicons name="time-outline" size={14} color={colors.primary} />
+            <Text style={cardStyles.pendingText}>PENDING</Text>
+          </View>
+          <Text style={cardStyles.dateText}>
+            {new Date(prediction.gameDate).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
 
 export function MyPicksScreen() {
+  const { tokens } = useAuth();
+  const { isProMember } = usePurchases();
+  const rootNav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [activeTab, setActiveTab] = useState(0);
-  const [confidence, setConfidence] = useState('MED');
+  const [sportFilter, setSportFilter] = useState<string | null>(null);
+  const [predictions, setPredictions] = useState<PredictionData[]>([]);
+  const [stats, setStats] = useState<MyStatsResponse | null>(null);
+  const [detailedStats, setDetailedStats] = useState<DetailedStatsResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Derive sport pills from user's stats breakdown (only sports the user has predictions for)
+  const availableSports = useMemo(() => {
+    if (!stats?.sportBreakdown?.length) return [];
+    return stats.sportBreakdown
+      .map((sb) => {
+        const tab = SPORT_TABS.find((t) => t.key === sb.sport);
+        return { key: sb.sport, name: tab?.name || sb.sport };
+      })
+      .sort((a, b) => {
+        const idxA = SPORT_TABS.findIndex((t) => t.key === a.key);
+        const idxB = SPORT_TABS.findIndex((t) => t.key === b.key);
+        return idxA - idxB;
+      });
+  }, [stats]);
+
+  const fetchData = useCallback(async () => {
+    if (!tokens?.accessToken) return;
+    try {
+      const status = activeTab === 0 ? 'pending' : 'resolved';
+      const pickParams: { status: 'pending' | 'resolved'; sport?: string } = { status };
+      if (sportFilter) pickParams.sport = sportFilter;
+      const promises: Promise<any>[] = [
+        predictionsApi.getMyPicks(tokens.accessToken, pickParams),
+        predictionsApi.getMyStats(tokens.accessToken),
+      ];
+      if (isProMember) {
+        promises.push(predictionsApi.getDetailedStats(tokens.accessToken).catch(() => null));
+      }
+      const results = await Promise.all(promises);
+      setPredictions(results[0].predictions);
+      setStats(results[1]);
+      if (isProMember && results[2]) {
+        setDetailedStats(results[2]);
+      }
+    } catch (err) {
+      Toast.show({ type: 'error', text1: 'Error loading picks', text2: 'Pull down to try again' });
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [tokens?.accessToken, activeTab, sportFilter, isProMember]);
+
+  useEffect(() => {
+    setLoading(true);
+    fetchData();
+  }, [fetchData]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchData();
+  }, [fetchData]);
 
   return (
     <View style={styles.container}>
       <AppHeader showSearch={false} />
 
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Section Header */}
-        <View style={styles.sectionHeader}>
-          <View style={styles.activeSessionBadge}>
-            <Text style={styles.activeSessionText}>ACTIVE SESSION</Text>
+      {/* Stats Banner */}
+      {stats && (
+        <View style={styles.statsBanner}>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{stats.totalPredictions}</Text>
+            <Text style={styles.statLabel}>TOTAL</Text>
           </View>
-          <Text style={styles.pageTitle}>PICK SUMMARY</Text>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={[styles.statNumber, { color: '#16A34A' }]}>{stats.won}</Text>
+            <Text style={styles.statLabel}>WON</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={[styles.statNumber, { color: '#DC2626' }]}>{stats.lost}</Text>
+            <Text style={styles.statLabel}>LOST</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={[styles.statNumber, { color: colors.primary }]}>{stats.winRate}%</Text>
+            <Text style={styles.statLabel}>WIN RATE</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{stats.totalPoints}</Text>
+            <Text style={styles.statLabel}>POINTS</Text>
+          </View>
+        </View>
+      )}
 
-          {/* Tab Switcher */}
-          <View style={styles.tabSwitcher}>
-            {TABS.map((tab, idx) => (
+      {/* Pro Detailed Stats or Upgrade CTA */}
+      {isProMember && detailedStats ? (
+        <>
+          <View style={styles.proStatsCard}>
+            <View style={styles.proStatsHeader}>
+              <MaterialCommunityIcons name="lightning-bolt" size={16} color={colors.primary} />
+              <Text style={styles.proStatsTitle}>PRO INSIGHTS</Text>
+            </View>
+            {detailedStats.topSport && (
+              <View style={styles.proStatRow}>
+                <Text style={styles.proStatLabel}>Best Sport</Text>
+                <Text style={styles.proStatValue}>
+                  {getSportLabel(detailedStats.topSport.sport)} ({detailedStats.topSport.wins}W / {detailedStats.topSport.points}pts)
+                </Text>
+              </View>
+            )}
+            {detailedStats.sportBreakdown.length > 0 && (
+              <View style={styles.proBreakdown}>
+                {detailedStats.sportBreakdown.map((sb) => (
+                  <View key={sb.sport} style={styles.proBreakdownRow}>
+                    <Text style={styles.proBreakdownSport}>{getSportLabel(sb.sport)}</Text>
+                    <Text style={styles.proBreakdownStats}>
+                      {sb.won}/{sb.total} ({sb.winRate}%) -- {sb.points}pts
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+          {/* Weekly Trend Chart */}
+          {detailedStats.weeklyTrend && detailedStats.weeklyTrend.length > 0 && (
+            <WeeklyTrendChart weeklyTrend={detailedStats.weeklyTrend} />
+          )}
+        </>
+      ) : !isProMember ? (
+        <TouchableOpacity style={styles.upgradeCard} activeOpacity={0.85} onPress={() => rootNav.navigate('Paywall', { trigger: 'detailed_stats' })}>
+          <LinearGradient
+            colors={['rgba(202,253,0,0.08)', 'rgba(202,253,0,0.02)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.upgradeGradient}
+          >
+            <View style={styles.upgradeRow}>
+              <Ionicons name="lock-closed" size={16} color={colors.primary} />
+              <Text style={styles.upgradeText}>Unlock detailed stats by sport</Text>
+              <Text style={styles.upgradeBtn}>UPGRADE</Text>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+      ) : null}
+
+      {/* Sport Filter Pills */}
+      {availableSports.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.sportFilterScroll}
+        >
+          {/* "All" pill */}
+          <TouchableOpacity
+            style={[
+              styles.sportFilterPill,
+              sportFilter === null && styles.sportFilterPillActive,
+            ]}
+            onPress={() => setSportFilter(null)}
+            activeOpacity={0.7}
+          >
+            <Text
+              style={[
+                styles.sportFilterText,
+                sportFilter === null && styles.sportFilterTextActive,
+              ]}
+            >
+              All
+            </Text>
+          </TouchableOpacity>
+
+          {availableSports.map((sport) => {
+            const isActive = sportFilter === sport.key;
+            return (
               <TouchableOpacity
-                key={tab}
-                style={[styles.tabBtn, activeTab === idx && styles.tabBtnActive]}
-                onPress={() => setActiveTab(idx)}
+                key={sport.key}
+                style={[
+                  styles.sportFilterPill,
+                  isActive && styles.sportFilterPillActive,
+                ]}
+                onPress={() => setSportFilter(isActive ? null : sport.key)}
                 activeOpacity={0.7}
               >
                 <Text
                   style={[
-                    styles.tabBtnText,
-                    activeTab === idx && styles.tabBtnTextActive,
+                    styles.sportFilterText,
+                    isActive && styles.sportFilterTextActive,
                   ]}
+                  numberOfLines={1}
                 >
-                  {tab}
+                  {sport.name}
                 </Text>
               </TouchableOpacity>
-            ))}
-          </View>
-        </View>
+            );
+          })}
+        </ScrollView>
+      )}
 
-        {/* Selected Predictions Header */}
-        <View style={styles.predHeader}>
-          <Text style={styles.predHeaderTitle}>SELECTED PREDICTIONS</Text>
-          <TouchableOpacity style={styles.clearBtn}>
-            <Feather name="trash-2" size={10} color="#FF7351" />
-            <Text style={styles.clearBtnText}>CLEAR ALL</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Pick Cards */}
-        {PICKS.map((pick) => (
-          <View key={pick.id} style={styles.pickCard}>
-            {pick.hasAccent && <View style={styles.pickAccent} />}
-            <View style={styles.pickMeta}>
-              {pick.status === 'live' && (
-                <View style={styles.liveRow}>
-                  <View style={styles.liveDot} />
-                  <Text style={styles.liveLabel}>{pick.statusLabel}</Text>
-                </View>
-              )}
-              {pick.status === 'upcoming' && (
-                <Text style={styles.upcomingLabel}>{pick.statusLabel}</Text>
-              )}
-              <Text style={styles.pickTitle}>{pick.title}</Text>
-              <Text style={styles.pickLeague}>{pick.league}</Text>
-            </View>
-
-            <View style={styles.pickBottom}>
-              <View style={styles.multiplierBox}>
-                <Text style={styles.pickLabel}>{pick.pick}</Text>
-                <View
-                  style={[
-                    styles.multiplierCard,
-                    pick.hasAccent && styles.multiplierCardAccent,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.multiplierSubLabel,
-                      pick.hasAccent && styles.multiplierSubLabelAccent,
-                    ]}
-                  >
-                    DIFFICULTY MULTIPLIER
-                  </Text>
-                  <Text
-                    style={[
-                      styles.multiplierValue,
-                      pick.hasAccent && styles.multiplierValueAccent,
-                    ]}
-                  >
-                    {pick.multiplier}
-                  </Text>
-                </View>
-              </View>
-              <TouchableOpacity style={styles.removeBtn}>
-                <Feather name="x" size={14} color={colors.onSurfaceVariant} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        ))}
-
-        {/* Streak Bonus Banner */}
-        <View style={styles.streakBanner}>
-          <View style={styles.streakLeft}>
-            <MaterialCommunityIcons name="fire" size={24} color="#4A5E00" />
-            <View style={styles.streakTextBlock}>
-              <Text style={styles.streakTitle}>Streak Bonus Active!</Text>
-              <Text style={styles.streakSub}>
-                Points reward increased by 15% for{'\n'}parlay predictions
-              </Text>
-            </View>
-          </View>
-          <Text style={styles.streakPercent}>+15%</Text>
-        </View>
-
-        {/* Prediction Summary Card */}
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryHeader}>
-            <MaterialCommunityIcons
-              name="chart-box-outline"
-              size={20}
-              color={colors.onSurface}
-            />
-            <Text style={styles.summaryTitle}>Prediction Summary</Text>
-          </View>
-
-          <View style={styles.summaryRows}>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Combined Multiplier</Text>
-              <Text style={styles.summaryValue}>15.12x</Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Active Picks</Text>
-              <Text style={styles.summaryValue}>3 Events</Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Streak Bonus</Text>
-              <Text style={styles.summaryValueGreen}>+15.0%</Text>
-            </View>
-          </View>
-
-          {/* Confidence Level */}
-          <View style={styles.confidenceBlock}>
-            <Text style={styles.confidenceLabel}>SET CONFIDENCE LEVEL</Text>
-            <View style={styles.confidenceRow}>
-              {CONFIDENCE_LEVELS.map((lvl) => (
-                <TouchableOpacity
-                  key={lvl}
-                  style={[
-                    styles.confidenceBtn,
-                    confidence === lvl && styles.confidenceBtnActive,
-                  ]}
-                  onPress={() => setConfidence(lvl)}
-                  activeOpacity={0.7}
-                >
-                  <Text
-                    style={[
-                      styles.confidenceBtnText,
-                      confidence === lvl && styles.confidenceBtnTextActive,
-                    ]}
-                  >
-                    {lvl}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <Text style={styles.confidenceHint}>
-              CONFIDENCE LEVEL ADJUSTS POINTS AT RISK VS POTENTIAL{'\n'}REWARDS
+      {/* Tab Switcher */}
+      <View style={styles.tabContainer}>
+        {TABS.map((tab, idx) => (
+          <TouchableOpacity
+            key={tab}
+            style={[styles.tabBtn, activeTab === idx && styles.tabBtnActive]}
+            onPress={() => setActiveTab(idx)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.tabBtnText, activeTab === idx && styles.tabBtnTextActive]}>
+              {tab}
+              {idx === 0 && stats ? ` (${stats.pending})` : ''}
             </Text>
-          </View>
-
-          {/* Max Score */}
-          <View style={styles.maxScoreCard}>
-            <Text style={styles.maxScoreLabel}>MAX SCORE</Text>
-            <Text style={styles.maxScoreValue}>8,520 PTS</Text>
-          </View>
-
-          {/* Confirm Button */}
-          <TouchableOpacity activeOpacity={0.85} style={styles.confirmWrap}>
-            <LinearGradient
-              colors={['#F3FFCA', '#BEEE00']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.confirmBtn}
-            >
-              <Text style={styles.confirmBtnText}>CONFIRM PREDICTIONS</Text>
-              <Ionicons name="checkmark-circle" size={20} color="#516700" />
-            </LinearGradient>
           </TouchableOpacity>
+        ))}
+      </View>
 
-          <Text style={styles.submitHint}>
-            SUBMIT THESE PICKS FOR THE CURRENT{'\n'}LEADERBOARDS
+      {/* Predictions List */}
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : predictions.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <MaterialCommunityIcons name="target" size={48} color={colors.onSurfaceVariant} />
+          <Text style={styles.emptyTitle}>
+            {activeTab === 0 ? 'No Active Picks' : 'No History Yet'}
+          </Text>
+          <Text style={styles.emptySubtitle}>
+            {activeTab === 0
+              ? 'Make predictions on upcoming matches to see them here'
+              : 'Your resolved predictions will appear here'}
           </Text>
         </View>
-
-        {/* Total Points */}
-        <View style={styles.totalBar}>
-          <View style={styles.totalLeft}>
-            <MaterialCommunityIcons
-              name="star-circle-outline"
-              size={20}
-              color={colors.onSurface}
-            />
-            <Text style={styles.totalLabel}>Total Points Available</Text>
-          </View>
-          <Text style={styles.totalValue}>12,504 PTS</Text>
-        </View>
-
-        <View style={{ height: 80 }} />
-      </ScrollView>
+      ) : (
+        <FlatList
+          data={predictions}
+          keyExtractor={(item) => item._id}
+          renderItem={({ item }) => <PredictionCard prediction={item} />}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+          }
+        />
+      )}
     </View>
   );
 }
 
-// ── Styles ──
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  scroll: { flex: 1 },
+  container: { flex: 1, backgroundColor: colors.background },
+  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
-  // Section Header
-  sectionHeader: {
+  statsBanner: {
+    flexDirection: 'row', marginHorizontal: 16, marginBottom: 16,
+    backgroundColor: colors.surfaceContainerLow, borderRadius: 8, padding: 16,
+    alignItems: 'center', justifyContent: 'space-around',
+  },
+  statItem: { alignItems: 'center', gap: 2 },
+  statNumber: {
+    fontFamily: 'SpaceGrotesk_700Bold', fontSize: 20, lineHeight: 26, color: colors.onSurface,
+  },
+  statLabel: {
+    fontFamily: 'Inter_700Bold', fontSize: 9, color: colors.onSurfaceVariant,
+    letterSpacing: 0.8, textTransform: 'uppercase',
+  },
+  statDivider: { width: 1, height: 32, backgroundColor: 'rgba(69,72,76,0.3)' },
+
+  sportFilterScroll: {
     paddingHorizontal: 16,
+    paddingBottom: 12,
     gap: 8,
-    marginBottom: 32,
   },
-  activeSessionBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,116,57,0.1)',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+  sportFilterPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: colors.surfaceContainerLow,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
-  activeSessionText: {
+  sportFilterPillActive: {
+    backgroundColor: 'rgba(202,253,0,0.12)',
+    borderColor: colors.primary,
+  },
+  sportFilterText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 12,
+    color: colors.onSurfaceVariant,
+  },
+  sportFilterTextActive: {
+    color: colors.primary,
     fontFamily: 'Inter_700Bold',
-    fontSize: 10,
-    lineHeight: 15,
-    color: colors.tertiaryLight,
+  },
+
+  tabContainer: {
+    flexDirection: 'row', marginHorizontal: 16, marginBottom: 16,
+    backgroundColor: colors.surfaceContainerLow, borderRadius: 8, padding: 3,
+  },
+  tabBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 6 },
+  tabBtnActive: { backgroundColor: colors.surfaceContainerHighest },
+  tabBtnText: {
+    fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, lineHeight: 20, color: colors.onSurfaceVariant,
+  },
+  tabBtnTextActive: { color: colors.primaryContainer },
+
+  proStatsCard: {
+    marginHorizontal: 16, marginBottom: 16, backgroundColor: colors.surfaceContainerLow,
+    borderRadius: 8, padding: 16, gap: 12,
+    borderWidth: 1, borderColor: 'rgba(198,255,0,0.12)',
+  },
+  proStatsHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  proStatsTitle: {
+    fontFamily: 'Inter_700Bold', fontSize: 11, color: colors.primary,
+    letterSpacing: 1, textTransform: 'uppercase',
+  },
+  proStatRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  proStatLabel: { fontFamily: 'Inter_500Medium', fontSize: 12, color: colors.onSurfaceVariant },
+  proStatValue: { fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: colors.onSurface },
+  proBreakdown: { gap: 6, marginTop: 4 },
+  proBreakdownRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: 'rgba(69,72,76,0.15)',
+  },
+  proBreakdownSport: { fontFamily: 'Inter_700Bold', fontSize: 11, color: colors.onSurfaceVariant, letterSpacing: 0.5 },
+  proBreakdownStats: { fontFamily: 'Inter_500Medium', fontSize: 12, color: colors.onSurface },
+
+  upgradeCard: {
+    marginHorizontal: 16, marginBottom: 16, borderRadius: 8, overflow: 'hidden',
+    borderWidth: 1, borderColor: 'rgba(202,253,0,0.15)',
+  },
+  upgradeGradient: { padding: 14 },
+  upgradeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  upgradeText: { flex: 1, fontFamily: 'Inter_500Medium', fontSize: 13, color: colors.onSurfaceVariant },
+  upgradeBtn: { fontFamily: 'Inter_700Bold', fontSize: 11, color: colors.primary, letterSpacing: 0.8 },
+
+  emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 32 },
+  emptyTitle: {
+    fontFamily: 'SpaceGrotesk_700Bold', fontSize: 20, color: colors.onSurface,
+  },
+  emptySubtitle: {
+    fontFamily: 'Inter_500Medium', fontSize: 14, color: colors.onSurfaceVariant, textAlign: 'center',
+  },
+});
+
+const cardStyles = StyleSheet.create({
+  card: {
+    backgroundColor: colors.surfaceContainerLow, borderRadius: 8,
+    padding: 16, marginBottom: 12, gap: 12,
+  },
+  cardWon: { borderLeftWidth: 3, borderLeftColor: '#16A34A' },
+  topRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sportBadge: {
+    backgroundColor: colors.surfaceContainerHighest, borderRadius: 4,
+    paddingHorizontal: 8, paddingVertical: 3,
+  },
+  sportBadgeText: {
+    fontFamily: 'Inter_700Bold', fontSize: 9, color: colors.onSurfaceVariant,
+    letterSpacing: 0.8, textTransform: 'uppercase',
+  },
+  leagueLogo: { width: 16, height: 16 },
+  leagueName: {
+    flex: 1, fontFamily: 'Inter_500Medium', fontSize: 12, color: colors.onSurfaceDim,
+  },
+  teamsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  teamSide: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  teamLogo: { width: 28, height: 28 },
+  teamLogoFallback: {
+    width: 28, height: 28, borderRadius: 7, backgroundColor: colors.surfaceContainerHighest,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  teamName: { fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: colors.onSurface, flex: 1 },
+  vs: { fontFamily: 'Inter_700Bold', fontSize: 10, color: colors.onSurfaceVariant, marginHorizontal: 8 },
+
+  predRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end',
+    backgroundColor: 'rgba(34,38,43,0.4)', borderRadius: 6, padding: 12,
+  },
+  predInfo: { gap: 2, flex: 1 },
+  predLabel: {
+    fontFamily: 'Inter_700Bold', fontSize: 9, color: colors.onSurfaceVariant,
+    letterSpacing: 0.8, textTransform: 'uppercase',
+  },
+  predValue: { fontFamily: 'SpaceGrotesk_700Bold', fontSize: 15, color: colors.onSurface },
+  predScore: { fontFamily: 'Inter_500Medium', fontSize: 12, color: colors.onSurfaceDim },
+  multiplierBox: { alignItems: 'flex-end', gap: 2 },
+  multiplierLabel: {
+    fontFamily: 'Inter_700Bold', fontSize: 8, color: colors.onSurfaceVariant,
+    letterSpacing: 0.8, textTransform: 'uppercase',
+  },
+  multiplierValue: { fontFamily: 'SpaceGrotesk_700Bold', fontSize: 20, color: colors.primaryContainer },
+
+  resultRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  resultBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4,
+    borderRadius: 12,
+  },
+  resultBadgeText: { fontFamily: 'Inter_700Bold', fontSize: 10, letterSpacing: 0.8 },
+  actualScore: { fontFamily: 'Inter_500Medium', fontSize: 12, color: colors.onSurfaceDim },
+  pointsText: { fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, color: colors.primary, marginLeft: 'auto' },
+
+  pendingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  pendingBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: 'rgba(198,255,0,0.08)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12,
+  },
+  pendingText: {
+    fontFamily: 'Inter_700Bold', fontSize: 10, color: colors.primary, letterSpacing: 0.8,
+  },
+  dateText: { fontFamily: 'Inter_500Medium', fontSize: 11, color: colors.onSurfaceDim },
+});
+
+// ── Weekly Trend Chart Styles ──
+
+const trendStyles = StyleSheet.create({
+  container: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: 8,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(198,255,0,0.12)',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 12,
+  },
+  title: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 11,
+    color: colors.primary,
     letterSpacing: 1,
     textTransform: 'uppercase',
   },
-  pageTitle: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 36,
-    lineHeight: 40,
-    color: colors.onSurface,
-    letterSpacing: -0.9,
-    textTransform: 'uppercase',
-  },
-  tabSwitcher: {
+  legend: {
     flexDirection: 'row',
-    backgroundColor: colors.surfaceContainerLow,
-    borderRadius: 8,
-    padding: 4,
-  },
-  tabBtn: {
-    paddingHorizontal: 24,
-    paddingVertical: 8,
-    borderRadius: 4,
-  },
-  tabBtnActive: {
-    backgroundColor: colors.surfaceContainerHighest,
-  },
-  tabBtnText: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.onSurfaceVariant,
-    textAlign: 'center',
-  },
-  tabBtnTextActive: {
-    color: colors.primaryContainer,
-  },
-
-  // Predictions header
-  predHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
+    gap: 16,
     marginBottom: 16,
   },
-  predHeaderTitle: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 18,
-    lineHeight: 28,
-    color: colors.onSurface,
-    letterSpacing: -0.9,
-    textTransform: 'uppercase',
-    opacity: 0.5,
-  },
-  clearBtn: {
+  legendItem: {
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 2,
+  },
+  legendText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 11,
+    color: colors.onSurfaceVariant,
+  },
+  chart: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: 4,
+  },
+  barGroup: {
+    flex: 1,
     alignItems: 'center',
     gap: 4,
   },
-  clearBtnText: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 12,
-    lineHeight: 16,
-    color: '#FF7351',
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
+  barStack: {
+    width: '100%',
+    maxWidth: 32,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    height: 80,
   },
-
-  // Pick Card
-  pickCard: {
-    marginHorizontal: 16,
-    backgroundColor: colors.surfaceContainerLow,
-    borderRadius: 8,
-    padding: 24,
-    marginBottom: 16,
-    overflow: 'hidden',
-  },
-  pickAccent: {
+  barTotal: {
+    width: '100%',
+    backgroundColor: 'rgba(202,253,0,0.15)',
+    borderRadius: 3,
     position: 'absolute',
-    top: 0,
-    right: 0,
     bottom: 0,
-    width: 4,
-    backgroundColor: 'rgba(243,255,202,0.2)',
   },
-  pickMeta: { gap: 4, marginBottom: 8 },
-  liveRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
-  },
-  liveDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 12,
-    backgroundColor: colors.tertiaryLight,
-  },
-  liveLabel: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 10,
-    lineHeight: 15,
-    color: colors.tertiaryLight,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  upcomingLabel: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 10,
-    lineHeight: 15,
-    color: colors.onSurfaceVariant,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginBottom: 4,
-  },
-  pickTitle: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 20,
-    lineHeight: 28,
-    color: colors.onSurface,
-  },
-  pickLeague: {
-    fontFamily: 'Inter_400Regular',
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.onSurfaceVariant,
-  },
-
-  pickBottom: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    marginTop: 8,
-  },
-  multiplierBox: { gap: 4 },
-  pickLabel: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 10,
-    lineHeight: 15,
-    color: colors.onSurfaceVariant,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    textAlign: 'right',
-  },
-  multiplierCard: {
-    backgroundColor: colors.surfaceContainerHighest,
-    borderRadius: 4,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    gap: 2,
-  },
-  multiplierCardAccent: {
-    borderWidth: 1,
-    borderColor: 'rgba(243,255,202,0.1)',
-  },
-  multiplierSubLabel: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.onSurfaceVariant,
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-    textAlign: 'right',
-  },
-  multiplierSubLabelAccent: {
-    color: 'rgba(243,255,202,0.7)',
-  },
-  multiplierValue: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 24,
-    lineHeight: 32,
-    color: colors.onSurface,
-    textAlign: 'right',
-  },
-  multiplierValueAccent: {
-    color: colors.primaryContainer,
-  },
-  removeBtn: {
-    padding: 8,
-  },
-
-  // Streak Banner
-  streakBanner: {
-    marginHorizontal: 16,
+  barWon: {
+    width: '100%',
     backgroundColor: colors.primary,
-    borderRadius: 8,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 24,
+    borderRadius: 3,
+    position: 'absolute',
+    bottom: 0,
   },
-  streakLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+  barWinRate: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 9,
+    color: colors.primaryContainer,
+    letterSpacing: 0.3,
   },
-  streakTextBlock: { gap: 0 },
-  streakTitle: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 16,
-    lineHeight: 20,
-    color: '#4A5E00',
+  barLabel: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 9,
+    color: colors.onSurfaceVariant,
+    letterSpacing: 0.3,
   },
-  streakSub: {
-    fontFamily: 'Inter_400Regular',
-    fontSize: 12,
-    lineHeight: 16,
-    color: 'rgba(74,94,0,0.7)',
-  },
-  streakPercent: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 16,
-    lineHeight: 24,
-    color: '#4A5E00',
-  },
-
-  // Summary Card
-  summaryCard: {
-    marginHorizontal: 16,
-    backgroundColor: 'rgba(34,38,43,0.7)',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
-    padding: 24,
-    marginBottom: 24,
-    gap: 16,
-  },
-  summaryHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
-  },
-  summaryTitle: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 20,
-    lineHeight: 28,
-    color: colors.onSurface,
-  },
-  summaryRows: { gap: 16 },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(69,72,76,0.2)',
   },
   summaryLabel: {
-    fontFamily: 'Inter_400Regular',
-    fontSize: 14,
-    lineHeight: 20,
+    fontFamily: 'Inter_500Medium',
+    fontSize: 11,
     color: colors.onSurfaceVariant,
   },
   summaryValue: {
     fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.onSurface,
-  },
-  summaryValueGreen: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#6BFE9C',
-  },
-
-  // Confidence
-  confidenceBlock: {
-    gap: 16,
-    paddingTop: 8,
-  },
-  confidenceLabel: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 10,
-    lineHeight: 15,
-    color: colors.onSurfaceVariant,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  confidenceRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  confidenceBtn: {
-    flex: 1,
-    backgroundColor: colors.surfaceContainerHighest,
-    borderRadius: 4,
-    paddingVertical: 8,
-    alignItems: 'center',
-  },
-  confidenceBtnActive: {
-    backgroundColor: colors.primary,
-  },
-  confidenceBtnText: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 10,
-    lineHeight: 15,
-    color: colors.onSurfaceVariant,
-    textAlign: 'center',
-  },
-  confidenceBtnTextActive: {
-    color: colors.onPrimary,
-  },
-  confidenceHint: {
-    fontFamily: 'Inter_400Regular',
-    fontSize: 10,
-    lineHeight: 15,
-    color: 'rgba(169,171,175,0.6)',
-    letterSpacing: -0.25,
-    textTransform: 'uppercase',
-    textAlign: 'center',
-  },
-
-  // Max Score
-  maxScoreCard: {
-    backgroundColor: '#000000',
-    borderRadius: 8,
-    paddingHorizontal: 24,
-    paddingVertical: 32,
-    gap: 8,
-  },
-  maxScoreLabel: {
-    fontFamily: 'Inter_700Bold',
     fontSize: 12,
-    lineHeight: 16,
-    color: colors.onSurfaceVariant,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
   },
-  maxScoreValue: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 36,
-    lineHeight: 40,
-    color: colors.primaryContainer,
-  },
-
-  // Confirm
-  confirmWrap: {
-    borderRadius: 8,
-    overflow: 'hidden',
-    shadowColor: 'rgba(202,253,0,1)',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 30,
-    elevation: 10,
-  },
-  confirmBtn: {
-    flexDirection: 'row',
+  empty: {
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    paddingVertical: 20,
-    borderRadius: 8,
+    paddingVertical: 24,
   },
-  confirmBtnText: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 18,
-    lineHeight: 28,
-    color: '#516700',
-    letterSpacing: 1.8,
-    textTransform: 'uppercase',
-    textAlign: 'center',
-  },
-  submitHint: {
-    fontFamily: 'Inter_400Regular',
-    fontSize: 10,
-    lineHeight: 15,
-    color: colors.onSurfaceVariant,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    textAlign: 'center',
-  },
-
-  // Total bar
-  totalBar: {
-    marginHorizontal: 16,
-    backgroundColor: colors.surfaceContainerLow,
-    borderRadius: 8,
-    padding: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  totalLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  totalLabel: {
+  emptyText: {
     fontFamily: 'Inter_500Medium',
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.onSurface,
-  },
-  totalValue: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 16,
-    lineHeight: 24,
-    color: colors.onSurface,
+    fontSize: 13,
+    color: colors.onSurfaceVariant,
   },
 });

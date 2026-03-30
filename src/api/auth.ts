@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { API_BASE_URL } from './config';
 
 export interface AuthTokens {
   accessToken: string;
@@ -20,12 +21,17 @@ export interface User {
   currentStreak: number;
   bestStreak: number;
   favoriteSports: string[];
+  favoriteLeagues: { leagueApiId: number; addedAt: string }[];
   pushNotifications: boolean;
   publicProfile: boolean;
   isPremium: boolean;
   biometricEnabled: boolean;
   twoFactorEnabled: boolean;
+  showStats: boolean;
+  showHistory: boolean;
+  dataSharing: boolean;
   isActive: boolean;
+  onboardingCompleted: boolean;
 }
 
 interface AuthResponse {
@@ -60,6 +66,25 @@ export interface UpdateProfileData {
   favoriteSports?: string[];
 }
 
+export interface UpdatePreferencesData {
+  publicProfile?: boolean;
+  showStats?: boolean;
+  showHistory?: boolean;
+  dataSharing?: boolean;
+}
+
+export interface SessionInfo {
+  id: string;
+  deviceName: string;
+  deviceOS: string;
+  lastActiveAt: string;
+  isCurrent: boolean;
+}
+
+interface SessionsResponse {
+  sessions: SessionInfo[];
+}
+
 export type SocialProvider = 'google' | 'apple' | 'x';
 
 export const authApi = {
@@ -71,10 +96,11 @@ export const authApi = {
     });
   },
 
-  loginWithEmail(email: string, password: string) {
+  loginWithEmail(email: string, password: string, deviceInfo?: { deviceName?: string; deviceOS?: string }) {
     return apiClient.post<AuthResponse>('/auth/login/email', {
       email,
       password,
+      ...deviceInfo,
     });
   },
 
@@ -127,5 +153,69 @@ export const authApi = {
 
   updateProfile(token: string, data: UpdateProfileData) {
     return apiClient.patch<ProfileResponse>('/auth/profile', data, { token });
+  },
+
+  registerPushToken(pushToken: string, authToken: string) {
+    return apiClient.post<MessageResponse>('/auth/push-token', { token: pushToken }, { token: authToken });
+  },
+
+  removePushToken(pushToken: string, authToken: string) {
+    return apiClient.post<MessageResponse>('/auth/push-token/remove', { token: pushToken }, { token: authToken });
+  },
+
+  updatePreferences(token: string, prefs: UpdatePreferencesData) {
+    return apiClient.patch<ProfileResponse>('/auth/preferences', prefs, { token });
+  },
+
+  async uploadAvatar(
+    token: string,
+    fileUri: string,
+    fileName: string,
+    mimeType: string,
+  ): Promise<ProfileResponse> {
+    const formData = new FormData();
+    formData.append('avatar', {
+      uri: fileUri,
+      name: fileName,
+      type: mimeType,
+    } as any);
+
+    const res = await fetch(`${API_BASE_URL}/auth/avatar`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        // Let fetch set Content-Type with boundary for multipart
+      },
+      body: formData,
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data?.message || 'Failed to upload avatar');
+    }
+    return data;
+  },
+
+  deleteAccount(token: string) {
+    return apiClient.delete<MessageResponse>('/auth/account', { token });
+  },
+
+  getSessions(token: string, currentRefreshToken?: string) {
+    const query = currentRefreshToken
+      ? `?currentRefreshToken=${encodeURIComponent(currentRefreshToken)}`
+      : '';
+    return apiClient.get<SessionsResponse>(`/auth/sessions${query}`, { token });
+  },
+
+  deleteSession(token: string, sessionId: string) {
+    return apiClient.delete<MessageResponse>(`/auth/sessions/${sessionId}`, { token });
+  },
+
+  setFavoriteSports(token: string, sports: string[]) {
+    return apiClient.patch<{ message: string; favoriteSports: string[] }>(
+      '/auth/favorite-sports',
+      { sports },
+      { token },
+    );
   },
 };

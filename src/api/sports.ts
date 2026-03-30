@@ -14,6 +14,10 @@ export interface SportMeta {
   icon: string;
 }
 
+export const FREE_SPORT: SportKey = 'football';
+
+export const RECENT_GAMES_LIMIT = 15;
+
 export const SPORT_TABS: SportMeta[] = [
   { key: 'football', name: 'Soccer', icon: 'football' },
   { key: 'basketball', name: 'Basketball', icon: 'basketball' },
@@ -40,6 +44,7 @@ export interface SportLeague {
   season?: string | number;
   isFeatured?: boolean;
   isActive?: boolean;
+  tier?: 'free' | 'premium';
 }
 
 export interface SportGame {
@@ -72,6 +77,7 @@ export interface SportDashboard {
   recentGames: SportGame[];
   upcomingGames: SportGame[];
   featuredLeagues: SportLeague[];
+  userFavoriteLeagueIds?: number[];
 }
 
 export interface SportStandingEntry {
@@ -125,4 +131,49 @@ export const sportsApi = {
   getLeagues(token: string, sport: SportKey) {
     return apiClient.get<SportLeague[]>(`/sports/${sport}/leagues`, { token });
   },
+
+  search(token: string, query: string) {
+    return apiClient.get<SearchResults>(
+      `/sports/search?q=${encodeURIComponent(query)}`,
+      { token },
+    );
+  },
 };
+
+export interface SearchTeamResult {
+  apiId: number;
+  name: string;
+  logo?: string;
+  countryName?: string;
+  leagueApiId?: number;
+  leagueTier?: 'free' | 'premium';
+}
+
+export interface SearchLeagueResult {
+  apiId: number;
+  name: string;
+  logo?: string;
+  countryName?: string;
+  countryFlag?: string;
+  type?: string;
+  tier?: 'free' | 'premium';
+  region?: string;
+}
+
+export interface SearchMatchResult {
+  apiId: number;
+  date: string;
+  status: string;
+  leagueApiId: number;
+  leagueName: string;
+  leagueLogo?: string;
+  leagueTier?: 'free' | 'premium';
+  homeTeam: { apiId: number; name: string; logo?: string };
+  awayTeam: { apiId: number; name: string; logo?: string };
+}
+
+export interface SearchResults {
+  teams: SearchTeamResult[];
+  leagues: SearchLeagueResult[];
+  matches: SearchMatchResult[];
+}

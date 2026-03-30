@@ -1,515 +1,384 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
-import { colors, typography, spacing, borderRadius } from '../theme';
-import { LeaderboardStackParamList } from '../navigation/types';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { colors, spacing, borderRadius } from '../theme';
+import { LeaguesStackParamList } from '../navigation/types';
+import { useAuth } from '../contexts/AuthContext';
+import { usePurchases } from '../contexts/PurchasesContext';
+import { useNavigation as useRootNavigation } from '@react-navigation/native';
+import { leaderboardApi, predictionsApi } from '../api';
+import type { LeaderboardEntry, MyRankResponse, MyStatsResponse } from '../api';
+import type { RootStackParamList } from '../navigation/types';
+import Toast from 'react-native-toast-message';
+import { LinearGradient } from 'expo-linear-gradient';
 
 type Props = {
-  navigation: NativeStackNavigationProp<LeaderboardStackParamList, 'LeaderboardHome'>;
+  navigation: NativeStackNavigationProp<LeaguesStackParamList, 'Leaderboard'>;
 };
 
-const TOP_PREDICTORS = [
-  { rank: 1, name: 'ShadowBet99', pts: '12,450', medalColor: '#FFD700' },
-  { rank: 2, name: 'OddsKing_X', pts: '11,320', medalColor: '#C0C0C0' },
-  { rank: 3, name: 'PrecisionPick', pts: '10,890', medalColor: '#CD7F32' },
-  { rank: 4, name: 'LiveWire_Bets', pts: '9,750', medalColor: '' },
-  { rank: 5, name: 'AlphaStrike22', pts: '8,920', medalColor: '' },
-  { rank: 6, name: 'NightHawk_Pro', pts: '8,540', medalColor: '' },
-  { rank: 7, name: 'VelocityPicks', pts: '7,890', medalColor: '' },
-];
+const TIER_COLORS: Record<string, string> = {
+  rookie: '#9CA3AF',
+  bronze: '#CD7F32',
+  silver: '#C0C0C0',
+  gold: '#FFD700',
+  diamond: '#B9F2FF',
+  legend: '#FF6B00',
+};
 
-const CHALLENGES = [
-  {
-    title: 'Premier League Weekend',
-    type: 'ACCURACY',
-    progress: 75,
-    reward: '500 PTS',
-    status: 'IN PROGRESS',
-  },
-  {
-    title: 'Champions League Special',
-    type: 'COMBO',
-    progress: 40,
-    reward: '1,200 PTS',
-    status: 'NEW',
-  },
-];
+const MEDAL_COLORS = ['#FFD700', '#C0C0C0', '#CD7F32'];
+
+function getTierLabel(tier: string): string {
+  return tier.charAt(0).toUpperCase() + tier.slice(1);
+}
+
+function formatPoints(pts: number): string {
+  if (pts >= 10000) return `${(pts / 1000).toFixed(1)}k`;
+  return pts.toLocaleString();
+}
+
+const FREE_PREVIEW_COUNT = 3;
+const FREE_FADED_COUNT = 5;
 
 export function LeaderboardScreen({ navigation }: Props) {
-  const [activeTab, setActiveTab] = useState('Weekly');
+  const { tokens } = useAuth();
+  const { isProMember } = usePurchases();
+  const rootNav = useRootNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
+  const [myRank, setMyRank] = useState<MyRankResponse | null>(null);
+  const [myStats, setMyStats] = useState<MyStatsResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    if (!tokens?.accessToken) return;
+    try {
+      const [lbRes, rankRes, statsRes] = await Promise.all([
+        leaderboardApi.getLeaderboard(tokens.accessToken, 1, 50),
+        leaderboardApi.getMyRank(tokens.accessToken),
+        predictionsApi.getMyStats(tokens.accessToken),
+      ]);
+      setEntries(lbRes.entries);
+      setMyRank(rankRes);
+      setMyStats(statsRes);
+    } catch (err) {
+      Toast.show({ type: 'error', text1: 'Error loading leaderboard', text2: 'Pull down to try again' });
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [tokens?.accessToken]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchData();
+  }, [fetchData]);
+
+  const renderHeader = () => (
+    <>
+      {/* My Rank Card */}
+      {myRank?.entry && (
+        <View style={styles.rankCard}>
+          <View style={styles.rankCardHeader}>
+            <View style={[styles.tierBadge, { backgroundColor: TIER_COLORS[myRank.entry.tier] || colors.onSurfaceVariant }]}>
+              <Text style={styles.tierBadgeText}>{getTierLabel(myRank.entry.tier)}</Text>
+            </View>
+            <Text style={styles.rankPosition}>#{myRank.rank}</Text>
+          </View>
+          <Text style={styles.rankName}>{myRank.entry.displayName}</Text>
+          <View style={styles.rankStatsRow}>
+            <View style={styles.rankStat}>
+              <Text style={styles.rankStatValue}>{formatPoints(myRank.entry.totalPoints)}</Text>
+              <Text style={styles.rankStatLabel}>Points</Text>
+            </View>
+            <View style={styles.rankDivider} />
+            <View style={styles.rankStat}>
+              <Text style={styles.rankStatValue}>{myRank.entry.winRate}%</Text>
+              <Text style={styles.rankStatLabel}>Win Rate</Text>
+            </View>
+            <View style={styles.rankDivider} />
+            <View style={styles.rankStat}>
+              <Text style={styles.rankStatValue}>{myRank.entry.currentStreak}</Text>
+              <Text style={styles.rankStatLabel}>Streak</Text>
+            </View>
+            <View style={styles.rankDivider} />
+            <View style={styles.rankStat}>
+              <Text style={styles.rankStatValue}>{myRank.entry.bestStreak}</Text>
+              <Text style={styles.rankStatLabel}>Best</Text>
+            </View>
+          </View>
+          {myRank.totalPlayers > 0 && (
+            <Text style={styles.rankContext}>
+              Top {Math.round((myRank.rank / myRank.totalPlayers) * 100)}% of {myRank.totalPlayers} players
+            </Text>
+          )}
+        </View>
+      )}
+
+      {/* My Stats Grid */}
+      {myStats && (
+        <View style={styles.statsGrid}>
+          <View style={styles.statCard}>
+            <Text style={styles.statCardValue}>{myStats.totalPredictions}</Text>
+            <Text style={styles.statCardLabel}>Predictions</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={[styles.statCardValue, { color: '#16A34A' }]}>{myStats.won}</Text>
+            <Text style={styles.statCardLabel}>Won</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={[styles.statCardValue, { color: '#DC2626' }]}>{myStats.lost}</Text>
+            <Text style={styles.statCardLabel}>Lost</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={[styles.statCardValue, { color: colors.primary }]}>{formatPoints(myStats.totalPoints)}</Text>
+            <Text style={styles.statCardLabel}>Points</Text>
+          </View>
+        </View>
+      )}
+
+      {/* Leaderboard Title */}
+      <View style={styles.lbTitleRow}>
+        <MaterialCommunityIcons name="trophy" size={20} color={colors.primary} />
+        <Text style={styles.lbTitle}>GLOBAL RANKINGS</Text>
+      </View>
+    </>
+  );
+
+  const renderEntry = ({ item }: { item: LeaderboardEntry }) => {
+    const isTop3 = item.rank <= 3;
+    const isMe = myRank?.entry?.userId === item.userId;
+    const isFaded = !isProMember && item.rank > FREE_PREVIEW_COUNT;
+
+    return (
+      <View style={[styles.entryRow, isMe && styles.entryRowMe, isFaded && { opacity: 0.25 }]}>
+        <View style={styles.entryRankCol}>
+          {isTop3 ? (
+            <MaterialCommunityIcons name="medal" size={22} color={MEDAL_COLORS[item.rank - 1]} />
+          ) : (
+            <Text style={styles.entryRank}>#{item.rank}</Text>
+          )}
+        </View>
+        <View style={styles.entryAvatar}>
+          {item.avatar ? (
+            <Text style={styles.entryAvatarText}>{item.displayName.charAt(0).toUpperCase()}</Text>
+          ) : (
+            <Ionicons name="person" size={16} color={colors.onSurfaceVariant} />
+          )}
+        </View>
+        <View style={styles.entryInfo}>
+          <Text style={[styles.entryName, isMe && styles.entryNameMe]} numberOfLines={1}>
+            {item.displayName}{isMe ? ' (You)' : ''}
+          </Text>
+          <View style={styles.entryMeta}>
+            <View style={[styles.entryTierDot, { backgroundColor: TIER_COLORS[item.tier] || '#9CA3AF' }]} />
+            <Text style={styles.entryTier}>{getTierLabel(item.tier)}</Text>
+            <Text style={styles.entryWinRate}>{item.winRate}% WR</Text>
+          </View>
+        </View>
+        <View style={styles.entryPoints}>
+          <Text style={styles.entryPointsValue}>{formatPoints(item.totalPoints)}</Text>
+          <Text style={styles.entryPointsLabel}>PTS</Text>
+        </View>
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.brandText}>KINETIC</Text>
-        <TouchableOpacity>
-          <Feather name="bell" size={22} color={colors.onSurface} />
-        </TouchableOpacity>
+        <Text style={styles.headerSubtitle}>LEADERBOARD</Text>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Rank banner */}
-        <View style={styles.rankBanner}>
-          <Text style={styles.rankLabel}>ELITE RANK</Text>
-          <Text style={styles.rankTitle}>ELITE{'\n'}COMMANDER</Text>
-          <View style={styles.rankStatsRow}>
-            <View style={styles.rankStat}>
-              <Text style={styles.rankStatValue}>7</Text>
-              <Text style={styles.rankStatLabel}>Victories</Text>
-            </View>
-            <View style={styles.rankDivider} />
-            <View style={styles.rankStat}>
-              <Text style={styles.rankStatValue}>1,450</Text>
-              <Text style={styles.rankStatLabel}>Total PTS</Text>
-            </View>
-          </View>
-          <View style={styles.progressSection}>
-            <Text style={styles.progressLabel}>NEXT RANK: GRAND MASTER</Text>
-            <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: '72%' }]} />
-            </View>
-          </View>
-          <TouchableOpacity style={styles.claimButton}>
-            <Text style={styles.claimButtonText}>CLAIM MY TITLE ▶</Text>
-          </TouchableOpacity>
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
-
-        {/* Real Madrid vs Barcelona card */}
-        <View style={styles.matchHighlight}>
-          <Text style={styles.matchHighlightLabel}>FEATURED MATCH</Text>
-          <Text style={styles.matchHighlightTitle}>Real Madrid vs Barcelona</Text>
-          <Text style={styles.matchHighlightSub}>El Clásico • La Liga</Text>
+      ) : entries.length === 0 && !myRank?.entry ? (
+        <View style={styles.emptyContainer}>
+          <MaterialCommunityIcons name="trophy-outline" size={48} color={colors.onSurfaceVariant} />
+          <Text style={styles.emptyTitle}>No Rankings Yet</Text>
+          <Text style={styles.emptySubtitle}>
+            Make predictions to earn points and climb the leaderboard
+          </Text>
         </View>
-
-        {/* Pro card */}
-        <View style={styles.proCard}>
-          <LinearGradient
-            colors={['#FF6B00', '#FF8C38']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.proGradient}
-          >
-            <Text style={styles.proLabel}>KINETIC INSIDER</Text>
-            <Text style={styles.proTitle}>PRO</Text>
-            <Text style={styles.proDesc}>Unlock exclusive predictions and analytics</Text>
-          </LinearGradient>
-        </View>
-
-        {/* Active Prediction Challenges */}
-        <Text style={styles.sectionTitle}>ACTIVE PREDICTION CHALLENGES</Text>
-        {CHALLENGES.map((challenge, idx) => (
-          <View key={idx} style={styles.challengeCard}>
-            <View style={styles.challengeHeader}>
-              <Text style={styles.challengeName}>{challenge.title}</Text>
-              <View style={[
-                styles.challengeStatus,
-                challenge.status === 'NEW' && styles.challengeStatusNew,
-              ]}>
-                <Text style={styles.challengeStatusText}>{challenge.status}</Text>
-              </View>
-            </View>
-            <Text style={styles.challengeType}>{challenge.type}</Text>
-            <View style={styles.challengeProgressBar}>
-              <View style={[styles.challengeProgressFill, { width: `${challenge.progress}%` }]} />
-            </View>
-            <Text style={styles.challengeReward}>Reward: {challenge.reward}</Text>
-          </View>
-        ))}
-
-        {/* Top Predictors */}
-        <View style={styles.leaderboardSection}>
-          <Text style={styles.sectionTitle}>TOP PREDICTORS</Text>
-          <View style={styles.leaderboardTabs}>
-            {['Weekly', 'Monthly', 'All Time'].map((tab) => (
-              <TouchableOpacity
-                key={tab}
-                style={[styles.lbTab, activeTab === tab && styles.lbTabActive]}
-                onPress={() => setActiveTab(tab)}
-              >
-                <Text style={[
-                  styles.lbTabText,
-                  activeTab === tab && styles.lbTabTextActive,
-                ]}>
-                  {tab}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {TOP_PREDICTORS.map((predictor) => (
-            <View key={predictor.rank} style={styles.predictorRow}>
-              {predictor.medalColor ? (
-                <View style={styles.predictorRankContainer}>
-                  <MaterialCommunityIcons name="medal" size={22} color={predictor.medalColor} />
+      ) : (
+        <FlatList
+          data={isProMember ? entries : entries.slice(0, FREE_PREVIEW_COUNT + FREE_FADED_COUNT)}
+          keyExtractor={(item) => item.userId}
+          renderItem={renderEntry}
+          ListHeaderComponent={renderHeader}
+          ListFooterComponent={
+            !isProMember && entries.length > FREE_PREVIEW_COUNT ? (
+              <View style={styles.proGateWrap}>
+                <LinearGradient
+                  colors={['rgba(11,14,17,0)', 'rgba(11,14,17,0.85)', colors.background]}
+                  style={styles.proGateFade}
+                />
+                <View style={styles.proGateCard}>
+                  <Ionicons name="lock-closed" size={24} color={colors.primary} />
+                  <Text style={styles.proGateTitle}>See full rankings with Kinetic Pro</Text>
+                  <Text style={styles.proGateSubtitle}>
+                    {entries.length}+ players competing. Unlock full rankings to see where you stand.
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.proGateBtn}
+                    onPress={() => rootNav.navigate('Paywall', { trigger: 'leaderboard' })}
+                    activeOpacity={0.8}
+                  >
+                    <LinearGradient
+                      colors={[colors.primaryContainer, colors.primary]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.proGateBtnGradient}
+                    >
+                      <Text style={styles.proGateBtnText}>UNLOCK PRO</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
                 </View>
-              ) : (
-                <Text style={styles.predictorRank}>#{predictor.rank}</Text>
-              )}
-              <View style={styles.predictorAvatar}>
-                <Ionicons name="person" size={16} color={colors.onSurfaceVariant} />
               </View>
-              <View style={styles.predictorInfo}>
-                <Text style={styles.predictorName}>{predictor.name}</Text>
-              </View>
-              <Text style={styles.predictorPts}>{predictor.pts}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Your stats */}
-        <View style={styles.yourStats}>
-          <Text style={styles.yourStatsTitle}>YOUR STATISTICS</Text>
-          <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <Text style={styles.statCardValue}>156</Text>
-              <Text style={styles.statCardLabel}>Predictions</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statCardValue}>68%</Text>
-              <Text style={styles.statCardLabel}>Accuracy</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statCardValue}>12</Text>
-              <Text style={styles.statCardLabel}>Win Streak</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statCardValue}>8.2k</Text>
-              <Text style={styles.statCardLabel}>Total PTS</Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={{ height: 24 }} />
-      </ScrollView>
+            ) : null
+          }
+          contentContainerStyle={{ paddingBottom: 100 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+          }
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingTop: 56,
-    paddingBottom: 12,
-  },
-  backBtn: { padding: 4 },
-  backArrow: { color: colors.onSurface, fontSize: 22 },
-  brandText: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 20,
-    color: colors.primary,
-    letterSpacing: 1,
-  },
-  headerIcon: { fontSize: 20 },
+  container: { flex: 1, backgroundColor: colors.background },
+  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
-  // Rank banner
-  rankBanner: {
-    marginHorizontal: spacing.lg,
-    backgroundColor: colors.surfaceContainerLow,
-    borderRadius: borderRadius.lg,
-    padding: 20,
-    marginBottom: 16,
+  header: {
+    flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg, paddingTop: 56, paddingBottom: 12,
   },
-  rankLabel: {
-    ...typography.labelSm,
-    color: colors.primary,
-    marginBottom: 4,
-    letterSpacing: 1,
+  brandText: {
+    fontFamily: 'SpaceGrotesk_700Bold', fontSize: 20, color: colors.primary, letterSpacing: 1,
   },
-  rankTitle: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 30,
-    color: colors.onSurface,
-    lineHeight: 36,
-    marginBottom: 16,
+  headerSubtitle: {
+    fontFamily: 'Inter_700Bold', fontSize: 10, color: colors.onSurfaceVariant,
+    letterSpacing: 1.2, textTransform: 'uppercase',
+  },
+
+  // My Rank Card
+  rankCard: {
+    marginHorizontal: 16, backgroundColor: colors.surfaceContainerLow, borderRadius: 12,
+    padding: 20, marginBottom: 16, gap: 8,
+  },
+  rankCardHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+  },
+  tierBadge: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 3 },
+  tierBadgeText: {
+    fontFamily: 'Inter_700Bold', fontSize: 10, color: '#000', letterSpacing: 0.5, textTransform: 'uppercase',
+  },
+  rankPosition: {
+    fontFamily: 'SpaceGrotesk_700Bold', fontSize: 28, color: colors.onSurface,
+  },
+  rankName: {
+    fontFamily: 'SpaceGrotesk_700Bold', fontSize: 22, color: colors.onSurface, letterSpacing: -0.5,
   },
   rankStatsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 20,
-    marginBottom: 16,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', marginTop: 8,
   },
-  rankStat: {
-    alignItems: 'center',
-  },
-  rankStatValue: {
-    ...typography.titleLg,
-    color: colors.onSurface,
-    fontFamily: 'SpaceGrotesk_700Bold',
-  },
-  rankStatLabel: {
-    ...typography.bodySm,
-    color: colors.onSurfaceDim,
-    fontSize: 11,
-  },
-  rankDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: colors.surfaceContainerHighest,
-  },
-  progressSection: {
-    marginBottom: 16,
-  },
-  progressLabel: {
-    ...typography.labelSm,
-    color: colors.onSurfaceDim,
-    marginBottom: 6,
-    letterSpacing: 0.5,
-  },
-  progressBar: {
-    height: 6,
-    backgroundColor: colors.surfaceVariant,
-    borderRadius: 3,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: colors.primary,
-    borderRadius: 3,
-  },
-  claimButton: {
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.sm,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  claimButtonText: {
-    ...typography.labelMd,
-    color: colors.onPrimary,
-    fontFamily: 'Inter_700Bold',
-    letterSpacing: 1,
+  rankStat: { alignItems: 'center' },
+  rankStatValue: { fontFamily: 'SpaceGrotesk_700Bold', fontSize: 20, color: colors.onSurface },
+  rankStatLabel: { fontFamily: 'Inter_500Medium', fontSize: 11, color: colors.onSurfaceDim },
+  rankDivider: { width: 1, height: 28, backgroundColor: 'rgba(69,72,76,0.3)' },
+  rankContext: {
+    fontFamily: 'Inter_500Medium', fontSize: 12, color: colors.primary, textAlign: 'center', marginTop: 4,
   },
 
-  matchHighlight: {
-    marginHorizontal: spacing.lg,
-    backgroundColor: colors.surfaceContainerLow,
-    borderRadius: borderRadius.md,
-    padding: 14,
-    marginBottom: 12,
-  },
-  matchHighlightLabel: {
-    ...typography.labelSm,
-    color: colors.onSurfaceDim,
-    marginBottom: 4,
-  },
-  matchHighlightTitle: {
-    ...typography.titleMd,
-    color: colors.onSurface,
-  },
-  matchHighlightSub: {
-    ...typography.bodySm,
-    color: colors.onSurfaceDim,
-    marginTop: 2,
-  },
-
-  // Pro card
-  proCard: {
-    marginHorizontal: spacing.lg,
-    borderRadius: borderRadius.lg,
-    overflow: 'hidden',
-    marginBottom: 24,
-  },
-  proGradient: {
-    padding: 20,
-  },
-  proLabel: {
-    ...typography.labelSm,
-    color: colors.white,
-    opacity: 0.8,
-    marginBottom: 4,
-    letterSpacing: 1,
-  },
-  proTitle: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 36,
-    color: colors.white,
-    marginBottom: 4,
-  },
-  proDesc: {
-    ...typography.bodySm,
-    color: colors.white,
-    opacity: 0.8,
-  },
-
-  sectionTitle: {
-    ...typography.labelLg,
-    color: colors.onSurface,
-    fontFamily: 'Inter_700Bold',
-    paddingHorizontal: spacing.lg,
-    marginBottom: 12,
-    letterSpacing: 0.5,
-  },
-
-  // Challenges
-  challengeCard: {
-    marginHorizontal: spacing.lg,
-    backgroundColor: colors.surfaceContainerLow,
-    borderRadius: borderRadius.md,
-    padding: 14,
-    marginBottom: 10,
-  },
-  challengeHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  challengeName: {
-    ...typography.titleSm,
-    color: colors.onSurface,
-  },
-  challengeStatus: {
-    backgroundColor: colors.primary,
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  challengeStatusNew: {
-    backgroundColor: colors.tertiary,
-  },
-  challengeStatusText: {
-    ...typography.labelSm,
-    color: colors.onPrimary,
-    fontSize: 9,
-  },
-  challengeType: {
-    ...typography.labelSm,
-    color: colors.onSurfaceDim,
-    marginBottom: 8,
-  },
-  challengeProgressBar: {
-    height: 4,
-    backgroundColor: colors.surfaceVariant,
-    borderRadius: 2,
-    marginBottom: 8,
-  },
-  challengeProgressFill: {
-    height: '100%',
-    backgroundColor: colors.primary,
-    borderRadius: 2,
-  },
-  challengeReward: {
-    ...typography.bodySm,
-    color: colors.primary,
-    fontFamily: 'Inter_600SemiBold',
-  },
-
-  // Leaderboard
-  leaderboardSection: {
-    marginTop: 12,
-    marginBottom: 16,
-  },
-  leaderboardTabs: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
-    gap: 8,
-    marginBottom: 12,
-  },
-  lbTab: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: colors.surfaceContainerHighest,
-  },
-  lbTabActive: {
-    backgroundColor: colors.primary,
-  },
-  lbTabText: {
-    ...typography.bodySm,
-    color: colors.onSurfaceVariant,
-    fontFamily: 'Inter_500Medium',
-  },
-  lbTabTextActive: {
-    color: colors.onPrimary,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  predictorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: 10,
-    gap: 12,
-  },
-  predictorRankContainer: {
-    width: 28,
-    alignItems: 'center',
-  },
-  predictorRank: {
-    ...typography.bodyMd,
-    color: colors.onSurfaceDim,
-    width: 28,
-    textAlign: 'center',
-  },
-  predictorAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.surfaceContainerHighest,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  predictorInfo: {
-    flex: 1,
-  },
-  predictorName: {
-    ...typography.bodyMd,
-    color: colors.onSurface,
-    fontFamily: 'Inter_500Medium',
-  },
-  predictorPts: {
-    ...typography.titleSm,
-    color: colors.primary,
-    fontFamily: 'SpaceGrotesk_700Bold',
-  },
-
-  // Your stats
-  yourStats: {
-    paddingHorizontal: spacing.lg,
-    marginTop: 12,
-  },
-  yourStatsTitle: {
-    ...typography.labelLg,
-    color: colors.onSurface,
-    fontFamily: 'Inter_700Bold',
-    marginBottom: 12,
-    letterSpacing: 0.5,
-  },
+  // Stats Grid
   statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+    flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginHorizontal: 16, marginBottom: 20,
   },
   statCard: {
-    width: '47%',
-    backgroundColor: colors.surfaceContainerLow,
-    borderRadius: borderRadius.md,
-    padding: 14,
-    alignItems: 'center',
+    flex: 1, minWidth: '45%', backgroundColor: colors.surfaceContainerLow, borderRadius: 8,
+    padding: 14, alignItems: 'center',
   },
-  statCardValue: {
-    ...typography.titleLg,
-    color: colors.onSurface,
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 24,
+  statCardValue: { fontFamily: 'SpaceGrotesk_700Bold', fontSize: 22, color: colors.onSurface },
+  statCardLabel: { fontFamily: 'Inter_500Medium', fontSize: 11, color: colors.onSurfaceDim, marginTop: 2 },
+
+  // Leaderboard Title
+  lbTitleRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, marginBottom: 12,
   },
-  statCardLabel: {
-    ...typography.bodySm,
-    color: colors.onSurfaceDim,
-    marginTop: 2,
+  lbTitle: {
+    fontFamily: 'Inter_700Bold', fontSize: 12, color: colors.onSurface, letterSpacing: 1.2,
   },
 
+  // Entry Row
+  entryRow: {
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 10,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(69,72,76,0.12)',
+  },
+  entryRowMe: { backgroundColor: 'rgba(198,255,0,0.04)' },
+  entryRankCol: { width: 28, alignItems: 'center' },
+  entryRank: { fontFamily: 'Inter_700Bold', fontSize: 13, color: colors.onSurfaceDim },
+  entryAvatar: {
+    width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surfaceContainerHighest,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  entryAvatarText: { fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, color: colors.onSurface },
+  entryInfo: { flex: 1, gap: 2 },
+  entryName: { fontFamily: 'Inter_700Bold', fontSize: 14, color: colors.onSurface },
+  entryNameMe: { color: colors.primary },
+  entryMeta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  entryTierDot: { width: 6, height: 6, borderRadius: 3 },
+  entryTier: { fontFamily: 'Inter_500Medium', fontSize: 10, color: colors.onSurfaceDim },
+  entryWinRate: { fontFamily: 'Inter_500Medium', fontSize: 10, color: colors.onSurfaceVariant },
+  entryPoints: { alignItems: 'flex-end' },
+  entryPointsValue: { fontFamily: 'SpaceGrotesk_700Bold', fontSize: 16, color: colors.primary },
+  entryPointsLabel: { fontFamily: 'Inter_700Bold', fontSize: 8, color: colors.onSurfaceDim, letterSpacing: 0.8 },
+
+  // Pro Gate
+  proGateWrap: { marginTop: -100, paddingBottom: 20 },
+  proGateFade: { height: 100 },
+  proGateCard: {
+    marginHorizontal: 16,
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(202,253,0,0.15)',
+    padding: 24,
+    alignItems: 'center',
+    gap: 12,
+  },
+  proGateTitle: {
+    fontFamily: 'SpaceGrotesk_700Bold', fontSize: 20, color: colors.onSurface, textAlign: 'center',
+  },
+  proGateSubtitle: {
+    fontFamily: 'Inter_400Regular', fontSize: 14, lineHeight: 20,
+    color: colors.onSurfaceVariant, textAlign: 'center',
+  },
+  proGateBtn: { borderRadius: 10, overflow: 'hidden', width: '100%', marginTop: 4 },
+  proGateBtnGradient: { paddingVertical: 14, alignItems: 'center', borderRadius: 10 },
+  proGateBtnText: {
+    fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, color: '#4A5E00',
+    letterSpacing: 1, textTransform: 'uppercase',
+  },
+
+  // Empty
+  emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 32 },
+  emptyTitle: { fontFamily: 'SpaceGrotesk_700Bold', fontSize: 20, color: colors.onSurface },
+  emptySubtitle: { fontFamily: 'Inter_500Medium', fontSize: 14, color: colors.onSurfaceVariant, textAlign: 'center' },
 });
