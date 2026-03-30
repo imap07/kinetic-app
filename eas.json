@@ -1,0 +1,46 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": {
+        "simulator": false
+      },
+      "env": {
+        "APP_ENV": "development",
+        "API_URL": "http://localhost:3001/api"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "env": {
+        "APP_ENV": "preview",
+        "API_URL": "https://kinectic-app-test.4a7ymmxg576we.ca-central-1.cs.amazonlightsail.com/api"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "APP_ENV": "production",
+        "API_URL": "https://kinectic-app-test.4a7ymmxg576we.ca-central-1.cs.amazonlightsail.com/api"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "hello@redakcode.com",
+        "ascAppId": "3K83UJF3AS",
+        "appleTeamId": "R54HZ7DNY8"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./google-play-service-account.json",
+        "track": "internal"
+      }
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "942851412014",
+    "project_id": "kinetic-app-491418",
+    "storage_bucket": "kinetic-app-491418.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:942851412014:android:a7c8898d48083423b54fbf",
+        "android_client_info": {
+          "package_name": "io.kinetic.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "942851412014-8f1gm6sr5luif1f7rtscj60pvpd3ic9n.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAksTRkhssrTIh5kQYFT6WdEn2TJecRRUE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "942851412014-8f1gm6sr5luif1f7rtscj60pvpd3ic9n.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "942851412014-0v2iuf4dj6ji0sm4hqnblqvme0g2qsle.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.kinetic.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

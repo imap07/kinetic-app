@@ -1,0 +1,45 @@
+name: EAS Update (OTA)
+
+on:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: OTA update → preview (develop branch)
+        if: github.ref == 'refs/heads/develop'
+        run: |
+          eas update \
+            --branch preview \
+            --message "Preview: ${{ github.sha }}" \
+            --non-interactive
+
+      - name: OTA update → production (main branch)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          eas update \
+            --branch production \
+            --message "Production: ${{ github.sha }}" \
+            --non-interactive

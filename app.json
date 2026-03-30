@@ -1,8 +1,14 @@
 {
   "expo": {
-    "name": "kinetic-app",
+    "name": "Kinetic",
     "slug": "kinetic-app",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/fa9ef7e4-a38e-414e-980e-965ddd976b1a"
+    },
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -13,17 +19,26 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "io.kinetic.app"
+      "bundleIdentifier": "io.kinetic.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Kinetic uses your camera to update your profile photo.",
+        "NSPhotoLibraryUsageDescription": "Kinetic accesses your photo library to update your profile photo."
+      }
     },
     "android": {
       "package": "io.kinetic.app",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#0B0E11",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -45,6 +60,12 @@
         }
       ],
       "expo-image"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "fa9ef7e4-a38e-414e-980e-965ddd976b1a"
+      }
+    },
+    "owner": "redakcode"
   }
 }
