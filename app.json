@@ -67,14 +67,7 @@
       "expo-apple-authentication",
       "expo-image",
       "@react-native-firebase/app",
-      [
-        "expo-build-properties",
-        {
-          "ios": {
-            "useFrameworks": "static"
-          }
-        }
-      ]
+      "./plugins/withFirebaseModularHeaders"
     ],
     "extra": {
       "eas": {
