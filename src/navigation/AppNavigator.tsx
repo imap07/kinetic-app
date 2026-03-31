@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, NavigationState } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -44,6 +44,7 @@ import { CoinLeaguesScreen } from '../screens/CoinLeaguesScreen';
 import { GiftcardRedeemScreen } from '../screens/GiftcardRedeemScreen';
 import { QuestsScreen } from '../screens/QuestsScreen';
 import { LeagueSelectionScreen } from '../screens/LeagueSelectionScreen';
+import { logScreenView } from '../services/analytics';
 
 const darkScreenOptions = {
   headerShown: false as const,
@@ -181,9 +182,25 @@ function LeagueSelectionWrapper({ navigation, route }: any) {
 // ─── Root Navigator ──────────────────────────────────────
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 
+function getActiveRouteName(state: NavigationState | undefined): string | undefined {
+  if (!state) return undefined;
+  const route = state.routes[state.index];
+  if (route.state) return getActiveRouteName(route.state as NavigationState);
+  return route.name;
+}
+
 export function AppNavigator() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
+  const routeNameRef = useRef<string | undefined>(undefined);
+
+  const onNavigationStateChange = useCallback((state: NavigationState | undefined) => {
+    const currentRouteName = getActiveRouteName(state);
+    if (currentRouteName && currentRouteName !== routeNameRef.current) {
+      logScreenView(currentRouteName);
+    }
+    routeNameRef.current = currentRouteName;
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated || !user) {
@@ -213,7 +230,7 @@ export function AppNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer onStateChange={onNavigationStateChange}>
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         {isAuthenticated ? (
           onboardingDone ? (

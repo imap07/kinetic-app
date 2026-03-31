@@ -15,6 +15,7 @@ import Purchases, {
 import RevenueCatUI, { PAYWALL_RESULT } from 'react-native-purchases-ui';
 import Toast from 'react-native-toast-message';
 import { useAuth } from './AuthContext';
+import { logSubscriptionStart } from '../services/analytics';
 
 const REVENUECAT_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY || '';
 
@@ -136,6 +137,7 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
         case PAYWALL_RESULT.RESTORED: {
           const info = await Purchases.getCustomerInfo();
           updateFromCustomerInfo(info);
+          logSubscriptionStart(paywallResult === PAYWALL_RESULT.PURCHASED ? 'new' : 'restored');
           return true;
         }
         case PAYWALL_RESULT.NOT_PRESENTED:
@@ -154,6 +156,7 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
     try {
       const { customerInfo } = await Purchases.purchasePackage(pkg);
       updateFromCustomerInfo(customerInfo);
+      logSubscriptionStart(pkg.identifier);
       return true;
     } catch (e: any) {
       if (!e.userCancelled) {

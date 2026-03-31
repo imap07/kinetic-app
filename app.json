@@ -14,6 +14,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "io.kinetic.app",
+      "googleServicesFile": "./GoogleService-Info.plist",
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -56,7 +57,9 @@
         }
       ],
       "expo-apple-authentication",
-      "expo-image"
+      "expo-image",
+      "@react-native-firebase/app",
+      "@react-native-firebase/analytics"
     ],
     "extra": {
       "eas": {

@@ -24,6 +24,7 @@ import { FREE_SPORT } from '../api/sports';
 const FREE_LEAGUE_IDS = [39, 140, 262, 253]; // Premier, La Liga, Liga MX, MLS
 import type { Fixture, FixtureEvent, FixtureStatistic, TeamLineup, LineupPlayer, SportGame, PredictionData, DailyStatusResponse } from '../api';
 import Toast from 'react-native-toast-message';
+import { logPickAttempted, logPickCompleted, logPaywallShown } from '../services/analytics';
 
 type Props = { navigation: any };
 
@@ -151,6 +152,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
   useEffect(() => {
     if (!isProMember && sport !== FREE_SPORT) {
       const sportMeta = SPORT_TABS.find((t) => t.key === sport);
+      logPaywallShown('sport_locked', sportMeta?.name ?? sport);
       navigation.replace('Paywall' as any, {
         trigger: 'sport_locked',
         sportName: sportMeta?.name ?? sport,
@@ -161,6 +163,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
   // Block picks on premium leagues for free users
   useEffect(() => {
     if (!isProMember && fixture?.leagueApiId && !FREE_LEAGUE_IDS.includes(fixture.leagueApiId)) {
+      logPaywallShown('league_locked', fixture.leagueName || 'Premium League');
       navigation.replace('Paywall' as any, {
         trigger: 'league_locked',
         sportName: fixture.leagueName || 'Premium League',
@@ -249,12 +252,16 @@ export function MatchPredictionScreen({ navigation }: Props) {
   const handleSubmitPrediction = async () => {
     if (!tokens?.accessToken || !selectedOutcome) return;
 
+    logPickAttempted(sport, leagueApiId ?? 0, leagueName ?? '');
+
     if (predType === 'exact_score' && !isProMember) {
+      logPaywallShown('exact_score', leagueName);
       navigation.navigate('Paywall' as any, { trigger: 'exact_score' });
       return;
     }
 
     if (!isProMember && dailyStatus && dailyStatus.used >= dailyStatus.limit) {
+      logPaywallShown('daily_limit', leagueName);
       navigation.navigate('Paywall' as any, {
         trigger: 'daily_limit',
         dailyUsed: dailyStatus.used,
@@ -290,6 +297,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
       const result = await predictionsApi.create(payload, tokens.accessToken);
       setExistingPrediction(result);
       setDailyStatus((prev) => prev ? { ...prev, used: prev.used + 1 } : prev);
+      logPickCompleted(sport, leagueApiId ?? 0, predType);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert('Prediction Submitted', 'Your prediction has been recorded. Good luck!');
     } catch (err: any) {

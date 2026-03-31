@@ -31,6 +31,7 @@ import type { DailyStatusResponse, MyStatsResponse } from '../api/predictions';
 import Toast from 'react-native-toast-message';
 import { useLiveGames } from '../contexts/LiveGamesContext';
 import { useStatsSSE } from '../hooks/useStatsSSE';
+import { logSportTabViewed, logLeagueDetailOpened, logPickAttempted } from '../services/analytics';
 
 type Props = {
   navigation: NativeStackNavigationProp<HomeStackParamList, 'DashboardHome'>;
@@ -180,6 +181,7 @@ export function DashboardScreen({ navigation }: Props) {
     }
     setActiveSport(sport);
     setData(null);
+    logSportTabViewed(sport);
   }, [activeSport, isProMember, rootNav]);
 
   const allLiveGames = data?.liveGames ?? [];

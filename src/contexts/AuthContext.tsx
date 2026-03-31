@@ -5,6 +5,7 @@ import { authApi, ApiError } from '../api';
 import type { AuthTokens, User, SocialProvider, UpdateProfileData, UpdatePreferencesData } from '../api';
 import { signOutFromGoogle } from '../services/googleAuth';
 import { ONBOARDING_COMPLETE_KEY } from '../screens/OnboardingScreen';
+import { logLogin, logSignUp, logLogout, setAnalyticsUser, clearAnalyticsUser } from '../services/analytics';
 
 const ACCESS_TOKEN_KEY = 'kinetic_access_token';
 const REFRESH_TOKEN_KEY = 'kinetic_refresh_token';
@@ -119,6 +120,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { user, tokens } = await authApi.loginWithEmail(email, password);
       await persistTokens(tokens);
       setAuth(user, tokens);
+      logLogin('email');
+      setAnalyticsUser(user.id ?? '');
     },
     [setAuth],
   );
@@ -128,6 +131,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { user, tokens } = await authApi.register(email, password, displayName);
       await persistTokens(tokens);
       setAuth(user, tokens);
+      logSignUp('email');
+      setAnalyticsUser(user.id ?? '');
     },
     [setAuth],
   );
@@ -141,6 +146,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { user, tokens } = await authApi.loginWithSocial(provider, accessToken, extra);
       await persistTokens(tokens);
       setAuth(user, tokens);
+      logLogin(provider as 'google' | 'apple');
+      setAnalyticsUser(user.id ?? '');
     },
     [setAuth],
   );
@@ -181,6 +188,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await clearTokens();
     await AsyncStorage.removeItem(ONBOARDING_COMPLETE_KEY);
     clearAuth();
+    logLogout();
+    clearAnalyticsUser();
   }, [clearAuth]);
 
   const refreshProfile = useCallback(async () => {

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>942851412014-oj772o14sk2rsg7uv726opto8cko23d4.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyAfO0zG848P_raDzIzvhzb_KCAJ-vayMqw</string>
+	<key>GCM_SENDER_ID</key>
+	<string>942851412014</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>io.kinetic.app</string>
+	<key>PROJECT_ID</key>
+	<string>kinetic-app-491418</string>
+	<key>STORAGE_BUCKET</key>
+	<string>kinetic-app-491418.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<true></true>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:942851412014:ios:e5fb1a55008dc438b54fbf</string>
+</dict>
+</plist>
