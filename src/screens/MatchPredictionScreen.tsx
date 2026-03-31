@@ -19,6 +19,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { usePurchases } from '../contexts/PurchasesContext';
 import { footballApi, sportsApi, predictionsApi, SPORT_TABS } from '../api';
 import { FREE_SPORT } from '../api/sports';
+
+// Must match backend FREE_TIER_LEAGUES
+const FREE_LEAGUE_IDS = [39, 140, 262, 253]; // Premier, La Liga, Liga MX, MLS
 import type { Fixture, FixtureEvent, FixtureStatistic, TeamLineup, LineupPlayer, SportGame, PredictionData, DailyStatusResponse } from '../api';
 import Toast from 'react-native-toast-message';
 
@@ -154,6 +157,16 @@ export function MatchPredictionScreen({ navigation }: Props) {
       });
     }
   }, [sport, isProMember, navigation]);
+
+  // Block picks on premium leagues for free users
+  useEffect(() => {
+    if (!isProMember && fixture?.leagueApiId && !FREE_LEAGUE_IDS.includes(fixture.leagueApiId)) {
+      navigation.replace('Paywall' as any, {
+        trigger: 'league_locked',
+        sportName: fixture.leagueName || 'Premium League',
+      });
+    }
+  }, [isProMember, fixture?.leagueApiId, navigation]);
 
   const fetchGame = useCallback(async () => {
     if (!tokens?.accessToken) return;
