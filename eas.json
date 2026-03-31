@@ -12,14 +12,14 @@
       },
       "env": {
         "APP_ENV": "development",
-        "API_URL": "http://localhost:3001/api"
+        "EXPO_PUBLIC_API_URL": "http://localhost:3001/api"
       }
     },
     "preview": {
       "autoIncrement": true,
       "env": {
         "APP_ENV": "preview",
-        "API_URL": "https://kinectic-app-test.4a7ymmxg576we.ca-central-1.cs.amazonlightsail.com/api",
+        "EXPO_PUBLIC_API_URL": "https://kinectic-app-test.4a7ymmxg576we.ca-central-1.cs.amazonlightsail.com/api",
         "EXPO_PUBLIC_REVENUECAT_API_KEY": "appl_NuqWsvJroXjowjyNTiYQtzWTmuG"
       }
     },
@@ -27,7 +27,7 @@
       "autoIncrement": true,
       "env": {
         "APP_ENV": "production",
-        "API_URL": "https://kinectic-app-test.4a7ymmxg576we.ca-central-1.cs.amazonlightsail.com/api",
+        "EXPO_PUBLIC_API_URL": "https://kinectic-app-test.4a7ymmxg576we.ca-central-1.cs.amazonlightsail.com/api",
         "EXPO_PUBLIC_REVENUECAT_API_KEY": "appl_NuqWsvJroXjowjyNTiYQtzWTmuG"
       }
     }

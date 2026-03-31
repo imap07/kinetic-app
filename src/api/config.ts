@@ -5,6 +5,6 @@ const DEV_HOST = Platform.select({
   default: 'localhost',
 });
 
-export const API_BASE_URL = __DEV__
-  ? `http://${DEV_HOST}:3001/api`
-  : 'https://api.kinetic.io/api';
+export const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ||
+  (__DEV__ ? `http://${DEV_HOST}:3001/api` : 'https://api.kinetic.io/api');
