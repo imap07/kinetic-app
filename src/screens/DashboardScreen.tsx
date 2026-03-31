@@ -21,7 +21,7 @@ import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { colors, spacing } from '../theme';
 import { HomeStackParamList, RootStackParamList } from '../navigation/types';
 import { AppHeader } from '../components/AppHeader';
-import { ProUpgradeBanner, SportTabs } from '../components';
+import { ProUpgradeBanner, SportTabs, ModalCloseButton } from '../components';
 import { useAuth } from '../contexts/AuthContext';
 import { usePurchases } from '../contexts/PurchasesContext';
 import { useAchievements } from '../contexts/AchievementContext';
@@ -945,9 +945,7 @@ export function DashboardScreen({ navigation }: Props) {
             {/* Header */}
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>Select League</Text>
-              <TouchableOpacity onPress={() => setShowLeagueSheet(false)} hitSlop={12}>
-                <Ionicons name="close" size={22} color={colors.onSurfaceVariant} />
-              </TouchableOpacity>
+              <ModalCloseButton onClose={() => setShowLeagueSheet(false)} variant="sheet" />
             </View>
 
             {/* Search */}

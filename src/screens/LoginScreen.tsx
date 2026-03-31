@@ -16,7 +16,7 @@ import { legalApi } from '../api';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { KineticLogo, PrimaryButton, SocialButton } from '../components';
+import { KineticLogo, PrimaryButton, SocialButton, ModalCloseButton } from '../components';
 import { colors, typography, spacing } from '../theme';
 import { AuthStackParamList } from '../navigation/types';
 import { useAuth } from '../contexts/AuthContext';
@@ -78,9 +78,7 @@ function LegalModal({ visible, type, onClose }: LegalModalProps) {
 
           <View style={modalStyles.header}>
             <Text style={modalStyles.title}>{title}</Text>
-            <TouchableOpacity onPress={onClose} hitSlop={12}>
-              <Feather name="x" size={22} color={colors.onSurface} />
-            </TouchableOpacity>
+            <ModalCloseButton onClose={onClose} variant="sheet" />
           </View>
 
           <ScrollView

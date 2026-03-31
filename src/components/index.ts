@@ -5,3 +5,4 @@ export { TopAppBar } from './TopAppBar';
 export { CustomTabBar } from './CustomTabBar';
 export { ProUpgradeBanner } from './ProUpgradeBanner';
 export { SportTabs } from './SportTabs';
+export { ModalCloseButton } from './ModalCloseButton';

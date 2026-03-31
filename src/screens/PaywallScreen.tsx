@@ -12,6 +12,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../theme';
+import { ModalCloseButton } from '../components';
 import { usePurchases } from '../contexts/PurchasesContext';
 import type { RootStackParamList, PaywallTrigger } from '../navigation/types';
 
@@ -122,9 +123,7 @@ export function PaywallScreen({ navigation, route }: Props) {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={styles.closeBtn} onPress={() => navigation.goBack()}>
-        <Ionicons name="close" size={24} color={colors.onSurfaceVariant} />
-      </TouchableOpacity>
+      <ModalCloseButton onClose={() => navigation.goBack()} variant="fullscreen" />
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -221,18 +220,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  closeBtn: {
-    position: 'absolute',
-    top: 56,
-    right: 20,
-    zIndex: 10,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.surfaceContainerHighest,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   scrollContent: {
     paddingTop: 80,

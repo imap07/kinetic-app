@@ -31,6 +31,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius } from '../theme';
+import { ModalCloseButton } from '../components';
 import { useCoins } from '../contexts/CoinContext';
 import { useAuth } from '../contexts/AuthContext';
 import { leaguesApi } from '../api/leagues';
@@ -409,9 +410,7 @@ function CreateLeagueModal({
           <View style={modalStyles.handle} />
           <View style={modalStyles.header}>
             <Text style={modalStyles.title}>Create League</Text>
-            <TouchableOpacity onPress={onClose} hitSlop={12}>
-              <Feather name="x" size={22} color={colors.onSurfaceVariant} />
-            </TouchableOpacity>
+            <ModalCloseButton onClose={onClose} variant="sheet" />
           </View>
 
           <Text style={modalStyles.label}>League Name</Text>

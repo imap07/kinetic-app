@@ -17,6 +17,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import { colors, spacing, borderRadius } from '../theme';
+import { ModalCloseButton } from '../components';
 import { legalApi, authApi } from '../api';
 import type { SessionInfo } from '../api';
 import { useAuth } from '../contexts/AuthContext';
@@ -83,9 +84,7 @@ function LegalModal({
           <View style={legalModalStyles.handle} />
           <View style={legalModalStyles.header}>
             <Text style={legalModalStyles.title}>{title}</Text>
-            <TouchableOpacity onPress={onClose} hitSlop={12}>
-              <Feather name="x" size={22} color={colors.onSurface} />
-            </TouchableOpacity>
+            <ModalCloseButton onClose={onClose} variant="sheet" />
           </View>
           <ScrollView style={legalModalStyles.body} showsVerticalScrollIndicator>
             {loading ? (
