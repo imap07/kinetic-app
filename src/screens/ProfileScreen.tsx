@@ -355,7 +355,34 @@ export function ProfileScreen() {
         <View style={styles.sectionHeader}>
           <MaterialCommunityIcons name="medal" size={18} color={colors.onSurface} />
           <Text style={styles.sectionTitle}>ACHIEVEMENTS</Text>
+          {achievements.length > 0 && (
+            <View style={styles.achieveCounter}>
+              <Text style={styles.achieveCounterText}>
+                {achievements.filter((a) => a.unlocked).length}/{achievements.length}
+              </Text>
+            </View>
+          )}
         </View>
+        {/* Summary bar */}
+        {!achievementsLoading && achievements.length > 0 && (
+          <View style={styles.achieveSummary}>
+            <View style={styles.achieveSummaryTrack}>
+              <View
+                style={[
+                  styles.achieveSummaryFill,
+                  {
+                    width: `${Math.round(
+                      (achievements.filter((a) => a.unlocked).length / achievements.length) * 100,
+                    )}%`,
+                  },
+                ]}
+              />
+            </View>
+            <Text style={styles.achieveSummaryText}>
+              {achievements.reduce((sum, a) => sum + (a.unlocked ? a.points : 0), 0)} PTS earned
+            </Text>
+          </View>
+        )}
         {achievementsLoading ? (
           <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 16 }} />
         ) : achievements.length === 0 ? (
@@ -363,31 +390,65 @@ export function ProfileScreen() {
             <Text style={styles.achieveDesc}>No achievements yet — keep predicting!</Text>
           </View>
         ) : (
-          achievements.map((a) => (
-            <View
-              key={a.key}
-              style={[
-                styles.achieveCard,
-                !a.unlocked && { opacity: 0.5 },
-              ]}
-            >
-              <AchievementIcon item={a} />
-              <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Text style={styles.achieveTitle}>{a.title}</Text>
-                  {a.unlocked && (
-                    <View style={styles.achieveUnlockedBadge}>
-                      <Text style={styles.achieveUnlockedText}>✓</Text>
+          achievements.map((a) => {
+            const progressPct =
+              a.progress && a.progress.target > 0
+                ? Math.min((a.progress.current / a.progress.target) * 100, 100)
+                : a.unlocked
+                  ? 100
+                  : 0;
+
+            return (
+              <View
+                key={a.key}
+                style={[
+                  styles.achieveCard,
+                  a.unlocked && styles.achieveCardUnlocked,
+                ]}
+              >
+                <AchievementIcon item={a} />
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text
+                      style={[
+                        styles.achieveTitle,
+                        !a.unlocked && { color: 'rgba(248,249,254,0.5)' },
+                      ]}
+                    >
+                      {a.title}
+                    </Text>
+                    {a.unlocked && (
+                      <View style={styles.achieveUnlockedBadge}>
+                        <Ionicons name="checkmark" size={11} color="#E3FFE4" />
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.achieveDesc}>{a.description}</Text>
+
+                  {/* Progress bar */}
+                  {!a.unlocked && a.progress && a.progress.target > 0 && (
+                    <View style={styles.achieveProgressRow}>
+                      <View style={styles.achieveProgressTrack}>
+                        <View
+                          style={[
+                            styles.achieveProgressFill,
+                            { width: `${progressPct}%` },
+                          ]}
+                        />
+                      </View>
+                      <Text style={styles.achieveProgressText}>
+                        {a.progress.current}/{a.progress.target}
+                      </Text>
                     </View>
                   )}
+
+                  <Text style={styles.achievePoints}>
+                    {a.unlocked ? `+${a.points} PTS EARNED` : `${a.points} PTS`}
+                  </Text>
                 </View>
-                <Text style={styles.achieveDesc}>{a.description}</Text>
-                <Text style={styles.achievePoints}>
-                  {a.unlocked ? `+${a.points} PTS EARNED` : `${a.points} PTS`}
-                </Text>
               </View>
-            </View>
-          ))
+            );
+          })
         )}
 
         {/* ── Prediction History ── */}
@@ -455,6 +516,45 @@ export function ProfileScreen() {
             })}
           </View>
         )}
+
+        {/* ── Preferences ── */}
+        <View style={styles.settingsSection}>
+          <Text style={styles.settingsLabel}>PREFERENCES</Text>
+          <TouchableOpacity
+            style={styles.settingsRow}
+            onPress={() => profileNav.navigate('EditFavoriteSports')}
+          >
+            <View style={styles.settingsRowLeft}>
+              <Ionicons name="football" size={18} color={colors.onSurface} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.settingsRowText}>FAVORITE SPORTS</Text>
+                {user?.favoriteSports && user.favoriteSports.length > 0 && (
+                  <Text style={styles.prefsSubtext}>
+                    {user.favoriteSports.length} sport{user.favoriteSports.length !== 1 ? 's' : ''} selected
+                  </Text>
+                )}
+              </View>
+            </View>
+            <Feather name="chevron-right" size={16} color={colors.onSurfaceVariant} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.settingsRow}
+            onPress={() => profileNav.navigate('EditFavoriteLeagues')}
+          >
+            <View style={styles.settingsRowLeft}>
+              <MaterialCommunityIcons name="trophy-outline" size={18} color={colors.onSurface} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.settingsRowText}>FAVORITE LEAGUES</Text>
+                {user?.favoriteLeagues && user.favoriteLeagues.length > 0 && (
+                  <Text style={styles.prefsSubtext}>
+                    {user.favoriteLeagues.length} league{user.favoriteLeagues.length !== 1 ? 's' : ''} selected
+                  </Text>
+                )}
+              </View>
+            </View>
+            <Feather name="chevron-right" size={16} color={colors.onSurfaceVariant} />
+          </TouchableOpacity>
+        </View>
 
         {/* ── Security & Settings ── */}
         <View style={styles.settingsSection}>
@@ -855,38 +955,106 @@ const styles = StyleSheet.create({
   },
 
   // Achievements
+  achieveCounter: {
+    marginLeft: 'auto',
+    backgroundColor: 'rgba(202,253,0,0.12)',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  achieveCounterText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 11,
+    color: colors.primary,
+    letterSpacing: 0.5,
+  },
+  achieveSummary: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  achieveSummaryTrack: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(69,72,76,0.2)',
+    overflow: 'hidden',
+  },
+  achieveSummaryFill: {
+    height: '100%',
+    borderRadius: 3,
+    backgroundColor: colors.primary,
+  },
+  achieveSummaryText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12,
+    color: colors.primary,
+    minWidth: 80,
+    textAlign: 'right',
+  },
   achieveCard: {
     marginHorizontal: 16,
     backgroundColor: colors.surfaceContainerLow,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(69,72,76,0.05)',
-    padding: 17,
+    borderColor: 'rgba(69,72,76,0.08)',
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
-    marginBottom: 12,
+    gap: 14,
+    marginBottom: 10,
+  },
+  achieveCardUnlocked: {
+    borderColor: 'rgba(202,253,0,0.15)',
+    backgroundColor: 'rgba(202,253,0,0.04)',
   },
   achieveIconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
+    width: 52,
+    height: 52,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
   achieveTitle: {
     fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 15,
+    lineHeight: 20,
     color: colors.onSurface,
-    letterSpacing: -0.4,
-    textTransform: 'uppercase',
+    letterSpacing: -0.3,
   },
   achieveDesc: {
     fontFamily: 'Inter_400Regular',
     fontSize: 12,
     lineHeight: 16,
     color: colors.onSurfaceVariant,
+    marginTop: 2,
+  },
+  achieveProgressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+  },
+  achieveProgressTrack: {
+    flex: 1,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: 'rgba(69,72,76,0.2)',
+    overflow: 'hidden',
+  },
+  achieveProgressFill: {
+    height: '100%',
+    borderRadius: 2.5,
+    backgroundColor: colors.primary,
+  },
+  achieveProgressText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 11,
+    color: 'rgba(248,249,254,0.5)',
+    minWidth: 36,
+    textAlign: 'right',
   },
   achievePoints: {
     fontFamily: 'Inter_700Bold',
@@ -903,11 +1071,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#006D37',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  achieveUnlockedText: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 10,
-    color: '#E3FFE4',
   },
 
   // History
@@ -1003,6 +1166,13 @@ const styles = StyleSheet.create({
     color: colors.onSurface,
     letterSpacing: -0.4,
     textTransform: 'uppercase',
+  },
+  prefsSubtext: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 11,
+    lineHeight: 15,
+    color: colors.onSurfaceVariant,
+    marginTop: 2,
   },
 
   // Logout

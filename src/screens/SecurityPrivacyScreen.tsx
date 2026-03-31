@@ -13,12 +13,21 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import { colors, spacing, borderRadius } from '../theme';
 import { legalApi, authApi } from '../api';
 import type { SessionInfo } from '../api';
 import { useAuth } from '../contexts/AuthContext';
+import { ProfileStackParamList } from '../navigation/types';
+import {
+  isBiometricAvailable,
+  getBiometricLabel,
+  enableBiometricLogin,
+  disableBiometricLogin,
+  isBiometricLoginEnabled,
+} from '../services/biometricAuth';
 
 type SettingToggle = {
   id: string;
@@ -96,13 +105,58 @@ function LegalModal({
 
 export function SecurityPrivacyScreen() {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation();
-  const { user, updatePreferences } = useAuth();
+  const navigation = useNavigation<NativeStackNavigationProp<ProfileStackParamList>>();
+  const { user, tokens, updatePreferences } = useAuth();
 
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [sessionsExpanded, setSessionsExpanded] = useState(false);
   const [revokingId, setRevokingId] = useState<string | null>(null);
+
+  // Biometric state
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricLabel, setBiometricLabel] = useState('Biometric Login');
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [biometricLoading, setBiometricLoading] = useState(true);
+
+  // Check biometric hardware and current status on mount
+  useEffect(() => {
+    (async () => {
+      const available = await isBiometricAvailable();
+      setBiometricAvailable(available);
+      if (available) {
+        const label = await getBiometricLabel();
+        setBiometricLabel(label);
+        const enabled = await isBiometricLoginEnabled();
+        setBiometricEnabled(enabled);
+      }
+      setBiometricLoading(false);
+    })();
+  }, []);
+
+  const handleBiometricToggle = useCallback(
+    async (value: boolean) => {
+      if (value) {
+        // Enable: requires biometric verification
+        const email = user?.email ?? '';
+        const refreshToken = await SecureStore.getItemAsync('kinetic_refresh_token');
+        if (!email || !refreshToken) {
+          Alert.alert('Error', 'Unable to enable biometric login. Please log in again.');
+          return;
+        }
+        const success = await enableBiometricLogin(email, refreshToken);
+        if (success) {
+          setBiometricEnabled(true);
+        }
+        // If user cancels biometric prompt, nothing happens (stays off)
+      } else {
+        // Disable
+        await disableBiometricLogin();
+        setBiometricEnabled(false);
+      }
+    },
+    [user?.email],
+  );
 
   const fetchSessions = useCallback(async () => {
     try {
@@ -165,8 +219,6 @@ export function SecurityPrivacyScreen() {
   };
 
   const [legalModal, setLegalModal] = useState<'terms' | 'privacy' | null>(null);
-  const [biometric, setBiometric] = useState(user?.biometricEnabled ?? true);
-  const [twoFactor, setTwoFactor] = useState(user?.twoFactorEnabled ?? false);
   const [profilePublic, setProfilePublic] = useState(user?.publicProfile ?? true);
   const [showStats, setShowStats] = useState(user?.showStats ?? true);
   const [showHistory, setShowHistory] = useState(user?.showHistory ?? true);
@@ -179,8 +231,6 @@ export function SecurityPrivacyScreen() {
       setShowStats(user.showStats);
       setShowHistory(user.showHistory);
       setDataSharing(user.dataSharing);
-      setBiometric(user.biometricEnabled);
-      setTwoFactor(user.twoFactorEnabled);
     }
   }, [user]);
 
@@ -198,23 +248,6 @@ export function SecurityPrivacyScreen() {
       setSaving(false);
     }
   };
-
-  const securityToggles: SettingToggle[] = [
-    {
-      id: 'biometric',
-      icon: <MaterialCommunityIcons name="fingerprint" size={20} color={colors.primary} />,
-      label: 'Biometric Login',
-      sub: 'Use Face ID or fingerprint to log in',
-      value: biometric,
-    },
-    {
-      id: '2fa',
-      icon: <Feather name="shield" size={20} color={colors.primary} />,
-      label: 'Two-Factor Authentication',
-      sub: 'Add an extra layer of security via SMS or authenticator',
-      value: twoFactor,
-    },
-  ];
 
   const privacyToggles: SettingToggle[] = [
     {
@@ -248,8 +281,6 @@ export function SecurityPrivacyScreen() {
   ];
 
   const toggleMap: Record<string, (v: boolean) => void> = {
-    biometric: setBiometric,
-    '2fa': setTwoFactor,
     public: (v) => { setProfilePublic(v); persistPreference('publicProfile', v); },
     stats: (v) => { setShowStats(v); persistPreference('showStats', v); },
     history: (v) => { setShowHistory(v); persistPreference('showHistory', v); },
@@ -298,12 +329,53 @@ export function SecurityPrivacyScreen() {
       >
         {/* Security section */}
         <Text style={styles.sectionLabel}>SECURITY</Text>
+
+        {/* Biometric toggle — always visible */}
         <View style={styles.card}>
-          {securityToggles.map(renderToggleRow)}
+          <View style={styles.toggleRow}>
+            <View style={styles.toggleIcon}>
+              <MaterialCommunityIcons name="fingerprint" size={20} color={biometricAvailable ? colors.primary : colors.onSurfaceDim} />
+            </View>
+            <View style={styles.toggleContent}>
+              <Text style={styles.toggleLabel}>
+                {biometricLoading ? 'Biometric Login' : biometricLabel}
+              </Text>
+              <Text style={styles.toggleSub}>
+                {biometricLoading
+                  ? 'Checking availability...'
+                  : biometricAvailable
+                    ? `Use ${biometricLabel} to quickly log in`
+                    : 'Not available on this device'}
+              </Text>
+            </View>
+            {biometricLoading ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Switch
+                value={biometricEnabled}
+                onValueChange={handleBiometricToggle}
+                disabled={!biometricAvailable}
+                trackColor={{
+                  false: colors.surfaceContainerHighest,
+                  true: 'rgba(202,253,0,0.3)',
+                }}
+                thumbColor={
+                  !biometricAvailable
+                    ? colors.onSurfaceDim
+                    : biometricEnabled
+                      ? colors.primary
+                      : colors.onSurfaceDim
+                }
+              />
+            )}
+          </View>
         </View>
 
-        {/* Password */}
-        <TouchableOpacity style={styles.actionRow}>
+        {/* Change Password */}
+        <TouchableOpacity
+          style={styles.actionRow}
+          onPress={() => navigation.navigate('ChangePassword')}
+        >
           <View style={styles.actionLeft}>
             <View style={styles.toggleIcon}>
               <Feather name="lock" size={20} color={colors.warning} />
@@ -407,12 +479,6 @@ export function SecurityPrivacyScreen() {
           <TouchableOpacity style={styles.legalRow} onPress={() => setLegalModal('privacy')}>
             <Feather name="shield" size={18} color={colors.onSurfaceVariant} />
             <Text style={styles.legalText}>Privacy Policy</Text>
-            <Feather name="chevron-right" size={14} color={colors.onSurfaceDim} />
-          </TouchableOpacity>
-          <View style={styles.legalDivider} />
-          <TouchableOpacity style={styles.legalRow}>
-            <Feather name="download" size={18} color={colors.onSurfaceVariant} />
-            <Text style={styles.legalText}>Download My Data</Text>
             <Feather name="chevron-right" size={14} color={colors.onSurfaceDim} />
           </TouchableOpacity>
         </View>

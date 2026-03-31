@@ -21,8 +21,6 @@ import { colors, spacing, borderRadius } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import { ApiError } from '../api';
 
-const SPORTS = ['Football', 'Basketball', 'Baseball', 'Tennis', 'MMA', 'Cricket'];
-
 export function EditProfileScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
@@ -31,19 +29,10 @@ export function EditProfileScreen() {
   const [displayName, setDisplayName] = useState(user?.displayName ?? '');
   const [username, setUsername] = useState(user?.username ?? '');
   const [bio, setBio] = useState(user?.bio ?? '');
-  const [favoriteSports, setFavoriteSports] = useState<string[]>(
-    user?.favoriteSports ?? [],
-  );
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteText, setDeleteText] = useState('');
-
-  const toggleSport = (sport: string) => {
-    setFavoriteSports((prev) =>
-      prev.includes(sport) ? prev.filter((s) => s !== sport) : [...prev, sport],
-    );
-  };
 
   const handleSave = async () => {
     if (saving) return;
@@ -53,7 +42,6 @@ export function EditProfileScreen() {
         displayName: displayName.trim() || undefined,
         username: username.trim() || undefined,
         bio: bio.trim(),
-        favoriteSports,
       });
       navigation.goBack();
     } catch (err) {
@@ -258,31 +246,6 @@ export function EditProfileScreen() {
             <Text style={styles.charCount}>{bio.length}/120</Text>
           </View>
 
-          {/* Favorite sports chips (multi-select) */}
-          <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>FAVORITE SPORTS</Text>
-            <View style={styles.chipRow}>
-              {SPORTS.map((s) => {
-                const isActive = favoriteSports.includes(s);
-                return (
-                  <TouchableOpacity
-                    key={s}
-                    style={[styles.chip, isActive && styles.chipActive]}
-                    onPress={() => toggleSport(s)}
-                    activeOpacity={0.7}
-                    disabled={saving}
-                  >
-                    <Text
-                      style={[styles.chipText, isActive && styles.chipTextActive]}
-                    >
-                      {s.toUpperCase()}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-
           {/* Danger zone */}
           <View style={styles.dangerSection}>
             <Text style={styles.dangerLabel}>DANGER ZONE</Text>
@@ -442,33 +405,6 @@ const styles = StyleSheet.create({
     color: colors.onSurfaceDim,
     textAlign: 'right',
     marginTop: 4,
-  },
-
-  chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  chip: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.surfaceContainerLow,
-    borderWidth: 1,
-    borderColor: colors.outlineVariant,
-  },
-  chipActive: {
-    backgroundColor: 'rgba(202,253,0,0.12)',
-    borderColor: colors.primary,
-  },
-  chipText: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 11,
-    color: colors.onSurfaceDim,
-    letterSpacing: 0.5,
-  },
-  chipTextActive: {
-    color: colors.primary,
   },
 
   dangerSection: {

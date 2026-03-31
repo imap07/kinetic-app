@@ -218,4 +218,12 @@ export const authApi = {
       { token },
     );
   },
+
+  changePassword(token: string, currentPassword: string, newPassword: string) {
+    return apiClient.patch<{ message: string }>(
+      '/auth/change-password',
+      { currentPassword, newPassword },
+      { token },
+    );
+  },
 };
