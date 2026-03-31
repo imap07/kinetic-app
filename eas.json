@@ -16,6 +16,7 @@
       }
     },
     "preview": {
+      "autoIncrement": true,
       "env": {
         "APP_ENV": "preview",
         "API_URL": "https://kinectic-app-test.4a7ymmxg576we.ca-central-1.cs.amazonlightsail.com/api",
