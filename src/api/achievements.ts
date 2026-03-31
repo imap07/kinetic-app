@@ -1,5 +1,10 @@
 import { apiClient } from './client';
 
+export interface AchievementProgress {
+  current: number;
+  target: number;
+}
+
 export interface Achievement {
   key: string;
   title: string;
@@ -8,6 +13,7 @@ export interface Achievement {
   points: number;
   unlocked: boolean;
   unlockedAt: string | null;
+  progress: AchievementProgress;
 }
 
 export const achievementsApi = {

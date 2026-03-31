@@ -18,6 +18,7 @@ import { AuthProvider } from './src/contexts/AuthContext';
 import { PurchasesProvider } from './src/contexts/PurchasesContext';
 import { CoinProvider } from './src/contexts/CoinContext';
 import { LiveGamesProvider } from './src/contexts/LiveGamesContext';
+import { AchievementProvider } from './src/contexts/AchievementContext';
 import Toast from 'react-native-toast-message';
 import { toastConfig } from './src/components/ToastConfig';
 
@@ -140,9 +141,11 @@ export default function App() {
         <PurchasesProvider>
           <CoinProvider>
             <LiveGamesProvider>
-              <StatusBar style="light" />
-              <AppNavigator />
-              <Toast config={toastConfig} topOffset={60} />
+              <AchievementProvider>
+                <StatusBar style="light" />
+                <AppNavigator />
+                <Toast config={toastConfig} topOffset={60} />
+              </AchievementProvider>
             </LiveGamesProvider>
           </CoinProvider>
         </PurchasesProvider>
