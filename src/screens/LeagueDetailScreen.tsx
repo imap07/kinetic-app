@@ -120,7 +120,7 @@ export function LeagueDetailScreen() {
     setCoinLeaguesLoading(true);
     try {
       const result = await leaguesApi.getThemedLeagues(tokens.accessToken, leagueApiId);
-      setCoinLeagues(result);
+      setCoinLeagues(result.leagues);
     } catch {
       // Silently fail - CoinLeagues are optional
     } finally {

@@ -153,7 +153,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
     if (!isProMember && sport !== FREE_SPORT) {
       const sportMeta = SPORT_TABS.find((t) => t.key === sport);
       logPaywallShown('sport_locked', sportMeta?.name ?? sport);
-      navigation.replace('Paywall' as any, {
+      navigation.navigate('Paywall' as any, {
         trigger: 'sport_locked',
         sportName: sportMeta?.name ?? sport,
       });
@@ -164,7 +164,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
   useEffect(() => {
     if (!isProMember && fixture?.leagueApiId && !FREE_LEAGUE_IDS.includes(fixture.leagueApiId)) {
       logPaywallShown('league_locked', fixture.leagueName || 'Premium League');
-      navigation.replace('Paywall' as any, {
+      navigation.navigate('Paywall' as any, {
         trigger: 'league_locked',
         sportName: fixture.leagueName || 'Premium League',
       });

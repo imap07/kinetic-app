@@ -216,6 +216,7 @@ export function LiveScreen() {
     if (!data) return [];
     const combined = [
       ...(data.liveGames ?? []),
+      ...(data.todayGames ?? []),
       ...(data.recentGames ?? []),
       ...(data.upcomingGames ?? []),
     ];

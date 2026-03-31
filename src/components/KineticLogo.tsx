@@ -15,7 +15,7 @@ export function KineticLogo({ size = 'large', showSubtitle = true }: KineticLogo
       </Text>
       {showSubtitle && (
         <Text style={[styles.subtitle, size === 'small' && styles.subtitleSmall]}>
-          PRECISION BETTING ENGINE
+          PRECISION PREDICTION ENGINE
         </Text>
       )}
     </View>

@@ -62,9 +62,9 @@ export function NotificationsScreen() {
     if (!tokens?.accessToken) return;
     try {
       const res = await notificationsApi.getHistory(tokens.accessToken);
-      setNotifications(res.notifications);
+      setNotifications(res?.notifications ?? []);
     } catch {
-      // silent
+      setNotifications([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -90,8 +90,8 @@ export function NotificationsScreen() {
     }
   };
 
-  const unreadNotifs = notifications.filter((n) => !n.read);
-  const readNotifs = notifications.filter((n) => n.read);
+  const unreadNotifs = (notifications ?? []).filter((n) => !n.read);
+  const readNotifs = (notifications ?? []).filter((n) => n.read);
 
   return (
     <View style={styles.container}>

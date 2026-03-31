@@ -8,10 +8,22 @@ interface StatsSSEData {
   daily: DailyStatusResponse;
 }
 
+export interface AchievementSSEData {
+  type: 'achievement_unlocked';
+  achievement: {
+    key: string;
+    title: string;
+    description: string;
+    icon: string;
+    points: number;
+  };
+}
+
 interface UseStatsSSEOptions {
   token: string | null;
   enabled?: boolean;
   onUpdate: (data: StatsSSEData) => void;
+  onAchievement?: (data: AchievementSSEData['achievement']) => void;
 }
 
 /**
@@ -19,12 +31,14 @@ interface UseStatsSSEOptions {
  * Listens on GET /api/predictions/stats-stream and fires onUpdate
  * whenever the backend pushes fresh stats (after create/delete/resolve).
  */
-export function useStatsSSE({ token, enabled = true, onUpdate }: UseStatsSSEOptions) {
+export function useStatsSSE({ token, enabled = true, onUpdate, onAchievement }: UseStatsSSEOptions) {
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectAttempts = useRef(0);
   const onUpdateRef = useRef(onUpdate);
   onUpdateRef.current = onUpdate;
+  const onAchievementRef = useRef(onAchievement);
+  onAchievementRef.current = onAchievement;
 
   const MAX_RECONNECT_DELAY = 30_000;
 
@@ -41,8 +55,18 @@ export function useStatsSSE({ token, enabled = true, onUpdate }: UseStatsSSEOpti
 
       es.addEventListener('stats-update', (event: any) => {
         try {
-          const data: StatsSSEData = JSON.parse(event.data);
-          onUpdateRef.current(data);
+          const data = JSON.parse(event.data);
+
+          // Check if this is an achievement unlock event
+          if (data?.type === 'achievement_unlocked' && data?.achievement) {
+            onAchievementRef.current?.(data.achievement);
+            return;
+          }
+
+          // Regular stats update
+          if (data?.stats) {
+            onUpdateRef.current(data as StatsSSEData);
+          }
           reconnectAttempts.current = 0;
         } catch (parseErr) {
           console.warn('[useStatsSSE] Failed to parse event:', parseErr);

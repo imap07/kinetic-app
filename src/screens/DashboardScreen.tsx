@@ -24,13 +24,14 @@ import { AppHeader } from '../components/AppHeader';
 import { ProUpgradeBanner, SportTabs } from '../components';
 import { useAuth } from '../contexts/AuthContext';
 import { usePurchases } from '../contexts/PurchasesContext';
+import { useAchievements } from '../contexts/AchievementContext';
 import { sportsApi, SPORT_TABS, FREE_SPORT, RECENT_GAMES_LIMIT } from '../api/sports';
 import type { SportKey, SportDashboard, SportGame } from '../api/sports';
 import { predictionsApi } from '../api/predictions';
 import type { DailyStatusResponse, MyStatsResponse } from '../api/predictions';
 import Toast from 'react-native-toast-message';
 import { useLiveGames } from '../contexts/LiveGamesContext';
-import { useStatsSSE } from '../hooks/useStatsSSE';
+import { useStatsSSE, AchievementSSEData } from '../hooks/useStatsSSE';
 import { logSportTabViewed, logLeagueDetailOpened, logPickAttempted } from '../services/analytics';
 
 type Props = {
@@ -97,6 +98,7 @@ function TeamLogo({ uri, size = 32 }: { uri?: string; size?: number }) {
 export function DashboardScreen({ navigation }: Props) {
   const { tokens, user } = useAuth();
   const { isProMember } = usePurchases();
+  const { showAchievementUnlock } = useAchievements();
   const { setLiveCount } = useLiveGames();
   const rootNav = useRootNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const defaultSport = (user?.favoriteSports?.[0] as SportKey) || 'football';
@@ -161,6 +163,11 @@ export function DashboardScreen({ navigation }: Props) {
       setUserStats(stats);
       setDailyStatus(daily);
     }, []),
+    onAchievement: useCallback(
+      (achievement: AchievementSSEData['achievement']) =>
+        showAchievementUnlock(achievement),
+      [showAchievementUnlock],
+    ),
   });
 
   const onRefresh = useCallback(() => {
