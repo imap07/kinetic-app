@@ -74,6 +74,7 @@ export interface SportGame {
 export interface SportDashboard {
   sport: SportKey;
   liveGames: SportGame[];
+  todayGames: SportGame[];
   recentGames: SportGame[];
   upcomingGames: SportGame[];
   featuredLeagues: SportLeague[];

@@ -183,6 +183,7 @@ export function DashboardScreen({ navigation }: Props) {
   }, [activeSport, isProMember, rootNav]);
 
   const allLiveGames = data?.liveGames ?? [];
+  const allTodayGames = data?.todayGames ?? [];
   const allRecentGames = data?.recentGames ?? [];
   const allUpcomingGames = data?.upcomingGames ?? [];
   const featuredLeagues = data?.featuredLeagues ?? [];
@@ -249,8 +250,11 @@ export function DashboardScreen({ navigation }: Props) {
   }, [activeLeagueFilter]);
 
   const liveGames = filterByLeague(allLiveGames);
+  const todayGames = filterByLeague(allTodayGames);
   const recentGames = filterByLeague(allRecentGames);
-  const upcomingGames = filterByLeague(allUpcomingGames);
+  const rawUpcoming = filterByLeague(allUpcomingGames);
+  // Merge today + upcoming so "today's matches" always show
+  const upcomingGames = [...todayGames, ...rawUpcoming];
 
   useEffect(() => {
     setLiveCount(allLiveGames.length);
