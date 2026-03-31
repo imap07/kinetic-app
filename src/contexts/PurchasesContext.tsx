@@ -16,7 +16,7 @@ import RevenueCatUI, { PAYWALL_RESULT } from 'react-native-purchases-ui';
 import Toast from 'react-native-toast-message';
 import { useAuth } from './AuthContext';
 
-const API_KEY = 'test_QZBrSvEcPpbCyNxZsvWAQMpdOTF';
+const REVENUECAT_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY || '';
 
 const ENTITLEMENT_ID = 'Kinetic App Pro';
 
@@ -47,17 +47,23 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     async function init() {
-      if (__DEV__) {
-        Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
-      }
+      try {
+        if (!REVENUECAT_API_KEY) {
+          console.warn('RevenueCat API key not configured, skipping initialization');
+          setState((s) => ({ ...s, isReady: true }));
+          return;
+        }
 
-      if (Platform.OS === 'ios') {
-        Purchases.configure({ apiKey: API_KEY });
-      } else if (Platform.OS === 'android') {
-        Purchases.configure({ apiKey: API_KEY });
-      }
+        if (__DEV__) {
+          Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
+        }
 
-      setState((s) => ({ ...s, isReady: true }));
+        Purchases.configure({ apiKey: REVENUECAT_API_KEY });
+        setState((s) => ({ ...s, isReady: true }));
+      } catch (error) {
+        console.warn('RevenueCat initialization failed:', error);
+        setState((s) => ({ ...s, isReady: true }));
+      }
     }
 
     init();
