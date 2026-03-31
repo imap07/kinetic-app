@@ -149,10 +149,12 @@ export function MatchPredictionScreen({ navigation }: Props) {
   const hasDraw = !NO_DRAW_SPORTS.includes(sport);
   const isF1 = sport === 'formula-1';
 
+  // Block premium sports — kick user back and show paywall
   useEffect(() => {
     if (!isProMember && sport !== FREE_SPORT) {
       const sportMeta = SPORT_TABS.find((t) => t.key === sport);
       logPaywallShown('sport_locked', sportMeta?.name ?? sport);
+      navigation.goBack();
       navigation.navigate('Paywall' as any, {
         trigger: 'sport_locked',
         sportName: sportMeta?.name ?? sport,
@@ -160,12 +162,13 @@ export function MatchPredictionScreen({ navigation }: Props) {
     }
   }, [sport, isProMember, navigation]);
 
-  // Block picks on premium leagues for free users
+  // Block premium leagues — kick user back and show paywall
   useEffect(() => {
     if (!isProMember && fixture?.leagueApiId && !FREE_LEAGUE_IDS.includes(fixture.leagueApiId)) {
-      logPaywallShown('league_locked', fixture.leagueName || 'Premium League');
+      logPaywallShown('premium_league', fixture.leagueName || 'Premium League');
+      navigation.goBack();
       navigation.navigate('Paywall' as any, {
-        trigger: 'league_locked',
+        trigger: 'premium_league',
         sportName: fixture.leagueName || 'Premium League',
       });
     }

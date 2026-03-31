@@ -191,6 +191,21 @@ export function DashboardScreen({ navigation }: Props) {
     logSportTabViewed(sport);
   }, [activeSport, isProMember, rootNav]);
 
+  // Free-tier league IDs (must match backend FREE_TIER_LEAGUES)
+  const FREE_LEAGUE_IDS = [39, 140, 262, 253];
+
+  const handleMatchPress = useCallback((game: any) => {
+    // Block premium league matches for free users
+    if (!isProMember && game.leagueApiId && !FREE_LEAGUE_IDS.includes(game.leagueApiId)) {
+      rootNav.navigate('Paywall', {
+        trigger: 'premium_league',
+        sportName: game.leagueName || 'Premium League',
+      });
+      return;
+    }
+    navigation.navigate('MatchPrediction', { fixtureApiId: game.apiId, sport: activeSport });
+  }, [isProMember, activeSport, navigation, rootNav]);
+
   const allLiveGames = data?.liveGames ?? [];
   const allTodayGames = data?.todayGames ?? [];
   const allRecentGames = data?.recentGames ?? [];
@@ -426,7 +441,7 @@ export function DashboardScreen({ navigation }: Props) {
               <TouchableOpacity
                 key={game.apiId || game._id}
                 style={styles.liveCard}
-                onPress={() => navigation.navigate('MatchPrediction', { fixtureApiId: game.apiId, sport: activeSport })}
+                onPress={() => handleMatchPress(game)}
                 activeOpacity={0.7}
               >
                 <View style={styles.liveAccent} />
@@ -476,9 +491,7 @@ export function DashboardScreen({ navigation }: Props) {
               renderItem={({ item: game }) => (
                 <TouchableOpacity
                   style={styles.gameCard}
-                  onPress={() =>
-                    navigation.navigate('MatchPrediction', { fixtureApiId: game.apiId, sport: activeSport })
-                  }
+                  onPress={() => handleMatchPress(game)}
                   activeOpacity={0.7}
                 >
                   {isF1 ? (
@@ -537,7 +550,7 @@ export function DashboardScreen({ navigation }: Props) {
               <TouchableOpacity
                 key={game.apiId || game._id}
                 style={styles.todayCard}
-                onPress={() => navigation.navigate('MatchPrediction', { fixtureApiId: game.apiId, sport: activeSport })}
+                onPress={() => handleMatchPress(game)}
                 activeOpacity={0.7}
               >
                 {isF1 ? (
@@ -769,7 +782,7 @@ export function DashboardScreen({ navigation }: Props) {
                       }
                       const next = upcomingGames[0] || liveGames[0];
                       if (next) {
-                        navigation.navigate('MatchPrediction', { fixtureApiId: next.apiId, sport: uncovered?.key ?? activeSport });
+                        handleMatchPress(next);
                       }
                     }}
                   >
@@ -797,7 +810,7 @@ export function DashboardScreen({ navigation }: Props) {
                     style={styles.submitWrap}
                     onPress={() => {
                       if (next) {
-                        navigation.navigate('MatchPrediction', { fixtureApiId: next.apiId, sport: activeSport });
+                        handleMatchPress(next);
                       }
                     }}
                   >
@@ -853,7 +866,7 @@ export function DashboardScreen({ navigation }: Props) {
               <TouchableOpacity
                 key={game.apiId || game._id}
                 style={styles.todayCard}
-                onPress={() => navigation.navigate('MatchPrediction', { fixtureApiId: game.apiId, sport: activeSport })}
+                onPress={() => handleMatchPress(game)}
                 activeOpacity={0.7}
               >
                 {isF1 ? (
