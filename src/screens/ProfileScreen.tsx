@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Share,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -181,7 +182,11 @@ export function ProfileScreen() {
             {/* Avatar */}
             <View style={styles.avatarWrap}>
               <View style={styles.avatarLarge}>
-                <Ionicons name="person" size={48} color={colors.onSurfaceVariant} />
+                {user?.avatar ? (
+                  <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
+                ) : (
+                  <Ionicons name="person" size={48} color={colors.onSurfaceVariant} />
+                )}
               </View>
               {isProMember && (
                 <View style={styles.proBadge}>
@@ -550,6 +555,12 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 128,
+    height: 128,
+    borderRadius: 6,
   },
   proBadge: {
     position: 'absolute',

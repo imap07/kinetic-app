@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme';
 import { useCoins } from '../contexts/CoinContext';
+import { useAuth } from '../contexts/AuthContext';
 
 interface AppHeaderProps {
   showSearch?: boolean;
@@ -14,6 +15,7 @@ export function AppHeader({ showSearch = true }: AppHeaderProps) {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const { balance, isLoading: balanceLoading } = useCoins();
+  const { user } = useAuth();
 
   const handleBellPress = () => {
     navigation.navigate('Notifications');
@@ -39,7 +41,11 @@ export function AppHeader({ showSearch = true }: AppHeaderProps) {
       <View style={styles.headerLeft}>
         <TouchableOpacity onPress={handleAvatarPress} activeOpacity={0.7}>
           <View style={styles.avatar}>
-            <Ionicons name="person" size={20} color={colors.onSurfaceVariant} />
+            {user?.avatar ? (
+              <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
+            ) : (
+              <Ionicons name="person" size={20} color={colors.onSurfaceVariant} />
+            )}
           </View>
         </TouchableOpacity>
         <Text style={styles.brandText}>KINETIC</Text>
@@ -86,6 +92,12 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(69,72,76,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
   },
   brandText: {
     fontFamily: 'SpaceGrotesk_700Bold',
