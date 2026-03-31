@@ -149,7 +149,8 @@ export function CoinLeaguesScreen() {
   };
 
   const isParticipant = (league: CoinLeague) =>
-    league.participants.some((p) => p.userId === user?.id);
+    String(league.creatorId) === user?.id ||
+    league.participants.some((p) => String(p.userId) === user?.id);
 
   const displayLeagues = tab === 'open' ? leagues : myLeagues;
 
@@ -231,7 +232,12 @@ export function CoinLeaguesScreen() {
             const isActionLoading = actionLoading === league._id;
             const sportMeta = SPORT_TABS.find((s) => s.key === league.sport);
             return (
-              <View key={league._id} style={styles.leagueCard}>
+              <TouchableOpacity
+                key={league._id}
+                style={styles.leagueCard}
+                activeOpacity={0.7}
+                onPress={() => (navigation as any).navigate('CoinLeagueDetail', { leagueId: league._id })}
+              >
                 <View style={styles.leagueHeader}>
                   <View style={styles.leagueNameRow}>
                     <Text style={styles.leagueName} numberOfLines={1}>{league.name}</Text>
@@ -301,15 +307,25 @@ export function CoinLeaguesScreen() {
                   </View>
                 )}
 
-                {league.status === 'completed' && league.winnerId && (
+                {league.status === 'completed' && league.winners?.length > 0 && (
                   <View style={styles.winnerRow}>
                     <Ionicons name="trophy" size={14} color="#FFD700" />
                     <Text style={styles.winnerText}>
-                      {league.winnerId === user?.id ? 'You won!' : 'Winner declared'}
+                      {league.winners.find((w) => String(w.userId) === user?.id)
+                        ? `You placed #${league.winners.find((w) => String(w.userId) === user?.id)?.position}! +${league.winners.find((w) => String(w.userId) === user?.id)?.coinsWon} coins`
+                        : `${league.winners.length} winners`}
                     </Text>
                   </View>
                 )}
-              </View>
+                {league.status === 'completed' && (!league.winners || league.winners.length === 0) && league.winnerId && (
+                  <View style={styles.winnerRow}>
+                    <Ionicons name="trophy" size={14} color="#FFD700" />
+                    <Text style={styles.winnerText}>
+                      {String(league.winnerId) === user?.id ? 'You won!' : 'Winner declared'}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
             );
           })
         )}
@@ -320,6 +336,7 @@ export function CoinLeaguesScreen() {
         onClose={() => setShowCreate(false)}
         onCreate={handleCreate}
         isLoading={actionLoading === 'create'}
+        favoriteSports={user?.favoriteSports}
       />
     </View>
   );
@@ -330,26 +347,45 @@ function CreateLeagueModal({
   onClose,
   onCreate,
   isLoading,
+  favoriteSports,
 }: {
   visible: boolean;
   onClose: () => void;
   onCreate: (dto: CreateLeagueDto) => void;
   isLoading: boolean;
+  favoriteSports?: string[];
 }) {
   const insets = useSafeAreaInsets();
+
+  // Show only the user's favorite sports; fall back to all if none set
+  const availableSports = favoriteSports?.length
+    ? SPORT_TABS.filter((s) => favoriteSports.includes(s.key))
+    : SPORT_TABS;
+
   const [name, setName] = useState('');
-  const [sport, setSport] = useState(SPORT_TABS[0].key);
-  const [entryFee, setEntryFee] = useState('10');
-  const [maxParticipants, setMaxParticipants] = useState('10');
+  const [sport, setSport] = useState(availableSports[0]?.key ?? SPORT_TABS[0].key);
+  const [entryFee, setEntryFee] = useState(0);
+
+  // Reset form when modal opens
+  useEffect(() => {
+    if (visible) {
+      setName('');
+      setSport(availableSports[0]?.key ?? SPORT_TABS[0].key);
+      setEntryFee(0);
+    }
+  }, [visible]);
+
+  const TIERS = [
+    { fee: 0, label: 'Free', desc: 'Ranking only' },
+    { fee: 5, label: '5', desc: 'Casual' },
+    { fee: 15, label: '15', desc: 'Competitive' },
+    { fee: 50, label: '50', desc: 'High Stakes' },
+    { fee: 100, label: '100', desc: 'Elite' },
+  ];
 
   const handleSubmit = () => {
     if (!name.trim()) {
       Alert.alert('Error', 'League name is required.');
-      return;
-    }
-    const fee = parseInt(entryFee, 10);
-    if (isNaN(fee) || fee < 1) {
-      Alert.alert('Error', 'Entry fee must be at least 1 coin.');
       return;
     }
     const now = new Date();
@@ -359,10 +395,10 @@ function CreateLeagueModal({
     onCreate({
       name: name.trim(),
       sport,
-      entryFee: fee,
-      maxParticipants: parseInt(maxParticipants, 10) || 10,
+      entryFee,
       startDate: startDate.toISOString(),
       endDate: endDate.toISOString(),
+      leagueType: 'weekly',
     });
   };
 
@@ -390,7 +426,7 @@ function CreateLeagueModal({
 
           <Text style={modalStyles.label}>Sport</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={modalStyles.sportRow}>
-            {SPORT_TABS.map((s) => (
+            {availableSports.map((s) => (
               <TouchableOpacity
                 key={s.key}
                 style={[modalStyles.sportChip, sport === s.key && modalStyles.sportChipActive]}
@@ -405,31 +441,28 @@ function CreateLeagueModal({
             ))}
           </ScrollView>
 
-          <View style={modalStyles.row}>
-            <View style={{ flex: 1 }}>
-              <Text style={modalStyles.label}>Entry Fee (coins)</Text>
-              <TextInput
-                style={modalStyles.input}
-                value={entryFee}
-                onChangeText={setEntryFee}
-                keyboardType="number-pad"
-                placeholderTextColor={colors.onSurfaceDim}
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={modalStyles.label}>Max Players</Text>
-              <TextInput
-                style={modalStyles.input}
-                value={maxParticipants}
-                onChangeText={setMaxParticipants}
-                keyboardType="number-pad"
-                placeholderTextColor={colors.onSurfaceDim}
-              />
-            </View>
+          <Text style={modalStyles.label}>Entry Fee</Text>
+          <View style={modalStyles.tierRow}>
+            {TIERS.map((t) => (
+              <TouchableOpacity
+                key={t.fee}
+                style={[modalStyles.tierChip, entryFee === t.fee && modalStyles.tierChipActive]}
+                onPress={() => setEntryFee(t.fee)}
+              >
+                <Text style={[modalStyles.tierChipText, entryFee === t.fee && modalStyles.tierChipTextActive]}>
+                  {t.fee === 0 ? 'FREE' : `${t.fee}`}
+                </Text>
+                <Text style={[modalStyles.tierChipDesc, entryFee === t.fee && modalStyles.tierChipDescActive]}>
+                  {t.desc}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
 
           <Text style={modalStyles.hint}>
-            League starts in 24h and runs for 7 days. 10% platform fee applies.
+            {entryFee === 0
+              ? 'Free league — ranking only, no coins at stake.'
+              : `League starts in 24h, runs for 7 days. Top 3 win prizes. 10% platform fee applies.`}
           </Text>
 
           <TouchableOpacity
@@ -527,6 +560,43 @@ const modalStyles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     gap: spacing.md,
+  },
+  tierRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  tierChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.surfaceContainerHigh,
+    borderWidth: 1,
+    borderColor: colors.outline,
+    alignItems: 'center',
+    minWidth: 58,
+  },
+  tierChipActive: {
+    backgroundColor: 'rgba(202,253,0,0.12)',
+    borderColor: colors.primary,
+  },
+  tierChipText: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 14,
+    color: colors.onSurfaceVariant,
+  },
+  tierChipTextActive: {
+    color: colors.primary,
+  },
+  tierChipDesc: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 9,
+    color: colors.onSurfaceDim,
+    marginTop: 1,
+  },
+  tierChipDescActive: {
+    color: colors.primary,
+    opacity: 0.8,
   },
   hint: {
     fontFamily: 'Inter_400Regular',

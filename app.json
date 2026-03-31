@@ -2,6 +2,7 @@
   "expo": {
     "name": "Kinetic",
     "slug": "kinetic-app",
+    "scheme": "kinetic",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -20,7 +21,8 @@
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "Kinetic uses your camera to update your profile photo.",
         "NSPhotoLibraryUsageDescription": "Kinetic accesses your photo library to update your profile photo."
-      }
+      },
+      "appleTeamId": "QY9J3TC5L3"
     },
     "android": {
       "package": "io.kinetic.app",
@@ -56,10 +58,15 @@
           "color": "#C6FF00"
         }
       ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Kinetic uses Face ID to securely log you in."
+        }
+      ],
       "expo-apple-authentication",
       "expo-image",
-      "@react-native-firebase/app",
-      "@react-native-firebase/analytics"
+      "@react-native-firebase/app"
     ],
     "extra": {
       "eas": {

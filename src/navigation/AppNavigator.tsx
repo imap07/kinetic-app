@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { NavigationContainer, NavigationState } from '@react-navigation/native';
+import { NavigationContainer, NavigationState, LinkingOptions } from '@react-navigation/native';
+import * as Linking from 'expo-linking';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -41,7 +42,11 @@ import { PaywallScreen } from '../screens/PaywallScreen';
 import { SearchScreen } from '../screens/SearchScreen';
 import { CoinStoreScreen } from '../screens/CoinStoreScreen';
 import { CoinLeaguesScreen } from '../screens/CoinLeaguesScreen';
+import { CoinLeagueDetailScreen } from '../screens/CoinLeagueDetailScreen';
 import { GiftcardRedeemScreen } from '../screens/GiftcardRedeemScreen';
+import { EditFavoriteSportsScreen } from '../screens/EditFavoriteSportsScreen';
+import { EditFavoriteLeaguesScreen } from '../screens/EditFavoriteLeaguesScreen';
+import { ChangePasswordScreen } from '../screens/ChangePasswordScreen';
 import { QuestsScreen } from '../screens/QuestsScreen';
 import { LeagueSelectionScreen } from '../screens/LeagueSelectionScreen';
 import { logScreenView } from '../services/analytics';
@@ -102,6 +107,9 @@ function LeaguesNavigator() {
   return (
     <LeaguesStack.Navigator screenOptions={darkScreenOptions}>
       <LeaguesStack.Screen name="LeaguesHome" component={CoinLeaguesScreen} />
+      <LeaguesStack.Screen name="CoinLeagueDetail" component={CoinLeagueDetailScreen} />
+      <LeaguesStack.Screen name="LeagueMatchPrediction" component={MatchPredictionScreen} />
+      <LeaguesStack.Screen name="LeaguePickSummary" component={PickSummaryScreen} />
       <LeaguesStack.Screen name="Leaderboard" component={LeaderboardScreen} />
     </LeaguesStack.Navigator>
   );
@@ -115,6 +123,9 @@ function ProfileNavigator() {
     <ProfileStack.Navigator screenOptions={darkScreenOptions}>
       <ProfileStack.Screen name="ProfileHome" component={ProfileScreen} />
       <ProfileStack.Screen name="EditProfile" component={EditProfileScreen} />
+      <ProfileStack.Screen name="EditFavoriteSports" component={EditFavoriteSportsScreen} />
+      <ProfileStack.Screen name="EditFavoriteLeagues" component={EditFavoriteLeaguesScreen} />
+      <ProfileStack.Screen name="ChangePassword" component={ChangePasswordScreen} />
       <ProfileStack.Screen name="Notifications" component={NotificationsScreen} />
       <ProfileStack.Screen name="SecurityPrivacy" component={SecurityPrivacyScreen} />
       <ProfileStack.Screen name="WalletRewards" component={WalletRewardsScreen} />
@@ -221,6 +232,23 @@ export function AppNavigator() {
     }
   }, [isAuthenticated, user]);
 
+  const linking: LinkingOptions<RootStackParamList> = {
+    prefixes: [Linking.createURL('/'), 'https://kinetic.app'],
+    config: {
+      screens: {
+        Main: {
+          screens: {
+            Leagues: {
+              screens: {
+                CoinLeagueDetail: 'league/:leagueId',
+              },
+            },
+          },
+        },
+      },
+    },
+  };
+
   if (isLoading || (isAuthenticated && onboardingDone === null)) {
     return (
       <View style={loadingStyles.container}>
@@ -230,7 +258,7 @@ export function AppNavigator() {
   }
 
   return (
-    <NavigationContainer onStateChange={onNavigationStateChange}>
+    <NavigationContainer linking={linking} onStateChange={onNavigationStateChange}>
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         {isAuthenticated ? (
           onboardingDone ? (
@@ -248,7 +276,7 @@ export function AppNavigator() {
               <RootStack.Screen
                 name="Paywall"
                 component={PaywallScreen}
-                options={{ animation: 'slide_from_bottom', presentation: 'modal' }}
+                options={{ animation: 'slide_from_bottom', presentation: 'fullScreenModal' }}
               />
               <RootStack.Screen
                 name="Search"
@@ -286,7 +314,7 @@ export function AppNavigator() {
               <RootStack.Screen
                 name="Paywall"
                 component={PaywallScreen}
-                options={{ animation: 'slide_from_bottom', presentation: 'modal' }}
+                options={{ animation: 'slide_from_bottom', presentation: 'fullScreenModal' }}
               />
               <RootStack.Screen
                 name="Search"

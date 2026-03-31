@@ -6,6 +6,14 @@ export interface LeagueParticipant {
   coinsLocked: number;
 }
 
+export interface LeagueWinner {
+  userId: string;
+  position: number;
+  coinsWon: number;
+  totalPoints: number;
+  correctPredictions: number;
+}
+
 export interface CoinLeague {
   _id: string;
   creatorId: string;
@@ -15,14 +23,17 @@ export interface CoinLeague {
   maxParticipants: number;
   participants: LeagueParticipant[];
   status: 'open' | 'active' | 'resolving' | 'completed' | 'cancelled';
+  leagueType: 'weekly' | 'matchday';
   startDate: string;
   endDate: string;
   prizePool: number;
   kineticFee: number;
   winnerId?: string;
+  winners: LeagueWinner[];
   cancelReason?: string;
   createdAt: string;
   updatedAt: string;
+  isSystemLeague: boolean;
   // Themed CoinLeague fields
   footballLeagueApiId?: number;
   footballLeagueName?: string;
@@ -44,12 +55,45 @@ export interface CreateLeagueDto {
   maxParticipants?: number;
   startDate: string;
   endDate: string;
+  leagueType?: 'weekly' | 'matchday';
   // Themed CoinLeague fields
   footballLeagueApiId?: number;
   footballLeagueName?: string;
   footballLeagueLogo?: string;
   isThemed?: boolean;
 }
+
+export interface LeaderboardEntry {
+  userId: string;
+  displayName: string;
+  avatar?: string;
+  totalPoints: number;
+  correctPredictions: number;
+  totalPredictions: number;
+  position: number;
+  coinsWon: number;
+  isCurrentUser: boolean;
+}
+
+export interface LeaderboardResponse {
+  leagueId: string;
+  status: string;
+  leaderboard: LeaderboardEntry[];
+  prizePool: number;
+  kineticFee: number;
+}
+
+/** Valid entry fee tiers */
+export const ENTRY_FEE_TIERS = [0, 5, 15, 50, 100] as const;
+
+/** Entry fee tier labels */
+export const ENTRY_FEE_LABELS: Record<number, string> = {
+  0: 'Free',
+  5: 'Casual',
+  15: 'Competitive',
+  50: 'High Stakes',
+  100: 'Elite',
+};
 
 export const leaguesApi = {
   create(token: string, dto: CreateLeagueDto) {
@@ -83,6 +127,16 @@ export const leaguesApi = {
   },
 
   getThemedLeagues(token: string, footballLeagueApiId: number) {
-    return apiClient.get<CoinLeague[]>(`/leagues/themed/${footballLeagueApiId}`, { token });
+    return apiClient.get<{ leagues: CoinLeague[]; total: number }>(
+      `/leagues/themed/${footballLeagueApiId}`,
+      { token },
+    );
+  },
+
+  getLeaderboard(token: string, leagueId: string) {
+    return apiClient.get<LeaderboardResponse>(
+      `/leagues/${leagueId}/leaderboard`,
+      { token },
+    );
   },
 };

@@ -21,6 +21,9 @@ export type HomeStackParamList = {
 // Leagues tab nested stack
 export type LeaguesStackParamList = {
   LeaguesHome: undefined;
+  CoinLeagueDetail: { leagueId: string };
+  LeagueMatchPrediction: { fixtureApiId: number; sport?: string };
+  LeaguePickSummary: undefined;
   Leaderboard: undefined;
 };
 
@@ -28,6 +31,9 @@ export type LeaguesStackParamList = {
 export type ProfileStackParamList = {
   ProfileHome: undefined;
   EditProfile: undefined;
+  EditFavoriteSports: undefined;
+  EditFavoriteLeagues: undefined;
+  ChangePassword: undefined;
   Notifications: undefined;
   SecurityPrivacy: undefined;
   WalletRewards: undefined;
