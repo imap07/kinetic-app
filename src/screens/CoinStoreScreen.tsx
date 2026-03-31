@@ -16,13 +16,17 @@ import { colors, spacing, borderRadius } from '../theme';
 import { useCoins } from '../contexts/CoinContext';
 import { usePurchases } from '../contexts/PurchasesContext';
 
-const PACKAGE_ICONS: Record<string, string> = {
-  $rc_50: 'layers',
-  $rc_100: 'box',
-  $rc_250: 'gift',
-  $rc_500: 'award',
-  $rc_1000: 'zap',
-};
+/** Local fallback packages — shown when RevenueCat offerings aren't configured yet */
+const LOCAL_PACKAGES = [
+  { id: 'kinetic_coins_starter', coins: 50, bonus: 0, price: '$0.99', icon: 'layers' as const, tag: null },
+  { id: 'kinetic_coins_basic', coins: 150, bonus: 10, price: '$2.99', icon: 'package' as const, tag: null },
+  { id: 'kinetic_coins_popular', coins: 300, bonus: 50, price: '$4.99', icon: 'star' as const, tag: 'MOST POPULAR' as const },
+  { id: 'kinetic_coins_value', coins: 650, bonus: 150, price: '$9.99', icon: 'gift' as const, tag: null },
+  { id: 'kinetic_coins_premium', coins: 1500, bonus: 500, price: '$19.99', icon: 'award' as const, tag: 'BEST VALUE' as const },
+  { id: 'kinetic_coins_mega', coins: 3500, bonus: 1500, price: '$49.99', icon: 'zap' as const, tag: null },
+];
+
+const ICON_BY_INDEX = ['layers', 'package', 'star', 'gift', 'award', 'zap'] as const;
 
 export function CoinStoreScreen() {
   const insets = useSafeAreaInsets();
@@ -31,14 +35,27 @@ export function CoinStoreScreen() {
   const { currentOffering, purchasePackage, isProMember } = usePurchases();
   const [purchasing, setPurchasing] = useState<string | null>(null);
 
-  const coinPackages = currentOffering?.availablePackages?.filter(
-    (p) => p.product.productCategory === 'NON_SUBSCRIPTION',
-  ) ?? [];
-  const subscriptionPkgs = currentOffering?.availablePackages?.filter(
-    (p) => p.product.productCategory === 'SUBSCRIPTION',
-  ) ?? [];
+  // RevenueCat packages (when configured in App Store Connect)
+  const rcCoinPackages =
+    currentOffering?.availablePackages?.filter(
+      (p) => p.product.productCategory === 'NON_SUBSCRIPTION',
+    ) ?? [];
+  const subscriptionPkgs =
+    currentOffering?.availablePackages?.filter(
+      (p) => p.product.productCategory === 'SUBSCRIPTION',
+    ) ?? [];
+
+  // Use RevenueCat packages if available, otherwise show local fallback
+  const hasRCPackages = rcCoinPackages.length > 0;
 
   const handleBuyCoins = async (pkg: any) => {
+    if (!hasRCPackages) {
+      Alert.alert(
+        'Coming Soon',
+        'In-app purchases will be available once the app is published on the App Store.',
+      );
+      return;
+    }
     setPurchasing(pkg.identifier);
     try {
       const success = await purchasePackage(pkg);
@@ -54,6 +71,13 @@ export function CoinStoreScreen() {
   };
 
   const handleSubscribe = async (pkg: any) => {
+    if (!hasRCPackages) {
+      Alert.alert(
+        'Coming Soon',
+        'Subscriptions will be available once the app is published on the App Store.',
+      );
+      return;
+    }
     setPurchasing(pkg.identifier);
     try {
       const success = await purchasePackage(pkg);
@@ -83,6 +107,7 @@ export function CoinStoreScreen() {
         contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
         showsVerticalScrollIndicator={false}
       >
+        {/* Balance */}
         <LinearGradient
           colors={['rgba(202,253,0,0.12)', 'rgba(202,253,0,0.02)']}
           style={styles.balanceCard}
@@ -99,47 +124,70 @@ export function CoinStoreScreen() {
           </Text>
         </LinearGradient>
 
+        {/* Buy Coins */}
         <Text style={[styles.sectionTitle, { marginTop: spacing['3xl'] }]}>BUY COINS</Text>
         <Text style={styles.sectionSubtext}>
-          Coins are used to enter leagues and redeem giftcards
+          Coins are used to enter prediction leagues and redeem rewards
         </Text>
 
-        {coinPackages.length === 0 && (
-          <View style={styles.emptyState}>
-            <Feather name="package" size={32} color={colors.onSurfaceDim} />
-            <Text style={styles.emptyText}>
-              Coin packages are not available yet. Check back soon!
-            </Text>
-          </View>
-        )}
-
         <View style={styles.packagesGrid}>
-          {coinPackages.map((pkg) => {
-            const iconName = PACKAGE_ICONS[pkg.identifier] ?? 'circle';
-            const isPurchasing = purchasing === pkg.identifier;
+          {LOCAL_PACKAGES.map((lp, index) => {
+            // If RevenueCat is available, find the matching RC package
+            const rcPkg = rcCoinPackages[index];
+            const isPurchasing = purchasing === (rcPkg?.identifier ?? lp.id);
+
             return (
               <TouchableOpacity
-                key={pkg.identifier}
-                style={styles.packageCard}
+                key={lp.id}
+                style={[
+                  styles.packageCard,
+                  lp.tag === 'MOST POPULAR' && styles.packageCardHighlight,
+                  lp.tag === 'BEST VALUE' && styles.packageCardBestValue,
+                ]}
                 activeOpacity={0.7}
                 disabled={!!purchasing}
-                onPress={() => handleBuyCoins(pkg)}
+                onPress={() => handleBuyCoins(rcPkg ?? lp)}
               >
+                {/* Tag badge */}
+                {lp.tag && (
+                  <View
+                    style={[
+                      styles.tagBadge,
+                      lp.tag === 'BEST VALUE' && styles.tagBadgeBestValue,
+                    ]}
+                  >
+                    <Text style={styles.tagBadgeText}>{lp.tag}</Text>
+                  </View>
+                )}
+
                 <View style={styles.packageIconWrap}>
-                  <Feather
-                    name={iconName as any}
-                    size={24}
-                    color={colors.primary}
-                  />
+                  <Feather name={lp.icon} size={24} color={colors.primary} />
                 </View>
-                <Text style={styles.packageTitle}>{pkg.product.title}</Text>
-                <Text style={styles.packageDesc}>{pkg.product.description}</Text>
+
+                <Text style={styles.packageTitle}>
+                  {lp.coins + lp.bonus} Coins
+                </Text>
+
+                {/* Bonus line */}
+                {lp.bonus > 0 && (
+                  <View style={styles.bonusRow}>
+                    <Ionicons name="gift" size={12} color="#FC5B00" />
+                    <Text style={styles.bonusText}>+{lp.bonus} BONUS</Text>
+                  </View>
+                )}
+
+                <Text style={styles.packageDesc}>
+                  {lp.bonus > 0
+                    ? `${lp.coins} + ${lp.bonus} bonus coins`
+                    : `${lp.coins} coins`}
+                </Text>
+
                 <View style={styles.packagePriceRow}>
                   {isPurchasing ? (
                     <ActivityIndicator size="small" color={colors.primary} />
                   ) : (
                     <Text style={styles.packagePrice}>
-                      {pkg.product.priceString}
+                      {rcPkg?.product.priceString ?? lp.price}
                     </Text>
                   )}
                 </View>
@@ -148,24 +196,73 @@ export function CoinStoreScreen() {
           })}
         </View>
 
-        {!isProMember && subscriptionPkgs.length > 0 && (
+        {/* Pro Subscription */}
+        {!isProMember && (
           <>
             <Text style={[styles.sectionTitle, { marginTop: spacing['3xl'] }]}>
               KINETIC PRO
             </Text>
             <Text style={styles.sectionSubtext}>
-              Unlock unlimited predictions, all sports, and get 30 coins every month
+              Unlock unlimited predictions, all sports, and get 50 coins every month
             </Text>
 
-            {subscriptionPkgs.map((pkg) => {
-              const isPurchasing = purchasing === pkg.identifier;
-              return (
-                <TouchableOpacity
-                  key={pkg.identifier}
-                  activeOpacity={0.7}
-                  disabled={!!purchasing}
-                  onPress={() => handleSubscribe(pkg)}
-                >
+            {subscriptionPkgs.length > 0 ? (
+              subscriptionPkgs.map((pkg) => {
+                const isPurchasing = purchasing === pkg.identifier;
+                const isAnnual = pkg.identifier.includes('annual') || pkg.identifier.includes('year');
+                return (
+                  <TouchableOpacity
+                    key={pkg.identifier}
+                    activeOpacity={0.7}
+                    disabled={!!purchasing}
+                    onPress={() => handleSubscribe(pkg)}
+                  >
+                    <LinearGradient
+                      colors={['rgba(202,253,0,0.08)', 'rgba(202,253,0,0.02)']}
+                      style={styles.proCard}
+                    >
+                      <View style={styles.proHeader}>
+                        <View style={styles.proBadge}>
+                          <Ionicons name="diamond" size={14} color={colors.primary} />
+                          <Text style={styles.proBadgeText}>PRO</Text>
+                        </View>
+                        {isAnnual && (
+                          <View style={styles.saveBadge}>
+                            <Text style={styles.saveBadgeText}>SAVE 44%</Text>
+                          </View>
+                        )}
+                        {isPurchasing ? (
+                          <ActivityIndicator size="small" color={colors.primary} />
+                        ) : (
+                          <Text style={styles.proPrice}>
+                            {pkg.product.priceString}
+                            {isAnnual ? '/yr' : '/mo'}
+                          </Text>
+                        )}
+                      </View>
+                      <Text style={styles.proTitle}>{pkg.product.title}</Text>
+                      <Text style={styles.proDesc}>{pkg.product.description}</Text>
+                      <View style={styles.proFeatures}>
+                        {[
+                          'Unlimited predictions',
+                          'All sports unlocked',
+                          '50 coins/month',
+                          'Detailed stats & analytics',
+                        ].map((f) => (
+                          <View key={f} style={styles.proFeatureRow}>
+                            <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
+                            <Text style={styles.proFeatureText}>{f}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                );
+              })
+            ) : (
+              /* Fallback Pro cards when RevenueCat isn't configured */
+              <>
+                <TouchableOpacity activeOpacity={0.7} onPress={() => handleSubscribe(null)}>
                   <LinearGradient
                     colors={['rgba(202,253,0,0.08)', 'rgba(202,253,0,0.02)']}
                     style={styles.proCard}
@@ -175,22 +272,16 @@ export function CoinStoreScreen() {
                         <Ionicons name="diamond" size={14} color={colors.primary} />
                         <Text style={styles.proBadgeText}>PRO</Text>
                       </View>
-                      {isPurchasing ? (
-                        <ActivityIndicator size="small" color={colors.primary} />
-                      ) : (
-                        <Text style={styles.proPrice}>
-                          {pkg.product.priceString}/mo
-                        </Text>
-                      )}
+                      <Text style={styles.proPrice}>$5.99/mo</Text>
                     </View>
-                    <Text style={styles.proTitle}>{pkg.product.title}</Text>
-                    <Text style={styles.proDesc}>{pkg.product.description}</Text>
+                    <Text style={styles.proTitle}>Kinetic Pro — Monthly</Text>
+                    <Text style={styles.proDesc}>Full access to all features, billed monthly</Text>
                     <View style={styles.proFeatures}>
                       {[
                         'Unlimited predictions',
                         'All sports unlocked',
-                        '30 coins/month',
-                        'Detailed stats',
+                        '50 coins/month',
+                        'Detailed stats & analytics',
                       ].map((f) => (
                         <View key={f} style={styles.proFeatureRow}>
                           <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
@@ -200,8 +291,41 @@ export function CoinStoreScreen() {
                     </View>
                   </LinearGradient>
                 </TouchableOpacity>
-              );
-            })}
+
+                <TouchableOpacity activeOpacity={0.7} onPress={() => handleSubscribe(null)}>
+                  <LinearGradient
+                    colors={['rgba(202,253,0,0.08)', 'rgba(202,253,0,0.02)']}
+                    style={styles.proCard}
+                  >
+                    <View style={styles.proHeader}>
+                      <View style={styles.proBadge}>
+                        <Ionicons name="diamond" size={14} color={colors.primary} />
+                        <Text style={styles.proBadgeText}>PRO</Text>
+                      </View>
+                      <View style={styles.saveBadge}>
+                        <Text style={styles.saveBadgeText}>SAVE 44%</Text>
+                      </View>
+                      <Text style={styles.proPrice}>$39.99/yr</Text>
+                    </View>
+                    <Text style={styles.proTitle}>Kinetic Pro — Annual</Text>
+                    <Text style={styles.proDesc}>Best value — just $3.33/month</Text>
+                    <View style={styles.proFeatures}>
+                      {[
+                        'Unlimited predictions',
+                        'All sports unlocked',
+                        '50 coins/month (600/year)',
+                        'Detailed stats & analytics',
+                      ].map((f) => (
+                        <View key={f} style={styles.proFeatureRow}>
+                          <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
+                          <Text style={styles.proFeatureText}>{f}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </>
+            )}
           </>
         )}
 
@@ -209,10 +333,17 @@ export function CoinStoreScreen() {
           <View style={styles.proActiveCard}>
             <Ionicons name="diamond" size={20} color={colors.primary} />
             <Text style={styles.proActiveText}>
-              You are a Kinetic Pro member. 30 coins are credited monthly.
+              You are a Kinetic Pro member. 50 coins are credited monthly.
             </Text>
           </View>
         )}
+
+        {/* Compliance disclaimer */}
+        <Text style={styles.disclaimer}>
+          Kinetic is a skill-based prediction game for entertainment purposes.
+          Coins are virtual credits with no cash value. All purchases are processed
+          by the App Store and are subject to their terms. Not a gambling service.
+        </Text>
       </ScrollView>
     </View>
   );
@@ -310,7 +441,41 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.outlineVariant,
     padding: spacing.lg,
+    position: 'relative',
+    overflow: 'visible',
   },
+  packageCardHighlight: {
+    borderColor: 'rgba(202,253,0,0.35)',
+    borderWidth: 1.5,
+  },
+  packageCardBestValue: {
+    borderColor: 'rgba(252,91,0,0.35)',
+    borderWidth: 1.5,
+  },
+
+  tagBadge: {
+    position: 'absolute',
+    top: -10,
+    alignSelf: 'center',
+    left: '15%' as any,
+    right: '15%' as any,
+    backgroundColor: colors.primary,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  tagBadgeBestValue: {
+    backgroundColor: '#FC5B00',
+  },
+  tagBadgeText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 9,
+    color: '#000',
+    letterSpacing: 0.5,
+  },
+
   packageIconWrap: {
     width: 44,
     height: 44,
@@ -318,12 +483,24 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(202,253,0,0.1)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   packageTitle: {
     fontFamily: 'Inter_600SemiBold',
     fontSize: 14,
     color: colors.onSurface,
+  },
+  bonusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  bonusText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 11,
+    color: '#FC5B00',
+    letterSpacing: 0.5,
   },
   packageDesc: {
     fontFamily: 'Inter_400Regular',
@@ -351,6 +528,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: 'rgba(202,253,0,0.15)',
+    marginBottom: spacing.md,
   },
   proHeader: {
     flexDirection: 'row',
@@ -371,6 +549,18 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.primary,
     letterSpacing: 1,
+  },
+  saveBadge: {
+    backgroundColor: '#FC5B00',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  saveBadgeText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 10,
+    color: '#fff',
+    letterSpacing: 0.5,
   },
   proPrice: {
     fontFamily: 'SpaceGrotesk_700Bold',
@@ -418,5 +608,16 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_500Medium',
     fontSize: 13,
     color: colors.primary,
+  },
+
+  disclaimer: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 10,
+    color: colors.onSurfaceDim,
+    textAlign: 'center',
+    marginTop: spacing['3xl'],
+    marginHorizontal: spacing['2xl'],
+    lineHeight: 15,
+    opacity: 0.7,
   },
 });

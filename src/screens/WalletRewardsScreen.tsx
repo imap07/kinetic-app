@@ -7,7 +7,9 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  Modal,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -43,6 +45,14 @@ export function WalletRewardsScreen() {
   const [transactions, setTransactions] = useState<CoinTransaction[]>([]);
   const [txLoading, setTxLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showDisclaimer, setShowDisclaimer] = useState(false);
+
+  // Show first-use disclaimer modal
+  useEffect(() => {
+    AsyncStorage.getItem('wallet_disclaimer_seen').then((v) => {
+      if (!v) setShowDisclaimer(true);
+    });
+  }, []);
 
   const fetchTransactions = useCallback(async () => {
     if (!tokens?.accessToken) return;
@@ -70,9 +80,10 @@ export function WalletRewardsScreen() {
       case 'purchase': return { label: 'Coin Purchase', icon: 'arrow-down-left' as const, color: colors.primary };
       case 'subscription_grant': return { label: 'Pro Bonus', icon: 'gift' as const, color: '#FC5B00' };
       case 'league_entry': return { label: 'League Entry', icon: 'arrow-up-right' as const, color: '#FF4444' };
-      case 'league_winnings': return { label: 'League Winnings', icon: 'award' as const, color: '#FFD700' };
+      case 'league_winnings': return { label: 'League Rewards', icon: 'award' as const, color: '#FFD700' };
       case 'giftcard_redemption': return { label: 'Gift Card', icon: 'shopping-bag' as const, color: '#FF4444' };
       case 'refund': return { label: 'Refund', icon: 'rotate-ccw' as const, color: colors.info };
+      case 'welcome_bonus': return { label: 'Welcome Bonus', icon: 'star' as const, color: colors.primary };
       default: return { label: type, icon: 'circle' as const, color: colors.onSurfaceDim };
     }
   };
@@ -242,7 +253,49 @@ export function WalletRewardsScreen() {
             />
           </View>
         </View>
+
+        {/* Compliance footer */}
+        <Text style={styles.disclaimer}>
+          Kinetic is a skill-based prediction game for entertainment purposes.
+          Coins are virtual credits with no cash value. Not a gambling service.
+        </Text>
       </ScrollView>
+
+      {/* First-use disclaimer modal */}
+      <Modal
+        visible={showDisclaimer}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <MaterialCommunityIcons
+              name="circle-multiple"
+              size={36}
+              color={colors.primary}
+              style={{ alignSelf: 'center', marginBottom: 12 }}
+            />
+            <Text style={styles.modalTitle}>Welcome to Kinetic Wallet</Text>
+            <Text style={styles.modalBody}>
+              Coins are virtual credits used within Kinetic for:{'\n\n'}
+              {'\u2022'} Entering prediction leagues (skill-based competitions){'\n'}
+              {'\u2022'} Redeeming promotional gift card rewards{'\n\n'}
+              Coins have no real-world cash value and cannot be transferred
+              to other users or converted to currency.
+            </Text>
+            <TouchableOpacity
+              style={styles.modalBtn}
+              onPress={() => {
+                setShowDisclaimer(false);
+                AsyncStorage.setItem('wallet_disclaimer_seen', '1');
+              }}
+            >
+              <Text style={styles.modalBtnText}>I Understand</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -464,5 +517,57 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.outlineVariant,
     overflow: 'hidden',
+  },
+
+  disclaimer: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 10,
+    color: colors.onSurfaceDim,
+    textAlign: 'center',
+    marginTop: spacing['3xl'],
+    marginHorizontal: spacing['2xl'],
+    lineHeight: 15,
+    opacity: 0.7,
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  modalCard: {
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: borderRadius.lg,
+    padding: 24,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: 'rgba(202,253,0,0.15)',
+  },
+  modalTitle: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 18,
+    color: colors.onSurface,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  modalBody: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 13,
+    color: colors.onSurfaceVariant,
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  modalBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.full,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  modalBtnText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 14,
+    color: '#000',
   },
 });

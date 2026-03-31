@@ -11,7 +11,14 @@ export interface WalletBalance {
 export interface CoinTransaction {
   _id: string;
   userId: string;
-  type: 'purchase' | 'subscription_grant' | 'league_entry' | 'league_winnings' | 'giftcard_redemption' | 'refund';
+  type:
+    | 'purchase'
+    | 'subscription_grant'
+    | 'league_entry'
+    | 'league_winnings'
+    | 'giftcard_redemption'
+    | 'refund'
+    | 'welcome_bonus';
   amount: number;
   balanceBefore: number;
   balanceAfter: number;
@@ -30,17 +37,23 @@ export interface CoinTransactionsResponse {
 export interface CoinPackage {
   id: string;
   coins: number;
+  bonusCoins: number;
+  totalCoins: number;
   priceUsd: number;
   priceDisplay: string;
+  tag: string | null;
 }
 
 export interface CoinPackagesResponse {
   packages: CoinPackage[];
   subscription: {
     id: string;
+    annualId: string;
     monthlyCoins: number;
-    priceDisplay: string;
+    monthlyPriceDisplay: string;
+    annualPriceDisplay: string;
   };
+  leagueEntryFeeTiers: number[];
 }
 
 export const coinsApi = {

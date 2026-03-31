@@ -16,6 +16,8 @@ export interface GiftcardCatalog {
   rate: number;
   rateDescription: string;
   holdHours: number;
+  minRedemptionCoins: number;
+  monthlyCapUsd: number;
   cards: GiftcardCatalogItem[];
 }
 
