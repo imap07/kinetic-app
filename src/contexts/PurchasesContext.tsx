@@ -109,12 +109,24 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
 
     Purchases.getOfferings()
       .then((offerings) => {
+        const current = offerings.current ?? null;
+        if (__DEV__) {
+          console.log('[RevenueCat] Offerings loaded. Current:', current?.identifier);
+          console.log('[RevenueCat] Available packages:', current?.availablePackages?.length ?? 0);
+          current?.availablePackages?.forEach((p) => {
+            console.log(`  📦 ${p.identifier} → product: ${p.product?.identifier} (${p.product?.priceString})`);
+          });
+          console.log('[RevenueCat] .monthly:', current?.monthly?.identifier ?? 'null');
+          console.log('[RevenueCat] .annual:', current?.annual?.identifier ?? 'null');
+        }
         setState((s) => ({
           ...s,
-          currentOffering: offerings.current ?? null,
+          currentOffering: current,
         }));
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.warn('[RevenueCat] Failed to fetch offerings:', err);
+      });
   }, [state.isReady]);
 
   const updateFromCustomerInfo = useCallback((info: CustomerInfo) => {

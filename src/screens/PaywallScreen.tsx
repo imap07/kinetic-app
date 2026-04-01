@@ -88,11 +88,31 @@ export function PaywallScreen({ navigation, route }: Props) {
 
   const context = getContextCard(trigger, route.params);
 
-  const monthlyPkg = currentOffering?.monthly ?? null;
-  const annualPkg = currentOffering?.annual ?? null;
+  // Try SDK convenience accessors first, then search availablePackages by lookup_key
+  const monthlyPkg =
+    currentOffering?.monthly ??
+    currentOffering?.availablePackages?.find(
+      (p) => p.identifier === '$rc_monthly' || p.product?.identifier === 'kinetic_pro_monthly',
+    ) ??
+    null;
+  const annualPkg =
+    currentOffering?.annual ??
+    currentOffering?.availablePackages?.find(
+      (p) => p.identifier === '$rc_annual' || p.product?.identifier === 'kinetic_pro_annual',
+    ) ??
+    null;
 
   const monthlyPrice = monthlyPkg?.product?.priceString ?? '$5.99';
   const annualPrice = annualPkg?.product?.priceString ?? '$39.99';
+
+  // Debug: log offerings state in dev
+  if (__DEV__) {
+    console.log('[Paywall] offering:', currentOffering?.identifier);
+    console.log('[Paywall] availablePackages:', currentOffering?.availablePackages?.map(
+      (p) => `${p.identifier} → ${p.product?.identifier}`,
+    ));
+    console.log('[Paywall] monthly:', monthlyPkg?.identifier, '| annual:', annualPkg?.identifier);
+  }
 
   const handlePurchase = useCallback(async (type: 'monthly' | 'annual') => {
     const pkg = type === 'monthly' ? monthlyPkg : annualPkg;

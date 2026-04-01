@@ -273,12 +273,15 @@ export function DashboardScreen({ navigation }: Props) {
     return games.filter((g) => g.leagueApiId === activeLeagueFilter);
   }, [activeLeagueFilter]);
 
+  const FINISHED = ['FT', 'AET', 'PEN', 'AOT', 'AP', 'POST', 'Completed'];
   const liveGames = filterByLeague(allLiveGames);
   const todayGames = filterByLeague(allTodayGames);
   const recentGames = filterByLeague(allRecentGames);
   const rawUpcoming = filterByLeague(allUpcomingGames);
-  // Merge today + upcoming so "today's matches" always show
-  const upcomingGames = [...todayGames, ...rawUpcoming];
+  // Merge today + upcoming — exclude finished games so they don't show as "upcoming"
+  const upcomingGames = [...todayGames, ...rawUpcoming].filter(
+    (g) => !FINISHED.includes(g.status),
+  );
 
   useEffect(() => {
     setLiveCount(allLiveGames.length);
