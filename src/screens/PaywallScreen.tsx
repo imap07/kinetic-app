@@ -91,8 +91,8 @@ export function PaywallScreen({ navigation, route }: Props) {
   const monthlyPkg = currentOffering?.monthly ?? null;
   const annualPkg = currentOffering?.annual ?? null;
 
-  const monthlyPrice = monthlyPkg?.product?.priceString ?? '$2.99';
-  const annualPrice = annualPkg?.product?.priceString ?? '$24.99';
+  const monthlyPrice = monthlyPkg?.product?.priceString ?? '$5.99';
+  const annualPrice = annualPkg?.product?.priceString ?? '$39.99';
 
   const handlePurchase = useCallback(async (type: 'monthly' | 'annual') => {
     const pkg = type === 'monthly' ? monthlyPkg : annualPkg;
@@ -183,7 +183,7 @@ export function PaywallScreen({ navigation, route }: Props) {
             activeOpacity={0.8}
           >
             <View style={styles.saveBadge}>
-              <Text style={styles.saveBadgeText}>SAVE 30%</Text>
+              <Text style={styles.saveBadgeText}>SAVE 44%</Text>
             </View>
             <Text style={styles.pricingLabel}>Annual</Text>
             <Text style={styles.pricingAmount}>{annualPrice}/year</Text>
