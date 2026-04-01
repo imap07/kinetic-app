@@ -14,6 +14,7 @@ import {
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { TopAppBar, PrimaryButton } from '../components';
 import { colors, typography, spacing, borderRadius } from '../theme';
 import { AuthStackParamList } from '../navigation/types';
@@ -28,6 +29,7 @@ export function RecoverPasswordRequestScreen({ navigation }: Props) {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const { forgotPassword } = useAuth();
 
   return (
@@ -39,7 +41,7 @@ export function RecoverPasswordRequestScreen({ navigation }: Props) {
         <TopAppBar
           showBack
           onBack={() => navigation.goBack()}
-          leftLabel="Recover Password"
+          leftLabel={t('recoverPassword.title')}
         />
       </View>
 
@@ -55,15 +57,14 @@ export function RecoverPasswordRequestScreen({ navigation }: Props) {
           <MaterialCommunityIcons name="refresh" size={32} color={colors.primary} />
         </View>
 
-        <Text style={styles.title}>Reset your access.</Text>
+        <Text style={styles.title}>{t('recoverPassword.resetYourAccess')}</Text>
 
         <Text style={styles.description}>
-          Enter the email address associated with your account and we'll send a
-          high-priority security code.
+          {t('recoverPassword.resetDesc')}
         </Text>
 
         <View style={styles.inputSection}>
-          <Text style={styles.inputLabel}>EMAIL ADDRESS</Text>
+          <Text style={styles.inputLabel}>{t('recoverPassword.emailLabel')}</Text>
           <View style={styles.inputContainer}>
             <MaterialCommunityIcons
               name="email-outline"
@@ -72,7 +73,7 @@ export function RecoverPasswordRequestScreen({ navigation }: Props) {
             />
             <TextInput
               style={styles.input}
-              placeholder="name@example.com"
+              placeholder={t('recoverPassword.emailPlaceholder')}
               placeholderTextColor={colors.onSurfaceDim}
               value={email}
               onChangeText={setEmail}
@@ -85,7 +86,7 @@ export function RecoverPasswordRequestScreen({ navigation }: Props) {
         </View>
 
         <PrimaryButton
-          title={loading ? '' : 'SEND CODE >'}
+          title={loading ? '' : t('recoverPassword.sendCode')}
           onPress={async () => {
             if (!email.trim() || loading) return;
             setLoading(true);
@@ -98,8 +99,8 @@ export function RecoverPasswordRequestScreen({ navigation }: Props) {
               const message =
                 err instanceof ApiError
                   ? err.message
-                  : 'Something went wrong. Please try again.';
-              Alert.alert('Error', message);
+                  : t('common.somethingWrong');
+              Alert.alert(t('common.error'), message);
             } finally {
               setLoading(false);
             }
@@ -114,17 +115,17 @@ export function RecoverPasswordRequestScreen({ navigation }: Props) {
 
         <View style={styles.dividerSection}>
           <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>Remembered it?</Text>
+          <Text style={styles.dividerText}>{t('recoverPassword.rememberedIt')}</Text>
           <View style={styles.dividerLine} />
         </View>
 
         <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-          <Text style={styles.returnText}>Return to Sign In</Text>
+          <Text style={styles.returnText}>{t('recoverPassword.returnToSignIn')}</Text>
         </TouchableOpacity>
 
         <View style={styles.spacer} />
 
-        <Text style={styles.footerText}>KINETIC SECURITY PROTOCOL V4.2</Text>
+        <Text style={styles.footerText}>{t('recoverPassword.footerText')}</Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );

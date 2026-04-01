@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Image,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   Ionicons,
@@ -46,25 +47,25 @@ const ACHIEVEMENT_ICON_MAP: Record<string, keyof typeof Ionicons.glyphMap> = {
   medal: 'medal',
 };
 
-function formatOutcome(p: PredictionData): string {
+function formatOutcome(p: PredictionData, tFn: (key: string) => string): string {
   if (p.predictionType === 'exact_score' && p.predictedHomeScore != null && p.predictedAwayScore != null) {
     return `${p.predictedHomeScore}-${p.predictedAwayScore}`;
   }
   if (p.predictedOutcome === 'home') return p.homeTeamName;
   if (p.predictedOutcome === 'away') return p.awayTeamName;
-  return 'Draw';
+  return tFn('profile.draw');
 }
 
-function formatPickDate(dateStr: string): string {
+function formatPickDate(dateStr: string, t: (key: string, opts?: Record<string, unknown>) => string): string {
   const d = new Date(dateStr);
   const now = new Date();
   const diffMs = now.getTime() - d.getTime();
   const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
-  if (diffHrs < 1) return 'JUST NOW';
-  if (diffHrs < 24) return `${diffHrs}H AGO`;
+  if (diffHrs < 1) return t('profile.justNow');
+  if (diffHrs < 24) return t('profile.hoursAgo', { count: diffHrs });
   const diffDays = Math.floor(diffHrs / 24);
-  if (diffDays === 1) return 'YESTERDAY';
-  if (diffDays < 7) return `${diffDays}D AGO`;
+  if (diffDays === 1) return t('profile.yesterday');
+  if (diffDays < 7) return t('profile.daysAgo', { count: diffDays });
   return d.toLocaleDateString([], { month: 'short', day: 'numeric' }).toUpperCase();
 }
 
@@ -106,6 +107,7 @@ function AchievementIcon({ item }: { item: Achievement }) {
 // ── Main Screen ──
 
 export function ProfileScreen() {
+  const { t } = useTranslation();
   const profileNav = useNavigation<NativeStackNavigationProp<ProfileStackParamList>>();
   const rootNav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { logout, user, tokens } = useAuth();
@@ -164,7 +166,7 @@ export function ProfileScreen() {
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `I'm on Kinetic with a ${winRate}% win rate! Download the app and challenge me.`,
+        message: t('profile.shareText', { rate: winRate }),
       });
     } catch {}
   };
@@ -198,7 +200,7 @@ export function ProfileScreen() {
             {/* Name & Tier */}
             <Text style={styles.username}>{user?.displayName ?? 'GHOSTKING'}</Text>
             <Text style={styles.tierLabel}>
-              {isProMember ? 'PRO TIER MEMBER' : 'FREE TIER'}
+              {isProMember ? t('profile.proTier') : t('profile.freeTier')}
             </Text>
 
             {/* Meta */}
@@ -208,7 +210,7 @@ export function ProfileScreen() {
                 size={12}
                 color={colors.onSurfaceVariant}
               />
-              <Text style={styles.metaText}>{totalPoints.toLocaleString()} PTS</Text>
+              <Text style={styles.metaText}>{t('profile.pts', { count: totalPoints.toLocaleString() })}</Text>
             </View>
             {user?.email && (
               <View style={styles.metaRow}>
@@ -230,7 +232,7 @@ export function ProfileScreen() {
                   end={{ x: 1, y: 1 }}
                   style={styles.editBtn}
                 >
-                  <Text style={styles.editBtnText}>EDIT PROFILE</Text>
+                  <Text style={styles.editBtnText}>{t('profile.editProfile')}</Text>
                 </LinearGradient>
               </TouchableOpacity>
               <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
@@ -244,14 +246,14 @@ export function ProfileScreen() {
         <View style={styles.statCard}>
           <View style={styles.rankHeader}>
             <View style={{ gap: 4 }}>
-              <Text style={styles.statMiniLabel}>CURRENT STANDING</Text>
+              <Text style={styles.statMiniLabel}>{t('profile.currentStanding')}</Text>
               <Text style={styles.rankValue}>{tierInfo.label.toUpperCase()}</Text>
             </View>
             <View style={{ gap: 4, alignItems: 'flex-end' }}>
               {tierInfo.next ? (
-                <Text style={styles.statMiniLabel}>NEXT: {tierInfo.next.toUpperCase()}</Text>
+                <Text style={styles.statMiniLabel}>{t('leaderboard.nextTier', { tier: tierInfo.next.toUpperCase() })}</Text>
               ) : (
-                <Text style={styles.statMiniLabel}>MAX TIER</Text>
+                <Text style={styles.statMiniLabel}>{t('leaderboard.maxTier')}</Text>
               )}
               <Text style={styles.rankProgress}>
                 {totalPoints.toLocaleString()} /{' '}
@@ -273,10 +275,10 @@ export function ProfileScreen() {
 
         {/* ── Win Rate ── */}
         <View style={[styles.statCard, styles.statCardCenter]}>
-          <Text style={styles.statMiniLabel}>WIN RATE</Text>
+          <Text style={styles.statMiniLabel}>{t('profile.winRate')}</Text>
           <Text style={styles.bigStat}>{winRate}%</Text>
           <Text style={styles.statDelta}>
-            {totalPredictions} TOTAL PREDICTIONS
+            {t('profile.totalPredictions', { count: totalPredictions })}
           </Text>
         </View>
 
@@ -286,7 +288,7 @@ export function ProfileScreen() {
             <View style={styles.statIconBox}>
               <Ionicons name="checkmark-circle" size={20} color={colors.primaryContainer} />
             </View>
-            <Text style={styles.statMiniLabel}>TOTAL CORRECT</Text>
+            <Text style={styles.statMiniLabel}>{t('profile.totalCorrect')}</Text>
           </View>
           <Text style={styles.bigStatLeft}>{correctPredictions}</Text>
         </View>
@@ -297,21 +299,21 @@ export function ProfileScreen() {
             <View style={styles.streakIconBox}>
               <MaterialCommunityIcons name="fire" size={18} color={colors.tertiaryLight} />
             </View>
-            <Text style={styles.statMiniLabel}>ACTIVE STREAK</Text>
+            <Text style={styles.statMiniLabel}>{t('profile.activeStreak')}</Text>
           </View>
           <Text style={styles.streakValue}>
             {activeStreak}{' '}
-            <Text style={styles.streakUnit}>MATCHES</Text>
+            <Text style={styles.streakUnit}>{t('profile.matches')}</Text>
           </Text>
         </View>
 
         {/* ── Subscription ── */}
         <View style={styles.statCard}>
           <View style={styles.subHeader}>
-            <Text style={styles.statMiniLabel}>KINETIC+</Text>
+            <Text style={styles.statMiniLabel}>{t('profile.kineticPlus')}</Text>
             <View style={isProMember ? styles.activeBadge : styles.inactiveBadge}>
               <Text style={isProMember ? styles.activeBadgeText : styles.inactiveBadgeText}>
-                {isProMember ? 'ACTIVE' : 'INACTIVE'}
+                {isProMember ? t('profile.active') : t('profile.inactive')}
               </Text>
             </View>
           </View>
@@ -320,17 +322,16 @@ export function ProfileScreen() {
               <>
                 <Text style={styles.subPrice}>
                   Kinetic+
-                  <Text style={styles.subPriceUnit}> subscription</Text>
+                  <Text style={styles.subPriceUnit}> {t('profile.subscription')}</Text>
                 </Text>
                 <TouchableOpacity onPress={() => rootNav.navigate('Paywall', { trigger: 'general' })}>
-                  <Text style={styles.manageSub}>MANAGE SUBSCRIPTION</Text>
+                  <Text style={styles.manageSub}>{t('profile.manageSubscription')}</Text>
                 </TouchableOpacity>
               </>
             ) : (
               <>
                 <Text style={styles.subDesc}>
-                  Unlock premium predictions, exclusive insights, and ad-free
-                  experience.
+                  {t('profile.subDesc')}
                 </Text>
                 <TouchableOpacity
                   style={styles.upgradeBtnWrap}
@@ -343,7 +344,7 @@ export function ProfileScreen() {
                     end={{ x: 1, y: 1 }}
                     style={styles.upgradeBtn}
                   >
-                    <Text style={styles.upgradeBtnText}>UPGRADE TO PRO</Text>
+                    <Text style={styles.upgradeBtnText}>{t('profile.upgradeToPro')}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               </>
@@ -354,7 +355,7 @@ export function ProfileScreen() {
         {/* ── Achievements ── */}
         <View style={styles.sectionHeader}>
           <MaterialCommunityIcons name="medal" size={18} color={colors.onSurface} />
-          <Text style={styles.sectionTitle}>ACHIEVEMENTS</Text>
+          <Text style={styles.sectionTitle}>{t('profile.achievements')}</Text>
           {achievements.length > 0 && (
             <View style={styles.achieveCounter}>
               <Text style={styles.achieveCounterText}>
@@ -379,7 +380,7 @@ export function ProfileScreen() {
               />
             </View>
             <Text style={styles.achieveSummaryText}>
-              {achievements.reduce((sum, a) => sum + (a.unlocked ? a.points : 0), 0)} PTS earned
+              {t('profile.ptsEarned', { count: achievements.reduce((sum, a) => sum + (a.unlocked ? a.points : 0), 0) })}
             </Text>
           </View>
         )}
@@ -387,7 +388,7 @@ export function ProfileScreen() {
           <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 16 }} />
         ) : achievements.length === 0 ? (
           <View style={{ alignItems: 'center', paddingVertical: 24 }}>
-            <Text style={styles.achieveDesc}>No achievements yet — keep predicting!</Text>
+            <Text style={styles.achieveDesc}>{t('profile.noAchievements')}</Text>
           </View>
         ) : (
           achievements.map((a) => {
@@ -443,7 +444,7 @@ export function ProfileScreen() {
                   )}
 
                   <Text style={styles.achievePoints}>
-                    {a.unlocked ? `+${a.points} PTS EARNED` : `${a.points} PTS`}
+                    {a.unlocked ? t('profile.ptsEarnedBadge', { count: a.points }) : t('profile.pts', { count: a.points })}
                   </Text>
                 </View>
               </View>
@@ -458,13 +459,13 @@ export function ProfileScreen() {
             size={18}
             color={colors.onSurface}
           />
-          <Text style={styles.sectionTitle}>PREDICTION HISTORY</Text>
+          <Text style={styles.sectionTitle}>{t('profile.predictionHistory')}</Text>
         </View>
         {historyLoading ? (
           <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 16 }} />
         ) : history.length === 0 ? (
           <View style={{ alignItems: 'center', paddingVertical: 24 }}>
-            <Text style={styles.historyOutcome}>No predictions yet</Text>
+            <Text style={styles.historyOutcome}>{t('profile.noPredictions')}</Text>
           </View>
         ) : (
           <View style={styles.historyList}>
@@ -494,7 +495,7 @@ export function ProfileScreen() {
                         {p.homeTeamName} VS {p.awayTeamName}
                       </Text>
                       <Text style={styles.historyOutcome}>
-                        Outcome: {p.status === 'won' ? 'WIN' : p.status === 'lost' ? 'LOSS' : p.status.toUpperCase()} · {formatOutcome(p)}
+                        {t('profile.outcome')}: {p.status === 'won' ? t('profile.win') : p.status === 'lost' ? t('profile.loss') : p.status.toUpperCase()} · {formatOutcome(p, t)}
                       </Text>
                     </View>
                   </View>
@@ -505,10 +506,10 @@ export function ProfileScreen() {
                         { color: isWin ? colors.primaryContainer : '#FF7351' },
                       ]}
                     >
-                      {isWin ? `+${p.pointsAwarded}` : '0'} PTS
+                      {isWin ? `+${p.pointsAwarded}` : '0'} {t('profile.ptsUnit')}
                     </Text>
                     <Text style={styles.historyTime}>
-                      {formatPickDate(p.createdAt)}
+                      {formatPickDate(p.createdAt, t)}
                     </Text>
                   </View>
                 </View>
@@ -519,7 +520,7 @@ export function ProfileScreen() {
 
         {/* ── Preferences ── */}
         <View style={styles.settingsSection}>
-          <Text style={styles.settingsLabel}>PREFERENCES</Text>
+          <Text style={styles.settingsLabel}>{t('profile.preferences')}</Text>
           <TouchableOpacity
             style={styles.settingsRow}
             onPress={() => profileNav.navigate('EditFavoriteSports')}
@@ -527,10 +528,10 @@ export function ProfileScreen() {
             <View style={styles.settingsRowLeft}>
               <Ionicons name="football" size={18} color={colors.onSurface} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.settingsRowText}>FAVORITE SPORTS</Text>
+                <Text style={styles.settingsRowText}>{t('profile.favoriteSports')}</Text>
                 {user?.favoriteSports && user.favoriteSports.length > 0 && (
                   <Text style={styles.prefsSubtext}>
-                    {user.favoriteSports.length} sport{user.favoriteSports.length !== 1 ? 's' : ''} selected
+                    {t('profile.sportsSelected', { count: user.favoriteSports.length })}
                   </Text>
                 )}
               </View>
@@ -544,10 +545,10 @@ export function ProfileScreen() {
             <View style={styles.settingsRowLeft}>
               <MaterialCommunityIcons name="trophy-outline" size={18} color={colors.onSurface} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.settingsRowText}>FAVORITE LEAGUES</Text>
+                <Text style={styles.settingsRowText}>{t('profile.favoriteLeagues')}</Text>
                 {user?.favoriteLeagues && user.favoriteLeagues.length > 0 && (
                   <Text style={styles.prefsSubtext}>
-                    {user.favoriteLeagues.length} league{user.favoriteLeagues.length !== 1 ? 's' : ''} selected
+                    {t('profile.leaguesSelected', { count: user.favoriteLeagues.length })}
                   </Text>
                 )}
               </View>
@@ -558,14 +559,14 @@ export function ProfileScreen() {
 
         {/* ── Security & Settings ── */}
         <View style={styles.settingsSection}>
-          <Text style={styles.settingsLabel}>SECURITY & SETTINGS</Text>
+          <Text style={styles.settingsLabel}>{t('profile.securitySettings')}</Text>
           <TouchableOpacity
             style={styles.settingsRow}
             onPress={() => profileNav.navigate('Notifications')}
           >
             <View style={styles.settingsRowLeft}>
               <Feather name="bell" size={18} color={colors.onSurface} />
-              <Text style={styles.settingsRowText}>NOTIFICATIONS</Text>
+              <Text style={styles.settingsRowText}>{t('notifications.title')}</Text>
             </View>
             <Feather name="chevron-right" size={16} color={colors.onSurfaceVariant} />
           </TouchableOpacity>
@@ -575,7 +576,7 @@ export function ProfileScreen() {
           >
             <View style={styles.settingsRowLeft}>
               <Feather name="shield" size={18} color={colors.onSurface} />
-              <Text style={styles.settingsRowText}>SECURITY & PRIVACY</Text>
+              <Text style={styles.settingsRowText}>{t('security.title')}</Text>
             </View>
             <Feather name="chevron-right" size={16} color={colors.onSurfaceVariant} />
           </TouchableOpacity>
@@ -589,7 +590,7 @@ export function ProfileScreen() {
                 size={18}
                 color={colors.onSurface}
               />
-              <Text style={styles.settingsRowText}>WALLET</Text>
+              <Text style={styles.settingsRowText}>{t('wallet.title')}</Text>
             </View>
             <Feather name="chevron-right" size={16} color={colors.onSurfaceVariant} />
           </TouchableOpacity>
@@ -600,7 +601,7 @@ export function ProfileScreen() {
             activeOpacity={0.7}
           >
             <Feather name="log-out" size={18} color="#FF7351" />
-            <Text style={styles.logoutBtnText}>LOG OUT</Text>
+            <Text style={styles.logoutBtnText}>{t('profile.logOut')}</Text>
           </TouchableOpacity>
         </View>
 

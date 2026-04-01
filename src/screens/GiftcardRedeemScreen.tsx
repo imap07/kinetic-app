@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors, spacing, borderRadius } from '../theme';
 import { useCoins } from '../contexts/CoinContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -32,6 +33,7 @@ export function GiftcardRedeemScreen() {
   const navigation = useNavigation();
   const { tokens } = useAuth();
   const { available, balance, refreshBalance } = useCoins();
+  const { t } = useTranslation();
 
   const [tab, setTab] = useState<TabFilter>('catalog');
   const [catalog, setCatalog] = useState<GiftcardCatalog | null>(null);
@@ -67,17 +69,20 @@ export function GiftcardRedeemScreen() {
 
   const handleRedeem = (card: GiftcardCatalogItem, denomination: { coins: number; dollarValue: number }) => {
     if (available < denomination.coins) {
-      Alert.alert('Insufficient Coins', `You need ${denomination.coins} coins. You have ${available} available.`);
+      Alert.alert(
+        t('giftcard.insufficientCoins'),
+        t('giftcard.insufficientCoinsDesc', { needed: denomination.coins, available }),
+      );
       return;
     }
 
     Alert.alert(
-      'Confirm Redemption',
+      t('giftcard.confirmRedemption'),
       `Redeem ${denomination.coins} coins for a $${denomination.dollarValue} ${card.name} gift card?\n\nProcessing takes up to ${catalog?.holdHours ?? 48} hours.`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Redeem',
+          text: t('giftcard.redeem'),
           onPress: async () => {
             setRedeeming(`${card.type}-${denomination.coins}`);
             try {
@@ -86,9 +91,9 @@ export function GiftcardRedeemScreen() {
                 giftcardType: card.type,
               });
               await Promise.all([fetchData(), refreshBalance()]);
-              Alert.alert('Redemption Submitted', 'Your gift card will be processed within 48 hours.');
+              Alert.alert(t('giftcard.redemptionSubmitted'), t('giftcard.redemptionSubmittedDesc'));
             } catch (e: any) {
-              Alert.alert('Error', e.message || 'Redemption failed.');
+              Alert.alert(t('common.error'), e.message || t('giftcard.redemptionFailed'));
             } finally {
               setRedeeming(null);
             }
@@ -115,24 +120,24 @@ export function GiftcardRedeemScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
           <Feather name="arrow-left" size={22} color={colors.onSurface} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>GIFT CARDS</Text>
+        <Text style={styles.headerTitle}>{t('giftcard.title')}</Text>
         <View style={{ width: 22 }} />
       </View>
 
       <View style={styles.balancePill}>
         <MaterialCommunityIcons name="circle-multiple" size={16} color={colors.primary} />
-        <Text style={styles.balancePillText}>{available.toLocaleString()} coins available</Text>
+        <Text style={styles.balancePillText}>{t('giftcard.coinsAvailable', { count: available.toLocaleString() })}</Text>
       </View>
 
       <View style={styles.tabs}>
-        {(['catalog', 'history'] as const).map((t) => (
+        {(['catalog', 'history'] as const).map((tabKey) => (
           <TouchableOpacity
-            key={t}
-            style={[styles.tab, tab === t && styles.tabActive]}
-            onPress={() => setTab(t)}
+            key={tabKey}
+            style={[styles.tab, tab === tabKey && styles.tabActive]}
+            onPress={() => setTab(tabKey)}
           >
-            <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>
-              {t === 'catalog' ? 'Catalog' : 'My Redemptions'}
+            <Text style={[styles.tabText, tab === tabKey && styles.tabTextActive]}>
+              {tabKey === 'catalog' ? t('giftcard.catalog') : t('giftcard.myRedemptions')}
             </Text>
           </TouchableOpacity>
         ))}
@@ -211,7 +216,7 @@ export function GiftcardRedeemScreen() {
             {history.length === 0 ? (
               <View style={styles.emptyState}>
                 <Feather name="gift" size={40} color={colors.onSurfaceDim} />
-                <Text style={styles.emptyText}>No redemptions yet.</Text>
+                <Text style={styles.emptyText}>{t('giftcard.noRedemptions')}</Text>
               </View>
             ) : (
               history.map((r) => (

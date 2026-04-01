@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors, spacing, borderRadius } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import { authApi, ApiError } from '../api';
@@ -23,6 +24,7 @@ const MIN_PASSWORD_LENGTH = 6;
 export function ChangePasswordScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+  const { t } = useTranslation();
   const { tokens, logout } = useAuth();
 
   const [currentPassword, setCurrentPassword] = useState('');
@@ -45,7 +47,7 @@ export function ChangePasswordScreen() {
     if (!canSubmit || !tokens?.accessToken) return;
 
     if (newPassword === currentPassword) {
-      Alert.alert('Same password', 'New password must be different from your current password.');
+      Alert.alert(t('changePassword.samePasswordAlert'), t('changePassword.samePasswordDesc'));
       return;
     }
 
@@ -53,11 +55,11 @@ export function ChangePasswordScreen() {
     try {
       const res = await authApi.changePassword(tokens.accessToken, currentPassword, newPassword);
       Alert.alert(
-        'Password Changed',
-        'Your password has been updated. You will be logged out for security.',
+        t('changePassword.successTitle'),
+        t('changePassword.successDesc'),
         [
           {
-            text: 'OK',
+            text: t('common.ok'),
             onPress: async () => {
               await logout();
             },
@@ -68,8 +70,8 @@ export function ChangePasswordScreen() {
       const message =
         err instanceof ApiError
           ? err.message
-          : 'Failed to change password. Please try again.';
-      Alert.alert('Error', message);
+          : t('changePassword.failedAlert');
+      Alert.alert(t('common.error'), message);
     } finally {
       setSaving(false);
     }
@@ -82,7 +84,7 @@ export function ChangePasswordScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
           <Feather name="arrow-left" size={22} color={colors.onSurface} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>CHANGE PASSWORD</Text>
+        <Text style={styles.headerTitle}>{t('changePassword.title')}</Text>
         <View style={{ width: 22 }} />
       </View>
 
@@ -100,20 +102,20 @@ export function ChangePasswordScreen() {
           <View style={styles.infoBanner}>
             <Feather name="info" size={16} color={colors.primary} />
             <Text style={styles.infoText}>
-              After changing your password, you will be logged out on all devices for security.
+              {t('changePassword.infoBanner')}
             </Text>
           </View>
 
           {/* Current password */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>CURRENT PASSWORD</Text>
+            <Text style={styles.fieldLabel}>{t('changePassword.currentPasswordLabel')}</Text>
             <View style={styles.inputWrapper}>
               <Feather name="lock" size={16} color={colors.onSurfaceDim} />
               <TextInput
                 style={styles.input}
                 value={currentPassword}
                 onChangeText={setCurrentPassword}
-                placeholder="Enter current password"
+                placeholder={t('changePassword.currentPasswordPlaceholder')}
                 placeholderTextColor={colors.onSurfaceDim}
                 secureTextEntry={!showCurrent}
                 autoCapitalize="none"
@@ -133,7 +135,7 @@ export function ChangePasswordScreen() {
 
           {/* New password */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>NEW PASSWORD</Text>
+            <Text style={styles.fieldLabel}>{t('changePassword.newPasswordLabel')}</Text>
             <View
               style={[
                 styles.inputWrapper,
@@ -145,7 +147,7 @@ export function ChangePasswordScreen() {
                 style={styles.input}
                 value={newPassword}
                 onChangeText={setNewPassword}
-                placeholder="At least 6 characters"
+                placeholder={t('changePassword.newPasswordPlaceholder')}
                 placeholderTextColor={colors.onSurfaceDim}
                 secureTextEntry={!showNew}
                 autoCapitalize="none"
@@ -162,10 +164,10 @@ export function ChangePasswordScreen() {
               </TouchableOpacity>
             </View>
             {newPassword.length > 0 && !newValid && (
-              <Text style={styles.errorText}>Minimum {MIN_PASSWORD_LENGTH} characters</Text>
+              <Text style={styles.errorText}>{t('changePassword.minChars', { count: MIN_PASSWORD_LENGTH })}</Text>
             )}
             {newPassword.length > 0 && newPassword === currentPassword && (
-              <Text style={styles.errorText}>Must be different from current password</Text>
+              <Text style={styles.errorText}>{t('changePassword.mustBeDifferent')}</Text>
             )}
 
             {/* Strength indicators */}
@@ -187,7 +189,7 @@ export function ChangePasswordScreen() {
                 />
                 <View style={[styles.strengthBarBg, { flex: Math.max(1 - newPassword.length / 12, 0) }]} />
                 <Text style={styles.strengthLabel}>
-                  {newPassword.length >= 10 ? 'Strong' : newPassword.length >= MIN_PASSWORD_LENGTH ? 'Good' : 'Weak'}
+                  {newPassword.length >= 10 ? t('changePassword.strengthStrong') : newPassword.length >= MIN_PASSWORD_LENGTH ? t('changePassword.strengthGood') : t('changePassword.strengthWeak')}
                 </Text>
               </View>
             )}
@@ -195,7 +197,7 @@ export function ChangePasswordScreen() {
 
           {/* Confirm password */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>CONFIRM NEW PASSWORD</Text>
+            <Text style={styles.fieldLabel}>{t('changePassword.confirmPasswordLabel')}</Text>
             <View
               style={[
                 styles.inputWrapper,
@@ -207,7 +209,7 @@ export function ChangePasswordScreen() {
                 style={styles.input}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
-                placeholder="Re-enter new password"
+                placeholder={t('changePassword.confirmPasswordPlaceholder')}
                 placeholderTextColor={colors.onSurfaceDim}
                 secureTextEntry={!showConfirm}
                 autoCapitalize="none"
@@ -224,7 +226,7 @@ export function ChangePasswordScreen() {
               </TouchableOpacity>
             </View>
             {confirmPassword.length > 0 && !confirmValid && (
-              <Text style={styles.errorText}>Passwords don't match</Text>
+              <Text style={styles.errorText}>{t('changePassword.passwordsDontMatch')}</Text>
             )}
           </View>
 
@@ -241,7 +243,7 @@ export function ChangePasswordScreen() {
               ) : (
                 <>
                   <Feather name="shield" size={18} color="#4A5E00" />
-                  <Text style={styles.submitBtnText}>CHANGE PASSWORD</Text>
+                  <Text style={styles.submitBtnText}>{t('changePassword.submitBtn')}</Text>
                 </>
               )}
             </TouchableOpacity>

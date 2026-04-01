@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import { usePurchases } from '../contexts/PurchasesContext';
@@ -69,6 +70,7 @@ export function SearchScreen() {
   const insets = useSafeAreaInsets();
   const { tokens } = useAuth();
   const { isProMember } = usePurchases();
+  const { t } = useTranslation();
   const inputRef = useRef<TextInput>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -200,25 +202,25 @@ export function SearchScreen() {
   if (results) {
     if (results.teams.length > 0) {
       sections.push({
-        title: 'Teams',
-        data: results.teams.map((t) => ({ type: 'team' as const, data: t })),
+        title: t('search.teams'),
+        data: results.teams.map((teamItem) => ({ type: 'team' as const, data: teamItem })),
       });
     }
     if (results.leagues.length > 0) {
       sections.push({
-        title: 'Leagues',
+        title: t('search.leagues'),
         data: results.leagues.map((l) => ({ type: 'league' as const, data: l })),
       });
     }
     if (results.matches.length > 0) {
       sections.push({
-        title: 'Upcoming Matches',
+        title: t('search.upcomingMatches'),
         data: results.matches.map((m) => ({ type: 'match' as const, data: m })),
       });
     }
   } else if (query.length < 2 && recentSearches.length > 0) {
     sections.push({
-      title: 'Recent Searches',
+      title: t('search.recentSearches'),
       data: recentSearches.map((s) => ({ type: 'recent' as const, data: s })),
     });
   }
@@ -325,7 +327,7 @@ export function SearchScreen() {
           <TextInput
             ref={inputRef}
             style={styles.input}
-            placeholder="Search teams, leagues, matches..."
+            placeholder={t('search.placeholder')}
             placeholderTextColor={colors.onSurfaceVariant}
             value={query}
             onChangeText={handleChangeText}
@@ -338,22 +340,22 @@ export function SearchScreen() {
           {loading && <ActivityIndicator size="small" color={colors.primary} style={{ marginLeft: 4 }} />}
         </View>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.cancelBtn}>
-          <Text style={styles.cancelText}>Cancel</Text>
+          <Text style={styles.cancelText}>{t('search.cancel')}</Text>
         </TouchableOpacity>
       </View>
 
       {/* Content */}
       {query.length > 0 && query.length < 2 && !results && (
         <View style={styles.hintWrap}>
-          <Text style={styles.hintText}>Keep typing to search...</Text>
+          <Text style={styles.hintText}>{t('search.keepTyping')}</Text>
         </View>
       )}
 
       {hasNoResults && (
         <View style={styles.emptyWrap}>
           <Ionicons name="search-outline" size={40} color={colors.onSurfaceVariant} />
-          <Text style={styles.emptyTitle}>No results for "{query}"</Text>
-          <Text style={styles.emptySub}>Try a different search term</Text>
+          <Text style={styles.emptyTitle}>{t('search.noResults', { query })}</Text>
+          <Text style={styles.emptySub}>{t('search.tryDifferent')}</Text>
         </View>
       )}
 

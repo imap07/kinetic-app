@@ -10,6 +10,7 @@ import {
   RefreshControl,
   ScrollView,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
@@ -23,12 +24,12 @@ import { predictionsApi, SPORT_TABS } from '../api';
 import type { PredictionData, MyStatsResponse, DetailedStatsResponse } from '../api';
 import type { RootStackParamList } from '../navigation/types';
 
-const TABS = ['Active', 'History'];
+const TABS = ['active', 'history'] as const;
 
-function getOutcomeLabel(prediction: PredictionData): string {
-  if (prediction.predictedOutcome === 'home') return `${prediction.homeTeamName} Win`;
-  if (prediction.predictedOutcome === 'away') return `${prediction.awayTeamName} Win`;
-  return 'Draw';
+function getOutcomeLabel(prediction: PredictionData, t: (key: string) => string): string {
+  if (prediction.predictedOutcome === 'home') return `${prediction.homeTeamName} ${t('matchPrediction.win')}`;
+  if (prediction.predictedOutcome === 'away') return `${prediction.awayTeamName} ${t('matchPrediction.win')}`;
+  return t('matchPrediction.draw');
 }
 
 function getStatusColor(status: string): string {
@@ -51,13 +52,14 @@ function getWeekLabel(week: number): string {
 }
 
 function WeeklyTrendChart({ weeklyTrend }: { weeklyTrend: DetailedStatsResponse['weeklyTrend'] }) {
+  const { t } = useTranslation();
   const maxTotal = Math.max(...weeklyTrend.map((w) => w.total), 1);
   const barMaxHeight = 80;
 
   if (weeklyTrend.length === 0) {
     return (
       <View style={trendStyles.empty}>
-        <Text style={trendStyles.emptyText}>Not enough data yet</Text>
+        <Text style={trendStyles.emptyText}>{t('picks.notEnoughData')}</Text>
       </View>
     );
   }
@@ -66,18 +68,18 @@ function WeeklyTrendChart({ weeklyTrend }: { weeklyTrend: DetailedStatsResponse[
     <View style={trendStyles.container}>
       <View style={trendStyles.header}>
         <MaterialCommunityIcons name="chart-bar" size={16} color={colors.primary} />
-        <Text style={trendStyles.title}>WEEKLY TREND</Text>
+        <Text style={trendStyles.title}>{t('picks.weeklyTrend')}</Text>
       </View>
 
       {/* Legend */}
       <View style={trendStyles.legend}>
         <View style={trendStyles.legendItem}>
           <View style={[trendStyles.legendDot, { backgroundColor: 'rgba(202,253,0,0.3)' }]} />
-          <Text style={trendStyles.legendText}>Total</Text>
+          <Text style={trendStyles.legendText}>{t('picks.total')}</Text>
         </View>
         <View style={trendStyles.legendItem}>
           <View style={[trendStyles.legendDot, { backgroundColor: colors.primary }]} />
-          <Text style={trendStyles.legendText}>Won</Text>
+          <Text style={trendStyles.legendText}>{t('picks.won')}</Text>
         </View>
       </View>
 
@@ -125,7 +127,7 @@ function WeeklyTrendChart({ weeklyTrend }: { weeklyTrend: DetailedStatsResponse[
         const wrDiff = latest.winRate - prev.winRate;
         return (
           <View style={trendStyles.summaryRow}>
-            <Text style={trendStyles.summaryLabel}>vs last week</Text>
+            <Text style={trendStyles.summaryLabel}>{t('picks.vsLastWeek')}</Text>
             <View style={{ flexDirection: 'row', gap: 12 }}>
               <Text style={[trendStyles.summaryValue, { color: ptsDiff >= 0 ? '#5BEF90' : '#FF7351' }]}>
                 {ptsDiff >= 0 ? '+' : ''}{ptsDiff} pts
@@ -142,6 +144,7 @@ function WeeklyTrendChart({ weeklyTrend }: { weeklyTrend: DetailedStatsResponse[
 }
 
 function PredictionCard({ prediction }: { prediction: PredictionData }) {
+  const { t } = useTranslation();
   const isResolved = prediction.status !== 'pending';
   const isVoid = prediction.status === 'void';
 
@@ -186,16 +189,16 @@ function PredictionCard({ prediction }: { prediction: PredictionData }) {
       {/* Prediction Detail */}
       <View style={cardStyles.predRow}>
         <View style={cardStyles.predInfo}>
-          <Text style={cardStyles.predLabel}>YOUR PICK</Text>
-          <Text style={cardStyles.predValue}>{getOutcomeLabel(prediction)}</Text>
+          <Text style={cardStyles.predLabel}>{t('picks.yourPick')}</Text>
+          <Text style={cardStyles.predValue}>{getOutcomeLabel(prediction, t)}</Text>
           {prediction.predictionType === 'exact_score' && (
             <Text style={cardStyles.predScore}>
-              Score: {prediction.predictedHomeScore}-{prediction.predictedAwayScore}
+              {t('picks.score', { home: prediction.predictedHomeScore, away: prediction.predictedAwayScore })}
             </Text>
           )}
         </View>
         <View style={cardStyles.multiplierBox}>
-          <Text style={cardStyles.multiplierLabel}>MULTIPLIER</Text>
+          <Text style={cardStyles.multiplierLabel}>{t('picks.multiplier')}</Text>
           <Text style={cardStyles.multiplierValue}>x{prediction.oddsMultiplier.toFixed(1)}</Text>
         </View>
       </View>
@@ -220,21 +223,21 @@ function PredictionCard({ prediction }: { prediction: PredictionData }) {
             </Text>
           </View>
           {isVoid ? (
-            <Text style={cardStyles.actualScore}>Match cancelled</Text>
+            <Text style={cardStyles.actualScore}>{t('picks.matchCancelled')}</Text>
           ) : prediction.actualHomeScore != null ? (
             <Text style={cardStyles.actualScore}>
-              Final: {prediction.actualHomeScore} - {prediction.actualAwayScore}
+              {t('picks.finalScore', { home: prediction.actualHomeScore, away: prediction.actualAwayScore })}
             </Text>
           ) : null}
           {prediction.pointsAwarded > 0 && (
-            <Text style={cardStyles.pointsText}>+{prediction.pointsAwarded} pts</Text>
+            <Text style={cardStyles.pointsText}>{t('picks.points', { pts: prediction.pointsAwarded })}</Text>
           )}
         </View>
       ) : (
         <View style={cardStyles.pendingRow}>
           <View style={cardStyles.pendingBadge}>
             <Ionicons name="time-outline" size={14} color={colors.primary} />
-            <Text style={cardStyles.pendingText}>PENDING</Text>
+            <Text style={cardStyles.pendingText}>{t('picks.pending')}</Text>
           </View>
           <Text style={cardStyles.dateText}>
             {new Date(prediction.gameDate).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
@@ -246,6 +249,7 @@ function PredictionCard({ prediction }: { prediction: PredictionData }) {
 }
 
 export function MyPicksScreen() {
+  const { t } = useTranslation();
   const { tokens } = useAuth();
   const { isProMember } = usePurchases();
   const rootNav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -292,7 +296,7 @@ export function MyPicksScreen() {
         setDetailedStats(results[2]);
       }
     } catch (err) {
-      Toast.show({ type: 'error', text1: 'Error loading picks', text2: 'Pull down to try again' });
+      Toast.show({ type: 'error', text1: t('picks.errorLoading'), text2: t('dashboard.pullToRetry') });
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -318,27 +322,27 @@ export function MyPicksScreen() {
         <View style={styles.statsBanner}>
           <View style={styles.statItem}>
             <Text style={styles.statNumber}>{stats.totalPredictions}</Text>
-            <Text style={styles.statLabel}>TOTAL</Text>
+            <Text style={styles.statLabel}>{t('picks.total').toUpperCase()}</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
             <Text style={[styles.statNumber, { color: '#16A34A' }]}>{stats.won}</Text>
-            <Text style={styles.statLabel}>WON</Text>
+            <Text style={styles.statLabel}>{t('picks.won').toUpperCase()}</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
             <Text style={[styles.statNumber, { color: '#DC2626' }]}>{stats.lost}</Text>
-            <Text style={styles.statLabel}>LOST</Text>
+            <Text style={styles.statLabel}>{t('picks.lost').toUpperCase()}</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
             <Text style={[styles.statNumber, { color: colors.primary }]}>{stats.winRate}%</Text>
-            <Text style={styles.statLabel}>WIN RATE</Text>
+            <Text style={styles.statLabel}>{t('picks.winRate')}</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
             <Text style={styles.statNumber}>{stats.totalPoints}</Text>
-            <Text style={styles.statLabel}>POINTS</Text>
+            <Text style={styles.statLabel}>{t('leaderboard.points').toUpperCase()}</Text>
           </View>
         </View>
       )}
@@ -349,11 +353,11 @@ export function MyPicksScreen() {
           <View style={styles.proStatsCard}>
             <View style={styles.proStatsHeader}>
               <MaterialCommunityIcons name="lightning-bolt" size={16} color={colors.primary} />
-              <Text style={styles.proStatsTitle}>PRO INSIGHTS</Text>
+              <Text style={styles.proStatsTitle}>{t('picks.proInsights')}</Text>
             </View>
             {detailedStats.topSport && (
               <View style={styles.proStatRow}>
-                <Text style={styles.proStatLabel}>Best Sport</Text>
+                <Text style={styles.proStatLabel}>{t('picks.bestSport')}</Text>
                 <Text style={styles.proStatValue}>
                   {getSportLabel(detailedStats.topSport.sport)} ({detailedStats.topSport.wins}W / {detailedStats.topSport.points}pts)
                 </Text>
@@ -387,8 +391,8 @@ export function MyPicksScreen() {
           >
             <View style={styles.upgradeRow}>
               <Ionicons name="lock-closed" size={16} color={colors.primary} />
-              <Text style={styles.upgradeText}>Unlock detailed stats by sport</Text>
-              <Text style={styles.upgradeBtn}>UPGRADE</Text>
+              <Text style={styles.upgradeText}>{t('picks.unlockDetailedStats')}</Text>
+              <Text style={styles.upgradeBtn}>{t('matchPrediction.upgrade')}</Text>
             </View>
           </LinearGradient>
         </TouchableOpacity>
@@ -416,7 +420,7 @@ export function MyPicksScreen() {
                 sportFilter === null && styles.sportFilterTextActive,
               ]}
             >
-              All
+              {t('dashboard.all')}
             </Text>
           </TouchableOpacity>
 
@@ -457,7 +461,7 @@ export function MyPicksScreen() {
             activeOpacity={0.7}
           >
             <Text style={[styles.tabBtnText, activeTab === idx && styles.tabBtnTextActive]}>
-              {tab}
+              {tab === 'active' ? t('picks.active') : t('picks.history')}
               {idx === 0 && stats ? ` (${stats.pending})` : ''}
             </Text>
           </TouchableOpacity>
@@ -473,12 +477,12 @@ export function MyPicksScreen() {
         <View style={styles.emptyContainer}>
           <MaterialCommunityIcons name="target" size={48} color={colors.onSurfaceVariant} />
           <Text style={styles.emptyTitle}>
-            {activeTab === 0 ? 'No Active Picks' : 'No History Yet'}
+            {activeTab === 0 ? t('picks.noActivePicks') : t('picks.noHistoryYet')}
           </Text>
           <Text style={styles.emptySubtitle}>
             {activeTab === 0
-              ? 'Make predictions on upcoming matches to see them here'
-              : 'Your resolved predictions will appear here'}
+              ? t('picks.makePredictionsDesc')
+              : t('picks.resolvedAppearHere')}
           </Text>
         </View>
       ) : (

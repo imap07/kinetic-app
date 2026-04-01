@@ -11,6 +11,7 @@ import {
   TextInput,
   Alert,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useRoute } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -35,16 +36,16 @@ const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'P', 'BT', 'LIVE', 'Q1', 'Q2', 'Q
 const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AOT', 'AP', 'POST'];
 const NO_DRAW_SPORTS = ['basketball', 'baseball', 'american-football', 'formula-1'];
 
-function getStatusDisplay(status: string, statusLong?: string, elapsed?: number | string | null, date?: string): { label: string; isLive: boolean; isUpcoming: boolean } {
+function getStatusDisplay(status: string, t: (key: string) => string, statusLong?: string, elapsed?: number | string | null, date?: string): { label: string; isLive: boolean; isUpcoming: boolean } {
   if (LIVE_STATUSES.includes(status)) {
     return {
-      label: elapsed ? `LIVE · ${elapsed}'` : 'LIVE',
+      label: elapsed ? `${t('dashboard.live')} · ${elapsed}'` : t('dashboard.live'),
       isLive: true,
       isUpcoming: false,
     };
   }
   if (FINISHED_STATUSES.includes(status)) {
-    return { label: statusLong || 'Full Time', isLive: false, isUpcoming: false };
+    return { label: statusLong || t('matchPrediction.fullTime'), isLive: false, isUpcoming: false };
   }
   // Upcoming: show formatted date + time
   if (date) {
@@ -56,13 +57,13 @@ function getStatusDisplay(status: string, statusLong?: string, elapsed?: number 
     const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     let dayLabel: string;
-    if (gameDay.getTime() === today.getTime()) dayLabel = 'TODAY';
-    else if (gameDay.getTime() === tomorrow.getTime()) dayLabel = 'TOMORROW';
+    if (gameDay.getTime() === today.getTime()) dayLabel = t('dashboard.today').toUpperCase();
+    else if (gameDay.getTime() === tomorrow.getTime()) dayLabel = t('dashboard.tomorrow').toUpperCase();
     else dayLabel = d.toLocaleDateString([], { month: 'short', day: 'numeric' }).toUpperCase();
 
     return { label: `${dayLabel} · ${time}`, isLive: false, isUpcoming: true };
   }
-  return { label: 'SCHEDULED', isLive: false, isUpcoming: true };
+  return { label: t('matchPrediction.scheduled'), isLive: false, isUpcoming: true };
 }
 
 function TeamLogo({ uri, size = 64 }: { uri?: string; size?: number }) {
@@ -124,6 +125,7 @@ const STAT_KEYS = [
 ];
 
 export function MatchPredictionScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const route = useRoute<any>();
   const { fixtureApiId, sport = 'football' } = route.params as { fixtureApiId: number; sport?: string };
   const { tokens } = useAuth();
@@ -200,7 +202,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
         if (prediction.predictedAwayScore != null) setAwayScoreInput(String(prediction.predictedAwayScore));
       }
     } catch (err) {
-      Toast.show({ type: 'error', text1: 'Error loading match', text2: 'Pull down to try again' });
+      Toast.show({ type: 'error', text1: t('matchPrediction.errorLoading'), text2: t('dashboard.pullToRetry') });
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -250,7 +252,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
   const isLive = LIVE_STATUSES.includes(gameStatus);
   const canPredict = !isFinished && !isLive && !existingPrediction;
 
-  const statusDisplay = getStatusDisplay(gameStatus, statusLong, fixture?.elapsed, fixture?.date || genericGame?.date);
+  const statusDisplay = getStatusDisplay(gameStatus, t, statusLong, fixture?.elapsed, fixture?.date || genericGame?.date);
 
   const handleSubmitPrediction = async () => {
     if (!tokens?.accessToken || !selectedOutcome) return;
@@ -274,7 +276,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
     }
 
     if (predType === 'exact_score' && (homeScoreInput === '' || awayScoreInput === '')) {
-      Alert.alert('Missing Scores', 'Please enter both home and away scores for an exact score prediction.');
+      Alert.alert(t('matchPrediction.missingScores'), t('matchPrediction.missingScoresDesc'));
       return;
     }
 
@@ -302,7 +304,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
       setDailyStatus((prev) => prev ? { ...prev, used: prev.used + 1 } : prev);
       logPickCompleted(sport, leagueApiId ?? 0, predType);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Prediction Submitted', 'Your prediction has been recorded. Good luck!');
+      Alert.alert(t('matchPrediction.predictionSubmitted'), t('matchPrediction.predictionSubmittedDesc'));
     } catch (err: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Error', err.message || 'Failed to submit prediction');
@@ -314,16 +316,12 @@ export function MatchPredictionScreen({ navigation }: Props) {
   const handleDeletePrediction = async () => {
     if (!tokens?.accessToken || !existingPrediction) return;
     Alert.alert(
-      'Cancel Prediction',
-      'This will permanently cancel your pick for this match.\n\n' +
-        '\u2022 Your daily pick slot will be refunded\n' +
-        '\u2022 You will NOT be able to re-pick this match\n' +
-        '\u2022 Points already earned are unaffected\n\n' +
-        'Are you sure?',
+      t('matchPrediction.cancelPrediction'),
+      t('matchPrediction.cancelPredictionDesc'),
       [
-        { text: 'Keep Pick', style: 'cancel' },
+        { text: t('matchPrediction.keepPick'), style: 'cancel' },
         {
-          text: 'Cancel Pick',
+          text: t('matchPrediction.cancelPick'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -333,7 +331,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
               setPredType('result');
               setHomeScoreInput('');
               setAwayScoreInput('');
-              Toast.show({ type: 'success', text1: 'Prediction cancelled', text2: 'Your daily pick slot has been refunded' });
+              Toast.show({ type: 'success', text1: t('matchPrediction.predictionCancelled'), text2: t('matchPrediction.pickSlotRefunded') });
             } catch (err: any) {
               Alert.alert('Error', err.message || 'Failed to cancel prediction');
             }
@@ -350,7 +348,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
             <Ionicons name="chevron-back" size={22} color={colors.onSurface} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Match Details</Text>
+          <Text style={styles.headerTitle}>{t('matchPrediction.matchDetails')}</Text>
           <View style={{ width: 40 }} />
         </View>
         <View style={styles.loadingContainer}>
@@ -367,12 +365,12 @@ export function MatchPredictionScreen({ navigation }: Props) {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
             <Ionicons name="chevron-back" size={22} color={colors.onSurface} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Match Details</Text>
+          <Text style={styles.headerTitle}>{t('matchPrediction.matchDetails')}</Text>
           <View style={{ width: 40 }} />
         </View>
         <View style={styles.loadingContainer}>
           <Ionicons name="alert-circle-outline" size={48} color={colors.onSurfaceVariant} />
-          <Text style={styles.emptyText}>Match not found</Text>
+          <Text style={styles.emptyText}>{t('matchPrediction.matchNotFound')}</Text>
         </View>
       </View>
     );
@@ -394,7 +392,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
     : hasDraw
       ? [
           { key: 'home', label: homeTeamName, logo: homeTeamLogo },
-          { key: 'draw', label: 'Draw' },
+          { key: 'draw', label: t('matchPrediction.draw') },
           { key: 'away', label: awayTeamName, logo: awayTeamLogo },
         ]
       : [
@@ -486,7 +484,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
         <View style={styles.predictCard}>
           <View style={styles.predictHeader}>
             <Text style={styles.cardTitle}>
-              {existingPrediction ? 'YOUR PREDICTION' : 'MAKE YOUR PREDICTION'}
+              {existingPrediction ? t('matchPrediction.yourPrediction') : t('matchPrediction.makeYourPrediction')}
             </Text>
             <MaterialCommunityIcons
               name={existingPrediction ? 'check-circle' : 'target'}
@@ -514,16 +512,16 @@ export function MatchPredictionScreen({ navigation }: Props) {
                   styles.resolvedBadgeText,
                   { color: existingPrediction.status === 'void' ? colors.onSurfaceVariant : existingPrediction.status === 'won' ? '#16A34A' : '#DC2626' },
                 ]}>
-                  {existingPrediction.status === 'void' ? 'VOID' : existingPrediction.status === 'won' ? 'WON' : 'LOST'}
+                  {existingPrediction.status === 'void' ? t('matchPrediction.void') : existingPrediction.status === 'won' ? t('matchPrediction.won') : t('matchPrediction.lost')}
                 </Text>
               </View>
               {existingPrediction.status === 'void' ? (
                 <Text style={styles.resolvedDetail}>
-                  Match cancelled — prediction voided
+                  {t('matchPrediction.matchCancelledVoided')}
                 </Text>
               ) : (
                 <Text style={styles.resolvedDetail}>
-                  You predicted: {existingPrediction.predictedOutcome.toUpperCase()}
+                  {t('matchPrediction.youPredicted', { outcome: existingPrediction.predictedOutcome.toUpperCase() })}
                   {existingPrediction.predictionType === 'exact_score'
                     ? ` (${existingPrediction.predictedHomeScore}-${existingPrediction.predictedAwayScore})`
                     : ''}
@@ -534,7 +532,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
               )}
               {existingPrediction.status !== 'void' && existingPrediction.actualHomeScore != null && (
                 <Text style={styles.resolvedActual}>
-                  Final: {existingPrediction.actualHomeScore} - {existingPrediction.actualAwayScore}
+                  {t('matchPrediction.final', { home: existingPrediction.actualHomeScore, away: existingPrediction.actualAwayScore })}
                 </Text>
               )}
             </View>
@@ -544,14 +542,14 @@ export function MatchPredictionScreen({ navigation }: Props) {
                 <View style={styles.cantPredictContainer}>
                   <Ionicons name="time-outline" size={24} color={colors.onSurfaceVariant} />
                   <Text style={styles.cantPredictText}>
-                    {isLive ? 'Predictions are locked during live matches' : 'This match has already finished'}
+                    {isLive ? t('matchPrediction.lockedLive') : t('matchPrediction.matchFinished')}
                   </Text>
                   {existingPrediction && (
                     <Text style={styles.existingPredText}>
-                      Your pick: {existingPrediction.predictedOutcome.toUpperCase()}
+                      {t('matchPrediction.yourPick', { outcome: existingPrediction.predictedOutcome.toUpperCase() })}
                       {existingPrediction.predictionType === 'exact_score'
                         ? ` (${existingPrediction.predictedHomeScore}-${existingPrediction.predictedAwayScore})`
-                        : ''} -- Awaiting result
+                        : ''} -- {t('matchPrediction.awaitingResult')}
                     </Text>
                   )}
                 </View>
@@ -559,23 +557,23 @@ export function MatchPredictionScreen({ navigation }: Props) {
                 <View style={styles.existingPredContainer}>
                   <View style={styles.existingPredBadge}>
                     <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
-                    <Text style={styles.existingPredBadgeText}>PREDICTION LOCKED</Text>
+                    <Text style={styles.existingPredBadgeText}>{t('matchPrediction.predictionLocked')}</Text>
                   </View>
                   <Text style={styles.existingPredDetail}>
-                    {existingPrediction.predictedOutcome === 'home' ? homeTeamName + ' Win' :
-                     existingPrediction.predictedOutcome === 'away' ? awayTeamName + ' Win' : 'Draw'}
+                    {existingPrediction.predictedOutcome === 'home' ? homeTeamName + ' ' + t('matchPrediction.win') :
+                     existingPrediction.predictedOutcome === 'away' ? awayTeamName + ' ' + t('matchPrediction.win') : t('matchPrediction.draw')}
                   </Text>
                   {existingPrediction.predictionType === 'exact_score' && (
                     <Text style={styles.existingPredScore}>
-                      Exact Score: {existingPrediction.predictedHomeScore} - {existingPrediction.predictedAwayScore}
+                      {t('matchPrediction.exactScore')}: {existingPrediction.predictedHomeScore} - {existingPrediction.predictedAwayScore}
                     </Text>
                   )}
                   <Text style={styles.existingPredMultiplier}>
-                    x{existingPrediction.oddsMultiplier.toFixed(1)} multiplier
+                    x{existingPrediction.oddsMultiplier.toFixed(1)} {t('matchPrediction.multiplier')}
                   </Text>
                   <TouchableOpacity style={styles.deleteBtn} onPress={handleDeletePrediction}>
                     <Ionicons name="close-circle-outline" size={16} color="#DC2626" />
-                    <Text style={styles.deleteBtnText}>Cancel Pick</Text>
+                    <Text style={styles.deleteBtnText}>{t('matchPrediction.cancelPick')}</Text>
                   </TouchableOpacity>
                 </View>
               ) : (
@@ -585,11 +583,11 @@ export function MatchPredictionScreen({ navigation }: Props) {
                     <View style={styles.dailyLimitBanner}>
                       <MaterialCommunityIcons name="lightning-bolt" size={14} color={colors.primary} />
                       <Text style={styles.dailyLimitText}>
-                        {dailyStatus.used}/{dailyStatus.limit} free picks today
+                        {t('matchPrediction.freePicksToday', { used: dailyStatus.used, limit: dailyStatus.limit })}
                       </Text>
                       {dailyStatus.used >= dailyStatus.limit && (
                         <TouchableOpacity onPress={() => navigation.navigate('Paywall' as any, { trigger: 'daily_limit', dailyUsed: dailyStatus.used, dailyLimit: dailyStatus.limit })} hitSlop={8}>
-                          <Text style={styles.dailyLimitUpgrade}>UPGRADE</Text>
+                          <Text style={styles.dailyLimitUpgrade}>{t('matchPrediction.upgrade')}</Text>
                         </TouchableOpacity>
                       )}
                     </View>
@@ -603,7 +601,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
                         onPress={() => setPredType('result')}
                       >
                         <Text style={[styles.typeToggleBtnText, predType === 'result' && styles.typeToggleBtnTextActive]}>
-                          Result
+                          {t('matchPrediction.result')}
                         </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
@@ -617,7 +615,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
                         }}
                       >
                         <Text style={[styles.typeToggleBtnText, predType === 'exact_score' && styles.typeToggleBtnTextActive]}>
-                          Exact Score
+                          {t('matchPrediction.exactScore')}
                         </Text>
                         {!isProMember && (
                           <Ionicons name="lock-closed" size={12} color={colors.onSurfaceVariant} />
@@ -628,7 +626,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
 
                   {/* Outcome selection */}
                   <Text style={styles.predictSectionLabel}>
-                    {isF1 ? 'PICK THE WINNER' : 'PREDICT THE RESULT'}
+                    {isF1 ? t('matchPrediction.pickTheWinner') : t('matchPrediction.predictTheResult')}
                   </Text>
                   <View style={styles.outcomeRow}>
                     {outcomeOptions.map((opt) => {
@@ -678,7 +676,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
                   {/* Exact score inputs */}
                   {predType === 'exact_score' && !isF1 && (
                     <View style={styles.scoreInputContainer}>
-                      <Text style={styles.predictSectionLabel}>ENTER EXACT SCORE</Text>
+                      <Text style={styles.predictSectionLabel}>{t('matchPrediction.enterExactScore')}</Text>
                       <View style={styles.scoreInputRow}>
                         <View style={styles.scoreInputGroup}>
                           <Text style={styles.scoreInputTeam} numberOfLines={1}>{homeTeamName}</Text>
@@ -719,11 +717,11 @@ export function MatchPredictionScreen({ navigation }: Props) {
                     {submitting ? (
                       <ActivityIndicator size="small" color={colors.onPrimary} />
                     ) : (
-                      <Text style={styles.submitButtonText}>SUBMIT PREDICTION</Text>
+                      <Text style={styles.submitButtonText}>{t('matchPrediction.submitPrediction')}</Text>
                     )}
                   </TouchableOpacity>
                   {predType === 'exact_score' && (
-                    <Text style={styles.bonusHint}>Exact score correct = 2.5x bonus points</Text>
+                    <Text style={styles.bonusHint}>{t('matchPrediction.bonusHint')}</Text>
                   )}
                 </>
               )}
@@ -734,13 +732,13 @@ export function MatchPredictionScreen({ navigation }: Props) {
         {/* Football-specific: Match Statistics */}
         {isFootball && stats.length >= 2 && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>MATCH STATISTICS</Text>
+            <Text style={styles.cardTitle}>{t('matchPrediction.matchStatistics')}</Text>
 
             {/* Possession — special dual bar */}
             <View style={styles.statRow}>
               <View style={styles.statHeader}>
                 <Text style={styles.statValueHome}>{homePoss || `${homePossNum}%`}</Text>
-                <Text style={styles.statLabel}>POSSESSION</Text>
+                <Text style={styles.statLabel}>{t('matchPrediction.possession')}</Text>
                 <Text style={styles.statValueAway}>{awayPoss || `${awayPossNum}%`}</Text>
               </View>
               <View style={styles.statDualTrack}>
@@ -782,7 +780,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
         {/* Football-specific: Lineups */}
         {isFootball && lineups.length >= 2 && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>LINEUPS</Text>
+            <Text style={styles.cardTitle}>{t('matchPrediction.lineups')}</Text>
 
             {/* Formations */}
             <View style={styles.formationRow}>
@@ -808,7 +806,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
                   )}
                   <Text style={styles.coachName} numberOfLines={1}>{lineups[0]?.coachName || '—'}</Text>
                 </View>
-                <Text style={styles.coachLabel}>COACH</Text>
+                <Text style={styles.coachLabel}>{t('matchPrediction.coach')}</Text>
                 <View style={[styles.coachSide, { justifyContent: 'flex-end' }]}>
                   <Text style={styles.coachName} numberOfLines={1}>{lineups[1]?.coachName || '—'}</Text>
                   {lineups[1]?.coachPhoto ? (
@@ -823,7 +821,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
             )}
 
             {/* Starting XI — side by side */}
-            <Text style={styles.lineupSubtitle}>STARTING XI</Text>
+            <Text style={styles.lineupSubtitle}>{t('matchPrediction.startingXI')}</Text>
             <View style={styles.lineupColumns}>
               {/* Home team */}
               <View style={styles.lineupCol}>
@@ -870,7 +868,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
             {/* Substitutes */}
             {(lineups[0]?.substitutes?.length > 0 || lineups[1]?.substitutes?.length > 0) && (
               <>
-                <Text style={[styles.lineupSubtitle, { marginTop: 20 }]}>SUBSTITUTES</Text>
+                <Text style={[styles.lineupSubtitle, { marginTop: 20 }]}>{t('matchPrediction.substitutes')}</Text>
                 <View style={styles.lineupColumns}>
                   <View style={styles.lineupCol}>
                     {lineups[0]?.substitutes.map((p, i) => (
@@ -912,11 +910,11 @@ export function MatchPredictionScreen({ navigation }: Props) {
         {/* Football-specific: Head to Head */}
         {isFootball && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>HEAD TO HEAD</Text>
+            <Text style={styles.cardTitle}>{t('matchPrediction.headToHead')}</Text>
             {h2hLoading ? (
               <ActivityIndicator size="small" color={colors.primary} />
             ) : h2hFixtures.length === 0 ? (
-              <Text style={styles.h2hEmpty}>No previous meetings</Text>
+              <Text style={styles.h2hEmpty}>{t('matchPrediction.noPreviousMeetings')}</Text>
             ) : (
               <>
                 {/* Summary row */}
@@ -946,7 +944,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
                       </View>
                       <View style={styles.h2hSummaryItem}>
                         <Text style={styles.h2hSummaryCount}>{draws}</Text>
-                        <Text style={styles.h2hSummaryLabel}>Draws</Text>
+                        <Text style={styles.h2hSummaryLabel}>{t('matchPrediction.draws')}</Text>
                       </View>
                       <View style={styles.h2hSummaryItem}>
                         <Text style={styles.h2hSummaryCount}>{awayWins}</Text>
@@ -1012,7 +1010,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
         {/* Football-specific: Events Timeline */}
         {isFootball && sortedEvents.length > 0 && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>MATCH EVENTS</Text>
+            <Text style={styles.cardTitle}>{t('matchPrediction.matchEvents')}</Text>
             <View style={styles.timeline}>
               <View style={styles.timelineLine} />
               {sortedEvents.map((event, idx) => {

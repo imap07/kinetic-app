@@ -12,6 +12,7 @@ import {
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../theme';
 import Toast from 'react-native-toast-message';
 import { useAuth } from '../contexts/AuthContext';
@@ -70,6 +71,7 @@ function TeamLogo({ uri, size = 28 }: { uri?: string; size?: number }) {
 type TabKey = 'matches' | 'standings';
 
 export function LeagueDetailScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
   const rootNav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<any>();
@@ -108,7 +110,7 @@ export function LeagueDetailScreen() {
       const result = await sportsApi.getLeagueDetail(tokens.accessToken, sport, leagueApiId);
       setData(result);
     } catch (err) {
-      Toast.show({ type: 'error', text1: 'Error loading league', text2: 'Pull down to try again' });
+      Toast.show({ type: 'error', text1: t('leagueDetail.couldNotLoad'), text2: t('leagueDetail.pullToRefresh') });
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -143,7 +145,7 @@ export function LeagueDetailScreen() {
       <View style={styles.container}>
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Fetching {leagueName} data...</Text>
+          <Text style={styles.loadingText}>{t('leagueDetail.fetchingData', { league: leagueName })}</Text>
         </View>
       </View>
     );
@@ -178,11 +180,11 @@ export function LeagueDetailScreen() {
         {data?.source === 'api' ? (
           <View style={styles.liveBadge}>
             <View style={styles.liveDot} />
-            <Text style={styles.liveBadgeText}>LIVE</Text>
+            <Text style={styles.liveBadgeText}>{t('leagueDetail.live')}</Text>
           </View>
         ) : (
           <View style={styles.cacheBadge}>
-            <Text style={styles.cacheBadgeText}>CACHED</Text>
+            <Text style={styles.cacheBadgeText}>{t('leagueDetail.cached')}</Text>
           </View>
         )}
       </View>
@@ -197,8 +199,8 @@ export function LeagueDetailScreen() {
           >
             <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
               {tab === 'matches'
-                ? isF1 ? 'RACES' : 'MATCHES'
-                : isF1 ? 'DRIVER STANDINGS' : 'STANDINGS'}
+                ? isF1 ? t('leagueDetail.races') : t('leagueDetail.matches')
+                : isF1 ? t('leagueDetail.driverStandings') : t('leagueDetail.standings')}
             </Text>
           </TouchableOpacity>
         ))}
@@ -226,7 +228,7 @@ export function LeagueDetailScreen() {
         <View style={styles.coinLeaguesSection}>
           <View style={styles.coinLeaguesSectionHeader}>
             <MaterialCommunityIcons name="trophy" size={18} color="#4FC3F7" />
-            <Text style={styles.coinLeaguesSectionTitle}>League CoinLeagues</Text>
+            <Text style={styles.coinLeaguesSectionTitle}>{t('leagueDetail.coinLeagues')}</Text>
           </View>
           {coinLeaguesLoading ? (
             <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 16 }} />
@@ -250,7 +252,7 @@ export function LeagueDetailScreen() {
                   <Text style={styles.coinLeagueName} numberOfLines={1}>{cl.name}</Text>
                   <View style={styles.coinLeagueRow}>
                     <Ionicons name="ticket-outline" size={12} color={colors.primary} />
-                    <Text style={styles.coinLeagueDetail}>{cl.entryFee} coins</Text>
+                    <Text style={styles.coinLeagueDetail}>{t('leagues.coins', { count: cl.entryFee })}</Text>
                   </View>
                   <View style={styles.coinLeagueRow}>
                     <Ionicons name="people-outline" size={12} color={colors.onSurfaceVariant} />
@@ -278,7 +280,7 @@ export function LeagueDetailScreen() {
             >
               <MaterialCommunityIcons name="plus-circle-outline" size={20} color={colors.primary} />
               <Text style={styles.coinLeagueCtaText}>
-                Create a CoinLeague for {leagueName}
+                {t('leagueDetail.createCoinLeague', { league: leagueName })}
               </Text>
             </TouchableOpacity>
           )}
@@ -303,6 +305,7 @@ function MatchesTab({
   sport: SportKey;
   onGamePress: (id: number) => void;
 }) {
+  const { t } = useTranslation();
   const isF1 = sport === 'formula-1';
 
   return (
@@ -311,7 +314,7 @@ function MatchesTab({
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionDot} />
-            <Text style={styles.sectionTitle}>LIVE</Text>
+            <Text style={styles.sectionTitle}>{t('leagueDetail.live')}</Text>
             <Text style={styles.sectionCount}>{live.length}</Text>
           </View>
           {live.map((g) => (
@@ -324,7 +327,7 @@ function MatchesTab({
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="time-outline" size={16} color={colors.primary} />
-            <Text style={styles.sectionTitle}>{isF1 ? 'UPCOMING RACES' : 'UPCOMING'}</Text>
+            <Text style={styles.sectionTitle}>{isF1 ? t('leagueDetail.upcomingRaces') : t('leagueDetail.upcoming')}</Text>
           </View>
           {upcoming.map((g) => (
             <GameCard key={g.apiId || g._id} game={g} isF1={isF1} onPress={() => onGamePress(g.apiId)} />
@@ -336,7 +339,7 @@ function MatchesTab({
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <MaterialCommunityIcons name="clock-check-outline" size={16} color={colors.primary} />
-            <Text style={styles.sectionTitle}>{isF1 ? 'RACE RESULTS' : 'RECENT RESULTS'}</Text>
+            <Text style={styles.sectionTitle}>{isF1 ? t('leagueDetail.raceResults') : t('leagueDetail.recentResults')}</Text>
           </View>
           {recent.map((g) => (
             <GameCard key={g.apiId || g._id} game={g} isF1={isF1} onPress={() => onGamePress(g.apiId)} />
@@ -347,8 +350,8 @@ function MatchesTab({
       {live.length === 0 && upcoming.length === 0 && recent.length === 0 && (
         <View style={styles.emptyState}>
           <Ionicons name="trophy-outline" size={48} color={colors.onSurfaceVariant} />
-          <Text style={styles.emptyTitle}>No data available</Text>
-          <Text style={styles.emptySubtitle}>Pull down to refresh</Text>
+          <Text style={styles.emptyTitle}>{t('leagueDetail.noData')}</Text>
+          <Text style={styles.emptySubtitle}>{t('leagueDetail.pullToRefresh')}</Text>
         </View>
       )}
     </>
@@ -448,12 +451,14 @@ function GameCard({
 }
 
 function StandingsTab({ standings, sport }: { standings: SportStandingEntry[] | null | undefined; sport: SportKey }) {
+  const { t } = useTranslation();
+
   if (!standings || standings.length === 0) {
     return (
       <View style={styles.emptyState}>
         <MaterialCommunityIcons name="trophy-outline" size={48} color={colors.onSurfaceVariant} />
-        <Text style={styles.emptyTitle}>Standings not available</Text>
-        <Text style={styles.emptySubtitle}>Pull down to refresh</Text>
+        <Text style={styles.emptyTitle}>{t('leagueDetail.standingsNotAvailable')}</Text>
+        <Text style={styles.emptySubtitle}>{t('leagueDetail.pullToRefresh')}</Text>
       </View>
     );
   }

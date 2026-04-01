@@ -16,6 +16,7 @@ import { Image as ExpoImage } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors, borderRadius } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -259,6 +260,7 @@ export function EditFavoriteLeaguesScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { tokens, user, refreshProfile } = useAuth();
+  const { t } = useTranslation();
 
   const sports = useMemo(
     () =>
@@ -419,7 +421,7 @@ export function EditFavoriteLeaguesScreen() {
       await refreshProfile();
       navigation.goBack();
     } catch {
-      Alert.alert('Error', 'Failed to update favorite leagues. Please try again.');
+      Alert.alert(t('common.error'), t('editFavorites.errorLeagues'));
     } finally {
       setSaving(false);
     }
@@ -445,15 +447,15 @@ export function EditFavoriteLeaguesScreen() {
 
   const regionLabel = isFootball
     ? activeRegion === 'all'
-      ? 'All Leagues'
+      ? t('editFavorites.allLeagues')
       : REGION_LABELS[activeRegion] || activeRegion
-    : 'Featured Leagues';
+    : t('editFavorites.featuredLeagues');
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Loading leagues...</Text>
+        <Text style={styles.loadingText}>{t('leagueSelection.loading')}</Text>
       </View>
     );
   }
@@ -465,12 +467,12 @@ export function EditFavoriteLeaguesScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
           <Feather name="arrow-left" size={22} color={colors.onSurface} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>FAVORITE LEAGUES</Text>
+        <Text style={styles.headerTitle}>{t('editFavorites.leaguesTitle')}</Text>
         <TouchableOpacity hitSlop={12} onPress={handleSave} disabled={saving || !canSave}>
           {saving ? (
             <ActivityIndicator size="small" color={colors.primary} />
           ) : (
-            <Text style={[styles.saveBtn, !canSave && { opacity: 0.3 }]}>SAVE</Text>
+            <Text style={[styles.saveBtn, !canSave && { opacity: 0.3 }]}>{t('editFavorites.save')}</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -492,7 +494,7 @@ export function EditFavoriteLeaguesScreen() {
         />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search leagues or countries..."
+          placeholder={t('editFavorites.searchPlaceholder')}
           placeholderTextColor={colors.onSurfaceVariant}
           value={search}
           onChangeText={setSearch}
@@ -545,14 +547,14 @@ export function EditFavoriteLeaguesScreen() {
           ListHeaderComponent={
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionLabel}>{regionLabel}</Text>
-              <Text style={styles.sectionCount}>{filtered.length} leagues</Text>
+              <Text style={styles.sectionCount}>{filtered.length} {t('editFavorites.leagues')}</Text>
             </View>
           }
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <Ionicons name="search-outline" size={40} color={colors.onSurfaceVariant} />
-              <Text style={styles.emptyText}>No leagues found</Text>
-              <Text style={styles.emptyHint}>Try a different search or region</Text>
+              <Text style={styles.emptyText}>{t('editFavorites.noLeagues')}</Text>
+              <Text style={styles.emptyHint}>{t('editFavorites.noLeaguesHint')}</Text>
             </View>
           }
           ListFooterComponent={<View style={{ height: 120 }} />}
@@ -564,8 +566,9 @@ export function EditFavoriteLeaguesScreen() {
         <View style={[styles.ctaContainer, { paddingBottom: insets.bottom + 16 }]}>
           <View style={styles.ctaSummary}>
             <Text style={styles.ctaSummaryText}>
-              <Text style={styles.ctaSummaryCount}>{selected.size}</Text>
-              {' '}league{selected.size !== 1 ? 's' : ''} selected
+              {selected.size !== 1
+                ? t('editFavorites.leaguesSelectedPlural', { count: selected.size })
+                : t('editFavorites.leaguesSelected', { count: selected.size })}
             </Text>
           </View>
 
@@ -585,7 +588,7 @@ export function EditFavoriteLeaguesScreen() {
                 <ActivityIndicator size="small" color="#4A5E00" />
               ) : (
                 <Text style={[styles.ctaText, canSave && styles.ctaTextActive]}>
-                  SAVE CHANGES
+                  {t('editFavorites.saveChanges')}
                 </Text>
               )}
             </LinearGradient>

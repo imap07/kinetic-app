@@ -9,6 +9,7 @@ import {
   RefreshControl,
   Modal,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -29,6 +30,7 @@ import type { ProfileStackParamList } from '../navigation/types';
 type Nav = NativeStackNavigationProp<ProfileStackParamList>;
 
 export function WalletRewardsScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
   const { tokens } = useAuth();
@@ -77,13 +79,13 @@ export function WalletRewardsScreen() {
 
   const txTypeDisplay = (type: string) => {
     switch (type) {
-      case 'purchase': return { label: 'Coin Purchase', icon: 'arrow-down-left' as const, color: colors.primary };
-      case 'subscription_grant': return { label: 'Pro Bonus', icon: 'gift' as const, color: '#FC5B00' };
-      case 'league_entry': return { label: 'League Entry', icon: 'arrow-up-right' as const, color: '#FF4444' };
-      case 'league_winnings': return { label: 'League Rewards', icon: 'award' as const, color: '#FFD700' };
-      case 'giftcard_redemption': return { label: 'Gift Card', icon: 'shopping-bag' as const, color: '#FF4444' };
-      case 'refund': return { label: 'Refund', icon: 'rotate-ccw' as const, color: colors.info };
-      case 'welcome_bonus': return { label: 'Welcome Bonus', icon: 'star' as const, color: colors.primary };
+      case 'purchase': return { label: t('wallet.txPurchase'), icon: 'arrow-down-left' as const, color: colors.primary };
+      case 'subscription_grant': return { label: t('wallet.txProBonus'), icon: 'gift' as const, color: '#FC5B00' };
+      case 'league_entry': return { label: t('wallet.txLeagueEntry'), icon: 'arrow-up-right' as const, color: '#FF4444' };
+      case 'league_winnings': return { label: t('wallet.txLeagueRewards'), icon: 'award' as const, color: '#FFD700' };
+      case 'giftcard_redemption': return { label: t('wallet.txGiftCard'), icon: 'shopping-bag' as const, color: '#FF4444' };
+      case 'refund': return { label: t('wallet.txRefund'), icon: 'rotate-ccw' as const, color: colors.info };
+      case 'welcome_bonus': return { label: t('wallet.txWelcomeBonus'), icon: 'star' as const, color: colors.primary };
       default: return { label: type, icon: 'circle' as const, color: colors.onSurfaceDim };
     }
   };
@@ -94,7 +96,7 @@ export function WalletRewardsScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
           <Feather name="arrow-left" size={22} color={colors.onSurface} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>WALLET</Text>
+        <Text style={styles.headerTitle}>{t('wallet.title')}</Text>
         <View style={{ width: 22 }} />
       </View>
 
@@ -110,7 +112,7 @@ export function WalletRewardsScreen() {
           colors={['rgba(202,253,0,0.12)', 'rgba(202,253,0,0.02)']}
           style={styles.balanceCard}
         >
-          <Text style={styles.balanceLabel}>COIN BALANCE</Text>
+          <Text style={styles.balanceLabel}>{t('wallet.coinBalance')}</Text>
           <View style={styles.balanceMainRow}>
             <MaterialCommunityIcons name="circle-multiple" size={28} color={colors.primary} />
             <Text style={styles.balanceValue}>
@@ -121,13 +123,13 @@ export function WalletRewardsScreen() {
             <View style={styles.balanceStat}>
               <Ionicons name="lock-closed" size={12} color={colors.warning} />
               <Text style={styles.balanceStatText}>
-                {lockedBalance.toLocaleString()} locked
+                {lockedBalance.toLocaleString()} {t('wallet.locked')}
               </Text>
             </View>
             <View style={styles.balanceStat}>
               <Ionicons name="wallet" size={12} color={colors.primary} />
               <Text style={styles.balanceStatText}>
-                {available.toLocaleString()} available
+                {available.toLocaleString()} {t('wallet.available')}
               </Text>
             </View>
           </View>
@@ -135,13 +137,13 @@ export function WalletRewardsScreen() {
             <View style={styles.balanceStat}>
               <Ionicons name="trending-up" size={12} color={colors.secondary} />
               <Text style={styles.balanceStatText}>
-                {totalEarned.toLocaleString()} earned
+                {totalEarned.toLocaleString()} {t('wallet.earned')}
               </Text>
             </View>
             <View style={styles.balanceStat}>
               <Ionicons name="trending-down" size={12} color={colors.error} />
               <Text style={styles.balanceStatText}>
-                {totalSpent.toLocaleString()} spent
+                {totalSpent.toLocaleString()} {t('wallet.spent')}
               </Text>
             </View>
           </View>
@@ -156,8 +158,8 @@ export function WalletRewardsScreen() {
             <View style={[styles.actionIconWrap, { backgroundColor: 'rgba(202,253,0,0.1)' }]}>
               <Feather name="plus-circle" size={22} color={colors.primary} />
             </View>
-            <Text style={styles.actionTitle}>Buy Coins</Text>
-            <Text style={styles.actionDesc}>Get coins via in-app purchase</Text>
+            <Text style={styles.actionTitle}>{t('wallet.buyCoinsTitle')}</Text>
+            <Text style={styles.actionDesc}>{t('wallet.buyCoinsDesc')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -168,13 +170,13 @@ export function WalletRewardsScreen() {
             <View style={[styles.actionIconWrap, { backgroundColor: 'rgba(252,91,0,0.1)' }]}>
               <Feather name="gift" size={22} color="#FC5B00" />
             </View>
-            <Text style={styles.actionTitle}>Gift Cards</Text>
-            <Text style={styles.actionDesc}>Redeem coins for gift cards</Text>
+            <Text style={styles.actionTitle}>{t('wallet.giftCardsTitle')}</Text>
+            <Text style={styles.actionDesc}>{t('wallet.giftCardsDesc')}</Text>
           </TouchableOpacity>
         </View>
 
         <Text style={[styles.sectionLabel, { paddingHorizontal: spacing['2xl'], marginTop: spacing['3xl'] }]}>
-          RECENT ACTIVITY
+          {t('wallet.recentActivity')}
         </Text>
 
         {txLoading ? (
@@ -182,7 +184,7 @@ export function WalletRewardsScreen() {
         ) : transactions.length === 0 ? (
           <View style={styles.emptyTx}>
             <Text style={styles.emptyTxText}>
-              No transactions yet. Buy coins to get started!
+              {t('wallet.noTransactions')}
             </Text>
           </View>
         ) : (
@@ -228,27 +230,27 @@ export function WalletRewardsScreen() {
         )}
 
         <View style={styles.howSection}>
-          <Text style={styles.sectionLabel}>HOW IT WORKS</Text>
+          <Text style={styles.sectionLabel}>{t('wallet.howItWorks')}</Text>
           <View style={styles.howCard}>
             <HowStep
               step="1"
-              title="Buy or Earn Coins"
-              desc="Purchase coin packs or earn 30/month with Pro"
+              title={t('wallet.step1Title')}
+              desc={t('wallet.step1Desc')}
             />
             <HowStep
               step="2"
-              title="Join Leagues"
-              desc="Use coins to enter prediction leagues and compete"
+              title={t('wallet.step2Title')}
+              desc={t('wallet.step2Desc')}
             />
             <HowStep
               step="3"
-              title="Win Prizes"
-              desc="Top predictors win the prize pool (minus 10% fee)"
+              title={t('wallet.step3Title')}
+              desc={t('wallet.step3Desc')}
             />
             <HowStep
               step="4"
-              title="Redeem Rewards"
-              desc="Exchange coins for real gift cards"
+              title={t('wallet.step4Title')}
+              desc={t('wallet.step4Desc')}
               isLast
             />
           </View>
@@ -256,8 +258,7 @@ export function WalletRewardsScreen() {
 
         {/* Compliance footer */}
         <Text style={styles.disclaimer}>
-          Kinetic is a skill-based prediction game for entertainment purposes.
-          Coins are virtual credits with no cash value. Not a gambling service.
+          {t('wallet.disclaimer')}
         </Text>
       </ScrollView>
 
@@ -276,13 +277,9 @@ export function WalletRewardsScreen() {
               color={colors.primary}
               style={{ alignSelf: 'center', marginBottom: 12 }}
             />
-            <Text style={styles.modalTitle}>Welcome to Kinetic Wallet</Text>
+            <Text style={styles.modalTitle}>{t('wallet.welcomeTitle')}</Text>
             <Text style={styles.modalBody}>
-              Coins are virtual credits used within Kinetic for:{'\n\n'}
-              {'\u2022'} Entering prediction leagues (skill-based competitions){'\n'}
-              {'\u2022'} Redeeming promotional gift card rewards{'\n\n'}
-              Coins have no real-world cash value and cannot be transferred
-              to other users or converted to currency.
+              {t('wallet.welcomeBody')}
             </Text>
             <TouchableOpacity
               style={styles.modalBtn}
@@ -291,7 +288,7 @@ export function WalletRewardsScreen() {
                 AsyncStorage.setItem('wallet_disclaimer_seen', '1');
               }}
             >
-              <Text style={styles.modalBtnText}>I Understand</Text>
+              <Text style={styles.modalBtnText}>{t('wallet.iUnderstand')}</Text>
             </TouchableOpacity>
           </View>
         </View>

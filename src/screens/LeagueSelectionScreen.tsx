@@ -12,6 +12,7 @@ import {
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image as ExpoImage } from 'expo-image';
+import { useTranslation } from 'react-i18next';
 import { colors, borderRadius } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -195,13 +196,14 @@ function PopularPicks({
   selected: Set<number>;
   onToggle: (id: number) => void;
 }) {
+  const { t } = useTranslation();
   if (leagues.length === 0) return null;
 
   return (
     <View style={styles.popularSection}>
       <View style={styles.popularHeader}>
         <Ionicons name="flame" size={16} color="#FF7351" />
-        <Text style={styles.popularTitle}>Most Popular</Text>
+        <Text style={styles.popularTitle}>{t('leagueSelection.mostPopular')}</Text>
       </View>
       <ScrollView
         horizontal
@@ -310,10 +312,11 @@ const LeagueCard = memo(function LeagueCard({
 // ─── Section Header ──────────────────────────────────────
 
 function SectionLabel({ label, count }: { label: string; count: number }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.sectionHeader}>
       <Text style={styles.sectionLabel}>{label}</Text>
-      <Text style={styles.sectionCount}>{count} leagues</Text>
+      <Text style={styles.sectionCount}>{count} {t('leagueSelection.leagues')}</Text>
     </View>
   );
 }
@@ -332,6 +335,7 @@ const getItemLayout = (_data: any, index: number) => ({
 
 export function LeagueSelectionScreen({ onComplete, selectedSports }: Props) {
   const { tokens } = useAuth();
+  const { t } = useTranslation();
   const sports = useMemo(
     () => (selectedSports && selectedSports.length > 0 ? selectedSports : ['football']),
     [selectedSports],
@@ -499,15 +503,15 @@ export function LeagueSelectionScreen({ onComplete, selectedSports }: Props) {
 
   const regionLabel = isFootball
     ? activeRegion === 'all'
-      ? 'All Leagues'
+      ? t('leagueSelection.allLeagues')
       : REGION_LABELS[activeRegion] || activeRegion
-    : 'Featured Leagues';
+    : t('leagueSelection.featuredLeagues');
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Loading leagues...</Text>
+        <Text style={styles.loadingText}>{t('leagueSelection.loading')}</Text>
       </View>
     );
   }
@@ -516,11 +520,9 @@ export function LeagueSelectionScreen({ onComplete, selectedSports }: Props) {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.stepLabel}>Step 3 of 3</Text>
-        <Text style={styles.title}>Pick your leagues</Text>
-        <Text style={styles.subtitle}>
-          We'll tailor your predictions, live scores, and daily challenges.
-        </Text>
+        <Text style={styles.stepLabel}>{t('leagueSelection.step')}</Text>
+        <Text style={styles.title}>{t('leagueSelection.title')}</Text>
+        <Text style={styles.subtitle}>{t('leagueSelection.subtitle')}</Text>
       </View>
 
       {/* Sport tabs — only if multiple sports selected */}
@@ -540,7 +542,7 @@ export function LeagueSelectionScreen({ onComplete, selectedSports }: Props) {
         />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search leagues or countries..."
+          placeholder={t('leagueSelection.searchPlaceholder')}
           placeholderTextColor={colors.onSurfaceVariant}
           value={search}
           onChangeText={setSearch}
@@ -605,8 +607,8 @@ export function LeagueSelectionScreen({ onComplete, selectedSports }: Props) {
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <Ionicons name="search-outline" size={40} color={colors.onSurfaceVariant} />
-              <Text style={styles.emptyText}>No leagues found</Text>
-              <Text style={styles.emptyHint}>Try a different search or region</Text>
+              <Text style={styles.emptyText}>{t('leagueSelection.noLeagues')}</Text>
+              <Text style={styles.emptyHint}>{t('leagueSelection.noLeaguesHint')}</Text>
             </View>
           }
           ListFooterComponent={<View style={{ height: 120 }} />}
@@ -618,11 +620,12 @@ export function LeagueSelectionScreen({ onComplete, selectedSports }: Props) {
         <View style={styles.ctaSummary}>
           {selected.size > 0 ? (
             <Text style={styles.ctaSummaryText}>
-              <Text style={styles.ctaSummaryCount}>{selected.size}</Text>
-              {' '}league{selected.size !== 1 ? 's' : ''} selected
+              {selected.size !== 1
+                ? t('leagueSelection.leaguesSelectedPlural', { count: selected.size })
+                : t('leagueSelection.leaguesSelected', { count: selected.size })}
             </Text>
           ) : (
-            <Text style={styles.ctaSummaryHint}>Pick at least {MIN_LEAGUES} to continue</Text>
+            <Text style={styles.ctaSummaryHint}>{t('leagueSelection.pickAtLeast', { min: MIN_LEAGUES })}</Text>
           )}
         </View>
 
@@ -647,7 +650,7 @@ export function LeagueSelectionScreen({ onComplete, selectedSports }: Props) {
             ) : (
               <>
                 <Text style={[styles.ctaText, canContinue && styles.ctaTextActive]}>
-                  {canContinue ? "LET'S GO" : 'SELECT LEAGUES'}
+                  {canContinue ? t('leagueSelection.letsGo') : t('leagueSelection.selectLeagues')}
                 </Text>
                 {canContinue && (
                   <Ionicons name="arrow-forward" size={18} color="#4A5E00" />

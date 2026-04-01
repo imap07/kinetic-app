@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -34,22 +35,23 @@ function getNotifIcon(type: string, read: boolean) {
   }
 }
 
-function formatNotifTime(dateStr: string): string {
+function formatNotifTime(dateStr: string, t: (key: string, opts?: Record<string, unknown>) => string): string {
   const d = new Date(dateStr);
   const now = new Date();
   const diffMs = now.getTime() - d.getTime();
   const diffMin = Math.floor(diffMs / 60000);
-  if (diffMin < 1) return 'Just now';
-  if (diffMin < 60) return `${diffMin} min ago`;
+  if (diffMin < 1) return t('notifications.justNow');
+  if (diffMin < 60) return t('notifications.minAgo', { count: diffMin });
   const diffHrs = Math.floor(diffMin / 60);
-  if (diffHrs < 24) return `${diffHrs} hr${diffHrs > 1 ? 's' : ''} ago`;
+  if (diffHrs < 24) return diffHrs === 1 ? t('notifications.hrAgo', { count: diffHrs }) : t('notifications.hrsAgo', { count: diffHrs });
   const diffDays = Math.floor(diffHrs / 24);
-  if (diffDays === 1) return '1 day ago';
-  if (diffDays < 7) return `${diffDays} days ago`;
+  if (diffDays === 1) return t('notifications.dayAgo');
+  if (diffDays < 7) return t('notifications.daysAgo', { count: diffDays });
   return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
 export function NotificationsScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { tokens } = useAuth();
@@ -99,7 +101,7 @@ export function NotificationsScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
           <Feather name="arrow-left" size={22} color={colors.onSurface} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>NOTIFICATIONS</Text>
+        <Text style={styles.headerTitle}>{t('notifications.title')}</Text>
         <View style={{ width: 22 }} />
       </View>
 
@@ -114,8 +116,8 @@ export function NotificationsScreen() {
         {/* Push toggle */}
         <View style={styles.toggleRow}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.toggleLabel}>Push Notifications</Text>
-            <Text style={styles.toggleSub}>Receive alerts for live matches and results</Text>
+            <Text style={styles.toggleLabel}>{t('notifications.pushNotifications')}</Text>
+            <Text style={styles.toggleSub}>{t('notifications.pushDesc')}</Text>
           </View>
           <Switch
             value={pushEnabled}
@@ -130,7 +132,7 @@ export function NotificationsScreen() {
         ) : notifications.length === 0 ? (
           <View style={styles.emptyState}>
             <Feather name="bell-off" size={32} color={colors.onSurfaceVariant} />
-            <Text style={styles.emptyText}>No notifications yet</Text>
+            <Text style={styles.emptyText}>{t('notifications.empty')}</Text>
           </View>
         ) : (
           <>
@@ -138,9 +140,9 @@ export function NotificationsScreen() {
             {unreadNotifs.length > 0 && (
               <>
                 <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionLabel}>NEW</Text>
+                  <Text style={styles.sectionLabel}>{t('notifications.new')}</Text>
                   <TouchableOpacity onPress={handleMarkAllRead}>
-                    <Text style={styles.markRead}>Mark all read</Text>
+                    <Text style={styles.markRead}>{t('notifications.markAllRead')}</Text>
                   </TouchableOpacity>
                 </View>
                 {unreadNotifs.map((n) => (
@@ -154,7 +156,7 @@ export function NotificationsScreen() {
                         <View style={styles.unreadDot} />
                       </View>
                       <Text style={styles.notifMessage}>{n.body}</Text>
-                      <Text style={styles.notifTime}>{formatNotifTime(n.createdAt)}</Text>
+                      <Text style={styles.notifTime}>{formatNotifTime(n.createdAt, t)}</Text>
                     </View>
                   </View>
                 ))}
@@ -165,7 +167,7 @@ export function NotificationsScreen() {
             {readNotifs.length > 0 && (
               <>
                 <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionLabel}>EARLIER</Text>
+                  <Text style={styles.sectionLabel}>{t('notifications.earlier')}</Text>
                 </View>
                 {readNotifs.map((n) => (
                   <View key={n._id} style={styles.notifCard}>
@@ -175,7 +177,7 @@ export function NotificationsScreen() {
                     <View style={styles.notifContent}>
                       <Text style={styles.notifTitleRead}>{n.title}</Text>
                       <Text style={styles.notifMessageRead}>{n.body}</Text>
-                      <Text style={styles.notifTime}>{formatNotifTime(n.createdAt)}</Text>
+                      <Text style={styles.notifTime}>{formatNotifTime(n.createdAt, t)}</Text>
                     </View>
                   </View>
                 ))}

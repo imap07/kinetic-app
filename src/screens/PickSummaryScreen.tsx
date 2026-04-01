@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius } from '../theme';
@@ -22,19 +23,19 @@ type Props = {
   navigation: NativeStackNavigationProp<HomeStackParamList, 'PickSummary'>;
 };
 
-function formatOutcome(p: PredictionData): string {
+function formatOutcome(p: PredictionData, t: (key: string) => string): string {
   if (p.predictionType === 'exact_score' && p.predictedHomeScore != null && p.predictedAwayScore != null) {
     return `${p.predictedHomeScore}-${p.predictedAwayScore}`;
   }
   if (p.predictedOutcome === 'home') return p.homeTeamName;
   if (p.predictedOutcome === 'away') return p.awayTeamName;
-  return 'Draw';
+  return t('matchPrediction.draw');
 }
 
-function getPickStatusLabel(p: PredictionData): string {
-  if (p.status === 'pending') return 'PENDING';
-  if (p.status === 'won') return 'WON';
-  if (p.status === 'lost') return 'LOST';
+function getPickStatusLabel(p: PredictionData, t: (key: string) => string): string {
+  if (p.status === 'pending') return t('picks.pending');
+  if (p.status === 'won') return t('matchPrediction.won').toUpperCase();
+  if (p.status === 'lost') return t('matchPrediction.lost').toUpperCase();
   return p.status.toUpperCase();
 }
 
@@ -49,6 +50,7 @@ function formatPickDate(dateStr: string): string {
 }
 
 export function PickSummaryScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { tokens } = useAuth();
   const [picks, setPicks] = useState<PredictionData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,7 +62,7 @@ export function PickSummaryScreen({ navigation }: Props) {
       const res = await predictionsApi.getMyPicks(tokens.accessToken, { limit: 20 });
       setPicks(res.predictions);
     } catch {
-      Toast.show({ type: 'error', text1: 'Error loading picks', text2: 'Pull down to try again' });
+      Toast.show({ type: 'error', text1: t('picks.errorLoading'), text2: t('dashboard.pullToRetry') });
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -84,15 +86,15 @@ export function PickSummaryScreen({ navigation }: Props) {
 
   const handleShare = async () => {
     if (pendingPicks.length === 0) {
-      Toast.show({ type: 'info', text1: 'No active picks to share' });
+      Toast.show({ type: 'info', text1: t('pickSummary.noActivePicksToShare') });
       return;
     }
     const picksText = pendingPicks
-      .map((p) => `${p.homeTeamName} vs ${p.awayTeamName} -- ${formatOutcome(p)}`)
+      .map((p) => `${p.homeTeamName} vs ${p.awayTeamName} -- ${formatOutcome(p, t)}`)
       .join('\n');
     try {
       await Share.share({
-        message: `My Kinetic Picks:\n\n${picksText}\n\nPredict sports on Kinetic!`,
+        message: t('pickSummary.shareMessage', { picks: picksText }),
       });
     } catch {
       // user cancelled
@@ -105,7 +107,7 @@ export function PickSummaryScreen({ navigation }: Props) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={22} color={colors.onSurface} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Pick Summary</Text>
+        <Text style={styles.headerTitle}>{t('pickSummary.title')}</Text>
         <TouchableOpacity onPress={handleShare} style={styles.backBtn}>
           <Ionicons name="share-outline" size={20} color={colors.onSurface} />
         </TouchableOpacity>
@@ -128,14 +130,14 @@ export function PickSummaryScreen({ navigation }: Props) {
               <Text style={styles.activeBadgeText}>{pendingPicks.length} ACTIVE</Text>
             </View>
           )}
-          <Text style={styles.title}>PICK SUMMARY</Text>
+          <Text style={styles.title}>{t('pickSummary.titleDisplay')}</Text>
           <View style={styles.tabRow}>
             <TouchableOpacity
               style={activeTab === 'current' ? styles.tabActive : styles.tabInactive}
               onPress={() => setActiveTab('current')}
             >
               <Text style={activeTab === 'current' ? styles.tabActiveText : styles.tabInactiveText}>
-                Current Picks ({pendingPicks.length})
+                {t('pickSummary.currentPicks', { count: pendingPicks.length })}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -143,7 +145,7 @@ export function PickSummaryScreen({ navigation }: Props) {
               onPress={() => setActiveTab('history')}
             >
               <Text style={activeTab === 'history' ? styles.tabActiveText : styles.tabInactiveText}>
-                History ({resolvedPicks.length})
+                {t('pickSummary.historyTab', { count: resolvedPicks.length })}
               </Text>
             </TouchableOpacity>
           </View>
@@ -151,7 +153,7 @@ export function PickSummaryScreen({ navigation }: Props) {
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>
-            {activeTab === 'current' ? 'ACTIVE PREDICTIONS' : 'RESOLVED PREDICTIONS'}
+            {activeTab === 'current' ? t('pickSummary.activePredictions') : t('pickSummary.resolvedPredictions')}
           </Text>
         </View>
 
@@ -159,7 +161,7 @@ export function PickSummaryScreen({ navigation }: Props) {
           <View style={styles.emptyWrap}>
             <Ionicons name="document-text-outline" size={40} color={colors.onSurfaceVariant} />
             <Text style={styles.emptyText}>
-              {activeTab === 'current' ? 'No active picks right now' : 'No history yet'}
+              {activeTab === 'current' ? t('pickSummary.noActivePicks') : t('pickSummary.noHistory')}
             </Text>
           </View>
         ) : (
@@ -171,7 +173,7 @@ export function PickSummaryScreen({ navigation }: Props) {
                   pick.status === 'won' && styles.statusWon,
                   pick.status === 'lost' && styles.statusLost,
                 ]}>
-                  <Text style={styles.statusText}>{getPickStatusLabel(pick)}</Text>
+                  <Text style={styles.statusText}>{getPickStatusLabel(pick, t)}</Text>
                 </View>
                 <Text style={styles.pickTime}>{formatPickDate(pick.gameDate)}</Text>
               </View>
@@ -180,9 +182,9 @@ export function PickSummaryScreen({ navigation }: Props) {
               </Text>
               {pick.leagueName ? <Text style={styles.pickLeague}>{pick.leagueName}</Text> : null}
               <View style={styles.multiplierRow}>
-                <Text style={styles.multiplierLabel}>YOUR PICK</Text>
+                <Text style={styles.multiplierLabel}>{t('picks.yourPick')}</Text>
                 <View style={styles.multiplierBadge}>
-                  <Text style={styles.multiplierValue}>{formatOutcome(pick)}</Text>
+                  <Text style={styles.multiplierValue}>{formatOutcome(pick, t)}</Text>
                 </View>
               </View>
               {pick.pointsAwarded > 0 && (
@@ -195,17 +197,17 @@ export function PickSummaryScreen({ navigation }: Props) {
         {picks.length > 0 && (
           <View style={styles.summarySection}>
             <Ionicons name="bar-chart" size={16} color={colors.onSurfaceVariant} />
-            <Text style={styles.summaryTitle}>Prediction Summary</Text>
+            <Text style={styles.summaryTitle}>{t('pickSummary.predictionSummary')}</Text>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Total Predictions</Text>
+              <Text style={styles.summaryLabel}>{t('pickSummary.totalPredictions')}</Text>
               <Text style={styles.summaryVal}>{picks.length}</Text>
             </View>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Won</Text>
+              <Text style={styles.summaryLabel}>{t('pickSummary.won')}</Text>
               <Text style={[styles.summaryVal, { color: '#16A34A' }]}>{wonCount}</Text>
             </View>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Points Earned</Text>
+              <Text style={styles.summaryLabel}>{t('pickSummary.pointsEarned')}</Text>
               <Text style={[styles.summaryVal, { color: colors.primary }]}>{totalPoints.toLocaleString()}</Text>
             </View>
           </View>
@@ -213,14 +215,14 @@ export function PickSummaryScreen({ navigation }: Props) {
 
         {totalPoints > 0 && (
           <View style={styles.maxScoreCard}>
-            <Text style={styles.maxScoreLabel}>TOTAL POINTS</Text>
+            <Text style={styles.maxScoreLabel}>{t('pickSummary.totalPoints')}</Text>
             <Text style={styles.maxScoreValue}>{totalPoints.toLocaleString()} PTS</Text>
           </View>
         )}
 
         <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
           <Ionicons name="share-outline" size={18} color={colors.primary} />
-          <Text style={styles.shareButtonText}>SHARE MY PICKS</Text>
+          <Text style={styles.shareButtonText}>{t('pickSummary.shareMyPicks')}</Text>
         </TouchableOpacity>
 
         <View style={{ height: 24 }} />

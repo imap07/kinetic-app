@@ -14,65 +14,66 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../theme';
 import { ModalCloseButton } from '../components';
 import { usePurchases } from '../contexts/PurchasesContext';
+import { useTranslation } from 'react-i18next';
 import type { RootStackParamList, PaywallTrigger } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Paywall'>;
 
-const FEATURES = [
-  { icon: 'infinite-outline' as const, text: 'Unlimited daily predictions' },
-  { icon: 'football-outline' as const, text: 'All 6 sports unlocked' },
-  { icon: 'shield-checkmark-outline' as const, text: 'Premium leagues (UCL, MLS, Copa Libertadores...)' },
-  { icon: 'analytics-outline' as const, text: 'Exact Score predictions (2.5x bonus)' },
-  { icon: 'stats-chart-outline' as const, text: 'Detailed stats & weekly trends' },
-  { icon: 'trophy-outline' as const, text: 'Full leaderboard access' },
+const FEATURE_KEYS = [
+  { icon: 'infinite-outline' as const, textKey: 'paywall.feature1' },
+  { icon: 'football-outline' as const, textKey: 'paywall.feature2' },
+  { icon: 'shield-checkmark-outline' as const, textKey: 'paywall.feature3' },
+  { icon: 'analytics-outline' as const, textKey: 'paywall.feature4' },
+  { icon: 'stats-chart-outline' as const, textKey: 'paywall.feature5' },
+  { icon: 'trophy-outline' as const, textKey: 'paywall.feature6' },
 ];
 
-function getContextCard(trigger: PaywallTrigger, params: Props['route']['params']) {
+function getContextCard(trigger: PaywallTrigger, params: Props['route']['params'], t: (key: string, opts?: Record<string, unknown>) => string) {
   switch (trigger) {
     case 'daily_limit':
       return {
         icon: 'time-outline' as const,
-        title: `You've used ${params.dailyUsed ?? 3}/${params.dailyLimit ?? 3} free picks today`,
-        subtitle: 'Upgrade for unlimited daily predictions',
+        title: t('paywall.picksUsed', { used: params.dailyUsed ?? 3, limit: params.dailyLimit ?? 3 }),
+        subtitle: t('paywall.upgradeUnlimited'),
       };
     case 'exact_score':
       return {
         icon: 'bullseye' as const,
-        title: 'Exact Score is a Pro feature',
-        subtitle: 'Earn 2.5x bonus points with precise predictions',
+        title: t('paywall.exactScorePro'),
+        subtitle: t('paywall.exactScoreDesc'),
       };
     case 'sport_locked':
       return {
         icon: 'lock-closed-outline' as const,
-        title: `${params.sportName ?? 'This sport'} is a Pro feature`,
-        subtitle: 'Unlock all 6 sports with Kinetic Pro',
+        title: t('paywall.sportPro', { sport: params.sportName ?? 'This sport' }),
+        subtitle: t('paywall.sportProDesc'),
       };
     case 'detailed_stats':
       return {
         icon: 'bar-chart-outline' as const,
-        title: 'Detailed Stats are Pro-only',
-        subtitle: 'See your performance breakdown by sport and week',
+        title: t('paywall.statsPro'),
+        subtitle: t('paywall.statsProDesc'),
       };
     case 'premium_league':
       return {
         icon: 'trophy-outline' as const,
-        title: params.sportName ? `${params.sportName}` : 'Premium League',
+        title: params.sportName ? params.sportName : t('paywall.premiumLeague'),
         subtitle: params.sportName
-          ? `${params.sportName} is a Pro-only league. Upgrade to unlock all leagues worldwide`
-          : 'Unlock access to all 1,000+ leagues worldwide',
+          ? t('paywall.leagueProDescNamed', { league: params.sportName })
+          : t('paywall.leagueProDesc'),
       };
     case 'quest_multi_sport':
       return {
         icon: 'trophy-outline' as const,
-        title: 'Complete your Daily Challenge!',
-        subtitle: 'Unlock all sports to cover 2+ and earn bonus rewards',
+        title: t('paywall.dailyChallenge'),
+        subtitle: t('paywall.dailyChallengeDesc'),
       };
     case 'general':
     default:
       return {
         icon: 'flash-outline' as const,
-        title: 'Take your predictions to the next level',
-        subtitle: 'Join thousands of Pro predictors',
+        title: t('paywall.takeNextLevel'),
+        subtitle: t('paywall.joinThousands'),
       };
   }
 }
@@ -86,7 +87,8 @@ export function PaywallScreen({ navigation, route }: Props) {
     isProMember,
   } = usePurchases();
 
-  const context = getContextCard(trigger, route.params);
+  const { t } = useTranslation();
+  const context = getContextCard(trigger, route.params, t);
 
   // Try SDK convenience accessors first, then search availablePackages by lookup_key
   const monthlyPkg =
@@ -117,24 +119,24 @@ export function PaywallScreen({ navigation, route }: Props) {
   const handlePurchase = useCallback(async (type: 'monthly' | 'annual') => {
     const pkg = type === 'monthly' ? monthlyPkg : annualPkg;
     if (!pkg) {
-      Alert.alert('Not Available', 'This plan is not available right now. Please try again later.');
+      Alert.alert(t('paywall.notAvailable'), t('paywall.notAvailableDesc'));
       return;
     }
     const success = await purchasePackage(pkg);
     if (success) {
       navigation.goBack();
     }
-  }, [monthlyPkg, annualPkg, purchasePackage, navigation]);
+  }, [monthlyPkg, annualPkg, purchasePackage, navigation, t]);
 
   const handleRestore = useCallback(async () => {
     const restored = await restorePurchases();
     if (restored) {
-      Alert.alert('Restored', 'Your Pro subscription has been restored.');
+      Alert.alert(t('paywall.restored'), t('paywall.restoredDesc'));
       navigation.goBack();
     } else {
-      Alert.alert('Nothing to Restore', 'No active subscription found for this account.');
+      Alert.alert(t('paywall.nothingToRestore'), t('paywall.nothingToRestoreDesc'));
     }
-  }, [restorePurchases, navigation]);
+  }, [restorePurchases, navigation, t]);
 
   if (isProMember) {
     navigation.goBack();
@@ -158,8 +160,8 @@ export function PaywallScreen({ navigation, route }: Props) {
           <View style={styles.iconCircle}>
             <Ionicons name="flash" size={32} color={colors.primary} />
           </View>
-          <Text style={styles.brandLabel}>KINETIC PRO</Text>
-          <Text style={styles.headline}>Unlock Your Full Potential</Text>
+          <Text style={styles.brandLabel}>{t('paywall.title')}</Text>
+          <Text style={styles.headline}>{t('paywall.headline')}</Text>
         </View>
 
         {/* Context Card */}
@@ -177,12 +179,12 @@ export function PaywallScreen({ navigation, route }: Props) {
 
         {/* Features */}
         <View style={styles.featuresSection}>
-          {FEATURES.map((f, i) => (
+          {FEATURE_KEYS.map((f, i) => (
             <View key={i} style={styles.featureRow}>
               <View style={styles.featureCheck}>
                 <Ionicons name="checkmark" size={14} color={colors.background} />
               </View>
-              <Text style={styles.featureText}>{f.text}</Text>
+              <Text style={styles.featureText}>{t(f.textKey)}</Text>
             </View>
           ))}
         </View>
@@ -191,7 +193,7 @@ export function PaywallScreen({ navigation, route }: Props) {
         <View style={styles.socialProof}>
           <MaterialCommunityIcons name="account-group" size={16} color={colors.primary} />
           <Text style={styles.socialProofText}>
-            Join the best predictors on Kinetic Pro
+            {t('paywall.joinBest')}
           </Text>
         </View>
 
@@ -205,9 +207,9 @@ export function PaywallScreen({ navigation, route }: Props) {
             <View style={styles.saveBadge}>
               <Text style={styles.saveBadgeText}>SAVE 44%</Text>
             </View>
-            <Text style={styles.pricingLabel}>Annual</Text>
-            <Text style={styles.pricingAmount}>{annualPrice}/year</Text>
-            <Text style={styles.pricingDetail}>7-day free trial, cancel anytime</Text>
+            <Text style={styles.pricingLabel}>{t('paywall.annual')}</Text>
+            <Text style={styles.pricingAmount}>{t('paywall.perYear', { price: annualPrice })}</Text>
+            <Text style={styles.pricingDetail}>{t('paywall.freeTrial')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -215,22 +217,19 @@ export function PaywallScreen({ navigation, route }: Props) {
             onPress={() => handlePurchase('monthly')}
             activeOpacity={0.8}
           >
-            <Text style={styles.pricingLabel}>Monthly</Text>
-            <Text style={styles.pricingAmount}>{monthlyPrice}/month</Text>
-            <Text style={styles.pricingDetail}>Cancel anytime</Text>
+            <Text style={styles.pricingLabel}>{t('paywall.monthly')}</Text>
+            <Text style={styles.pricingAmount}>{t('paywall.perMonth', { price: monthlyPrice })}</Text>
+            <Text style={styles.pricingDetail}>{t('paywall.cancelAnytime')}</Text>
           </TouchableOpacity>
         </View>
 
         {/* Restore */}
         <TouchableOpacity style={styles.restoreBtn} onPress={handleRestore}>
-          <Text style={styles.restoreText}>Restore Purchases</Text>
+          <Text style={styles.restoreText}>{t('paywall.restore')}</Text>
         </TouchableOpacity>
 
         {/* Legal */}
-        <Text style={styles.legalText}>
-          Payment will be charged to your App Store account. Subscription automatically
-          renews unless cancelled at least 24 hours before the end of the current period.
-        </Text>
+        <Text style={styles.legalText}>{t('paywall.legalNotice')}</Text>
       </ScrollView>
     </View>
   );

@@ -14,6 +14,7 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { TopAppBar, PrimaryButton } from '../components';
 import { colors, typography, spacing, borderRadius } from '../theme';
 import { AuthStackParamList } from '../navigation/types';
@@ -25,6 +26,7 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'ResetPassword'>;
 export function ResetPasswordScreen({ navigation, route }: Props) {
   const { email, code } = route.params;
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const { resetPassword } = useAuth();
 
   const [password, setPassword] = useState('');
@@ -39,7 +41,7 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
     if (!canSubmit) return;
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match.');
+      Alert.alert(t('common.error'), t('resetPassword.passwordsDoNotMatchAlert'));
       return;
     }
 
@@ -50,8 +52,8 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
       const message =
         err instanceof ApiError
           ? err.message
-          : 'Something went wrong. Please try again.';
-      Alert.alert('Error', message);
+          : t('common.somethingWrong');
+      Alert.alert(t('common.error'), message);
     } finally {
       setLoading(false);
     }
@@ -66,7 +68,7 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
         <TopAppBar
           showBack
           onBack={() => navigation.goBack()}
-          leftLabel="New Password"
+          leftLabel={t('resetPassword.title')}
         />
       </View>
 
@@ -86,15 +88,14 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
           />
         </View>
 
-        <Text style={styles.title}>Set new password</Text>
+        <Text style={styles.title}>{t('resetPassword.setNewPassword')}</Text>
 
         <Text style={styles.description}>
-          Choose a strong password with at least 6 characters to secure your
-          account.
+          {t('resetPassword.desc')}
         </Text>
 
         <View style={styles.inputSection}>
-          <Text style={styles.inputLabel}>NEW PASSWORD</Text>
+          <Text style={styles.inputLabel}>{t('resetPassword.newPasswordLabel')}</Text>
           <View style={styles.inputContainer}>
             <MaterialCommunityIcons
               name="lock-outline"
@@ -103,7 +104,7 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
             />
             <TextInput
               style={styles.input}
-              placeholder="Min. 6 characters"
+              placeholder={t('resetPassword.passwordPlaceholder')}
               placeholderTextColor={colors.onSurfaceDim}
               value={password}
               onChangeText={setPassword}
@@ -127,7 +128,7 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
         </View>
 
         <View style={styles.inputSection}>
-          <Text style={styles.inputLabel}>CONFIRM PASSWORD</Text>
+          <Text style={styles.inputLabel}>{t('resetPassword.confirmPasswordLabel')}</Text>
           <View style={styles.inputContainer}>
             <MaterialCommunityIcons
               name="lock-check-outline"
@@ -136,7 +137,7 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
             />
             <TextInput
               style={styles.input}
-              placeholder="Repeat your password"
+              placeholder={t('resetPassword.confirmPlaceholder')}
               placeholderTextColor={colors.onSurfaceDim}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
@@ -146,12 +147,12 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
             />
           </View>
           {confirmPassword.length > 0 && confirmPassword !== password && (
-            <Text style={styles.errorHint}>Passwords do not match</Text>
+            <Text style={styles.errorHint}>{t('resetPassword.passwordsDoNotMatch')}</Text>
           )}
         </View>
 
         <PrimaryButton
-          title={loading ? '' : 'RESET PASSWORD'}
+          title={loading ? '' : t('resetPassword.resetBtn')}
           onPress={handleReset}
           style={styles.submitButton}
           icon={
@@ -163,7 +164,7 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
 
         <View style={styles.spacer} />
 
-        <Text style={styles.footerText}>KINETIC SECURITY PROTOCOL V4.2</Text>
+        <Text style={styles.footerText}>{t('resetPassword.footerText')}</Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );

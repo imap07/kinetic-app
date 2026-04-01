@@ -30,6 +30,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors, spacing, borderRadius } from '../theme';
 import { ModalCloseButton } from '../components';
 import { useCoins } from '../contexts/CoinContext';
@@ -45,6 +46,7 @@ export function CoinLeaguesScreen() {
   const navigation = useNavigation();
   const { tokens, user } = useAuth();
   const { balance, available, refreshBalance } = useCoins();
+  const { t } = useTranslation();
 
   const [tab, setTab] = useState<TabFilter>('open');
   const [leagues, setLeagues] = useState<CoinLeague[]>([]);
@@ -81,23 +83,23 @@ export function CoinLeaguesScreen() {
 
   const handleJoin = async (league: CoinLeague) => {
     if (available < league.entryFee) {
-      Alert.alert('Insufficient Coins', `You need ${league.entryFee} coins to join. Current available: ${available}.`);
+      Alert.alert(t('leagues.insufficientCoins'), t('leagues.insufficientCoinsDesc', { fee: league.entryFee, available }));
       return;
     }
     Alert.alert(
-      'Join League',
-      `Entry fee: ${league.entryFee} coins. This will be locked from your balance.`,
+      t('leagues.joinLeague'),
+      t('leagues.joinLeagueDesc', { fee: league.entryFee }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('leagues.cancel'), style: 'cancel' },
         {
-          text: 'Join',
+          text: t('leagues.join'),
           onPress: async () => {
             setActionLoading(league._id);
             try {
               await leaguesApi.join(tokens!.accessToken, league._id);
               await Promise.all([fetchLeagues(), refreshBalance()]);
             } catch (e: any) {
-              Alert.alert('Error', e.message || 'Could not join league.');
+              Alert.alert(t('common.error'), e.message || t('leagues.couldNotJoin'));
             } finally {
               setActionLoading(null);
             }
@@ -109,12 +111,12 @@ export function CoinLeaguesScreen() {
 
   const handleLeave = async (league: CoinLeague) => {
     Alert.alert(
-      'Leave League',
-      'Your locked coins will be returned.',
+      t('leagues.leaveLeague'),
+      t('leagues.leaveLeagueDesc'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('leagues.cancel'), style: 'cancel' },
         {
-          text: 'Leave',
+          text: t('leagues.leave'),
           style: 'destructive',
           onPress: async () => {
             setActionLoading(league._id);
@@ -122,7 +124,7 @@ export function CoinLeaguesScreen() {
               await leaguesApi.leave(tokens!.accessToken, league._id);
               await Promise.all([fetchLeagues(), refreshBalance()]);
             } catch (e: any) {
-              Alert.alert('Error', e.message || 'Could not leave league.');
+              Alert.alert(t('common.error'), e.message || t('leagues.couldNotLeave'));
             } finally {
               setActionLoading(null);
             }
@@ -134,7 +136,7 @@ export function CoinLeaguesScreen() {
 
   const handleCreate = async (dto: CreateLeagueDto) => {
     if (available < dto.entryFee) {
-      Alert.alert('Insufficient Coins', `You need ${dto.entryFee} coins to create and join this league.`);
+      Alert.alert(t('leagues.insufficientCoins'), t('leagues.insufficientCoinsDesc', { fee: dto.entryFee, available }));
       return;
     }
     setActionLoading('create');
@@ -168,7 +170,7 @@ export function CoinLeaguesScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <Text style={styles.headerTitle}>LEAGUES</Text>
+        <Text style={styles.headerTitle}>{t('leagues.title')}</Text>
         <TouchableOpacity onPress={() => setShowCreate(true)} hitSlop={12}>
           <Feather name="plus" size={22} color={colors.primary} />
         </TouchableOpacity>
@@ -176,24 +178,24 @@ export function CoinLeaguesScreen() {
 
       <View style={styles.balancePill}>
         <MaterialCommunityIcons name="circle-multiple" size={16} color={colors.primary} />
-        <Text style={styles.balancePillText}>{available.toLocaleString()} coins</Text>
+        <Text style={styles.balancePillText}>{t('leagues.coins', { count: available.toLocaleString() })}</Text>
       </View>
 
       <View style={styles.tabs}>
-        {(['open', 'my', 'rankings'] as const).map((t) => (
+        {(['open', 'my', 'rankings'] as const).map((tabKey) => (
           <TouchableOpacity
-            key={t}
-            style={[styles.tab, tab === t && styles.tabActive]}
+            key={tabKey}
+            style={[styles.tab, tab === tabKey && styles.tabActive]}
             onPress={() => {
-              if (t === 'rankings') {
+              if (tabKey === 'rankings') {
                 (navigation as any).navigate('Leaderboard');
                 return;
               }
-              setTab(t);
+              setTab(tabKey);
             }}
           >
-            <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>
-              {t === 'open' ? 'Open' : t === 'my' ? 'My Leagues' : 'Rankings'}
+            <Text style={[styles.tabText, tab === tabKey && styles.tabTextActive]}>
+              {tabKey === 'open' ? t('leagues.open') : tabKey === 'my' ? t('leagues.myLeagues') : t('leagues.rankings')}
             </Text>
           </TouchableOpacity>
         ))}
@@ -214,8 +216,8 @@ export function CoinLeaguesScreen() {
             <MaterialCommunityIcons name="trophy-outline" size={40} color={colors.onSurfaceDim} />
             <Text style={styles.emptyText}>
               {tab === 'open'
-                ? 'No open leagues available right now.'
-                : 'You haven\'t joined any leagues yet.'}
+                ? t('leagues.noOpenLeagues')
+                : t('leagues.noJoinedLeagues')}
             </Text>
             {tab === 'open' && (
               <TouchableOpacity
@@ -223,7 +225,7 @@ export function CoinLeaguesScreen() {
                 onPress={() => setShowCreate(true)}
               >
                 <Feather name="plus" size={16} color={colors.onPrimary} />
-                <Text style={styles.createBtnText}>Create League</Text>
+                <Text style={styles.createBtnText}>{t('leagues.createLeague')}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -255,23 +257,23 @@ export function CoinLeaguesScreen() {
 
                 <View style={styles.leagueStats}>
                   <View style={styles.leagueStat}>
-                    <Text style={styles.leagueStatLabel}>Entry</Text>
+                    <Text style={styles.leagueStatLabel}>{t('leagues.entry')}</Text>
                     <Text style={styles.leagueStatValue}>{league.entryFee}</Text>
                     <MaterialCommunityIcons name="circle-multiple" size={10} color={colors.primary} />
                   </View>
                   <View style={styles.leagueStat}>
-                    <Text style={styles.leagueStatLabel}>Players</Text>
+                    <Text style={styles.leagueStatLabel}>{t('leagues.players')}</Text>
                     <Text style={styles.leagueStatValue}>
                       {league.participants.length}/{league.maxParticipants}
                     </Text>
                   </View>
                   <View style={styles.leagueStat}>
-                    <Text style={styles.leagueStatLabel}>Prize Pool</Text>
+                    <Text style={styles.leagueStatLabel}>{t('leagues.prizePool')}</Text>
                     <Text style={styles.leagueStatValue}>{league.prizePool}</Text>
                     <MaterialCommunityIcons name="circle-multiple" size={10} color={colors.primary} />
                   </View>
                   <View style={styles.leagueStat}>
-                    <Text style={styles.leagueStatLabel}>Ends</Text>
+                    <Text style={styles.leagueStatLabel}>{t('leagues.ends')}</Text>
                     <Text style={styles.leagueStatValue}>
                       {new Date(league.endDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                     </Text>
@@ -289,7 +291,7 @@ export function CoinLeaguesScreen() {
                         {isActionLoading ? (
                           <ActivityIndicator size="small" color={colors.error} />
                         ) : (
-                          <Text style={styles.leaveBtnText}>Leave</Text>
+                          <Text style={styles.leaveBtnText}>{t('leagues.leave')}</Text>
                         )}
                       </TouchableOpacity>
                     ) : (
@@ -301,7 +303,7 @@ export function CoinLeaguesScreen() {
                         {isActionLoading ? (
                           <ActivityIndicator size="small" color={colors.onPrimary} />
                         ) : (
-                          <Text style={styles.joinBtnText}>Join League</Text>
+                          <Text style={styles.joinBtnText}>{t('leagues.joinLeague')}</Text>
                         )}
                       </TouchableOpacity>
                     )}
@@ -357,6 +359,7 @@ function CreateLeagueModal({
   favoriteSports?: string[];
 }) {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
 
   // Show only the user's favorite sports; fall back to all if none set
   const availableSports = favoriteSports?.length
@@ -386,7 +389,7 @@ function CreateLeagueModal({
 
   const handleSubmit = () => {
     if (!name.trim()) {
-      Alert.alert('Error', 'League name is required.');
+      Alert.alert(t('common.error'), 'League name is required.');
       return;
     }
     const now = new Date();
@@ -409,7 +412,7 @@ function CreateLeagueModal({
         <View style={[modalStyles.sheet, { paddingBottom: insets.bottom + spacing.lg }]}>
           <View style={modalStyles.handle} />
           <View style={modalStyles.header}>
-            <Text style={modalStyles.title}>Create League</Text>
+            <Text style={modalStyles.title}>{t('leagues.createLeague')}</Text>
             <ModalCloseButton onClose={onClose} variant="sheet" />
           </View>
 
@@ -472,7 +475,7 @@ function CreateLeagueModal({
             {isLoading ? (
               <ActivityIndicator size="small" color={colors.onPrimary} />
             ) : (
-              <Text style={modalStyles.submitBtnText}>Create & Join</Text>
+              <Text style={modalStyles.submitBtnText}>{t('leagues.join')}</Text>
             )}
           </TouchableOpacity>
         </View>

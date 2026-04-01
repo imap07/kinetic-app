@@ -14,6 +14,7 @@ import {
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { TopAppBar, PrimaryButton } from '../components';
 import { colors, typography, spacing, borderRadius } from '../theme';
 import { AuthStackParamList } from '../navigation/types';
@@ -26,6 +27,7 @@ type Props = {
 
 export function EmailAuthScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const { loginWithEmail, register } = useAuth();
 
   const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -55,8 +57,8 @@ export function EmailAuthScreen({ navigation }: Props) {
       const message =
         err instanceof ApiError
           ? err.message
-          : 'Something went wrong. Please try again.';
-      Alert.alert('Error', message);
+          : t('common.somethingWrong');
+      Alert.alert(t('common.error'), message);
     } finally {
       setLoading(false);
     }
@@ -71,7 +73,7 @@ export function EmailAuthScreen({ navigation }: Props) {
         <TopAppBar
           showBack
           onBack={() => navigation.goBack()}
-          leftLabel={isLogin ? 'Sign In' : 'Create Account'}
+          leftLabel={isLogin ? t('emailAuth.signIn') : t('emailAuth.createAccount')}
         />
       </View>
 
@@ -92,18 +94,18 @@ export function EmailAuthScreen({ navigation }: Props) {
         </View>
 
         <Text style={styles.title}>
-          {isLogin ? 'Welcome back.' : 'Join the Frontline.'}
+          {isLogin ? t('emailAuth.welcomeBack') : t('emailAuth.joinFrontline')}
         </Text>
 
         <Text style={styles.description}>
           {isLogin
-            ? 'Enter your credentials to access your account.'
-            : 'Create your account and start making predictions.'}
+            ? t('emailAuth.loginDesc')
+            : t('emailAuth.registerDesc')}
         </Text>
 
         {!isLogin && (
           <View style={styles.inputSection}>
-            <Text style={styles.inputLabel}>DISPLAY NAME</Text>
+            <Text style={styles.inputLabel}>{t('emailAuth.displayName')}</Text>
             <View style={styles.inputContainer}>
               <MaterialCommunityIcons
                 name="account-outline"
@@ -112,7 +114,7 @@ export function EmailAuthScreen({ navigation }: Props) {
               />
               <TextInput
                 style={styles.input}
-                placeholder="Your display name"
+                placeholder={t('emailAuth.displayNamePlaceholder')}
                 placeholderTextColor={colors.onSurfaceDim}
                 value={displayName}
                 onChangeText={setDisplayName}
@@ -126,7 +128,7 @@ export function EmailAuthScreen({ navigation }: Props) {
         )}
 
         <View style={styles.inputSection}>
-          <Text style={styles.inputLabel}>EMAIL ADDRESS</Text>
+          <Text style={styles.inputLabel}>{t('emailAuth.email')}</Text>
           <View style={styles.inputContainer}>
             <MaterialCommunityIcons
               name="email-outline"
@@ -135,7 +137,7 @@ export function EmailAuthScreen({ navigation }: Props) {
             />
             <TextInput
               style={styles.input}
-              placeholder="name@example.com"
+              placeholder={t('emailAuth.emailPlaceholder')}
               placeholderTextColor={colors.onSurfaceDim}
               value={email}
               onChangeText={setEmail}
@@ -149,7 +151,7 @@ export function EmailAuthScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.inputSection}>
-          <Text style={styles.inputLabel}>PASSWORD</Text>
+          <Text style={styles.inputLabel}>{t('emailAuth.password')}</Text>
           <View style={styles.inputContainer}>
             <MaterialCommunityIcons
               name="lock-outline"
@@ -158,7 +160,7 @@ export function EmailAuthScreen({ navigation }: Props) {
             />
             <TextInput
               style={styles.input}
-              placeholder="Min. 6 characters"
+              placeholder={t('emailAuth.passwordPlaceholder')}
               placeholderTextColor={colors.onSurfaceDim}
               value={password}
               onChangeText={setPassword}
@@ -186,12 +188,12 @@ export function EmailAuthScreen({ navigation }: Props) {
             onPress={() => navigation.navigate('RecoverPasswordRequest')}
             style={styles.forgotLink}
           >
-            <Text style={styles.forgotText}>Forgot Password?</Text>
+            <Text style={styles.forgotText}>{t('emailAuth.forgotPassword')}</Text>
           </TouchableOpacity>
         )}
 
         <PrimaryButton
-          title={loading ? '' : isLogin ? 'SIGN IN' : 'CREATE ACCOUNT'}
+          title={loading ? '' : isLogin ? t('emailAuth.signInBtn') : t('emailAuth.createAccountBtn')}
           onPress={handleSubmit}
           style={styles.submitButton}
           icon={
@@ -204,7 +206,7 @@ export function EmailAuthScreen({ navigation }: Props) {
         <View style={styles.dividerSection}>
           <View style={styles.dividerLine} />
           <Text style={styles.dividerText}>
-            {isLogin ? 'New here?' : 'Already have an account?'}
+            {isLogin ? t('emailAuth.newHere') : t('emailAuth.alreadyAccount')}
           </Text>
           <View style={styles.dividerLine} />
         </View>
@@ -214,7 +216,7 @@ export function EmailAuthScreen({ navigation }: Props) {
           disabled={loading}
         >
           <Text style={styles.switchText}>
-            {isLogin ? 'Create an Account' : 'Sign In'}
+            {isLogin ? t('emailAuth.createAnAccount') : t('emailAuth.signIn')}
           </Text>
         </TouchableOpacity>
 

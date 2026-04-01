@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import * as Linking from 'expo-linking';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors, spacing, borderRadius } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import { useCoins } from '../contexts/CoinContext';
@@ -34,6 +35,7 @@ export function CoinLeagueDetailScreen() {
   const route = useRoute<RouteParams>();
   const { tokens, user } = useAuth();
   const { available, refreshBalance } = useCoins();
+  const { t } = useTranslation();
 
   const { leagueId } = route.params;
 
@@ -129,7 +131,7 @@ export function CoinLeagueDetailScreen() {
         }
       }
     } catch {
-      Alert.alert('Error', 'Could not load league details.');
+      Alert.alert(t('common.error'), t('leagueDetail.couldNotLoad'));
     }
   }, [tokens?.accessToken, leagueId]);
 
@@ -151,25 +153,25 @@ export function CoinLeagueDetailScreen() {
   const handleJoin = async () => {
     if (!league) return;
     if (available < league.entryFee) {
-      Alert.alert('Insufficient Coins', `You need ${league.entryFee} coins. Available: ${available}.`);
+      Alert.alert(t('leagues.insufficientCoins'), t('leagues.insufficientCoinsDesc', { fee: league.entryFee, available }));
       return;
     }
     Alert.alert(
-      'Join League',
+      t('leagueDetail.joinLeague'),
       league.entryFee > 0
-        ? `Entry fee: ${league.entryFee} coins. This will be locked from your balance.`
-        : 'Join this free league?',
+        ? t('leagueDetail.joinEntryFee', { fee: league.entryFee })
+        : t('leagueDetail.joinFree'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Join',
+          text: t('leagueDetail.join'),
           onPress: async () => {
             setActionLoading(true);
             try {
               await leaguesApi.join(tokens!.accessToken, leagueId);
               await Promise.all([fetchData(), refreshBalance()]);
             } catch (e: any) {
-              Alert.alert('Error', e.message || 'Could not join league.');
+              Alert.alert(t('common.error'), e.message || t('leagues.couldNotJoin'));
             } finally {
               setActionLoading(false);
             }
@@ -180,10 +182,10 @@ export function CoinLeagueDetailScreen() {
   };
 
   const handleLeave = async () => {
-    Alert.alert('Leave League', 'Your locked coins will be returned.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('leagueDetail.leaveLeague'), t('leagueDetail.leaveCoinsReturned'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Leave',
+        text: t('leagueDetail.leave'),
         style: 'destructive',
         onPress: async () => {
           setActionLoading(true);
@@ -191,7 +193,7 @@ export function CoinLeagueDetailScreen() {
             await leaguesApi.leave(tokens!.accessToken, leagueId);
             await Promise.all([fetchData(), refreshBalance()]);
           } catch (e: any) {
-            Alert.alert('Error', e.message || 'Could not leave league.');
+            Alert.alert(t('common.error'), e.message || t('leagues.couldNotLeave'));
           } finally {
             setActionLoading(false);
           }
@@ -221,7 +223,7 @@ export function CoinLeagueDetailScreen() {
       const result = await predictionsApi.create(payload, tokens.accessToken);
       setPredictions((prev) => new Map(prev).set(game.apiId, result));
     } catch (e: any) {
-      Alert.alert('Prediction Failed', e.message || 'Could not submit prediction.');
+      Alert.alert(t('leagueDetail.predictionFailed'), e.message || t('leagueDetail.couldNotPredict'));
     } finally {
       setPredictingGame(null);
     }
@@ -264,7 +266,7 @@ export function CoinLeagueDetailScreen() {
   if (!league) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <Text style={styles.errorText}>League not found.</Text>
+        <Text style={styles.errorText}>{t('leagueDetail.leagueNotFound')}</Text>
       </View>
     );
   }
@@ -323,28 +325,28 @@ export function CoinLeagueDetailScreen() {
         {/* Stats Cards */}
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
-            <Text style={styles.statLabel}>Entry Fee</Text>
+            <Text style={styles.statLabel}>{t('leagueDetail.entryFee')}</Text>
             <View style={styles.statValueRow}>
-              <Text style={styles.statValue}>{league.entryFee === 0 ? 'FREE' : league.entryFee}</Text>
+              <Text style={styles.statValue}>{league.entryFee === 0 ? t('leagues.free') : league.entryFee}</Text>
               {league.entryFee > 0 && (
                 <MaterialCommunityIcons name="circle-multiple" size={12} color={colors.primary} />
               )}
             </View>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statLabel}>Prize Pool</Text>
+            <Text style={styles.statLabel}>{t('leagueDetail.prizePool')}</Text>
             <View style={styles.statValueRow}>
               <Text style={styles.statValue}>{league.prizePool}</Text>
               <MaterialCommunityIcons name="circle-multiple" size={12} color={colors.primary} />
             </View>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statLabel}>Players</Text>
+            <Text style={styles.statLabel}>{t('leagueDetail.players')}</Text>
             <Text style={styles.statValue}>{participantCount}/{league.maxParticipants}</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statLabel}>Type</Text>
-            <Text style={styles.statValue}>{league.leagueType === 'weekly' ? 'Weekly' : 'Matchday'}</Text>
+            <Text style={styles.statLabel}>{t('leagueDetail.type')}</Text>
+            <Text style={styles.statValue}>{league.leagueType === 'weekly' ? t('leagueDetail.weekly') : t('leagueDetail.matchday')}</Text>
           </View>
         </View>
 
@@ -352,13 +354,13 @@ export function CoinLeagueDetailScreen() {
         <View style={styles.datesRow}>
           <View style={styles.dateItem}>
             <Feather name="calendar" size={14} color={colors.onSurfaceDim} />
-            <Text style={styles.dateLabel}>Starts</Text>
+            <Text style={styles.dateLabel}>{t('leagueDetail.starts')}</Text>
             <Text style={styles.dateValue}>{startDateStr}</Text>
           </View>
           <View style={styles.dateDivider} />
           <View style={styles.dateItem}>
             <Feather name="flag" size={14} color={colors.onSurfaceDim} />
-            <Text style={styles.dateLabel}>Ends</Text>
+            <Text style={styles.dateLabel}>{t('leagueDetail.ends')}</Text>
             <Text style={styles.dateValue}>{endDateStr}</Text>
           </View>
         </View>
@@ -366,15 +368,15 @@ export function CoinLeagueDetailScreen() {
         {/* Prize Distribution Info */}
         {league.entryFee > 0 && league.status !== 'cancelled' && (
           <View style={styles.prizeSection}>
-            <Text style={styles.sectionTitle}>Prize Distribution</Text>
+            <Text style={styles.sectionTitle}>{t('leagueDetail.prizeDistribution')}</Text>
             <Text style={styles.prizeHint}>
               {participantCount < 4
-                ? 'Winner takes all (2-3 players)'
+                ? t('leagueDetail.winnerTakesAll')
                 : participantCount < 6
-                ? 'Top 2 split: 70% / 30%'
-                : 'Top 3 split: 60% / 25% / 15%'}
+                ? t('leagueDetail.top2Split')
+                : t('leagueDetail.top3Split')}
             </Text>
-            <Text style={styles.feeNote}>10% platform fee applies</Text>
+            <Text style={styles.feeNote}>{t('leagueDetail.platformFee')}</Text>
           </View>
         )}
 
@@ -386,7 +388,7 @@ export function CoinLeagueDetailScreen() {
                 {actionLoading ? (
                   <ActivityIndicator size="small" color={colors.error} />
                 ) : (
-                  <Text style={styles.leaveBtnText}>Leave League</Text>
+                  <Text style={styles.leaveBtnText}>{t('leagueDetail.leaveLeague')}</Text>
                 )}
               </TouchableOpacity>
             ) : (
@@ -395,7 +397,7 @@ export function CoinLeagueDetailScreen() {
                   <ActivityIndicator size="small" color={colors.onPrimary} />
                 ) : (
                   <Text style={styles.joinBtnText}>
-                    {league.entryFee === 0 ? 'Join Free League' : `Join — ${league.entryFee} coins`}
+                    {league.entryFee === 0 ? t('leagueDetail.joinFreeLeague') : t('leagueDetail.joinCoins', { fee: league.entryFee })}
                   </Text>
                 )}
               </TouchableOpacity>
@@ -406,22 +408,22 @@ export function CoinLeagueDetailScreen() {
         {/* Matches Section */}
         {isParticipant && league.status !== 'completed' && league.status !== 'cancelled' && (
           <View style={styles.matchesSection}>
-            <Text style={styles.sectionTitle}>Matches</Text>
+            <Text style={styles.sectionTitle}>{t('leagueDetail.matches')}</Text>
             <View style={styles.matchTabs}>
-              {(['upcoming', 'live', 'recent'] as const).map((t) => {
+              {(['upcoming', 'live', 'recent'] as const).map((tabKey) => {
                 const count = matches.filter((g) =>
-                  t === 'live' ? g.isLive :
-                  t === 'upcoming' ? (!g.isLive && new Date(g.date) > new Date()) :
+                  tabKey === 'live' ? g.isLive :
+                  tabKey === 'upcoming' ? (!g.isLive && new Date(g.date) > new Date()) :
                   (!g.isLive && new Date(g.date) <= new Date()),
                 ).length;
                 return (
                   <TouchableOpacity
-                    key={t}
-                    style={[styles.matchTab, activeMatchTab === t && styles.matchTabActive]}
-                    onPress={() => setActiveMatchTab(t)}
+                    key={tabKey}
+                    style={[styles.matchTab, activeMatchTab === tabKey && styles.matchTabActive]}
+                    onPress={() => setActiveMatchTab(tabKey)}
                   >
-                    <Text style={[styles.matchTabText, activeMatchTab === t && styles.matchTabTextActive]}>
-                      {t === 'upcoming' ? 'Upcoming' : t === 'live' ? 'Live' : 'Results'}
+                    <Text style={[styles.matchTabText, activeMatchTab === tabKey && styles.matchTabTextActive]}>
+                      {tabKey === 'upcoming' ? t('leagueDetail.upcoming') : tabKey === 'live' ? t('leagueDetail.live') : t('leagueDetail.results')}
                       {count > 0 ? ` (${count})` : ''}
                     </Text>
                   </TouchableOpacity>
@@ -440,10 +442,10 @@ export function CoinLeagueDetailScreen() {
                 return (
                   <Text style={styles.emptyMatches}>
                     {activeMatchTab === 'live'
-                      ? 'No live matches right now'
+                      ? t('leagueDetail.noLiveMatches')
                       : activeMatchTab === 'upcoming'
-                      ? 'No upcoming matches found'
-                      : 'No results within league dates'}
+                      ? t('leagueDetail.noUpcomingMatches')
+                      : t('leagueDetail.noResults')}
                   </Text>
                 );
               }
@@ -536,7 +538,7 @@ export function CoinLeagueDetailScreen() {
                               style={styles.predBtnDraw}
                               onPress={() => handleInlinePredict(game, 'draw')}
                             >
-                              <Text style={styles.predBtnDrawText}>Draw</Text>
+                              <Text style={styles.predBtnDrawText}>{t('leagueDetail.draw')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                               style={styles.predBtn}
@@ -561,7 +563,7 @@ export function CoinLeagueDetailScreen() {
                         }
                       >
                         <Feather name="bar-chart-2" size={12} color={colors.onSurfaceDim} />
-                        <Text style={styles.statsLinkText}>View Stats & H2H</Text>
+                        <Text style={styles.statsLinkText}>{t('leagueDetail.viewStatsH2H')}</Text>
                       </TouchableOpacity>
                     )}
                   </View>
@@ -574,13 +576,13 @@ export function CoinLeagueDetailScreen() {
         {/* Leaderboard */}
         <View style={styles.leaderboardSection}>
           <Text style={styles.sectionTitle}>
-            {league.status === 'completed' ? 'Final Standings' : 'Leaderboard'}
+            {league.status === 'completed' ? t('leagueDetail.finalStandings') : t('leagueDetail.leaderboard')}
           </Text>
           {leaderboard.length === 0 ? (
             <Text style={styles.emptyLb}>
               {participantCount < 2
-                ? 'Waiting for more players to join...'
-                : 'No predictions yet. Make your picks!'}
+                ? t('leagueDetail.waitingPlayers')
+                : t('leagueDetail.noPredictionsYet')}
             </Text>
           ) : (
             leaderboard.map((entry) => {
@@ -607,17 +609,17 @@ export function CoinLeagueDetailScreen() {
                   </View>
                   <View style={styles.lbInfo}>
                     <Text style={[styles.lbName, isCurrent && styles.lbNameCurrent]} numberOfLines={1}>
-                      {entry.displayName}{isCurrent ? ' (You)' : ''}
+                      {entry.displayName}{isCurrent ? ` ${t('leaderboard.you')}` : ''}
                     </Text>
                     <Text style={styles.lbStats}>
-                      {entry.correctPredictions}/{entry.totalPredictions} correct
+                      {entry.correctPredictions}/{entry.totalPredictions} {t('leagueDetail.correct')}
                     </Text>
                   </View>
                   <View style={styles.lbPoints}>
                     <Text style={[styles.lbPointsValue, isCurrent && styles.lbPointsCurrent]}>
                       {entry.totalPoints}
                     </Text>
-                    <Text style={styles.lbPointsLabel}>pts</Text>
+                    <Text style={styles.lbPointsLabel}>{t('leaderboard.ptsUnit').toLowerCase()}</Text>
                   </View>
                   {entry.coinsWon > 0 && (
                     <View style={styles.lbCoins}>

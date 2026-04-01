@@ -11,6 +11,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslation } from 'react-i18next';
 import { colors, borderRadius } from '../theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -21,9 +22,9 @@ interface OnboardingStep {
   id: string;
   icon: string;
   iconLib: 'ion' | 'mci';
-  title: string;
-  subtitle: string;
-  features: string[];
+  titleKey: string;
+  subtitleKey: string;
+  featureKeys: string[];
   accentColor: string;
 }
 
@@ -32,12 +33,12 @@ const STEPS: OnboardingStep[] = [
     id: 'predict',
     icon: 'target',
     iconLib: 'mci',
-    title: 'Predict Matches',
-    subtitle: 'Place your predictions on real games across 6 sports. No money, just skill.',
-    features: [
-      'Pick match winners or exact scores',
-      'Predict soccer, NBA, NHL, NFL, MLB & F1',
-      '3 free daily picks, Pro gets unlimited',
+    titleKey: 'onboarding.slide1Title',
+    subtitleKey: 'onboarding.slide1Subtitle',
+    featureKeys: [
+      'onboarding.slide1Feature1',
+      'onboarding.slide1Feature2',
+      'onboarding.slide1Feature3',
     ],
     accentColor: '#CAFD00',
   },
@@ -45,12 +46,12 @@ const STEPS: OnboardingStep[] = [
     id: 'earn',
     icon: 'trending-up',
     iconLib: 'ion',
-    title: 'Earn Points & Climb',
-    subtitle: 'Dynamic scoring rewards bold predictions. Build streaks and rise through the ranks.',
-    features: [
-      'Points based on prediction difficulty',
-      'Win streaks multiply your rewards',
-      'Climb from Rookie to Legend tier',
+    titleKey: 'onboarding.slide2Title',
+    subtitleKey: 'onboarding.slide2Subtitle',
+    featureKeys: [
+      'onboarding.slide2Feature1',
+      'onboarding.slide2Feature2',
+      'onboarding.slide2Feature3',
     ],
     accentColor: '#FC5B00',
   },
@@ -58,12 +59,12 @@ const STEPS: OnboardingStep[] = [
     id: 'compete',
     icon: 'podium-outline',
     iconLib: 'ion',
-    title: 'Compete Globally',
-    subtitle: 'See how you stack up against the world. One app, six sports, one leaderboard.',
-    features: [
-      'Global rankings updated in real-time',
-      'Push notifications when you win',
-      'Pro unlocks advanced stats & insights',
+    titleKey: 'onboarding.slide3Title',
+    subtitleKey: 'onboarding.slide3Subtitle',
+    featureKeys: [
+      'onboarding.slide3Feature1',
+      'onboarding.slide3Feature2',
+      'onboarding.slide3Feature3',
     ],
     accentColor: '#4FC3F7',
   },
@@ -76,6 +77,7 @@ interface Props {
 export function OnboardingScreen({ onComplete }: Props) {
   const flatListRef = useRef<FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const { t } = useTranslation();
 
   const onViewableItemsChanged = useCallback(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {
@@ -119,14 +121,14 @@ export function OnboardingScreen({ onComplete }: Props) {
           )}
         </View>
 
-        <Text style={stepStyles.title}>{item.title}</Text>
-        <Text style={stepStyles.subtitle}>{item.subtitle}</Text>
+        <Text style={stepStyles.title}>{t(item.titleKey)}</Text>
+        <Text style={stepStyles.subtitle}>{t(item.subtitleKey)}</Text>
 
         <View style={stepStyles.featureList}>
-          {item.features.map((feature) => (
-            <View key={feature} style={stepStyles.featureRow}>
+          {item.featureKeys.map((featureKey) => (
+            <View key={featureKey} style={stepStyles.featureRow}>
               <View style={[stepStyles.featureDot, { backgroundColor: item.accentColor }]} />
-              <Text style={stepStyles.featureText}>{feature}</Text>
+              <Text style={stepStyles.featureText}>{t(featureKey)}</Text>
             </View>
           ))}
         </View>
@@ -139,7 +141,7 @@ export function OnboardingScreen({ onComplete }: Props) {
       {/* Skip button */}
       {!isLastStep && (
         <TouchableOpacity style={styles.skipBtn} onPress={handleSkip} hitSlop={12}>
-          <Text style={styles.skipText}>Skip</Text>
+          <Text style={styles.skipText}>{t('onboarding.skip')}</Text>
         </TouchableOpacity>
       )}
 
@@ -182,7 +184,7 @@ export function OnboardingScreen({ onComplete }: Props) {
             style={styles.ctaBtn}
           >
             <Text style={[styles.ctaText, isLastStep && styles.ctaTextFinal]}>
-              {isLastStep ? 'GET STARTED' : 'NEXT'}
+              {isLastStep ? t('onboarding.getStarted') : t('onboarding.next')}
             </Text>
             <Ionicons
               name="arrow-forward"

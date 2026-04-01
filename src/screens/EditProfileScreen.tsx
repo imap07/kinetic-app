@@ -12,6 +12,7 @@ import {
   Alert,
   Modal,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,6 +23,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { ApiError } from '../api';
 
 export function EditProfileScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { user, updateProfile, uploadAvatar, deleteAccount, logout } = useAuth();
@@ -48,8 +50,8 @@ export function EditProfileScreen() {
       const message =
         err instanceof ApiError
           ? err.message
-          : 'Failed to update profile. Please try again.';
-      Alert.alert('Error', message);
+          : t('editProfile.updateFailed');
+      Alert.alert(t('common.error'), message);
     } finally {
       setSaving(false);
     }
@@ -58,7 +60,7 @@ export function EditProfileScreen() {
   const handleChangePhoto = async () => {
     const permResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permResult.granted) {
-      Alert.alert('Permission required', 'Please allow access to your photo library to change your avatar.');
+      Alert.alert(t('editProfile.permissionRequired'), t('editProfile.permissionDesc'));
       return;
     }
 
@@ -82,8 +84,8 @@ export function EditProfileScreen() {
       const message =
         err instanceof ApiError
           ? err.message
-          : 'Failed to upload avatar. Please try again.';
-      Alert.alert('Error', message);
+          : t('editProfile.uploadFailed');
+      Alert.alert(t('common.error'), message);
     } finally {
       setUploadingAvatar(false);
     }
@@ -91,12 +93,12 @@ export function EditProfileScreen() {
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      'Delete Account',
-      'Are you sure? This cannot be undone. Your account will be deactivated.',
+      t('editProfile.deleteAccount'),
+      t('editProfile.deleteAccountDesc'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Continue',
+          text: t('editProfile.continue'),
           style: 'destructive',
           onPress: () => {
             setDeleteText('');
@@ -109,7 +111,7 @@ export function EditProfileScreen() {
 
   const confirmDeleteAccount = async () => {
     if (deleteText.trim() !== 'DELETE') {
-      Alert.alert('Cancelled', 'You must type DELETE exactly to confirm.');
+      Alert.alert(t('editProfile.cancelled'), t('editProfile.deleteConfirm'));
       return;
     }
     setShowDeleteConfirm(false);
@@ -119,8 +121,8 @@ export function EditProfileScreen() {
       const message =
         err instanceof ApiError
           ? err.message
-          : 'Failed to delete account. Please try again.';
-      Alert.alert('Error', message);
+          : t('editProfile.deleteFailed');
+      Alert.alert(t('common.error'), message);
     }
   };
 
@@ -130,12 +132,12 @@ export function EditProfileScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
           <Feather name="arrow-left" size={22} color={colors.onSurface} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>EDIT PROFILE</Text>
+        <Text style={styles.headerTitle}>{t('editProfile.title')}</Text>
         <TouchableOpacity hitSlop={12} onPress={handleSave} disabled={saving}>
           {saving ? (
             <ActivityIndicator size="small" color={colors.primary} />
           ) : (
-            <Text style={styles.saveBtn}>SAVE</Text>
+            <Text style={styles.saveBtn}>{t('editProfile.save')}</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -173,7 +175,7 @@ export function EditProfileScreen() {
               ) : (
                 <>
                   <Feather name="camera" size={14} color={colors.onPrimary} />
-                  <Text style={styles.changePhotoText}>CHANGE PHOTO</Text>
+                  <Text style={styles.changePhotoText}>{t('editProfile.changePhoto')}</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -181,7 +183,7 @@ export function EditProfileScreen() {
 
           {/* Fields */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>DISPLAY NAME</Text>
+            <Text style={styles.fieldLabel}>{t('emailAuth.displayName')}</Text>
             <View style={styles.inputWrapper}>
               <Feather name="user" size={16} color={colors.onSurfaceDim} />
               <TextInput
@@ -189,7 +191,7 @@ export function EditProfileScreen() {
                 value={displayName}
                 onChangeText={setDisplayName}
                 placeholderTextColor={colors.onSurfaceDim}
-                placeholder="Your display name"
+                placeholder={t('emailAuth.displayNamePlaceholder')}
                 autoComplete="name"
                 textContentType="name"
                 editable={!saving}
@@ -198,7 +200,7 @@ export function EditProfileScreen() {
           </View>
 
           <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>USERNAME</Text>
+            <Text style={styles.fieldLabel}>{t('editProfile.username')}</Text>
             <View style={styles.inputWrapper}>
               <Text style={styles.atSign}>@</Text>
               <TextInput
@@ -206,7 +208,7 @@ export function EditProfileScreen() {
                 value={username}
                 onChangeText={setUsername}
                 placeholderTextColor={colors.onSurfaceDim}
-                placeholder="username"
+                placeholder={t('editProfile.usernamePlaceholder')}
                 autoCapitalize="none"
                 autoComplete="username"
                 textContentType="username"
@@ -216,7 +218,7 @@ export function EditProfileScreen() {
           </View>
 
           <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>EMAIL</Text>
+            <Text style={styles.fieldLabel}>{t('emailAuth.email')}</Text>
             <View style={[styles.inputWrapper, { opacity: 0.5 }]}>
               <Feather name="mail" size={16} color={colors.onSurfaceDim} />
               <TextInput
@@ -229,7 +231,7 @@ export function EditProfileScreen() {
           </View>
 
           <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>BIO</Text>
+            <Text style={styles.fieldLabel}>{t('editProfile.bio')}</Text>
             <View style={[styles.inputWrapper, { minHeight: 80, alignItems: 'flex-start', paddingTop: 14 }]}>
               <Feather name="edit-3" size={16} color={colors.onSurfaceDim} style={{ marginTop: 2 }} />
               <TextInput
@@ -237,7 +239,7 @@ export function EditProfileScreen() {
                 value={bio}
                 onChangeText={setBio}
                 placeholderTextColor={colors.onSurfaceDim}
-                placeholder="Tell us about yourself..."
+                placeholder={t('editProfile.bioPlaceholder')}
                 multiline
                 maxLength={120}
                 editable={!saving}
@@ -248,10 +250,10 @@ export function EditProfileScreen() {
 
           {/* Danger zone */}
           <View style={styles.dangerSection}>
-            <Text style={styles.dangerLabel}>DANGER ZONE</Text>
+            <Text style={styles.dangerLabel}>{t('editProfile.dangerZone')}</Text>
             <TouchableOpacity style={styles.dangerBtn} onPress={handleDeleteAccount}>
               <Feather name="trash-2" size={16} color="#FF4444" />
-              <Text style={styles.dangerBtnText}>Delete Account</Text>
+              <Text style={styles.dangerBtnText}>{t('editProfile.deleteAccount')}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -266,15 +268,15 @@ export function EditProfileScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>CONFIRM DELETION</Text>
+            <Text style={styles.modalTitle}>{t('editProfile.confirmDeletion')}</Text>
             <Text style={styles.modalDescription}>
-              Type DELETE to confirm account deletion.
+              {t('editProfile.typeDeleteDesc')}
             </Text>
             <TextInput
               style={styles.modalInput}
               value={deleteText}
               onChangeText={setDeleteText}
-              placeholder="Type DELETE"
+              placeholder={t('editProfile.typeDeletePlaceholder')}
               placeholderTextColor={colors.onSurfaceDim}
               autoCapitalize="characters"
               autoFocus
@@ -284,7 +286,7 @@ export function EditProfileScreen() {
                 style={styles.modalCancelBtn}
                 onPress={() => setShowDeleteConfirm(false)}
               >
-                <Text style={styles.modalCancelText}>CANCEL</Text>
+                <Text style={styles.modalCancelText}>{t('common.cancel').toUpperCase()}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
@@ -294,7 +296,7 @@ export function EditProfileScreen() {
                 onPress={confirmDeleteAccount}
                 disabled={deleteText.trim() !== 'DELETE'}
               >
-                <Text style={styles.modalDeleteText}>DELETE ACCOUNT</Text>
+                <Text style={styles.modalDeleteText}>{t('editProfile.deleteAccountBtn')}</Text>
               </TouchableOpacity>
             </View>
           </View>

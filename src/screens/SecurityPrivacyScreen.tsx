@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -47,6 +48,7 @@ function LegalModal({
   type: 'terms' | 'privacy';
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [content, setContent] = useState('');
   const [title, setTitle] = useState('');
@@ -63,7 +65,7 @@ function LegalModal({
       })
       .catch(() => {
         setTitle(type === 'terms' ? 'Terms of Service' : 'Privacy Policy');
-        setContent('Unable to load document. Please try again later.');
+        setContent(t('security.unableToLoadDocument'));
       })
       .finally(() => setLoading(false));
   }, [visible, type]);
@@ -94,7 +96,7 @@ function LegalModal({
             )}
           </ScrollView>
           <TouchableOpacity style={legalModalStyles.closeBtn} onPress={onClose} activeOpacity={0.8}>
-            <Text style={legalModalStyles.closeBtnText}>CLOSE</Text>
+            <Text style={legalModalStyles.closeBtnText}>{t('security.close')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -103,6 +105,7 @@ function LegalModal({
 }
 
 export function SecurityPrivacyScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<ProfileStackParamList>>();
   const { user, tokens, updatePreferences } = useAuth();
@@ -140,7 +143,7 @@ export function SecurityPrivacyScreen() {
         const email = user?.email ?? '';
         const refreshToken = await SecureStore.getItemAsync('kinetic_refresh_token');
         if (!email || !refreshToken) {
-          Alert.alert('Error', 'Unable to enable biometric login. Please log in again.');
+          Alert.alert(t('common.error'), t('security.biometricEnableError'));
           return;
         }
         const success = await enableBiometricLogin(email, refreshToken);
@@ -178,12 +181,12 @@ export function SecurityPrivacyScreen() {
 
   const handleRevokeSession = useCallback(async (sessionId: string) => {
     Alert.alert(
-      'Revoke Session',
-      'This will log out the device. Continue?',
+      t('security.revokeSession'),
+      t('security.revokeSessionDesc'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Revoke',
+          text: t('security.revoke'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -193,7 +196,7 @@ export function SecurityPrivacyScreen() {
               await authApi.deleteSession(accessToken, sessionId);
               setSessions((prev) => prev.filter((s) => s.id !== sessionId));
             } catch {
-              Alert.alert('Error', 'Could not revoke session. Please try again.');
+              Alert.alert(t('common.error'), t('security.revokeError'));
             } finally {
               setRevokingId(null);
             }
@@ -208,12 +211,12 @@ export function SecurityPrivacyScreen() {
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffMins < 1) return t('security.justNow');
+    if (diffMins < 60) return t('security.minsAgo', { count: diffMins });
     const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffHours < 24) return t('security.hoursAgo', { count: diffHours });
     const diffDays = Math.floor(diffHours / 24);
-    if (diffDays < 7) return `${diffDays}d ago`;
+    if (diffDays < 7) return t('security.daysAgo', { count: diffDays });
     return date.toLocaleDateString();
   };
 
@@ -252,29 +255,29 @@ export function SecurityPrivacyScreen() {
     {
       id: 'public',
       icon: <Feather name="eye" size={20} color={colors.info} />,
-      label: 'Public Profile',
-      sub: 'Allow other users to see your profile',
+      label: t('security.publicProfile'),
+      sub: t('security.publicProfileDesc'),
       value: profilePublic,
     },
     {
       id: 'stats',
       icon: <Feather name="bar-chart-2" size={20} color={colors.info} />,
-      label: 'Show Stats',
-      sub: 'Display your prediction stats on your profile',
+      label: t('security.showStats'),
+      sub: t('security.showStatsDesc'),
       value: showStats,
     },
     {
       id: 'history',
       icon: <MaterialCommunityIcons name="history" size={20} color={colors.info} />,
-      label: 'Show Prediction History',
-      sub: 'Others can view your past predictions',
+      label: t('security.showPredictionHistory'),
+      sub: t('security.showPredictionHistoryDesc'),
       value: showHistory,
     },
     {
       id: 'data',
       icon: <Feather name="database" size={20} color={colors.info} />,
-      label: 'Data Sharing',
-      sub: 'Share anonymized usage data to improve the app',
+      label: t('security.dataSharing'),
+      sub: t('security.dataSharingDesc'),
       value: dataSharing,
     },
   ];
@@ -313,7 +316,7 @@ export function SecurityPrivacyScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
           <Feather name="arrow-left" size={22} color={colors.onSurface} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>SECURITY & PRIVACY</Text>
+        <Text style={styles.headerTitle}>{t('security.title')}</Text>
         {saving ? (
           <ActivityIndicator size="small" color={colors.primary} />
         ) : (
@@ -327,7 +330,7 @@ export function SecurityPrivacyScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Security section */}
-        <Text style={styles.sectionLabel}>SECURITY</Text>
+        <Text style={styles.sectionLabel}>{t('security.security')}</Text>
 
         {/* Biometric toggle — always visible */}
         <View style={styles.card}>
@@ -337,14 +340,14 @@ export function SecurityPrivacyScreen() {
             </View>
             <View style={styles.toggleContent}>
               <Text style={styles.toggleLabel}>
-                {biometricLoading ? 'Biometric Login' : biometricLabel}
+                {biometricLoading ? t('security.biometricLogin') : biometricLabel}
               </Text>
               <Text style={styles.toggleSub}>
                 {biometricLoading
-                  ? 'Checking availability...'
+                  ? t('security.checkingAvailability')
                   : biometricAvailable
-                    ? `Use ${biometricLabel} to quickly log in`
-                    : 'Not available on this device'}
+                    ? t('security.biometricAvailableDesc', { label: biometricLabel })
+                    : t('security.biometricNotAvailable')}
               </Text>
             </View>
             {biometricLoading ? (
@@ -380,8 +383,8 @@ export function SecurityPrivacyScreen() {
               <Feather name="lock" size={20} color={colors.warning} />
             </View>
             <View>
-              <Text style={styles.toggleLabel}>Change Password</Text>
-              <Text style={styles.toggleSub}>Update your account password</Text>
+              <Text style={styles.toggleLabel}>{t('security.changePassword')}</Text>
+              <Text style={styles.toggleSub}>{t('security.changePasswordDesc')}</Text>
             </View>
           </View>
           <Feather name="chevron-right" size={18} color={colors.onSurfaceDim} />
@@ -397,11 +400,11 @@ export function SecurityPrivacyScreen() {
               <MaterialCommunityIcons name="devices" size={20} color={colors.onSurfaceVariant} />
             </View>
             <View>
-              <Text style={styles.toggleLabel}>Active Sessions</Text>
+              <Text style={styles.toggleLabel}>{t('security.activeSessions')}</Text>
               <Text style={styles.toggleSub}>
                 {sessionsLoading
-                  ? 'Loading...'
-                  : `${sessions.length} device${sessions.length !== 1 ? 's' : ''} currently logged in`}
+                  ? t('common.loading')
+                  : t('security.devicesLoggedIn', { count: sessions.length })}
               </Text>
             </View>
           </View>
@@ -417,7 +420,7 @@ export function SecurityPrivacyScreen() {
             {sessionsLoading ? (
               <ActivityIndicator size="small" color={colors.primary} style={{ paddingVertical: spacing.lg }} />
             ) : sessions.length === 0 ? (
-              <Text style={[styles.toggleSub, { padding: spacing.lg }]}>No active sessions</Text>
+              <Text style={[styles.toggleSub, { padding: spacing.lg }]}>{t('security.noActiveSessions')}</Text>
             ) : (
               sessions.map((session) => (
                 <View key={session.id} style={styles.sessionRow}>
@@ -433,7 +436,7 @@ export function SecurityPrivacyScreen() {
                       <Text style={styles.sessionName}>{session.deviceName}</Text>
                       {session.isCurrent && (
                         <View style={styles.currentBadge}>
-                          <Text style={styles.currentBadgeText}>THIS DEVICE</Text>
+                          <Text style={styles.currentBadgeText}>{t('security.thisDevice')}</Text>
                         </View>
                       )}
                     </View>
@@ -450,7 +453,7 @@ export function SecurityPrivacyScreen() {
                       {revokingId === session.id ? (
                         <ActivityIndicator size="small" color={colors.error} />
                       ) : (
-                        <Text style={styles.revokeBtnText}>Revoke</Text>
+                        <Text style={styles.revokeBtnText}>{t('security.revoke')}</Text>
                       )}
                     </TouchableOpacity>
                   )}
@@ -461,23 +464,23 @@ export function SecurityPrivacyScreen() {
         )}
 
         {/* Privacy section */}
-        <Text style={[styles.sectionLabel, { marginTop: spacing['3xl'] }]}>PRIVACY</Text>
+        <Text style={[styles.sectionLabel, { marginTop: spacing['3xl'] }]}>{t('security.privacy')}</Text>
         <View style={styles.card}>
           {privacyToggles.map(renderToggleRow)}
         </View>
 
         {/* Legal links */}
-        <Text style={[styles.sectionLabel, { marginTop: spacing['3xl'] }]}>LEGAL</Text>
+        <Text style={[styles.sectionLabel, { marginTop: spacing['3xl'] }]}>{t('security.legal')}</Text>
         <View style={styles.card}>
           <TouchableOpacity style={styles.legalRow} onPress={() => setLegalModal('terms')}>
             <Feather name="file-text" size={18} color={colors.onSurfaceVariant} />
-            <Text style={styles.legalText}>Terms of Service</Text>
+            <Text style={styles.legalText}>{t('login.termsLink')}</Text>
             <Feather name="chevron-right" size={14} color={colors.onSurfaceDim} />
           </TouchableOpacity>
           <View style={styles.legalDivider} />
           <TouchableOpacity style={styles.legalRow} onPress={() => setLegalModal('privacy')}>
             <Feather name="shield" size={18} color={colors.onSurfaceVariant} />
-            <Text style={styles.legalText}>Privacy Policy</Text>
+            <Text style={styles.legalText}>{t('login.privacyLink')}</Text>
             <Feather name="chevron-right" size={14} color={colors.onSurfaceDim} />
           </TouchableOpacity>
         </View>

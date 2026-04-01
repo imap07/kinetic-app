@@ -17,13 +17,14 @@ import { predictionsApi } from '../api/predictions';
 import type { DailyStatusResponse, QuestProgress } from '../api/predictions';
 import type { HomeStackParamList } from '../navigation/types';
 import Toast from 'react-native-toast-message';
+import { useTranslation } from 'react-i18next';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'Quests'>;
 
 interface QuestDef {
   id: keyof QuestProgress | string;
-  title: string;
-  description: string;
+  titleKey: string;
+  descKey: string;
   icon: React.ComponentProps<typeof Ionicons>['name'];
   target: number;
   getProgress: (q?: QuestProgress) => number;
@@ -33,8 +34,8 @@ interface QuestDef {
 const DAILY_QUESTS: QuestDef[] = [
   {
     id: 'pick3',
-    title: 'Pick 3 correct outcomes',
-    description: 'Get 3 predictions right today',
+    titleKey: 'quests.quest1Title',
+    descKey: 'quests.quest1Desc',
     icon: 'checkmark-done',
     target: 3,
     getProgress: (q) => q?.pick3?.progress ?? 0,
@@ -42,8 +43,8 @@ const DAILY_QUESTS: QuestDef[] = [
   },
   {
     id: 'multiSport',
-    title: 'Cover at least 2 sports',
-    description: 'Make predictions in 2 different sports',
+    titleKey: 'quests.quest2Title',
+    descKey: 'quests.quest2Desc',
     icon: 'football',
     target: 2,
     getProgress: (q) => q?.multiSport?.progress ?? 0,
@@ -51,8 +52,8 @@ const DAILY_QUESTS: QuestDef[] = [
   },
   {
     id: 'bonusReward',
-    title: 'Earn bonus rewards',
-    description: 'Complete all daily quests for a bonus',
+    titleKey: 'quests.quest3Title',
+    descKey: 'quests.quest3Desc',
     icon: 'gift',
     target: 1,
     getProgress: (q) => (q?.bonusReward?.completed ? 1 : 0),
@@ -63,6 +64,7 @@ const DAILY_QUESTS: QuestDef[] = [
 export function QuestsScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { tokens } = useAuth();
+  const { t } = useTranslation();
   const [dailyStatus, setDailyStatus] = useState<DailyStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -73,7 +75,7 @@ export function QuestsScreen({ navigation }: Props) {
       const status = await predictionsApi.getDailyStatus(tokens.accessToken);
       setDailyStatus(status);
     } catch (err) {
-      Toast.show({ type: 'error', text1: 'Error loading quests', text2: 'Pull down to try again' });
+      Toast.show({ type: 'error', text1: t('quests.errorLoading') });
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -100,7 +102,7 @@ export function QuestsScreen({ navigation }: Props) {
           color={colors.onSurface}
           onPress={() => navigation.goBack()}
         />
-        <Text style={styles.headerTitle}>Daily Quests</Text>
+        <Text style={styles.headerTitle}>{t('quests.title')}</Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -120,13 +122,11 @@ export function QuestsScreen({ navigation }: Props) {
           />
           <View style={styles.bannerTop}>
             <Ionicons name="trophy" size={20} color={colors.primary} />
-            <Text style={styles.bannerTag}>CHALLENGE OF THE DAY</Text>
+            <Text style={styles.bannerTag}>{t('quests.challengeOfDay')}</Text>
           </View>
-          <Text style={styles.bannerBoost}>DOUBLE BOOST</Text>
-          <Text style={styles.bannerTitle}>Multi-Sport{'\n'}Challenge</Text>
-          <Text style={styles.bannerDesc}>
-            Complete all daily quests to earn double points today.
-          </Text>
+          <Text style={styles.bannerBoost}>{t('quests.doubleBoost')}</Text>
+          <Text style={styles.bannerTitle}>{t('quests.multiSport')}</Text>
+          <Text style={styles.bannerDesc}>{t('quests.completeAll')}</Text>
         </View>
 
         {/* Daily Status */}
@@ -134,7 +134,7 @@ export function QuestsScreen({ navigation }: Props) {
           <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 24 }} />
         ) : dailyStatus ? (
           <View style={styles.statusCard}>
-            <Text style={styles.statusLabel}>TODAY'S PICKS</Text>
+            <Text style={styles.statusLabel}>{t('quests.todaysPicks')}</Text>
             <Text style={styles.statusValue}>
               {dailyStatus.used} / {dailyStatus.limit > 0 ? dailyStatus.limit : '∞'}
             </Text>
@@ -153,7 +153,7 @@ export function QuestsScreen({ navigation }: Props) {
         ) : null}
 
         {/* Quest Items */}
-        <Text style={styles.sectionTitle}>DAILY QUESTS</Text>
+        <Text style={styles.sectionTitle}>{t('quests.dailyQuests')}</Text>
         {DAILY_QUESTS.map((quest) => {
           const progress = quest.getProgress(quests);
           const done = quest.isDone(quests);
@@ -164,8 +164,8 @@ export function QuestsScreen({ navigation }: Props) {
                 <Ionicons name={quest.icon} size={20} color={done ? '#4A5E00' : colors.primary} />
               </View>
               <View style={styles.questInfo}>
-                <Text style={styles.questTitle}>{quest.title}</Text>
-                <Text style={styles.questDesc}>{quest.description}</Text>
+                <Text style={styles.questTitle}>{t(quest.titleKey)}</Text>
+                <Text style={styles.questDesc}>{t(quest.descKey)}</Text>
                 {/* Progress bar */}
                 <View style={styles.questProgressTrack}>
                   <LinearGradient
@@ -194,9 +194,7 @@ export function QuestsScreen({ navigation }: Props) {
 
         <View style={styles.comingSoon}>
           <Ionicons name="construct-outline" size={24} color={colors.onSurfaceVariant} />
-          <Text style={styles.comingSoonText}>
-            More quests and rewards are coming soon.
-          </Text>
+          <Text style={styles.comingSoonText}>{t('quests.comingSoon')}</Text>
         </View>
       </ScrollView>
     </View>

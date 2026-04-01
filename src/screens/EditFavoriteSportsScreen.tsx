@@ -13,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors, borderRadius } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import { usePurchases } from '../contexts/PurchasesContext';
@@ -96,6 +97,7 @@ export function EditFavoriteSportsScreen() {
   const rootNav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user, tokens, refreshProfile } = useAuth();
   const { isProMember } = usePurchases();
+  const { t } = useTranslation();
 
   const [selected, setSelected] = useState<Set<SportKey>>(
     new Set((user?.favoriteSports ?? ['football']) as SportKey[]),
@@ -131,7 +133,7 @@ export function EditFavoriteSportsScreen() {
       await refreshProfile();
       navigation.goBack();
     } catch {
-      Alert.alert('Error', 'Failed to update favorite sports. Please try again.');
+      Alert.alert(t('common.error'), t('editFavorites.errorSports'));
     } finally {
       setSaving(false);
     }
@@ -150,12 +152,12 @@ export function EditFavoriteSportsScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
           <Feather name="arrow-left" size={22} color={colors.onSurface} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>FAVORITE SPORTS</Text>
+        <Text style={styles.headerTitle}>{t('editFavorites.sportsTitle')}</Text>
         <TouchableOpacity hitSlop={12} onPress={handleSave} disabled={saving || !hasChanges}>
           {saving ? (
             <ActivityIndicator size="small" color={colors.primary} />
           ) : (
-            <Text style={[styles.saveBtn, !hasChanges && { opacity: 0.3 }]}>SAVE</Text>
+            <Text style={[styles.saveBtn, !hasChanges && { opacity: 0.3 }]}>{t('editFavorites.save')}</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -163,8 +165,7 @@ export function EditFavoriteSportsScreen() {
       {/* Description */}
       <View style={styles.descSection}>
         <Text style={styles.descText}>
-          Select the sports you want to see on your dashboard. Soccer is always free.
-          {!isProMember ? ' Other sports require Kinetic+ Pro.' : ''}
+          {t('editFavorites.sportsDesc')}{!isProMember ? t('editFavorites.sportsDescPro') : ''}
         </Text>
       </View>
 
@@ -253,7 +254,9 @@ export function EditFavoriteSportsScreen() {
                 <ActivityIndicator size="small" color="#4A5E00" />
               ) : (
                 <Text style={styles.ctaText}>
-                  SAVE {selected.size} SPORT{selected.size !== 1 ? 'S' : ''}
+                  {selected.size !== 1
+                    ? t('editFavorites.saveSports', { count: selected.size })
+                    : t('editFavorites.saveSport', { count: selected.size })}
                 </Text>
               )}
             </LinearGradient>

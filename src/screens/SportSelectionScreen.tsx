@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 import { colors, borderRadius } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import { authApi } from '../api';
@@ -82,6 +83,7 @@ const MIN_SPORTS = 1;
 
 export function SportSelectionScreen({ onComplete }: Props) {
   const { tokens } = useAuth();
+  const { t } = useTranslation();
   const [selected, setSelected] = useState<Set<SportKey>>(new Set(['football']));
   const [saving, setSaving] = useState(false);
 
@@ -116,11 +118,9 @@ export function SportSelectionScreen({ onComplete }: Props) {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.stepLabel}>Step 1 of 3</Text>
-        <Text style={styles.title}>What do you follow?</Text>
-        <Text style={styles.subtitle}>
-          Pick the sports you love. You can always change this later.
-        </Text>
+        <Text style={styles.stepLabel}>{t('sportSelection.step')}</Text>
+        <Text style={styles.title}>{t('sportSelection.title')}</Text>
+        <Text style={styles.subtitle}>{t('sportSelection.subtitle')}</Text>
       </View>
 
       {/* Sport grid */}
@@ -172,8 +172,9 @@ export function SportSelectionScreen({ onComplete }: Props) {
       <View style={styles.ctaContainer}>
         <View style={styles.ctaSummary}>
           <Text style={styles.ctaSummaryText}>
-            <Text style={styles.ctaSummaryCount}>{selected.size}</Text>
-            {' '}sport{selected.size !== 1 ? 's' : ''} selected
+            {selected.size !== 1
+              ? t('sportSelection.sportsSelectedPlural', { count: selected.size })
+              : t('sportSelection.sportsSelected', { count: selected.size })}
           </Text>
         </View>
 
@@ -194,7 +195,7 @@ export function SportSelectionScreen({ onComplete }: Props) {
             ) : (
               <>
                 <Text style={[styles.ctaText, canContinue && styles.ctaTextActive]}>
-                  NEXT
+                  {t('sportSelection.next')}
                 </Text>
                 <Ionicons
                   name="arrow-forward"

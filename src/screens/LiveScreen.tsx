@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
 import { colors } from '../theme';
@@ -29,19 +30,6 @@ const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AOT', 'AP', 'POST', 'Completed']
 const POLLING_FALLBACK_INTERVAL = 60_000;
 
 type DateOption = { label: string; date: Date };
-
-function buildDateOptions(): DateOption[] {
-  const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  return [
-    { label: 'Yesterday', date: yesterday },
-    { label: 'Today', date: today },
-    { label: 'Tomorrow', date: tomorrow },
-  ];
-}
 
 function isSameDay(d1: Date, d2: Date): boolean {
   return (
@@ -135,6 +123,7 @@ function groupByLeague(games: SportGame[]): LeagueGroup[] {
 }
 
 export function LiveScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<LiveStackParamList>>();
   const rootNav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { tokens } = useAuth();
@@ -145,7 +134,18 @@ export function LiveScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const dateOptions = useMemo(buildDateOptions, []);
+  const dateOptions = useMemo((): DateOption[] => {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return [
+      { label: t('live.yesterday'), date: yesterday },
+      { label: t('live.today'), date: today },
+      { label: t('live.tomorrow'), date: tomorrow },
+    ];
+  }, [t]);
   const [selectedDateIdx, setSelectedDateIdx] = useState(1); // default = Today
 
   // SSE: real-time push from backend
@@ -172,7 +172,7 @@ export function LiveScreen() {
       const result = await sportsApi.getDashboard(tokens.accessToken, activeSport);
       setData(result);
     } catch (err) {
-      Toast.show({ type: 'error', text1: 'Error loading games', text2: 'Pull down to try again' });
+      Toast.show({ type: 'error', text1: t('dashboard.errorLoading'), text2: t('dashboard.pullToRetry') });
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -294,7 +294,7 @@ export function LiveScreen() {
         {liveCount > 0 && selectedDateIdx === 1 && (
           <View style={styles.liveBanner}>
             <View style={styles.liveDot} />
-            <Text style={styles.liveBannerText}>{liveCount} game{liveCount > 1 ? 's' : ''} live now</Text>
+            <Text style={styles.liveBannerText}>{t('live.gamesLiveNow', { count: liveCount })}</Text>
           </View>
         )}
 
@@ -367,7 +367,7 @@ export function LiveScreen() {
                     {/* Action hint for upcoming */}
                     {isUpcoming && (
                       <View style={styles.predictBadge}>
-                        <Text style={styles.predictBadgeText}>PREDICT</Text>
+                        <Text style={styles.predictBadgeText}>{t('live.predict')}</Text>
                       </View>
                     )}
                   </TouchableOpacity>
@@ -386,15 +386,15 @@ export function LiveScreen() {
             </View>
             <Text style={styles.emptyTitle}>
               {selectedDateIdx === 0
-                ? 'No games yesterday'
+                ? t('live.noGamesYesterday')
                 : selectedDateIdx === 1
-                  ? 'No games today'
-                  : 'No games tomorrow'}
+                  ? t('live.noGamesToday')
+                  : t('live.noGamesTomorrow')}
             </Text>
             <Text style={styles.emptySubtitle}>
               {selectedDateIdx === 1
-                ? 'Pull down to refresh or check another day'
-                : 'Try a different date or sport'}
+                ? t('live.pullToRefresh')
+                : t('live.tryDifferentDate')}
             </Text>
           </View>
         )}

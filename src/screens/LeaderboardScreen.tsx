@@ -20,6 +20,7 @@ import type { LeaderboardEntry, MyRankResponse, MyStatsResponse } from '../api';
 import type { RootStackParamList } from '../navigation/types';
 import Toast from 'react-native-toast-message';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
   navigation: NativeStackNavigationProp<LeaguesStackParamList, 'Leaderboard'>;
@@ -51,6 +52,7 @@ const FREE_FADED_COUNT = 5;
 export function LeaderboardScreen({ navigation }: Props) {
   const { tokens } = useAuth();
   const { isProMember } = usePurchases();
+  const { t } = useTranslation();
   const rootNav = useRootNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [myRank, setMyRank] = useState<MyRankResponse | null>(null);
@@ -70,7 +72,7 @@ export function LeaderboardScreen({ navigation }: Props) {
       setMyRank(rankRes);
       setMyStats(statsRes);
     } catch (err) {
-      Toast.show({ type: 'error', text1: 'Error loading leaderboard', text2: 'Pull down to try again' });
+      Toast.show({ type: 'error', text1: t('leaderboard.errorLoading') });
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -99,27 +101,27 @@ export function LeaderboardScreen({ navigation }: Props) {
           <View style={styles.rankStatsRow}>
             <View style={styles.rankStat}>
               <Text style={styles.rankStatValue}>{formatPoints(myRank.entry.totalPoints)}</Text>
-              <Text style={styles.rankStatLabel}>Points</Text>
+              <Text style={styles.rankStatLabel}>{t('leaderboard.points')}</Text>
             </View>
             <View style={styles.rankDivider} />
             <View style={styles.rankStat}>
               <Text style={styles.rankStatValue}>{myRank.entry.winRate}%</Text>
-              <Text style={styles.rankStatLabel}>Win Rate</Text>
+              <Text style={styles.rankStatLabel}>{t('leaderboard.winRate')}</Text>
             </View>
             <View style={styles.rankDivider} />
             <View style={styles.rankStat}>
               <Text style={styles.rankStatValue}>{myRank.entry.currentStreak}</Text>
-              <Text style={styles.rankStatLabel}>Streak</Text>
+              <Text style={styles.rankStatLabel}>{t('leaderboard.streak')}</Text>
             </View>
             <View style={styles.rankDivider} />
             <View style={styles.rankStat}>
               <Text style={styles.rankStatValue}>{myRank.entry.bestStreak}</Text>
-              <Text style={styles.rankStatLabel}>Best</Text>
+              <Text style={styles.rankStatLabel}>{t('leaderboard.best')}</Text>
             </View>
           </View>
           {myRank.totalPlayers > 0 && (
             <Text style={styles.rankContext}>
-              Top {Math.round((myRank.rank / myRank.totalPlayers) * 100)}% of {myRank.totalPlayers} players
+              {t('leaderboard.topPercent', { percent: Math.round((myRank.rank / myRank.totalPlayers) * 100), total: myRank.totalPlayers })}
             </Text>
           )}
         </View>
@@ -130,19 +132,19 @@ export function LeaderboardScreen({ navigation }: Props) {
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
             <Text style={styles.statCardValue}>{myStats.totalPredictions}</Text>
-            <Text style={styles.statCardLabel}>Predictions</Text>
+            <Text style={styles.statCardLabel}>{t('leaderboard.predictions')}</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={[styles.statCardValue, { color: '#16A34A' }]}>{myStats.won}</Text>
-            <Text style={styles.statCardLabel}>Won</Text>
+            <Text style={styles.statCardLabel}>{t('picks.won')}</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={[styles.statCardValue, { color: '#DC2626' }]}>{myStats.lost}</Text>
-            <Text style={styles.statCardLabel}>Lost</Text>
+            <Text style={styles.statCardLabel}>{t('picks.lost')}</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={[styles.statCardValue, { color: colors.primary }]}>{formatPoints(myStats.totalPoints)}</Text>
-            <Text style={styles.statCardLabel}>Points</Text>
+            <Text style={styles.statCardLabel}>{t('leaderboard.points')}</Text>
           </View>
         </View>
       )}
@@ -150,7 +152,7 @@ export function LeaderboardScreen({ navigation }: Props) {
       {/* Leaderboard Title */}
       <View style={styles.lbTitleRow}>
         <MaterialCommunityIcons name="trophy" size={20} color={colors.primary} />
-        <Text style={styles.lbTitle}>GLOBAL RANKINGS</Text>
+        <Text style={styles.lbTitle}>{t('leaderboard.title')}</Text>
       </View>
     </>
   );
@@ -178,7 +180,7 @@ export function LeaderboardScreen({ navigation }: Props) {
         </View>
         <View style={styles.entryInfo}>
           <Text style={[styles.entryName, isMe && styles.entryNameMe]} numberOfLines={1}>
-            {item.displayName}{isMe ? ' (You)' : ''}
+            {item.displayName}{isMe ? ` ${t('leaderboard.you')}` : ''}
           </Text>
           <View style={styles.entryMeta}>
             <View style={[styles.entryTierDot, { backgroundColor: TIER_COLORS[item.tier] || '#9CA3AF' }]} />
@@ -199,7 +201,7 @@ export function LeaderboardScreen({ navigation }: Props) {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.brandText}>KINETIC</Text>
-        <Text style={styles.headerSubtitle}>LEADERBOARD</Text>
+        <Text style={styles.headerSubtitle}>{t('leaderboard.title')}</Text>
       </View>
 
       {loading ? (

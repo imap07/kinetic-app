@@ -14,6 +14,7 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { TopAppBar, PrimaryButton } from '../components';
 import { colors, typography, spacing, borderRadius } from '../theme';
 import { AuthStackParamList } from '../navigation/types';
@@ -27,6 +28,7 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'RecoverPasswordVerifica
 export function RecoverPasswordVerificationScreen({ navigation, route }: Props) {
   const { email } = route.params;
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const { verifyCode, forgotPassword } = useAuth();
 
   const [code, setCode] = useState<string[]>(Array(CODE_LENGTH).fill(''));
@@ -61,8 +63,8 @@ export function RecoverPasswordVerificationScreen({ navigation, route }: Props) 
       const message =
         err instanceof ApiError
           ? err.message
-          : 'Invalid or expired code. Please try again.';
-      Alert.alert('Error', message);
+          : t('recoverPassword.invalidCode');
+      Alert.alert(t('common.error'), message);
     } finally {
       setLoading(false);
     }
@@ -73,9 +75,9 @@ export function RecoverPasswordVerificationScreen({ navigation, route }: Props) 
     setResending(true);
     try {
       await forgotPassword(email);
-      Alert.alert('Code Sent', 'A new verification code has been sent to your email.');
+      Alert.alert(t('recoverPassword.codeSent'), t('recoverPassword.codeSentDesc'));
     } catch {
-      Alert.alert('Error', 'Failed to resend code. Please try again.');
+      Alert.alert(t('common.error'), t('recoverPassword.resendFailed'));
     } finally {
       setResending(false);
     }
@@ -90,7 +92,7 @@ export function RecoverPasswordVerificationScreen({ navigation, route }: Props) 
         <TopAppBar
           showBack
           onBack={() => navigation.goBack()}
-          leftLabel="VERIFICATION"
+          leftLabel={t('recoverPassword.screenTitle')}
         />
       </View>
 
@@ -106,14 +108,14 @@ export function RecoverPasswordVerificationScreen({ navigation, route }: Props) 
           <MaterialCommunityIcons name="shield-lock" size={32} color={colors.primary} />
         </View>
 
-        <Text style={styles.title}>Check your email</Text>
+        <Text style={styles.title}>{t('recoverPassword.checkYourEmail')}</Text>
 
         <Text style={styles.description}>
-          We've sent a 6-digit verification code to{'\n'}
+          {t('recoverPassword.verifyDesc')}{'\n'}
           <Text style={styles.emailHighlight}>
             {email.replace(/(.{2})(.*)(@.*)/, (_m, a, b, c) => a + '*'.repeat(b.length) + c)}
           </Text>
-          . Enter it below to secure your account.
+          {t('recoverPassword.verifyDescSuffix')}
         </Text>
 
         <View style={styles.codeSection}>
@@ -138,7 +140,7 @@ export function RecoverPasswordVerificationScreen({ navigation, route }: Props) 
         </View>
 
         <PrimaryButton
-          title={loading ? '' : 'VERIFY & CONTINUE'}
+          title={loading ? '' : t('recoverPassword.verifyContinue')}
           onPress={handleVerify}
           style={styles.verifyButton}
           icon={
@@ -148,14 +150,14 @@ export function RecoverPasswordVerificationScreen({ navigation, route }: Props) 
           }
         />
 
-        <Text style={styles.resendLabel}>DIDN'T RECEIVE THE CODE?</Text>
+        <Text style={styles.resendLabel}>{t('recoverPassword.didntReceive')}</Text>
         <TouchableOpacity style={styles.resendBtn} onPress={handleResend} disabled={resending}>
           {resending ? (
             <ActivityIndicator size={14} color={colors.primary} />
           ) : (
             <MaterialCommunityIcons name="refresh" size={14} color={colors.primary} />
           )}
-          <Text style={styles.resendLink}>Resend Code</Text>
+          <Text style={styles.resendLink}>{t('recoverPassword.resendCode')}</Text>
         </TouchableOpacity>
 
         <View style={styles.spacer} />
@@ -168,17 +170,15 @@ export function RecoverPasswordVerificationScreen({ navigation, route }: Props) 
             style={styles.securityIcon}
           />
           <View style={styles.securityContent}>
-            <Text style={styles.securityTitle}>SECURITY TIP</Text>
+            <Text style={styles.securityTitle}>{t('recoverPassword.securityTip')}</Text>
             <Text style={styles.securityText}>
-              Never share your 6-digit verification code with anyone, including
-              Kinetic support staff.
+              {t('recoverPassword.securityTipText')}
             </Text>
           </View>
         </View>
 
         <Text style={styles.footerText}>
-          {'\u00A9'} {new Date().getFullYear()} KINETIC GAMING PLATFORMS. ALL
-          RIGHTS RESERVED.
+          {'\u00A9'} {new Date().getFullYear()} {t('recoverPassword.copyrightFooter')}
         </Text>
       </ScrollView>
     </KeyboardAvoidingView>

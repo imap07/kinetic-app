@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation as useRootNavigation, useFocusEffect } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image as ExpoImage } from 'expo-image';
 import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
@@ -40,7 +41,7 @@ type Props = {
 
 const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'P', 'BT', 'LIVE', 'Q1', 'Q2', 'Q3', 'Q4', 'OT', 'P1', 'P2', 'P3', 'IN1', 'IN2', 'IN3', 'IN4', 'IN5', 'IN6', 'IN7', 'IN8', 'IN9'];
 
-function formatGameTime(dateStr: string): string {
+function formatGameTime(dateStr: string, t: (key: string) => string): string {
   const date = new Date(dateStr);
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -50,20 +51,20 @@ function formatGameTime(dateStr: string): string {
 
   const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-  if (gameDay.getTime() === today.getTime()) return `Today ${time}`;
-  if (gameDay.getTime() === tomorrow.getTime()) return `Tomorrow ${time}`;
+  if (gameDay.getTime() === today.getTime()) return `${t('dashboard.today')} ${time}`;
+  if (gameDay.getTime() === tomorrow.getTime()) return `${t('dashboard.tomorrow')} ${time}`;
   return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${time}`;
 }
 
-function getGameStatusLabel(game: SportGame): string {
+function getGameStatusLabel(game: SportGame, t: (key: string) => string): string {
   if (LIVE_STATUSES.includes(game.status)) {
-    return game.timer ? `LIVE ${game.timer}'` : 'LIVE';
+    return game.timer ? `${t('dashboard.live')} ${game.timer}'` : t('dashboard.live');
   }
   if (['FT', 'AET', 'PEN', 'AOT', 'AP', 'POST', 'Completed'].includes(game.status)) {
-    return 'FT';
+    return t('dashboard.ft');
   }
-  if (game.status === 'HT') return 'HT';
-  return formatGameTime(game.date);
+  if (game.status === 'HT') return t('dashboard.ht');
+  return formatGameTime(game.date, t);
 }
 
 function TeamLogo({ uri, size = 32 }: { uri?: string; size?: number }) {
@@ -96,6 +97,7 @@ function TeamLogo({ uri, size = 32 }: { uri?: string; size?: number }) {
 }
 
 export function DashboardScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { tokens, user } = useAuth();
   const { isProMember } = usePurchases();
   const { showAchievementUnlock } = useAchievements();
@@ -116,7 +118,7 @@ export function DashboardScreen({ navigation }: Props) {
       const result = await sportsApi.getDashboard(tokens.accessToken, activeSport);
       setData(result);
     } catch (err) {
-      Toast.show({ type: 'error', text1: 'Error loading games', text2: 'Pull down to try again' });
+      Toast.show({ type: 'error', text1: t('dashboard.errorLoading'), text2: t('dashboard.pullToRetry') });
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -139,7 +141,7 @@ export function DashboardScreen({ navigation }: Props) {
       setDailyStatus(daily);
       setUserStats(stats);
     } catch (err) {
-      Toast.show({ type: 'error', text1: 'Error loading stats', text2: 'Pull down to try again' });
+      Toast.show({ type: 'error', text1: t('dashboard.errorLoading'), text2: t('dashboard.pullToRetry') });
     } finally {
       setStatsLoading(false);
     }
@@ -337,7 +339,7 @@ export function DashboardScreen({ navigation }: Props) {
                 activeLeagueFilter === null && styles.leagueFilterTextActive,
               ]}
             >
-              All
+              {t('dashboard.all')}
             </Text>
           </TouchableOpacity>
 
@@ -438,7 +440,7 @@ export function DashboardScreen({ navigation }: Props) {
           <View style={styles.sectionWrap}>
             <View style={styles.liveHeaderRow}>
               <View style={styles.liveDot} />
-              <Text style={styles.liveSectionTitle}>LIVE ACTION</Text>
+              <Text style={styles.liveSectionTitle}>{t('dashboard.liveAction')}</Text>
             </View>
             {liveGames.map((game) => (
               <TouchableOpacity
@@ -451,7 +453,7 @@ export function DashboardScreen({ navigation }: Props) {
                 <View style={styles.liveBody}>
                   <View style={styles.liveBadgeRow}>
                     <View style={styles.liveBadge}>
-                      <Text style={styles.liveBadgeText}>{getGameStatusLabel(game)}</Text>
+                      <Text style={styles.liveBadgeText}>{getGameStatusLabel(game, t)}</Text>
                     </View>
                     <Text style={styles.liveLeagueText}>{game.leagueName}</Text>
                   </View>
@@ -480,7 +482,7 @@ export function DashboardScreen({ navigation }: Props) {
         {hasLiveOrUpcoming && upcomingGames.length > 0 && (
           <View style={styles.sectionWrap}>
             <Text style={styles.thrillersHeading}>
-              {isF1 ? 'UPCOMING RACES' : 'UPCOMING MATCHES'}
+              {isF1 ? t('dashboard.upcomingRaces') : t('dashboard.upcoming')}
             </Text>
             <FlatList
               horizontal
@@ -508,13 +510,13 @@ export function DashboardScreen({ navigation }: Props) {
                       <Text style={styles.f1CircuitLocation}>
                         {game.circuit?.city ?? ''}{game.circuit?.country ? `, ${game.circuit.country}` : ''}
                       </Text>
-                      <Text style={styles.f1DateTime}>{formatGameTime(game.date)}</Text>
+                      <Text style={styles.f1DateTime}>{formatGameTime(game.date, t)}</Text>
                     </View>
                   ) : (
                     <>
                       <View style={styles.gameCardTop}>
                         <Text style={styles.gameCardLeague}>
-                          {game.leagueName} {'\u2022'} {formatGameTime(game.date)}
+                          {game.leagueName} {'\u2022'} {formatGameTime(game.date, t)}
                         </Text>
                       </View>
                       <View style={styles.gameTeamsRow}>
@@ -546,7 +548,7 @@ export function DashboardScreen({ navigation }: Props) {
             <View style={styles.sectionHeader}>
               <MaterialCommunityIcons name="clock-check-outline" size={18} color={colors.primary} />
               <Text style={styles.sectionHeadingRow}>
-                {isF1 ? 'RECENT RACES' : 'RECENT RESULTS'}
+                {isF1 ? t('dashboard.recentRaces') : t('dashboard.recentResults')}
               </Text>
             </View>
             {recentGames.slice(0, RECENT_GAMES_LIMIT).map((game) => (
@@ -563,7 +565,7 @@ export function DashboardScreen({ navigation }: Props) {
                       <Text style={styles.f1CircuitName}>
                         {game.circuit?.name ?? ''} {game.circuit?.country ? `- ${game.circuit.country}` : ''}
                       </Text>
-                      <Text style={styles.recentDateText}>{formatGameTime(game.date)}</Text>
+                      <Text style={styles.recentDateText}>{formatGameTime(game.date, t)}</Text>
                     </View>
                     <View style={styles.f1StatusBadge}>
                       <Text style={styles.f1StatusText}>{game.status}</Text>
@@ -580,7 +582,7 @@ export function DashboardScreen({ navigation }: Props) {
                         />
                       ) : null}
                       <Text style={styles.todayLeagueName}>{game.leagueName}</Text>
-                      <Text style={styles.recentDateText}>{formatGameTime(game.date)}</Text>
+                      <Text style={styles.recentDateText}>{formatGameTime(game.date, t)}</Text>
                     </View>
                     <View style={styles.todayMatchRow}>
                       <View style={styles.todayTeamCol}>
@@ -606,7 +608,7 @@ export function DashboardScreen({ navigation }: Props) {
                       </View>
                     </View>
                     <View style={styles.recentStatusRow}>
-                      <Text style={styles.recentStatusText}>FT</Text>
+                      <Text style={styles.recentStatusText}>{t('dashboard.ft')}</Text>
                     </View>
                   </>
                 )}
@@ -629,9 +631,9 @@ export function DashboardScreen({ navigation }: Props) {
             {/* Top row: title + daily picks ring */}
             <View style={styles.statsTopRow}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.predictorTitle}>Your Stats</Text>
+                <Text style={styles.predictorTitle}>{t('dashboard.yourStats')}</Text>
                 <Text style={styles.predictorSubtitle}>
-                  {isProMember ? 'Pro Member' : 'Free Tier'} {'\u2022'}{' '}
+                  {isProMember ? t('dashboard.proMember') : t('dashboard.freeTier')} {'\u2022'}{' '}
                   <Text style={styles.predictorPts}>{userStats.totalPoints.toLocaleString()} PTS</Text>
                 </Text>
               </View>
@@ -649,24 +651,24 @@ export function DashboardScreen({ navigation }: Props) {
             <View style={styles.statsGrid}>
               <View style={styles.statGridItem}>
                 <Text style={styles.statGridValue}>{userStats.won}</Text>
-                <Text style={styles.statGridLabel}>Won</Text>
+                <Text style={styles.statGridLabel}>{t('dashboard.won')}</Text>
               </View>
               <View style={styles.statGridItem}>
                 <Text style={styles.statGridValue}>{userStats.lost}</Text>
-                <Text style={styles.statGridLabel}>Lost</Text>
+                <Text style={styles.statGridLabel}>{t('dashboard.lost')}</Text>
               </View>
               <View style={styles.statGridItem}>
                 <Text style={[styles.statGridValue, userStats.winRate > 0 && { color: colors.primary }]}>
                   {userStats.winRate}%
                 </Text>
-                <Text style={styles.statGridLabel}>Win Rate</Text>
+                <Text style={styles.statGridLabel}>{t('dashboard.winRate')}</Text>
               </View>
               <View style={styles.statGridItem}>
                 <Text style={styles.statGridValue}>
                   {userStats.currentStreak > 0 ? userStats.currentStreak : userStats.bestStreak}
                 </Text>
                 <Text style={styles.statGridLabel}>
-                  {userStats.currentStreak > 0 ? 'Streak' : 'Best'}
+                  {userStats.currentStreak > 0 ? t('dashboard.streak') : t('dashboard.best')}
                 </Text>
               </View>
             </View>
@@ -682,7 +684,7 @@ export function DashboardScreen({ navigation }: Props) {
                 />
               </View>
               <TouchableOpacity onPress={() => navigation.navigate('Quests')} hitSlop={8}>
-                <Text style={styles.questsLink}>QUESTS →</Text>
+                <Text style={styles.questsLink}>{t('dashboard.questsLink')}</Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
@@ -694,11 +696,11 @@ export function DashboardScreen({ navigation }: Props) {
             {/* Header row with title + completion badge */}
             <View style={styles.challengeTitleRow}>
               <Ionicons name="trophy" size={15} color={colors.primary} />
-              <Text style={styles.challengeHeading}>DAILY CHALLENGE</Text>
+              <Text style={styles.challengeHeading}>{t('dashboard.dailyChallenge')}</Text>
               {dailyStatus.quests.bonusReward.completed ? (
                 <View style={styles.challengeCompletedBadge}>
                   <Ionicons name="checkmark" size={10} color="#0B0E11" />
-                  <Text style={styles.challengeCompletedText}>DONE</Text>
+                  <Text style={styles.challengeCompletedText}>{t('dashboard.done')}</Text>
                 </View>
               ) : (
                 <Text style={styles.challengeProgressText}>
@@ -712,17 +714,17 @@ export function DashboardScreen({ navigation }: Props) {
               {[
                 {
                   done: dailyStatus.quests.pick3.completed,
-                  text: `Pick ${dailyStatus.quests.pick3.target} correct`,
+                  text: t('dashboard.pickCorrect', { count: dailyStatus.quests.pick3.target }),
                   progress: `${dailyStatus.quests.pick3.progress}/${dailyStatus.quests.pick3.target}`,
                 },
                 {
                   done: dailyStatus.quests.multiSport.completed,
-                  text: `Cover ${dailyStatus.quests.multiSport.target} sports`,
+                  text: t('dashboard.coverSports', { count: dailyStatus.quests.multiSport.target }),
                   progress: `${dailyStatus.quests.multiSport.progress}/${dailyStatus.quests.multiSport.target}`,
                 },
                 {
                   done: dailyStatus.quests.bonusReward.completed,
-                  text: 'Earn bonus rewards',
+                  text: t('dashboard.earnBonusRewards'),
                   progress: '',
                 },
               ].map((quest, i) => (
@@ -764,7 +766,7 @@ export function DashboardScreen({ navigation }: Props) {
                       end={{ x: 1, y: 1 }}
                       style={styles.submitBtn}
                     >
-                      <Text style={styles.submitBtnText}>UNLOCK ALL SPORTS</Text>
+                      <Text style={styles.submitBtnText}>{t('dashboard.unlockAllSports')}</Text>
                       <Ionicons name="lock-open-outline" size={16} color="#3A4A00" />
                     </LinearGradient>
                   </TouchableOpacity>
@@ -796,7 +798,7 @@ export function DashboardScreen({ navigation }: Props) {
                       style={styles.submitBtn}
                     >
                       <Text style={styles.submitBtnText}>
-                        {uncovered ? `PICK IN ${uncovered.name.toUpperCase()}` : 'START PICKING'}
+                        {uncovered ? t('dashboard.pickInSport', { sport: uncovered.name.toUpperCase() }) : t('dashboard.startPicking')}
                       </Text>
                       <Ionicons name="arrow-forward" size={16} color="#3A4A00" />
                     </LinearGradient>
@@ -823,7 +825,7 @@ export function DashboardScreen({ navigation }: Props) {
                       end={{ x: 1, y: 1 }}
                       style={styles.submitBtn}
                     >
-                      <Text style={styles.submitBtnText}>MAKE YOUR PICK</Text>
+                      <Text style={styles.submitBtnText}>{t('dashboard.makeYourPick')}</Text>
                       <Ionicons name="arrow-forward" size={16} color="#3A4A00" />
                     </LinearGradient>
                   </TouchableOpacity>
@@ -850,8 +852,8 @@ export function DashboardScreen({ navigation }: Props) {
         >
           <MaterialCommunityIcons name="trophy" size={18} color="#4FC3F7" />
           <View style={{ flex: 1 }}>
-            <Text style={styles.leaguesPromoTitle}>COIN LEAGUES</Text>
-            <Text style={styles.leaguesPromoSub}>Compete with coins · Winner takes all</Text>
+            <Text style={styles.leaguesPromoTitle}>{t('dashboard.coinLeagues')}</Text>
+            <Text style={styles.leaguesPromoSub}>{t('dashboard.coinLeaguesSub')}</Text>
           </View>
           <Feather name="chevron-right" size={16} color={colors.onSurfaceVariant} />
         </TouchableOpacity>
@@ -862,7 +864,7 @@ export function DashboardScreen({ navigation }: Props) {
             <View style={styles.sectionHeader}>
               <MaterialCommunityIcons name="clock-check-outline" size={18} color={colors.primary} />
               <Text style={styles.sectionHeadingRow}>
-                {isF1 ? 'RECENT RACES' : 'LAST RESULTS'}
+                {isF1 ? t('dashboard.recentRaces') : t('dashboard.lastResults')}
               </Text>
             </View>
             {recentGames.slice(0, RECENT_GAMES_LIMIT).map((game) => (
@@ -879,7 +881,7 @@ export function DashboardScreen({ navigation }: Props) {
                       <Text style={styles.f1CircuitName}>
                         {game.circuit?.name ?? ''} {game.circuit?.country ? `- ${game.circuit.country}` : ''}
                       </Text>
-                      <Text style={styles.recentDateText}>{formatGameTime(game.date)}</Text>
+                      <Text style={styles.recentDateText}>{formatGameTime(game.date, t)}</Text>
                     </View>
                     <View style={styles.f1StatusBadge}>
                       <Text style={styles.f1StatusText}>{game.status}</Text>
@@ -896,7 +898,7 @@ export function DashboardScreen({ navigation }: Props) {
                         />
                       ) : null}
                       <Text style={styles.todayLeagueName}>{game.leagueName}</Text>
-                      <Text style={styles.recentDateText}>{formatGameTime(game.date)}</Text>
+                      <Text style={styles.recentDateText}>{formatGameTime(game.date, t)}</Text>
                     </View>
                     <View style={styles.todayMatchRow}>
                       <View style={styles.todayTeamCol}>
@@ -935,11 +937,11 @@ export function DashboardScreen({ navigation }: Props) {
         {!liveGames.length && !recentGames.length && !upcomingGames.length && (
           <View style={styles.emptyState}>
             <Ionicons name="trophy-outline" size={48} color={colors.onSurfaceVariant} />
-            <Text style={styles.emptyTitle}>No games available</Text>
+            <Text style={styles.emptyTitle}>{t('dashboard.noGamesAvailable')}</Text>
             <Text style={styles.emptySubtitle}>
               {featuredLeagues.length > 0
-                ? `Tap the ${featuredLeagues.length === 1 ? 'league above' : 'leagues'} to see standings and details`
-                : 'Pull down to refresh or check back later'}
+                ? t('dashboard.tapLeague')
+                : t('dashboard.pullToRefresh')}
             </Text>
           </View>
         )}
@@ -960,7 +962,7 @@ export function DashboardScreen({ navigation }: Props) {
 
             {/* Header */}
             <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Select League</Text>
+              <Text style={styles.sheetTitle}>{t('dashboard.selectLeague')}</Text>
               <ModalCloseButton onClose={() => setShowLeagueSheet(false)} variant="sheet" />
             </View>
 
@@ -971,7 +973,7 @@ export function DashboardScreen({ navigation }: Props) {
                 style={styles.sheetSearchInput}
                 value={leagueSearch}
                 onChangeText={setLeagueSearch}
-                placeholder="Search leagues..."
+                placeholder={t('dashboard.searchLeagues')}
                 placeholderTextColor={colors.onSurfaceDim}
                 autoCapitalize="none"
               />
@@ -990,7 +992,7 @@ export function DashboardScreen({ navigation }: Props) {
               >
                 <Ionicons name="globe-outline" size={20} color={activeLeagueFilter === null ? colors.primary : colors.onSurfaceVariant} />
                 <Text style={[styles.sheetLeagueName, activeLeagueFilter === null && styles.sheetLeagueNameActive]}>
-                  All Leagues
+                  {t('dashboard.allLeagues')}
                 </Text>
                 {activeLeagueFilter === null && (
                   <Ionicons name="checkmark-circle" size={18} color={colors.primary} style={{ marginLeft: 'auto' }} />
@@ -1000,7 +1002,7 @@ export function DashboardScreen({ navigation }: Props) {
               {/* Domestic Leagues */}
               {filteredSheetLeagues.domestic.length > 0 && (
                 <>
-                  <Text style={styles.sheetGroupTitle}>Domestic Leagues</Text>
+                  <Text style={styles.sheetGroupTitle}>{t('dashboard.domesticLeagues')}</Text>
                   {filteredSheetLeagues.domestic.map((league: any) => {
                     const isActive = activeLeagueFilter === league.apiId;
                     const isPremiumLocked = league.tier === 'premium' && !isProMember;
@@ -1048,7 +1050,7 @@ export function DashboardScreen({ navigation }: Props) {
               {/* Cup Competitions */}
               {filteredSheetLeagues.cups.length > 0 && (
                 <>
-                  <Text style={styles.sheetGroupTitle}>Cup Competitions</Text>
+                  <Text style={styles.sheetGroupTitle}>{t('dashboard.cupCompetitions')}</Text>
                   {filteredSheetLeagues.cups.map((league: any) => {
                     const isActive = activeLeagueFilter === league.apiId;
                     const isPremiumLocked = league.tier === 'premium' && !isProMember;
@@ -1093,7 +1095,7 @@ export function DashboardScreen({ navigation }: Props) {
               {/* International */}
               {filteredSheetLeagues.international.length > 0 && (
                 <>
-                  <Text style={styles.sheetGroupTitle}>International</Text>
+                  <Text style={styles.sheetGroupTitle}>{t('dashboard.international')}</Text>
                   {filteredSheetLeagues.international.map((league: any) => {
                     const isActive = activeLeagueFilter === league.apiId;
                     const isPremiumLocked = league.tier === 'premium' && !isProMember;
