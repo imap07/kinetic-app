@@ -6,6 +6,7 @@ import type { AuthTokens, User, SocialProvider, UpdateProfileData, UpdatePrefere
 import { signOutFromGoogle } from '../services/googleAuth';
 import { ONBOARDING_COMPLETE_KEY } from '../screens/OnboardingScreen';
 import { logLogin, logSignUp, logLogout, setAnalyticsUser, clearAnalyticsUser } from '../services/analytics';
+import { attemptBiometricLogin, isBiometricLoginEnabled, enableBiometricLogin, disableBiometricLogin } from '../services/biometricAuth';
 
 const ACCESS_TOKEN_KEY = 'kinetic_access_token';
 const REFRESH_TOKEN_KEY = 'kinetic_refresh_token';
@@ -25,6 +26,7 @@ interface AuthContextValue extends AuthState {
     accessToken: string,
     extra?: { idToken?: string; email?: string; displayName?: string; avatar?: string },
   ) => Promise<void>;
+  loginWithBiometric: () => Promise<boolean>;
   forgotPassword: (email: string) => Promise<string>;
   verifyCode: (email: string, code: string) => Promise<boolean>;
   resetPassword: (email: string, code: string, newPassword: string) => Promise<void>;
@@ -152,6 +154,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [setAuth],
   );
 
+  const loginWithBiometric = useCallback(async (): Promise<boolean> => {
+    const result = await attemptBiometricLogin();
+    if (!result.success || !result.refreshToken) return false;
+
+    try {
+      const { tokens: newTokens } = await authApi.refreshTokens(
+        result.refreshToken,
+        result.refreshToken,
+      );
+      await persistTokens(newTokens);
+      const { user } = await authApi.getProfile(newTokens.accessToken);
+      setAuth(user, newTokens);
+      // Update stored biometric token with the fresh one
+      await enableBiometricLogin(result.email!, newTokens.refreshToken);
+      logLogin('biometric');
+      setAnalyticsUser(user.id ?? '');
+      return true;
+    } catch {
+      // Biometric token expired — disable biometric login
+      await disableBiometricLogin();
+      return false;
+    }
+  }, [setAuth]);
+
   const forgotPassword = useCallback(async (email: string) => {
     const res = await authApi.forgotPassword(email);
     return res.message;
@@ -245,6 +271,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loginWithEmail,
     register,
     loginWithSocial,
+    loginWithBiometric,
     forgotPassword,
     verifyCode,
     resetPassword,

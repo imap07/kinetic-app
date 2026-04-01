@@ -19,7 +19,7 @@ export async function logScreenView(screenName: string, screenClass?: string) {
 }
 
 // ─── Auth events ───────────────────────────────────────────
-export async function logLogin(method: 'email' | 'google' | 'apple') {
+export async function logLogin(method: 'email' | 'google' | 'apple' | 'biometric') {
   try {
     await analytics().logLogin({ method });
   } catch (_) {}

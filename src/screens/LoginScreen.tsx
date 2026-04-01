@@ -27,6 +27,7 @@ import { ApiError } from '../api';
 import type { SocialProvider } from '../api';
 import { signInWithGoogle, isGoogleSignInCancelled } from '../services/googleAuth';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import { isBiometricLoginEnabled, getBiometricLabel } from '../services/biometricAuth';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -116,10 +117,14 @@ function LegalModal({ visible, type, onClose }: LegalModalProps) {
 
 export function LoginScreen({ navigation }: LoginScreenProps) {
   const insets = useSafeAreaInsets();
-  const { loginWithSocial } = useAuth();
+  const { loginWithSocial, loginWithBiometric } = useAuth();
   const [legalModal, setLegalModal] = useState<'terms' | 'privacy' | null>(null);
   const [socialLoading, setSocialLoading] = useState<SocialProvider | null>(null);
   const [appleAvailable, setAppleAvailable] = useState(false);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricLabel, setBiometricLabel] = useState('Face ID');
+  const [biometricLoading, setBiometricLoading] = useState(false);
+  const biometricAttempted = useRef(false);
 
   // Entrance animations
   const logoAnim = useRef(new Animated.Value(0)).current;
@@ -132,6 +137,38 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
       AppleAuthentication.isAvailableAsync().then(setAppleAvailable).catch(() => {});
     }
   }, []);
+
+  // Check if biometric login is available and auto-prompt
+  useEffect(() => {
+    (async () => {
+      const enabled = await isBiometricLoginEnabled();
+      if (enabled) {
+        setBiometricAvailable(true);
+        const label = await getBiometricLabel();
+        setBiometricLabel(label);
+
+        // Auto-prompt on first mount
+        if (!biometricAttempted.current) {
+          biometricAttempted.current = true;
+          setBiometricLoading(true);
+          const success = await loginWithBiometric();
+          setBiometricLoading(false);
+          if (!success) {
+            // Silently fail — user can tap manually or use other methods
+          }
+        }
+      }
+    })();
+  }, [loginWithBiometric]);
+
+  const handleBiometricLogin = async () => {
+    setBiometricLoading(true);
+    const success = await loginWithBiometric();
+    setBiometricLoading(false);
+    if (!success) {
+      Alert.alert('Authentication Failed', 'Biometric login failed. Please try another method.');
+    }
+  };
 
   useEffect(() => {
     Animated.stagger(120, [
@@ -320,6 +357,28 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
               <Ionicons name="mail-outline" size={18} color={colors.onPrimary} />
             }
           />
+
+          {biometricAvailable && (
+            <TouchableOpacity
+              style={styles.biometricButton}
+              onPress={handleBiometricLogin}
+              activeOpacity={0.7}
+              disabled={biometricLoading}
+            >
+              <Ionicons
+                name={biometricLabel === 'Face ID' ? 'scan-outline' : 'finger-print-outline'}
+                size={22}
+                color={colors.primary}
+              />
+              {biometricLoading ? (
+                <ActivityIndicator size="small" color={colors.primary} style={{ marginLeft: 10 }} />
+              ) : (
+                <Text style={styles.biometricText}>
+                  Sign in with {biometricLabel}
+                </Text>
+              )}
+            </TouchableOpacity>
+          )}
         </Animated.View>
 
         <View style={styles.spacer} />
@@ -453,6 +512,18 @@ const styles = StyleSheet.create({
   },
   emailButton: {
     width: '100%',
+  },
+  biometricButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    gap: 10,
+  },
+  biometricText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 15,
+    color: colors.primary,
   },
 
   // Spacer
