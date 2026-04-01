@@ -3,15 +3,16 @@ import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../theme';
 import { useLiveGames } from '../contexts/LiveGamesContext';
 
-const TAB_CONFIG: Record<string, { label: string }> = {
-  Home: { label: 'HOME' },
-  Live: { label: 'TODAY' },
-  Leagues: { label: 'LEAGUES' },
-  MyPicks: { label: 'MY PICKS' },
-  Profile: { label: 'PROFILE' },
+const TAB_KEYS: Record<string, string> = {
+  Home: 'tabs.home',
+  Live: 'tabs.today',
+  Leagues: 'tabs.leagues',
+  MyPicks: 'tabs.myPicks',
+  Profile: 'tabs.profile',
 };
 
 const INACTIVE_COLOR = 'rgba(248,249,254,0.6)';
@@ -40,6 +41,7 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
   const insets = useSafeAreaInsets();
   const bottomPadding = Math.max(insets.bottom, 8);
   const { liveCount } = useLiveGames();
+  const { t } = useTranslation();
 
   return (
     <View style={styles.wrapper}>
@@ -48,7 +50,8 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
         <View style={styles.row}>
           {state.routes.map((route, index) => {
             const isFocused = state.index === index;
-            const config = TAB_CONFIG[route.name] || { label: route.name };
+            const labelKey = TAB_KEYS[route.name];
+            const label = labelKey ? t(labelKey) : route.name;
 
             const onPress = () => {
               const event = navigation.emit({
@@ -79,7 +82,7 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
                     style={[styles.label, isFocused && styles.labelActive]}
                     numberOfLines={1}
                   >
-                    {config.label}
+                    {label}
                   </Text>
                 </View>
               </TouchableOpacity>

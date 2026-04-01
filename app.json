@@ -67,7 +67,8 @@
       "expo-apple-authentication",
       "expo-image",
       "@react-native-firebase/app",
-      "./plugins/withFirebaseModularHeaders"
+      "./plugins/withFirebaseModularHeaders",
+      "expo-localization"
     ],
     "extra": {
       "eas": {

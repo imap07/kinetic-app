@@ -28,6 +28,7 @@ import type { SocialProvider } from '../api';
 import { signInWithGoogle, isGoogleSignInCancelled } from '../services/googleAuth';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { isBiometricLoginEnabled, getBiometricLabel } from '../services/biometricAuth';
+import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -117,6 +118,7 @@ function LegalModal({ visible, type, onClose }: LegalModalProps) {
 
 export function LoginScreen({ navigation }: LoginScreenProps) {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const { loginWithSocial, loginWithBiometric } = useAuth();
   const [legalModal, setLegalModal] = useState<'terms' | 'privacy' | null>(null);
   const [socialLoading, setSocialLoading] = useState<SocialProvider | null>(null);
@@ -166,7 +168,7 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
     const success = await loginWithBiometric();
     setBiometricLoading(false);
     if (!success) {
-      Alert.alert('Authentication Failed', 'Biometric login failed. Please try another method.');
+      Alert.alert(t('login.authFailed'), t('login.biometricFailed'));
     }
   };
 
@@ -318,8 +320,8 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
         </Animated.View>
 
         <Animated.View style={[styles.headlineSection, makeAnimStyle(headlineAnim)]}>
-          <Text style={styles.headline}>Predict. Compete. Win.</Text>
-          <Text style={styles.subheadline}>Your sports prediction edge.</Text>
+          <Text style={styles.headline}>{t('login.headline')}</Text>
+          <Text style={styles.subheadline}>{t('login.subtitle')}</Text>
         </Animated.View>
 
         {/* Action Buttons Section */}
@@ -345,12 +347,12 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
 
           <View style={styles.dividerSection}>
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
+            <Text style={styles.dividerText}>{t('login.or')}</Text>
             <View style={styles.dividerLine} />
           </View>
 
           <PrimaryButton
-            title="CONTINUE WITH EMAIL"
+            title={t('login.continueEmail')}
             onPress={handleEmailContinue}
             style={styles.emailButton}
             icon={
@@ -374,7 +376,7 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
                 <ActivityIndicator size="small" color={colors.primary} style={{ marginLeft: 10 }} />
               ) : (
                 <Text style={styles.biometricText}>
-                  Sign in with {biometricLabel}
+                  {t('login.signInBiometric', { label: biometricLabel })}
                 </Text>
               )}
             </TouchableOpacity>
@@ -386,19 +388,19 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
         {/* Footer / Legal */}
         <Animated.View style={[styles.footer, makeAnimStyle(footerAnim, 10)]}>
           <Text style={styles.termsText}>
-            By continuing, you agree to our{' '}
+            {t('login.terms')}{' '}
             <Text
               style={styles.termsLink}
               onPress={() => setLegalModal('terms')}
             >
-              Terms of Service
+              {t('login.termsLink')}
             </Text>{' '}
-            and{' '}
+            {t('login.and')}{' '}
             <Text
               style={styles.termsLink}
               onPress={() => setLegalModal('privacy')}
             >
-              Privacy Policy
+              {t('login.privacyLink')}
             </Text>
           </Text>
         </Animated.View>

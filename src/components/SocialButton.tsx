@@ -1,6 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
 import { FontAwesome5, FontAwesome6 } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors, typography, borderRadius } from '../theme';
 
 interface SocialButtonProps {
@@ -8,10 +9,10 @@ interface SocialButtonProps {
   onPress: () => void;
 }
 
-const providerConfig = {
-  google: { label: 'Continue with Google' },
-  apple: { label: 'Continue with Apple' },
-  x: { label: 'Continue with X' },
+const providerI18nKey: Record<string, string> = {
+  google: 'login.continueGoogle',
+  apple: 'login.continueApple',
+  x: 'login.continueX',
 };
 
 function ProviderIcon({ provider }: { provider: string }) {
@@ -32,7 +33,7 @@ function ProviderIcon({ provider }: { provider: string }) {
 }
 
 export function SocialButton({ provider, onPress }: SocialButtonProps) {
-  const config = providerConfig[provider];
+  const { t } = useTranslation();
 
   return (
     <TouchableOpacity
@@ -43,7 +44,7 @@ export function SocialButton({ provider, onPress }: SocialButtonProps) {
       <View style={styles.iconContainer}>
         <ProviderIcon provider={provider} />
       </View>
-      <Text style={styles.label}>{config.label}</Text>
+      <Text style={styles.label}>{t(providerI18nKey[provider])}</Text>
     </TouchableOpacity>
   );
 }

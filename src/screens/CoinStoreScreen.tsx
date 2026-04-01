@@ -12,6 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors, spacing, borderRadius } from '../theme';
 import { useCoins } from '../contexts/CoinContext';
 import { usePurchases } from '../contexts/PurchasesContext';
@@ -31,6 +32,7 @@ const ICON_BY_INDEX = ['layers', 'package', 'star', 'gift', 'award', 'zap'] as c
 export function CoinStoreScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+  const { t } = useTranslation();
   const { balance, available, isLoading: balanceLoading, refreshBalanceAfterPurchase } = useCoins();
   const { currentOffering, purchasePackage, isProMember } = usePurchases();
   const [purchasing, setPurchasing] = useState<string | null>(null);
@@ -50,10 +52,7 @@ export function CoinStoreScreen() {
 
   const handleBuyCoins = async (pkg: any) => {
     if (!hasRCPackages) {
-      Alert.alert(
-        'Coming Soon',
-        'In-app purchases will be available once the app is published on the App Store.',
-      );
+      Alert.alert(t('coinStore.comingSoon'), t('coinStore.comingSoonDesc'));
       return;
     }
     setPurchasing(pkg.identifier);
@@ -61,10 +60,10 @@ export function CoinStoreScreen() {
       const success = await purchasePackage(pkg);
       if (success) {
         refreshBalanceAfterPurchase();
-        Alert.alert('Purchase Successful', 'Your coins will be credited shortly.');
+        Alert.alert(t('coinStore.purchaseSuccess'), t('coinStore.purchaseSuccessDesc'));
       }
     } catch {
-      Alert.alert('Purchase Failed', 'Something went wrong. Please try again.');
+      Alert.alert(t('coinStore.purchaseFailed'), t('coinStore.purchaseFailedDesc'));
     } finally {
       setPurchasing(null);
     }
@@ -72,10 +71,7 @@ export function CoinStoreScreen() {
 
   const handleSubscribe = async (pkg: any) => {
     if (!hasRCPackages) {
-      Alert.alert(
-        'Coming Soon',
-        'Subscriptions will be available once the app is published on the App Store.',
-      );
+      Alert.alert(t('coinStore.comingSoon'), t('coinStore.comingSoonDesc'));
       return;
     }
     setPurchasing(pkg.identifier);
@@ -83,10 +79,10 @@ export function CoinStoreScreen() {
       const success = await purchasePackage(pkg);
       if (success) {
         refreshBalanceAfterPurchase();
-        Alert.alert('Subscribed!', 'Welcome to Kinetic Pro! You will receive monthly coins.');
+        Alert.alert(t('coinStore.subscribed'), t('coinStore.subscribedDesc'));
       }
     } catch {
-      Alert.alert('Subscription Failed', 'Something went wrong. Please try again.');
+      Alert.alert(t('coinStore.subscriptionFailed'), t('coinStore.purchaseFailedDesc'));
     } finally {
       setPurchasing(null);
     }
@@ -98,7 +94,7 @@ export function CoinStoreScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
           <Feather name="arrow-left" size={22} color={colors.onSurface} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>COIN STORE</Text>
+        <Text style={styles.headerTitle}>{t('coinStore.title')}</Text>
         <View style={{ width: 22 }} />
       </View>
 
@@ -112,7 +108,7 @@ export function CoinStoreScreen() {
           colors={['rgba(202,253,0,0.12)', 'rgba(202,253,0,0.02)']}
           style={styles.balanceCard}
         >
-          <Text style={styles.balanceLabel}>YOUR BALANCE</Text>
+          <Text style={styles.balanceLabel}>{t('coinStore.yourBalance')}</Text>
           <View style={styles.balanceRow}>
             <MaterialCommunityIcons name="circle-multiple" size={28} color={colors.primary} />
             <Text style={styles.balanceValue}>
@@ -120,14 +116,14 @@ export function CoinStoreScreen() {
             </Text>
           </View>
           <Text style={styles.balanceSubtext}>
-            {available.toLocaleString()} available to spend
+            {t('coinStore.availableToSpend', { count: available.toLocaleString() })}
           </Text>
         </LinearGradient>
 
         {/* Buy Coins */}
-        <Text style={[styles.sectionTitle, { marginTop: spacing['3xl'] }]}>BUY COINS</Text>
+        <Text style={[styles.sectionTitle, { marginTop: spacing['3xl'] }]}>{t('coinStore.buyCoins')}</Text>
         <Text style={styles.sectionSubtext}>
-          Coins are used to enter prediction leagues and redeem rewards
+          {t('coinStore.buyCoinsDesc')}
         </Text>
 
         <View style={styles.packagesGrid}>
@@ -156,7 +152,7 @@ export function CoinStoreScreen() {
                       lp.tag === 'BEST VALUE' && styles.tagBadgeBestValue,
                     ]}
                   >
-                    <Text style={styles.tagBadgeText}>{lp.tag}</Text>
+                    <Text style={styles.tagBadgeText}>{lp.tag === 'MOST POPULAR' ? t('coinStore.mostPopular') : t('coinStore.bestValue')}</Text>
                   </View>
                 )}
 
@@ -172,14 +168,14 @@ export function CoinStoreScreen() {
                 {lp.bonus > 0 && (
                   <View style={styles.bonusRow}>
                     <Ionicons name="gift" size={12} color="#FC5B00" />
-                    <Text style={styles.bonusText}>+{lp.bonus} BONUS</Text>
+                    <Text style={styles.bonusText}>{t('coinStore.bonus', { count: lp.bonus })}</Text>
                   </View>
                 )}
 
                 <Text style={styles.packageDesc}>
                   {lp.bonus > 0
-                    ? `${lp.coins} + ${lp.bonus} bonus coins`
-                    : `${lp.coins} coins`}
+                    ? t('coinStore.bonusCoins', { base: lp.coins, bonus: lp.bonus })
+                    : t('coinStore.coins', { count: lp.coins })}
                 </Text>
 
                 <View style={styles.packagePriceRow}>
@@ -200,10 +196,10 @@ export function CoinStoreScreen() {
         {!isProMember && (
           <>
             <Text style={[styles.sectionTitle, { marginTop: spacing['3xl'] }]}>
-              KINETIC PRO
+              {t('coinStore.kineticPro')}
             </Text>
             <Text style={styles.sectionSubtext}>
-              Unlock unlimited predictions, all sports, and get 50 coins every month
+              {t('coinStore.proDesc')}
             </Text>
 
             {subscriptionPkgs.length > 0 ? (
@@ -228,7 +224,7 @@ export function CoinStoreScreen() {
                         </View>
                         {isAnnual && (
                           <View style={styles.saveBadge}>
-                            <Text style={styles.saveBadgeText}>SAVE 44%</Text>
+                            <Text style={styles.saveBadgeText}>{t('coinStore.save44')}</Text>
                           </View>
                         )}
                         {isPurchasing ? (
@@ -243,12 +239,12 @@ export function CoinStoreScreen() {
                       <Text style={styles.proTitle}>{pkg.product.title}</Text>
                       <Text style={styles.proDesc}>{pkg.product.description}</Text>
                       <View style={styles.proFeatures}>
-                        {[
-                          'Unlimited predictions',
-                          'All sports unlocked',
-                          '50 coins/month',
-                          'Detailed stats & analytics',
-                        ].map((f) => (
+                        {([
+                          t('coinStore.unlimitedPredictions'),
+                          t('coinStore.allSportsUnlocked'),
+                          t('coinStore.coinsPerMonth'),
+                          t('coinStore.detailedStats'),
+                        ] as string[]).map((f) => (
                           <View key={f} style={styles.proFeatureRow}>
                             <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
                             <Text style={styles.proFeatureText}>{f}</Text>
@@ -270,19 +266,19 @@ export function CoinStoreScreen() {
                     <View style={styles.proHeader}>
                       <View style={styles.proBadge}>
                         <Ionicons name="diamond" size={14} color={colors.primary} />
-                        <Text style={styles.proBadgeText}>PRO</Text>
+                        <Text style={styles.proBadgeText}>{t('coinStore.pro')}</Text>
                       </View>
                       <Text style={styles.proPrice}>$5.99/mo</Text>
                     </View>
-                    <Text style={styles.proTitle}>Kinetic Pro — Monthly</Text>
-                    <Text style={styles.proDesc}>Full access to all features, billed monthly</Text>
+                    <Text style={styles.proTitle}>{t('coinStore.proMonthly')}</Text>
+                    <Text style={styles.proDesc}>{t('coinStore.proMonthlyDesc')}</Text>
                     <View style={styles.proFeatures}>
-                      {[
-                        'Unlimited predictions',
-                        'All sports unlocked',
-                        '50 coins/month',
-                        'Detailed stats & analytics',
-                      ].map((f) => (
+                      {([
+                        t('coinStore.unlimitedPredictions'),
+                        t('coinStore.allSportsUnlocked'),
+                        t('coinStore.coinsPerMonth'),
+                        t('coinStore.detailedStats'),
+                      ] as string[]).map((f) => (
                         <View key={f} style={styles.proFeatureRow}>
                           <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
                           <Text style={styles.proFeatureText}>{f}</Text>
@@ -300,22 +296,22 @@ export function CoinStoreScreen() {
                     <View style={styles.proHeader}>
                       <View style={styles.proBadge}>
                         <Ionicons name="diamond" size={14} color={colors.primary} />
-                        <Text style={styles.proBadgeText}>PRO</Text>
+                        <Text style={styles.proBadgeText}>{t('coinStore.pro')}</Text>
                       </View>
                       <View style={styles.saveBadge}>
-                        <Text style={styles.saveBadgeText}>SAVE 44%</Text>
+                        <Text style={styles.saveBadgeText}>{t('coinStore.save44')}</Text>
                       </View>
                       <Text style={styles.proPrice}>$39.99/yr</Text>
                     </View>
-                    <Text style={styles.proTitle}>Kinetic Pro — Annual</Text>
-                    <Text style={styles.proDesc}>Best value — just $3.33/month</Text>
+                    <Text style={styles.proTitle}>{t('coinStore.proAnnual')}</Text>
+                    <Text style={styles.proDesc}>{t('coinStore.proAnnualDesc')}</Text>
                     <View style={styles.proFeatures}>
-                      {[
-                        'Unlimited predictions',
-                        'All sports unlocked',
-                        '50 coins/month (600/year)',
-                        'Detailed stats & analytics',
-                      ].map((f) => (
+                      {([
+                        t('coinStore.unlimitedPredictions'),
+                        t('coinStore.allSportsUnlocked'),
+                        t('coinStore.coinsPerYear'),
+                        t('coinStore.detailedStats'),
+                      ] as string[]).map((f) => (
                         <View key={f} style={styles.proFeatureRow}>
                           <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
                           <Text style={styles.proFeatureText}>{f}</Text>
@@ -333,16 +329,14 @@ export function CoinStoreScreen() {
           <View style={styles.proActiveCard}>
             <Ionicons name="diamond" size={20} color={colors.primary} />
             <Text style={styles.proActiveText}>
-              You are a Kinetic Pro member. 50 coins are credited monthly.
+              {t('coinStore.proActiveMember')}
             </Text>
           </View>
         )}
 
         {/* Compliance disclaimer */}
         <Text style={styles.disclaimer}>
-          Kinetic is a skill-based prediction game for entertainment purposes.
-          Coins are virtual credits with no cash value. All purchases are processed
-          by the App Store and are subject to their terms. Not a gambling service.
+          {t('coinStore.disclaimer')}
         </Text>
       </ScrollView>
     </View>
