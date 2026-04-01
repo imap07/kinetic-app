@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,11 +11,14 @@ import {
   Pressable,
   Alert,
   ActivityIndicator,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import { legalApi } from '../api';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { KineticLogo, PrimaryButton, SocialButton, ModalCloseButton } from '../components';
 import { colors, typography, spacing } from '../theme';
 import { AuthStackParamList } from '../navigation/types';
@@ -24,6 +27,8 @@ import { ApiError } from '../api';
 import type { SocialProvider } from '../api';
 import { signInWithGoogle, isGoogleSignInCancelled } from '../services/googleAuth';
 import * as AppleAuthentication from 'expo-apple-authentication';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 type LoginScreenProps = {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'Login'>;
@@ -116,10 +121,41 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
   const [socialLoading, setSocialLoading] = useState<SocialProvider | null>(null);
   const [appleAvailable, setAppleAvailable] = useState(false);
 
+  // Entrance animations
+  const logoAnim = useRef(new Animated.Value(0)).current;
+  const headlineAnim = useRef(new Animated.Value(0)).current;
+  const buttonsAnim = useRef(new Animated.Value(0)).current;
+  const footerAnim = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
     if (Platform.OS === 'ios') {
       AppleAuthentication.isAvailableAsync().then(setAppleAvailable).catch(() => {});
     }
+  }, []);
+
+  useEffect(() => {
+    Animated.stagger(120, [
+      Animated.timing(logoAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(headlineAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.timing(buttonsAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.timing(footerAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
   }, []);
 
   const handleEmailContinue = () => {
@@ -189,37 +225,68 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
     if (provider === 'apple') return handleAppleLogin();
   };
 
+  const makeAnimStyle = (anim: Animated.Value, translateY = 20) => ({
+    opacity: anim,
+    transform: [
+      {
+        translateY: anim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [translateY, 0],
+        }),
+      },
+    ],
+  });
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.orbTopRight} />
-      <View style={styles.orbBottomLeft} />
+      {/* Background gradient orbs */}
+      <View style={styles.orbContainer}>
+        <LinearGradient
+          colors={['rgba(252,91,0,0.18)', 'rgba(252,91,0,0)']}
+          style={styles.orbTopRight}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+        />
+        <LinearGradient
+          colors={['rgba(202,253,0,0.12)', 'rgba(202,253,0,0)']}
+          style={styles.orbBottomLeft}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+        />
+        <LinearGradient
+          colors={['rgba(202,253,0,0.06)', 'rgba(202,253,0,0)']}
+          style={styles.orbCenter}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+        />
+      </View>
 
       <ScrollView
         contentContainerStyle={[
           styles.content,
           {
-            paddingTop: insets.top + 24,
+            paddingTop: insets.top + 40,
             paddingBottom: insets.bottom + 24,
           },
         ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.logoSection}>
-          <KineticLogo />
-        </View>
+        {/* Logo + Headline as single visual block */}
+        <Animated.View style={[styles.logoSection, makeAnimStyle(logoAnim, 30)]}>
+          <KineticLogo showIcon />
+        </Animated.View>
 
-        <View style={styles.welcomeSection}>
-          <Text style={styles.welcomeTitle}>Welcome to the Frontline</Text>
-          <Text style={styles.welcomeSubtitle}>
-            Sign in or create your account instantly
-          </Text>
-        </View>
+        <Animated.View style={[styles.headlineSection, makeAnimStyle(headlineAnim)]}>
+          <Text style={styles.headline}>Predict. Compete. Win.</Text>
+          <Text style={styles.subheadline}>Your sports prediction edge.</Text>
+        </Animated.View>
 
-        <View style={styles.socialSection}>
+        {/* Action Buttons Section */}
+        <Animated.View style={[styles.actionsSection, makeAnimStyle(buttonsAnim)]}>
           <SocialButton
             provider="google"
             onPress={() => handleSocialLogin('google')}
@@ -230,6 +297,7 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
               onPress={() => handleSocialLogin('apple')}
             />
           )}
+
           {socialLoading && (
             <ActivityIndicator
               size="small"
@@ -237,45 +305,44 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
               style={{ marginTop: 4 }}
             />
           )}
-        </View>
 
-        <View style={styles.dividerSection}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>OR</Text>
-          <View style={styles.dividerLine} />
-        </View>
+          <View style={styles.dividerSection}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
 
-        <PrimaryButton
-          title="CONTINUE WITH EMAIL"
-          onPress={handleEmailContinue}
-          style={styles.emailButton}
-        />
-
-        <TouchableOpacity
-          onPress={() => navigation.navigate('RecoverPasswordRequest')}
-          style={styles.forgotButton}
-        >
-          <Text style={styles.forgotText}>Forgot Password?</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.termsText}>
-          By continuing, you agree to our{' '}
-          <Text
-            style={styles.termsLink}
-            onPress={() => setLegalModal('terms')}
-          >
-            Terms of Service
-          </Text>{' '}
-          and{'\n'}
-          <Text
-            style={styles.termsLink}
-            onPress={() => setLegalModal('privacy')}
-          >
-            Privacy Policy
-          </Text>
-        </Text>
+          <PrimaryButton
+            title="CONTINUE WITH EMAIL"
+            onPress={handleEmailContinue}
+            style={styles.emailButton}
+            icon={
+              <Ionicons name="mail-outline" size={18} color={colors.onPrimary} />
+            }
+          />
+        </Animated.View>
 
         <View style={styles.spacer} />
+
+        {/* Footer / Legal */}
+        <Animated.View style={[styles.footer, makeAnimStyle(footerAnim, 10)]}>
+          <Text style={styles.termsText}>
+            By continuing, you agree to our{' '}
+            <Text
+              style={styles.termsLink}
+              onPress={() => setLegalModal('terms')}
+            >
+              Terms of Service
+            </Text>{' '}
+            and{' '}
+            <Text
+              style={styles.termsLink}
+              onPress={() => setLegalModal('privacy')}
+            >
+              Privacy Policy
+            </Text>
+          </Text>
+        </Animated.View>
       </ScrollView>
 
       <LegalModal
@@ -297,95 +364,118 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+
+  // Background orbs
+  orbContainer: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
   orbTopRight: {
     position: 'absolute',
-    top: -100,
-    right: -100,
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: colors.tertiary,
-    opacity: 0.07,
+    top: -80,
+    right: -60,
+    width: 320,
+    height: 320,
+    borderRadius: 160,
   },
   orbBottomLeft: {
     position: 'absolute',
-    bottom: -100,
-    left: -100,
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: colors.primary,
-    opacity: 0.05,
+    bottom: -40,
+    left: -80,
+    width: 280,
+    height: 280,
+    borderRadius: 140,
   },
+  orbCenter: {
+    position: 'absolute',
+    top: SCREEN_HEIGHT * 0.35,
+    left: SCREEN_WIDTH * 0.2,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+  },
+
   content: {
     flexGrow: 1,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: 28,
     alignItems: 'center',
   },
+
+  // Logo
   logoSection: {
-    marginBottom: 32,
+    marginBottom: 16,
+    alignItems: 'center',
   },
-  welcomeSection: {
+
+  // Headline
+  headlineSection: {
     alignItems: 'center',
     marginBottom: 32,
   },
-  welcomeTitle: {
-    ...typography.headlineLg,
+  headline: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 26,
+    lineHeight: 34,
     color: colors.onSurface,
     textAlign: 'center',
+    letterSpacing: -0.3,
     marginBottom: 8,
   },
-  welcomeSubtitle: {
-    ...typography.bodyMd,
+  subheadline: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 15,
+    lineHeight: 22,
     color: colors.onSurfaceVariant,
     textAlign: 'center',
   },
-  socialSection: {
+
+  // Actions
+  actionsSection: {
     width: '100%',
     gap: 12,
-    marginBottom: 24,
   },
   dividerSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    width: '100%',
-    marginBottom: 24,
-    paddingHorizontal: 20,
+    marginVertical: 4,
+    paddingHorizontal: 8,
   },
   dividerLine: {
     flex: 1,
-    height: 1,
-    backgroundColor: colors.surfaceContainerHighest,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.outline,
   },
   dividerText: {
-    ...typography.bodySm,
+    fontFamily: 'Inter_400Regular',
+    fontSize: 13,
     color: colors.onSurfaceDim,
     marginHorizontal: 16,
   },
   emailButton: {
     width: '100%',
   },
-  forgotButton: {
-    marginTop: 20,
+
+  // Spacer
+  spacer: {
+    flexGrow: 1,
+    minHeight: 24,
   },
-  forgotText: {
-    ...typography.bodyMd,
-    color: colors.onSurfaceVariant,
+
+  // Footer
+  footer: {
+    alignItems: 'center',
+    paddingHorizontal: 12,
   },
   termsText: {
-    ...typography.bodySm,
+    fontFamily: 'Inter_400Regular',
+    fontSize: 12,
+    lineHeight: 18,
     color: colors.onSurfaceDim,
     textAlign: 'center',
-    marginTop: 16,
-    lineHeight: 18,
   },
   termsLink: {
     color: colors.primary,
     textDecorationLine: 'underline',
-  },
-  spacer: {
-    flexGrow: 1,
-    minHeight: 32,
   },
 });
 

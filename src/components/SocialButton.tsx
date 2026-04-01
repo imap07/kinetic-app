@@ -9,9 +9,9 @@ interface SocialButtonProps {
 }
 
 const providerConfig = {
-  google: { label: 'Sign in with Google' },
-  apple: { label: 'Sign in with Apple' },
-  x: { label: 'Sign in with X' },
+  google: { label: 'Continue with Google' },
+  apple: { label: 'Continue with Apple' },
+  x: { label: 'Continue with X' },
 };
 
 function ProviderIcon({ provider }: { provider: string }) {
@@ -19,13 +19,13 @@ function ProviderIcon({ provider }: { provider: string }) {
     case 'google':
       return (
         <View style={styles.googleCircle}>
-          <FontAwesome5 name="google" size={12} color="#fff" />
+          <FontAwesome5 name="google" size={13} color="#fff" />
         </View>
       );
     case 'apple':
-      return <FontAwesome5 name="apple" size={18} color={colors.onSurface} />;
+      return <FontAwesome5 name="apple" size={20} color={colors.onSurface} />;
     case 'x':
-      return <FontAwesome6 name="x-twitter" size={16} color={colors.onSurface} />;
+      return <FontAwesome6 name="x-twitter" size={17} color={colors.onSurface} />;
     default:
       return null;
   }
@@ -53,27 +53,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
+    paddingVertical: 15,
     paddingHorizontal: 20,
     borderRadius: borderRadius.md,
-    backgroundColor: colors.surfaceContainerHighest,
-    gap: 10,
+    backgroundColor: colors.surfaceContainerHigh,
+    borderWidth: 1,
+    borderColor: colors.outline,
+    gap: 12,
   },
   iconContainer: {
     width: 24,
     alignItems: 'center',
   },
   googleCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: '#4285F4',
     alignItems: 'center',
     justifyContent: 'center',
   },
   label: {
-    ...typography.bodyMd,
+    ...typography.bodyLg,
     color: colors.onSurface,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 15,
   },
 });
