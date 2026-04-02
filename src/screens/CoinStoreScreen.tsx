@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -338,6 +339,21 @@ export function CoinStoreScreen() {
         <Text style={styles.disclaimer}>
           {t('coinStore.disclaimer')}
         </Text>
+        <Text style={styles.legalLinks}>
+          <Text
+            style={styles.legalLink}
+            onPress={() => Linking.openURL('https://kineticapp.ca/terms')}
+          >
+            {t('login.termsLink')}
+          </Text>
+          {'  ·  '}
+          <Text
+            style={styles.legalLink}
+            onPress={() => Linking.openURL('https://kineticapp.ca/privacy')}
+          >
+            {t('login.privacyLink')}
+          </Text>
+        </Text>
       </ScrollView>
     </View>
   );
@@ -613,5 +629,16 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing['2xl'],
     lineHeight: 15,
     opacity: 0.7,
+  },
+  legalLinks: {
+    textAlign: 'center',
+    marginTop: spacing.md,
+    marginHorizontal: spacing['2xl'],
+  },
+  legalLink: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 11,
+    color: colors.primary,
+    textDecorationLine: 'underline',
   },
 });

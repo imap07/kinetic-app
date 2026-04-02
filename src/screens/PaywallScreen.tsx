@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Linking,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -229,7 +230,22 @@ export function PaywallScreen({ navigation, route }: Props) {
         </TouchableOpacity>
 
         {/* Legal */}
-        <Text style={styles.legalText}>{t('paywall.legalNotice')}</Text>
+        <Text style={styles.legalText}>
+          {t('paywall.legalNotice')}{'\n'}
+          <Text
+            style={styles.legalLink}
+            onPress={() => Linking.openURL('https://kineticapp.ca/terms')}
+          >
+            {t('login.termsLink')}
+          </Text>
+          {'  ·  '}
+          <Text
+            style={styles.legalLink}
+            onPress={() => Linking.openURL('https://kineticapp.ca/privacy')}
+          >
+            {t('login.privacyLink')}
+          </Text>
+        </Text>
       </ScrollView>
     </View>
   );
@@ -432,5 +448,9 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     color: colors.onSurfaceDim,
     textAlign: 'center',
+  },
+  legalLink: {
+    color: colors.primary,
+    textDecorationLine: 'underline',
   },
 });

@@ -166,7 +166,12 @@
     "insufficientCoinsDesc": "Tu as besoin de {{fee}} pièces. Disponibles : {{available}}.",
     "couldNotJoin": "Impossible de rejoindre la ligue.",
     "couldNotLeave": "Impossible de quitter la ligue.",
-    "free": "GRATUIT"
+    "free": "GRATUIT",
+    "joinFreeLeagueDesc": "Cette ligue est gratuite. Rejoins et rivalise pour des points !",
+    "paidActive": "payante active",
+    "upgradeToJoin": "Passe Pro pour Rejoindre",
+    "upgradeToPro": "Passe à Pro",
+    "upgradeToProDesc": "Les membres gratuits peuvent rejoindre 1 ligue payante à la fois. Passe à Pro pour des ligues illimitées !"
   },
   "picks": {
     "active": "Actifs",

@@ -166,7 +166,12 @@
     "insufficientCoinsDesc": "Necesitas {{fee}} monedas. Disponibles: {{available}}.",
     "couldNotJoin": "No se pudo unir a la liga.",
     "couldNotLeave": "No se pudo salir de la liga.",
-    "free": "GRATIS"
+    "free": "GRATIS",
+    "joinFreeLeagueDesc": "Esta liga es gratis. ¡Únete y compite por puntos!",
+    "paidActive": "de pago activa",
+    "upgradeToJoin": "Upgrade para Unirse",
+    "upgradeToPro": "Mejora a Pro",
+    "upgradeToProDesc": "Los miembros gratuitos pueden unirse a 1 liga de pago a la vez. ¡Mejora a Pro para ligas ilimitadas!"
   },
   "picks": {
     "active": "Activos",

@@ -166,7 +166,12 @@
     "insufficientCoinsDesc": "You need {{fee}} coins to join. Current available: {{available}}.",
     "couldNotJoin": "Could not join league.",
     "couldNotLeave": "Could not leave league.",
-    "free": "FREE"
+    "free": "FREE",
+    "joinFreeLeagueDesc": "This league is free. Join and compete for points!",
+    "paidActive": "paid active",
+    "upgradeToJoin": "Upgrade to Join",
+    "upgradeToPro": "Upgrade to Pro",
+    "upgradeToProDesc": "Free members can join 1 paid league at a time. Upgrade to Pro for unlimited leagues!"
   },
   "picks": {
     "active": "Active",
