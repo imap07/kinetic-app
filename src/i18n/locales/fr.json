@@ -191,7 +191,7 @@
     "lost": "Perdus",
     "vsLastWeek": "vs semaine dernière",
     "pts": "{{count}} pts",
-    "winRate": "{{rate}}% VG",
+    "winRate": "% VIC",
     "errorLoading": "Erreur de chargement des picks",
     "noActivePicks": "Aucun Pick Actif",
     "noHistoryYet": "Pas Encore d'Historique",

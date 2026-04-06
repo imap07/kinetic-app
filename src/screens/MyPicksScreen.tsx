@@ -531,6 +531,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 20,
+    minHeight: 34,
     backgroundColor: colors.surfaceContainerLow,
     borderWidth: 1,
     borderColor: 'transparent',
@@ -540,13 +541,12 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
   },
   sportFilterText: {
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Inter_600SemiBold',
     fontSize: 12,
     color: colors.onSurfaceVariant,
   },
   sportFilterTextActive: {
     color: colors.primary,
-    fontFamily: 'Inter_700Bold',
   },
 
   tabContainer: {

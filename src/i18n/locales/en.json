@@ -191,7 +191,7 @@
     "lost": "Lost",
     "vsLastWeek": "vs last week",
     "pts": "{{count}} pts",
-    "winRate": "{{rate}}% WR",
+    "winRate": "WIN RATE",
     "errorLoading": "Error loading picks",
     "noActivePicks": "No Active Picks",
     "noHistoryYet": "No History Yet",
