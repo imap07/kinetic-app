@@ -6,7 +6,12 @@ export type SportKey =
   | 'hockey'
   | 'american-football'
   | 'baseball'
-  | 'formula-1';
+  | 'formula-1'
+  | 'afl'
+  | 'handball'
+  | 'rugby'
+  | 'volleyball'
+  | 'mma';
 
 export interface SportMeta {
   key: SportKey;
@@ -25,6 +30,11 @@ export const SPORT_TABS: SportMeta[] = [
   { key: 'american-football', name: 'Football', icon: 'football-outline' },
   { key: 'baseball', name: 'Baseball', icon: 'baseball' },
   { key: 'formula-1', name: 'F1', icon: 'car-sport' },
+  { key: 'afl', name: 'AFL', icon: 'american-football' },
+  { key: 'handball', name: 'Handball', icon: 'hand-left' },
+  { key: 'rugby', name: 'Rugby', icon: 'football' },
+  { key: 'volleyball', name: 'Volleyball', icon: 'basketball-outline' },
+  { key: 'mma', name: 'MMA', icon: 'fitness' },
 ];
 
 export interface SportTeamInfo {

@@ -522,7 +522,7 @@ const styles = StyleSheet.create({
 
   sportFilterScroll: {
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingBottom: 4,
     gap: 8,
   },
   sportFilterPill: {
@@ -550,7 +550,7 @@ const styles = StyleSheet.create({
   },
 
   tabContainer: {
-    flexDirection: 'row', marginHorizontal: 16, marginBottom: 16,
+    flexDirection: 'row', marginHorizontal: 16, marginTop: 4, marginBottom: 16,
     backgroundColor: colors.surfaceContainerLow, borderRadius: 8, padding: 3,
   },
   tabBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 6 },

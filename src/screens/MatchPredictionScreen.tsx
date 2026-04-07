@@ -26,15 +26,16 @@ const FREE_LEAGUE_IDS = [39, 140, 262, 253]; // Premier, La Liga, Liga MX, MLS
 import type { Fixture, FixtureEvent, FixtureStatistic, TeamLineup, LineupPlayer, SportGame, PredictionData, DailyStatusResponse } from '../api';
 import Toast from 'react-native-toast-message';
 import { logPickAttempted, logPickCompleted, logPaywallShown } from '../services/analytics';
+import { FootballPitch } from '../components/FootballPitch';
 
 type Props = { navigation: any };
 
 type PredictionType = 'result' | 'exact_score';
 type OutcomeChoice = 'home' | 'draw' | 'away';
 
-const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'P', 'BT', 'LIVE', 'Q1', 'Q2', 'Q3', 'Q4', 'OT', 'P1', 'P2', 'P3'];
-const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AOT', 'AP', 'POST'];
-const NO_DRAW_SPORTS = ['basketball', 'baseball', 'american-football', 'formula-1'];
+const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'P', 'BT', 'LIVE', 'Q1', 'Q2', 'Q3', 'Q4', 'OT', 'P1', 'P2', 'P3', 'S1', 'S2', 'S3', 'S4', 'S5', 'R1', 'R2', 'R3', 'R4', 'R5', 'IN1', 'IN2', 'IN3', 'IN4', 'IN5', 'IN6', 'IN7', 'IN8', 'IN9'];
+const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AOT', 'AP', 'POST', 'CANC'];
+const NO_DRAW_SPORTS = ['basketball', 'baseball', 'american-football', 'formula-1', 'mma', 'volleyball'];
 
 function getStatusDisplay(status: string, t: (key: string) => string, statusLong?: string, elapsed?: number | string | null, date?: string): { label: string; isLive: boolean; isUpcoming: boolean } {
   if (LIVE_STATUSES.includes(status)) {
@@ -146,6 +147,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
 
   const [h2hFixtures, setH2hFixtures] = useState<Fixture[]>([]);
   const [h2hLoading, setH2hLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'events' | 'statistics' | 'lineups' | 'h2h'>('events');
 
   const isFootball = sport === 'football';
   const hasDraw = !NO_DRAW_SPORTS.includes(sport);
@@ -729,317 +731,386 @@ export function MatchPredictionScreen({ navigation }: Props) {
           )}
         </View>
 
-        {/* Football-specific: Match Statistics */}
-        {isFootball && stats.length >= 2 && (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>{t('matchPrediction.matchStatistics')}</Text>
-
-            {/* Possession — special dual bar */}
-            <View style={styles.statRow}>
-              <View style={styles.statHeader}>
-                <Text style={styles.statValueHome}>{homePoss || `${homePossNum}%`}</Text>
-                <Text style={styles.statLabel}>{t('matchPrediction.possession')}</Text>
-                <Text style={styles.statValueAway}>{awayPoss || `${awayPossNum}%`}</Text>
-              </View>
-              <View style={styles.statDualTrack}>
-                <View style={[styles.statBarHome, { flex: homePossNum }]} />
-                <View style={{ width: 3 }} />
-                <View style={[styles.statBarAway, { flex: awayPossNum }]} />
-              </View>
+        {/* === FOOTBALL TAB BAR === */}
+        {isFootball && (events.length > 0 || stats.length >= 2 || lineups.length >= 2) && (
+          <>
+            <View style={styles.tabBar}>
+              {([
+                { key: 'events' as const, label: t('matchPrediction.matchEvents'), show: events.length > 0 },
+                { key: 'statistics' as const, label: t('matchPrediction.matchStatistics'), show: stats.length >= 2 },
+                { key: 'lineups' as const, label: t('matchPrediction.lineups'), show: lineups.length >= 2 },
+                { key: 'h2h' as const, label: 'H2H', show: true },
+              ]).filter(tab => tab.show).map((tab) => (
+                <TouchableOpacity
+                  key={tab.key}
+                  style={[styles.tabItem, activeTab === tab.key && styles.tabItemActive]}
+                  onPress={() => setActiveTab(tab.key)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
+                    {tab.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
 
-            {/* Other stats — dual bars */}
-            {STAT_KEYS.map(({ key, label }) => {
-              const [homeVal, awayVal] = getStatValue(stats, key);
-              if (homeVal === null && awayVal === null) return null;
-              const hNum = parseInt(homeVal || '0', 10);
-              const aNum = parseInt(awayVal || '0', 10);
-              const total = hNum + aNum || 1;
-              return (
-                <View key={key} style={styles.statRow}>
-                  <View style={styles.statHeader}>
-                    <Text style={[styles.statValueHome, hNum > aNum && styles.statValueWinning]}>
-                      {homeVal || '0'}
-                    </Text>
-                    <Text style={styles.statLabel}>{label}</Text>
-                    <Text style={[styles.statValueAway, aNum > hNum && styles.statValueWinning]}>
-                      {awayVal || '0'}
-                    </Text>
-                  </View>
-                  <View style={styles.statDualTrack}>
-                    <View style={[styles.statBarHome, { flex: hNum || 0.1 }]} />
-                    <View style={{ width: 3 }} />
-                    <View style={[styles.statBarAway, { flex: aNum || 0.1 }]} />
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-        )}
-
-        {/* Football-specific: Lineups */}
-        {isFootball && lineups.length >= 2 && (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>{t('matchPrediction.lineups')}</Text>
-
-            {/* Formations */}
-            <View style={styles.formationRow}>
-              <View style={styles.formationBadge}>
-                <Text style={styles.formationText}>{lineups[0]?.formation || '—'}</Text>
-              </View>
-              <Text style={styles.formationVs}>vs</Text>
-              <View style={styles.formationBadge}>
-                <Text style={styles.formationText}>{lineups[1]?.formation || '—'}</Text>
-              </View>
-            </View>
-
-            {/* Coaches */}
-            {(lineups[0]?.coachName || lineups[1]?.coachName) && (
-              <View style={styles.coachRow}>
-                <View style={styles.coachSide}>
-                  {lineups[0]?.coachPhoto ? (
-                    <Image source={{ uri: lineups[0].coachPhoto }} style={styles.coachPhoto} />
-                  ) : (
-                    <View style={styles.coachPhotoFallback}>
-                      <Ionicons name="person" size={12} color={colors.onSurfaceVariant} />
+            {/* === TAB: EVENTS === */}
+            {activeTab === 'events' && sortedEvents.length > 0 && (
+              <View style={styles.card}>
+                <View style={styles.timeline}>
+                  <View style={styles.timelineLine} />
+                  {/* 1st Half separator */}
+                  {sortedEvents.some(e => (e.timeElapsed || 0) <= 45) && (
+                    <View style={styles.halfSeparator}>
+                      <View style={styles.halfSeparatorLine} />
+                      <Text style={styles.halfSeparatorText}>1ST HALF</Text>
+                      <View style={styles.halfSeparatorLine} />
                     </View>
                   )}
-                  <Text style={styles.coachName} numberOfLines={1}>{lineups[0]?.coachName || '—'}</Text>
-                </View>
-                <Text style={styles.coachLabel}>{t('matchPrediction.coach')}</Text>
-                <View style={[styles.coachSide, { justifyContent: 'flex-end' }]}>
-                  <Text style={styles.coachName} numberOfLines={1}>{lineups[1]?.coachName || '—'}</Text>
-                  {lineups[1]?.coachPhoto ? (
-                    <Image source={{ uri: lineups[1].coachPhoto }} style={styles.coachPhoto} />
-                  ) : (
-                    <View style={styles.coachPhotoFallback}>
-                      <Ionicons name="person" size={12} color={colors.onSurfaceVariant} />
+                  {[...events]
+                    .filter(e => (e.timeElapsed || 0) <= 45)
+                    .sort((a, b) => (a.timeElapsed || 0) - (b.timeElapsed || 0))
+                    .map((event, idx) => {
+                      const evtStyle = getEventIcon(event);
+                      return (
+                        <View key={`1h-${idx}`} style={styles.timelineEvent}>
+                          <View style={[styles.timelineDot, { backgroundColor: evtStyle.bg }]}>
+                            {evtStyle.lib === 'ion' && <Ionicons name="football" size={12} color={colors.onPrimary} />}
+                            {evtStyle.lib === 'mci' && <MaterialCommunityIcons name={evtStyle.icon as any} size={12} color={evtStyle.color} />}
+                            {evtStyle.lib === 'card' && (
+                              <View style={{ width: 8, height: 12, borderRadius: 1, backgroundColor: evtStyle.color }} />
+                            )}
+                          </View>
+                          <View style={styles.timelineCard}>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.timelineMinute}>
+                                {event.timeElapsed}'{event.timeExtra ? `+${event.timeExtra}` : ''} {event.detail || event.type}
+                              </Text>
+                              <Text style={styles.timelinePlayer}>
+                                {event.playerName}{event.assistName ? ` (${event.assistName})` : ''}
+                              </Text>
+                              <Text style={styles.timelineTeam}>{event.teamName}</Text>
+                            </View>
+                          </View>
+                        </View>
+                      );
+                    })}
+                  {/* 2nd Half separator */}
+                  {events.some(e => (e.timeElapsed || 0) > 45) && (
+                    <View style={styles.halfSeparator}>
+                      <View style={styles.halfSeparatorLine} />
+                      <Text style={styles.halfSeparatorText}>2ND HALF</Text>
+                      <View style={styles.halfSeparatorLine} />
                     </View>
                   )}
+                  {[...events]
+                    .filter(e => (e.timeElapsed || 0) > 45)
+                    .sort((a, b) => (a.timeElapsed || 0) - (b.timeElapsed || 0))
+                    .map((event, idx) => {
+                      const evtStyle = getEventIcon(event);
+                      return (
+                        <View key={`2h-${idx}`} style={styles.timelineEvent}>
+                          <View style={[styles.timelineDot, { backgroundColor: evtStyle.bg }]}>
+                            {evtStyle.lib === 'ion' && <Ionicons name="football" size={12} color={colors.onPrimary} />}
+                            {evtStyle.lib === 'mci' && <MaterialCommunityIcons name={evtStyle.icon as any} size={12} color={evtStyle.color} />}
+                            {evtStyle.lib === 'card' && (
+                              <View style={{ width: 8, height: 12, borderRadius: 1, backgroundColor: evtStyle.color }} />
+                            )}
+                          </View>
+                          <View style={styles.timelineCard}>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.timelineMinute}>
+                                {event.timeElapsed}'{event.timeExtra ? `+${event.timeExtra}` : ''} {event.detail || event.type}
+                              </Text>
+                              <Text style={styles.timelinePlayer}>
+                                {event.playerName}{event.assistName ? ` (${event.assistName})` : ''}
+                              </Text>
+                              <Text style={styles.timelineTeam}>{event.teamName}</Text>
+                            </View>
+                          </View>
+                        </View>
+                      );
+                    })}
                 </View>
               </View>
             )}
-
-            {/* Starting XI — side by side */}
-            <Text style={styles.lineupSubtitle}>{t('matchPrediction.startingXI')}</Text>
-            <View style={styles.lineupColumns}>
-              {/* Home team */}
-              <View style={styles.lineupCol}>
-                {lineups[0]?.startXI.map((p, i) => (
-                  <View key={p.apiId || i} style={styles.playerRow}>
-                    {p.photo ? (
-                      <Image source={{ uri: p.photo }} style={styles.playerPhoto} />
-                    ) : (
-                      <View style={styles.playerPhotoFallback}>
-                        <Text style={styles.playerNumberFallback}>{p.number}</Text>
-                      </View>
-                    )}
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.playerName} numberOfLines={1}>{p.name}</Text>
-                      <Text style={styles.playerPos}>{p.pos === 'G' ? 'GK' : p.pos === 'D' ? 'DEF' : p.pos === 'M' ? 'MID' : 'FWD'}</Text>
-                    </View>
-                    <Text style={styles.playerNumber}>{p.number}</Text>
-                  </View>
-                ))}
+            {activeTab === 'events' && sortedEvents.length === 0 && (
+              <View style={styles.card}>
+                <Text style={styles.h2hEmpty}>{t('matchPrediction.noEventsYet') || 'No events yet'}</Text>
               </View>
-              {/* Divider */}
-              <View style={styles.lineupDivider} />
-              {/* Away team */}
-              <View style={styles.lineupCol}>
-                {lineups[1]?.startXI.map((p, i) => (
-                  <View key={p.apiId || i} style={styles.playerRow}>
-                    {p.photo ? (
-                      <Image source={{ uri: p.photo }} style={styles.playerPhoto} />
-                    ) : (
-                      <View style={styles.playerPhotoFallback}>
-                        <Text style={styles.playerNumberFallback}>{p.number}</Text>
-                      </View>
-                    )}
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.playerName} numberOfLines={1}>{p.name}</Text>
-                      <Text style={styles.playerPos}>{p.pos === 'G' ? 'GK' : p.pos === 'D' ? 'DEF' : p.pos === 'M' ? 'MID' : 'FWD'}</Text>
-                    </View>
-                    <Text style={styles.playerNumber}>{p.number}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
+            )}
 
-            {/* Substitutes */}
-            {(lineups[0]?.substitutes?.length > 0 || lineups[1]?.substitutes?.length > 0) && (
-              <>
-                <Text style={[styles.lineupSubtitle, { marginTop: 20 }]}>{t('matchPrediction.substitutes')}</Text>
+            {/* === TAB: STATISTICS === */}
+            {activeTab === 'statistics' && stats.length >= 2 && (
+              <View style={styles.card}>
+                {/* Possession — special dual bar */}
+                <View style={styles.statRow}>
+                  <View style={styles.statHeader}>
+                    <Text style={styles.statValueHome}>{homePoss || `${homePossNum}%`}</Text>
+                    <Text style={styles.statLabel}>{t('matchPrediction.possession')}</Text>
+                    <Text style={styles.statValueAway}>{awayPoss || `${awayPossNum}%`}</Text>
+                  </View>
+                  <View style={styles.statDualTrack}>
+                    <View style={[styles.statBarHome, { flex: homePossNum }]} />
+                    <View style={{ width: 3 }} />
+                    <View style={[styles.statBarAway, { flex: awayPossNum }]} />
+                  </View>
+                </View>
+
+                {/* Other stats — dual bars */}
+                {STAT_KEYS.map(({ key, label }) => {
+                  const [homeVal, awayVal] = getStatValue(stats, key);
+                  if (homeVal === null && awayVal === null) return null;
+                  const hNum = parseInt(homeVal || '0', 10);
+                  const aNum = parseInt(awayVal || '0', 10);
+                  const total = hNum + aNum || 1;
+                  return (
+                    <View key={key} style={styles.statRow}>
+                      <View style={styles.statHeader}>
+                        <Text style={[styles.statValueHome, hNum > aNum && styles.statValueWinning]}>
+                          {homeVal || '0'}
+                        </Text>
+                        <Text style={styles.statLabel}>{label}</Text>
+                        <Text style={[styles.statValueAway, aNum > hNum && styles.statValueWinning]}>
+                          {awayVal || '0'}
+                        </Text>
+                      </View>
+                      <View style={styles.statDualTrack}>
+                        <View style={[styles.statBarHome, { flex: hNum || 0.1 }]} />
+                        <View style={{ width: 3 }} />
+                        <View style={[styles.statBarAway, { flex: aNum || 0.1 }]} />
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+            {activeTab === 'statistics' && stats.length < 2 && (
+              <View style={styles.card}>
+                <Text style={styles.h2hEmpty}>{t('matchPrediction.noStatsYet') || 'No statistics available'}</Text>
+              </View>
+            )}
+
+            {/* === TAB: LINEUPS === */}
+            {activeTab === 'lineups' && lineups.length >= 2 && (
+              <View style={styles.card}>
+                {/* Football Pitch Visualization */}
+                {lineups[0]?.startXI?.some(p => p.grid) && (
+                  <FootballPitch homeLineup={lineups[0]} awayLineup={lineups[1]} />
+                )}
+
+                {/* Coaches */}
+                {(lineups[0]?.coachName || lineups[1]?.coachName) && (
+                  <View style={styles.coachRow}>
+                    <View style={styles.coachSide}>
+                      {lineups[0]?.coachPhoto ? (
+                        <Image source={{ uri: lineups[0].coachPhoto }} style={styles.coachPhoto} />
+                      ) : (
+                        <View style={styles.coachPhotoFallback}>
+                          <Ionicons name="person" size={12} color={colors.onSurfaceVariant} />
+                        </View>
+                      )}
+                      <Text style={styles.coachName} numberOfLines={1}>{lineups[0]?.coachName || '—'}</Text>
+                    </View>
+                    <Text style={styles.coachLabel}>{t('matchPrediction.coach')}</Text>
+                    <View style={[styles.coachSide, { justifyContent: 'flex-end' }]}>
+                      <Text style={styles.coachName} numberOfLines={1}>{lineups[1]?.coachName || '—'}</Text>
+                      {lineups[1]?.coachPhoto ? (
+                        <Image source={{ uri: lineups[1].coachPhoto }} style={styles.coachPhoto} />
+                      ) : (
+                        <View style={styles.coachPhotoFallback}>
+                          <Ionicons name="person" size={12} color={colors.onSurfaceVariant} />
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                )}
+
+                {/* Starting XI — side by side */}
+                <Text style={styles.lineupSubtitle}>{t('matchPrediction.startingXI')}</Text>
                 <View style={styles.lineupColumns}>
                   <View style={styles.lineupCol}>
-                    {lineups[0]?.substitutes.map((p, i) => (
-                      <View key={p.apiId || i} style={styles.subRow}>
+                    {lineups[0]?.startXI.map((p, i) => (
+                      <View key={p.apiId || i} style={styles.playerRow}>
                         {p.photo ? (
-                          <Image source={{ uri: p.photo }} style={styles.subPhoto} />
+                          <Image source={{ uri: p.photo }} style={styles.playerPhoto} />
                         ) : (
-                          <View style={styles.subPhotoFallback}>
-                            <Text style={styles.subNumberFallback}>{p.number}</Text>
+                          <View style={styles.playerPhotoFallback}>
+                            <Text style={styles.playerNumberFallback}>{p.number}</Text>
                           </View>
                         )}
-                        <Text style={styles.subName} numberOfLines={1}>{p.name}</Text>
-                        <Text style={styles.subNumber}>{p.number}</Text>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.playerName} numberOfLines={1}>{p.name}</Text>
+                          <Text style={styles.playerPos}>{p.pos === 'G' ? 'GK' : p.pos === 'D' ? 'DEF' : p.pos === 'M' ? 'MID' : 'FWD'}</Text>
+                        </View>
+                        <Text style={styles.playerNumber}>{p.number}</Text>
                       </View>
                     ))}
                   </View>
                   <View style={styles.lineupDivider} />
                   <View style={styles.lineupCol}>
-                    {lineups[1]?.substitutes.map((p, i) => (
-                      <View key={p.apiId || i} style={styles.subRow}>
+                    {lineups[1]?.startXI.map((p, i) => (
+                      <View key={p.apiId || i} style={styles.playerRow}>
                         {p.photo ? (
-                          <Image source={{ uri: p.photo }} style={styles.subPhoto} />
+                          <Image source={{ uri: p.photo }} style={styles.playerPhoto} />
                         ) : (
-                          <View style={styles.subPhotoFallback}>
-                            <Text style={styles.subNumberFallback}>{p.number}</Text>
+                          <View style={styles.playerPhotoFallback}>
+                            <Text style={styles.playerNumberFallback}>{p.number}</Text>
                           </View>
                         )}
-                        <Text style={styles.subName} numberOfLines={1}>{p.name}</Text>
-                        <Text style={styles.subNumber}>{p.number}</Text>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.playerName} numberOfLines={1}>{p.name}</Text>
+                          <Text style={styles.playerPos}>{p.pos === 'G' ? 'GK' : p.pos === 'D' ? 'DEF' : p.pos === 'M' ? 'MID' : 'FWD'}</Text>
+                        </View>
+                        <Text style={styles.playerNumber}>{p.number}</Text>
                       </View>
                     ))}
                   </View>
                 </View>
-              </>
+
+                {/* Substitutes */}
+                {(lineups[0]?.substitutes?.length > 0 || lineups[1]?.substitutes?.length > 0) && (
+                  <>
+                    <Text style={[styles.lineupSubtitle, { marginTop: 20 }]}>{t('matchPrediction.substitutes')}</Text>
+                    <View style={styles.lineupColumns}>
+                      <View style={styles.lineupCol}>
+                        {lineups[0]?.substitutes.map((p, i) => (
+                          <View key={p.apiId || i} style={styles.subRow}>
+                            {p.photo ? (
+                              <Image source={{ uri: p.photo }} style={styles.subPhoto} />
+                            ) : (
+                              <View style={styles.subPhotoFallback}>
+                                <Text style={styles.subNumberFallback}>{p.number}</Text>
+                              </View>
+                            )}
+                            <Text style={styles.subName} numberOfLines={1}>{p.name}</Text>
+                            <Text style={styles.subNumber}>{p.number}</Text>
+                          </View>
+                        ))}
+                      </View>
+                      <View style={styles.lineupDivider} />
+                      <View style={styles.lineupCol}>
+                        {lineups[1]?.substitutes.map((p, i) => (
+                          <View key={p.apiId || i} style={styles.subRow}>
+                            {p.photo ? (
+                              <Image source={{ uri: p.photo }} style={styles.subPhoto} />
+                            ) : (
+                              <View style={styles.subPhotoFallback}>
+                                <Text style={styles.subNumberFallback}>{p.number}</Text>
+                              </View>
+                            )}
+                            <Text style={styles.subName} numberOfLines={1}>{p.name}</Text>
+                            <Text style={styles.subNumber}>{p.number}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  </>
+                )}
+              </View>
             )}
-          </View>
-        )}
-
-        {/* Football-specific: Head to Head */}
-        {isFootball && (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>{t('matchPrediction.headToHead')}</Text>
-            {h2hLoading ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : h2hFixtures.length === 0 ? (
-              <Text style={styles.h2hEmpty}>{t('matchPrediction.noPreviousMeetings')}</Text>
-            ) : (
-              <>
-                {/* Summary row */}
-                {(() => {
-                  const last5 = h2hFixtures.slice(0, 5);
-                  let homeWins = 0;
-                  let draws = 0;
-                  let awayWins = 0;
-                  const currentHomeId = fixture?.homeTeam?.apiId;
-                  last5.forEach((f) => {
-                    if (f.homeGoals === f.awayGoals) {
-                      draws++;
-                    } else if (
-                      (f.homeTeam.apiId === currentHomeId && f.homeGoals > f.awayGoals) ||
-                      (f.awayTeam.apiId === currentHomeId && f.awayGoals > f.homeGoals)
-                    ) {
-                      homeWins++;
-                    } else {
-                      awayWins++;
-                    }
-                  });
-                  return (
-                    <View style={styles.h2hSummary}>
-                      <View style={styles.h2hSummaryItem}>
-                        <Text style={styles.h2hSummaryCount}>{homeWins}</Text>
-                        <Text style={styles.h2hSummaryLabel}>{homeTeamName}</Text>
-                      </View>
-                      <View style={styles.h2hSummaryItem}>
-                        <Text style={styles.h2hSummaryCount}>{draws}</Text>
-                        <Text style={styles.h2hSummaryLabel}>{t('matchPrediction.draws')}</Text>
-                      </View>
-                      <View style={styles.h2hSummaryItem}>
-                        <Text style={styles.h2hSummaryCount}>{awayWins}</Text>
-                        <Text style={styles.h2hSummaryLabel}>{awayTeamName}</Text>
-                      </View>
-                    </View>
-                  );
-                })()}
-
-                {/* Last 5 matchups */}
-                {h2hFixtures.slice(0, 5).map((f, idx) => {
-                  const currentHomeId = fixture?.homeTeam?.apiId;
-                  const isCurrentHomeWin =
-                    (f.homeTeam.apiId === currentHomeId && f.homeGoals > f.awayGoals) ||
-                    (f.awayTeam.apiId === currentHomeId && f.awayGoals > f.homeGoals);
-                  const isDraw = f.homeGoals === f.awayGoals;
-                  return (
-                    <View key={f.apiId || idx} style={styles.h2hRow}>
-                      <Text style={styles.h2hDate}>
-                        {new Date(f.date).toLocaleDateString([], { month: 'short', year: 'numeric' })}
-                      </Text>
-                      <View style={styles.h2hTeamCell}>
-                        <Text style={[styles.h2hTeam, { textAlign: 'right' }]} numberOfLines={1}>
-                          {f.homeTeam.name}
-                        </Text>
-                        {f.homeTeam.logo ? (
-                          <Image source={{ uri: f.homeTeam.logo }} style={styles.h2hTeamLogo} resizeMode="contain" />
-                        ) : null}
-                      </View>
-                      <View style={styles.h2hScoreBadge}>
-                        <Text style={styles.h2hScore}>{f.homeGoals} - {f.awayGoals}</Text>
-                      </View>
-                      <View style={[styles.h2hTeamCell, { justifyContent: 'flex-start' }]}>
-                        {f.awayTeam.logo ? (
-                          <Image source={{ uri: f.awayTeam.logo }} style={styles.h2hTeamLogo} resizeMode="contain" />
-                        ) : null}
-                        <Text style={[styles.h2hTeam, { textAlign: 'left' }]} numberOfLines={1}>
-                          {f.awayTeam.name}
-                        </Text>
-                      </View>
-                      <View
-                        style={[
-                          styles.h2hResultDot,
-                          isDraw
-                            ? styles.h2hResultDraw
-                            : isCurrentHomeWin
-                              ? styles.h2hResultWin
-                              : styles.h2hResultLoss,
-                        ]}
-                      >
-                        <Text style={styles.h2hResultDotText}>
-                          {isDraw ? 'D' : isCurrentHomeWin ? 'W' : 'L'}
-                        </Text>
-                      </View>
-                    </View>
-                  );
-                })}
-              </>
+            {activeTab === 'lineups' && lineups.length < 2 && (
+              <View style={styles.card}>
+                <Text style={styles.h2hEmpty}>{t('matchPrediction.noLineupsYet') || 'Lineups not available yet'}</Text>
+              </View>
             )}
-          </View>
-        )}
 
-        {/* Football-specific: Events Timeline */}
-        {isFootball && sortedEvents.length > 0 && (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>{t('matchPrediction.matchEvents')}</Text>
-            <View style={styles.timeline}>
-              <View style={styles.timelineLine} />
-              {sortedEvents.map((event, idx) => {
-                const evtStyle = getEventIcon(event);
-                return (
-                  <View key={idx} style={styles.timelineEvent}>
-                    <View style={[styles.timelineDot, { backgroundColor: evtStyle.bg }]}>
-                      {evtStyle.lib === 'ion' && <Ionicons name="football" size={12} color={colors.onPrimary} />}
-                      {evtStyle.lib === 'mci' && <MaterialCommunityIcons name={evtStyle.icon as any} size={12} color={evtStyle.color} />}
-                      {evtStyle.lib === 'card' && (
-                        <View style={{ width: 8, height: 12, borderRadius: 1, backgroundColor: evtStyle.color }} />
-                      )}
-                    </View>
-                    <View style={styles.timelineCard}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.timelineMinute}>
-                          {event.timeElapsed}'{event.timeExtra ? `+${event.timeExtra}` : ''} {event.detail || event.type}
-                        </Text>
-                        <Text style={styles.timelinePlayer}>
-                          {event.playerName}{event.assistName ? ` (${event.assistName})` : ''}
-                        </Text>
-                        <Text style={styles.timelineTeam}>{event.teamName}</Text>
-                      </View>
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-          </View>
+            {/* === TAB: H2H === */}
+            {activeTab === 'h2h' && (
+              <View style={styles.card}>
+                {h2hLoading ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : h2hFixtures.length === 0 ? (
+                  <Text style={styles.h2hEmpty}>{t('matchPrediction.noPreviousMeetings')}</Text>
+                ) : (
+                  <>
+                    {(() => {
+                      const last5 = h2hFixtures.slice(0, 5);
+                      let homeWins = 0;
+                      let draws = 0;
+                      let awayWins = 0;
+                      const currentHomeId = fixture?.homeTeam?.apiId;
+                      last5.forEach((f) => {
+                        if (f.homeGoals === f.awayGoals) {
+                          draws++;
+                        } else if (
+                          (f.homeTeam.apiId === currentHomeId && f.homeGoals > f.awayGoals) ||
+                          (f.awayTeam.apiId === currentHomeId && f.awayGoals > f.homeGoals)
+                        ) {
+                          homeWins++;
+                        } else {
+                          awayWins++;
+                        }
+                      });
+                      return (
+                        <View style={styles.h2hSummary}>
+                          <View style={styles.h2hSummaryItem}>
+                            <Text style={styles.h2hSummaryCount}>{homeWins}</Text>
+                            <Text style={styles.h2hSummaryLabel}>{homeTeamName}</Text>
+                          </View>
+                          <View style={styles.h2hSummaryItem}>
+                            <Text style={styles.h2hSummaryCount}>{draws}</Text>
+                            <Text style={styles.h2hSummaryLabel}>{t('matchPrediction.draws')}</Text>
+                          </View>
+                          <View style={styles.h2hSummaryItem}>
+                            <Text style={styles.h2hSummaryCount}>{awayWins}</Text>
+                            <Text style={styles.h2hSummaryLabel}>{awayTeamName}</Text>
+                          </View>
+                        </View>
+                      );
+                    })()}
+                    {h2hFixtures.slice(0, 5).map((f, idx) => {
+                      const currentHomeId = fixture?.homeTeam?.apiId;
+                      const isCurrentHomeWin =
+                        (f.homeTeam.apiId === currentHomeId && f.homeGoals > f.awayGoals) ||
+                        (f.awayTeam.apiId === currentHomeId && f.awayGoals > f.homeGoals);
+                      const isDraw = f.homeGoals === f.awayGoals;
+                      return (
+                        <View key={f.apiId || idx} style={styles.h2hRow}>
+                          <Text style={styles.h2hDate}>
+                            {new Date(f.date).toLocaleDateString([], { month: 'short', year: 'numeric' })}
+                          </Text>
+                          <View style={styles.h2hTeamCell}>
+                            <Text style={[styles.h2hTeam, { textAlign: 'right' }]} numberOfLines={1}>
+                              {f.homeTeam.name}
+                            </Text>
+                            {f.homeTeam.logo ? (
+                              <Image source={{ uri: f.homeTeam.logo }} style={styles.h2hTeamLogo} resizeMode="contain" />
+                            ) : null}
+                          </View>
+                          <View style={styles.h2hScoreBadge}>
+                            <Text style={styles.h2hScore}>{f.homeGoals} - {f.awayGoals}</Text>
+                          </View>
+                          <View style={[styles.h2hTeamCell, { justifyContent: 'flex-start' }]}>
+                            {f.awayTeam.logo ? (
+                              <Image source={{ uri: f.awayTeam.logo }} style={styles.h2hTeamLogo} resizeMode="contain" />
+                            ) : null}
+                            <Text style={[styles.h2hTeam, { textAlign: 'left' }]} numberOfLines={1}>
+                              {f.awayTeam.name}
+                            </Text>
+                          </View>
+                          <View
+                            style={[
+                              styles.h2hResultDot,
+                              isDraw
+                                ? styles.h2hResultDraw
+                                : isCurrentHomeWin
+                                  ? styles.h2hResultWin
+                                  : styles.h2hResultLoss,
+                            ]}
+                          >
+                            <Text style={styles.h2hResultDotText}>
+                              {isDraw ? 'D' : isCurrentHomeWin ? 'W' : 'L'}
+                            </Text>
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </>
+                )}
+              </View>
+            )}
+          </>
         )}
 
         {/* Match Info Footer */}
@@ -1146,6 +1217,30 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontFamily: 'SpaceGrotesk_700Bold', fontSize: 20, lineHeight: 28, color: colors.onSurface,
     letterSpacing: -0.5, textTransform: 'uppercase',
+  },
+
+  // Tab bar
+  tabBar: {
+    flexDirection: 'row', marginHorizontal: 16, marginBottom: 16,
+    backgroundColor: colors.surfaceContainerHighest, borderRadius: 8, padding: 3,
+  },
+  tabItem: {
+    flex: 1, paddingVertical: 10, alignItems: 'center', justifyContent: 'center',
+    borderRadius: 6,
+  },
+  tabItemActive: { backgroundColor: colors.primary },
+  tabText: {
+    fontFamily: 'Inter_700Bold', fontSize: 10, color: colors.onSurfaceVariant,
+    letterSpacing: 0.8, textTransform: 'uppercase',
+  },
+  tabTextActive: { color: colors.onPrimary },
+  halfSeparator: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4, marginLeft: 36,
+  },
+  halfSeparatorLine: { flex: 1, height: 1, backgroundColor: 'rgba(69,72,76,0.3)' },
+  halfSeparatorText: {
+    fontFamily: 'Inter_700Bold', fontSize: 9, color: colors.onSurfaceDim,
+    letterSpacing: 1.2,
   },
 
   statRow: { gap: 6 },
