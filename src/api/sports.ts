@@ -122,7 +122,42 @@ export interface SportLeagueDetail {
   source: 'api' | 'cache';
 }
 
+export interface PopularTeam {
+  apiId: number;
+  name: string;
+  logo: string;
+  leagueName?: string;
+}
+
+export interface LeagueFilter {
+  apiId: number;
+  name: string;
+  countryName: string;
+  logo?: string;
+}
+
+export interface PopularTeamsResponse {
+  teams: PopularTeam[];
+  total: number;
+  page: number;
+  pages: number;
+  hasMore: boolean;
+  countries?: string[];
+  leagues?: LeagueFilter[];
+}
+
 export const sportsApi = {
+  getPopularTeams(token: string, sport: SportKey, opts: { page?: number; limit?: number; countries?: string[]; leagueIds?: number[]; search?: string } = {}) {
+    const params = new URLSearchParams();
+    if (opts.page) params.set('page', String(opts.page));
+    if (opts.limit) params.set('limit', String(opts.limit));
+    if (opts.countries?.length) params.set('countries', opts.countries.join(','));
+    if (opts.leagueIds?.length) params.set('leagueIds', opts.leagueIds.join(','));
+    if (opts.search) params.set('search', opts.search);
+    const qs = params.toString();
+    return apiClient.get<PopularTeamsResponse>(`/sports/${sport}/popular-teams${qs ? `?${qs}` : ''}`, { token });
+  },
+
   getAvailableSports(token: string) {
     return apiClient.get<SportMeta[]>('/sports', { token });
   },
@@ -143,6 +178,11 @@ export const sportsApi = {
     return apiClient.get<SportLeague[]>(`/sports/${sport}/leagues`, { token });
   },
 
+  getF1Teams(token: string, search?: string): Promise<F1TeamsResponse> {
+    const qs = search ? `?search=${encodeURIComponent(search)}` : '';
+    return apiClient.get<F1TeamsResponse>(`/sports/formula-1/popular-teams${qs}`, { token });
+  },
+
   search(token: string, query: string) {
     return apiClient.get<SearchResults>(
       `/sports/search?q=${encodeURIComponent(query)}`,
@@ -150,6 +190,32 @@ export const sportsApi = {
     );
   },
 };
+
+export interface F1Driver {
+  apiId: number;
+  name: string;
+  abbr?: string;
+  number?: number;
+  image?: string;
+  nationality?: string;
+  points?: number;
+  position?: number;
+}
+
+export interface F1Team {
+  apiId: number;
+  name: string;
+  logo?: string;
+  base?: string;
+  points?: number;
+  position?: number;
+  drivers: F1Driver[];
+}
+
+export interface F1TeamsResponse {
+  teams: F1Team[];
+  total: number;
+}
 
 export interface SearchTeamResult {
   apiId: number;

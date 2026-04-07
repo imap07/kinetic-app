@@ -16,7 +16,6 @@ import { Feather } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { colors, borderRadius } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
-import { usePurchases } from '../contexts/PurchasesContext';
 import { authApi } from '../api';
 import type { SportKey } from '../api/sports';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -80,7 +79,7 @@ const SPORTS: SportOption[] = [
   },
   {
     key: 'formula-1',
-    name: 'Formula 1',
+    name: 'F1',
     iconFamily: 'mci',
     icon: 'racing-helmet',
     color: '#FF4444',
@@ -139,9 +138,7 @@ const MIN_SPORTS = 1;
 export function EditFavoriteSportsScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
-  const rootNav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user, tokens, refreshProfile } = useAuth();
-  const { isProMember } = usePurchases();
   const { t } = useTranslation();
 
   const [selected, setSelected] = useState<Set<SportKey>>(
@@ -150,13 +147,7 @@ export function EditFavoriteSportsScreen() {
   const [saving, setSaving] = useState(false);
 
   const toggleSport = useCallback(
-    (key: SportKey, isFree: boolean) => {
-      // If sport is premium and user is not pro, show paywall
-      if (!isFree && !isProMember) {
-        rootNav.navigate('Paywall', { trigger: 'sport_locked', sportName: key });
-        return;
-      }
-
+    (key: SportKey) => {
       setSelected((prev) => {
         const next = new Set(prev);
         if (next.has(key)) {
@@ -167,7 +158,7 @@ export function EditFavoriteSportsScreen() {
         return next;
       });
     },
-    [isProMember, rootNav],
+    [],
   );
 
   const handleSave = useCallback(async () => {
@@ -210,7 +201,7 @@ export function EditFavoriteSportsScreen() {
       {/* Description */}
       <View style={styles.descSection}>
         <Text style={styles.descText}>
-          {t('editFavorites.sportsDesc')}{!isProMember ? t('editFavorites.sportsDescPro') : ''}
+          {t('editFavorites.sportsDesc')}
         </Text>
       </View>
 
@@ -221,7 +212,6 @@ export function EditFavoriteSportsScreen() {
       >
         {SPORTS.map((sport) => {
           const isSel = selected.has(sport.key);
-          const isLocked = !sport.isFree && !isProMember;
 
           return (
             <TouchableOpacity
@@ -229,23 +219,14 @@ export function EditFavoriteSportsScreen() {
               style={[
                 styles.sportCard,
                 isSel && { borderColor: sport.color },
-                isLocked && !isSel && { opacity: 0.6 },
               ]}
-              onPress={() => toggleSport(sport.key, sport.isFree)}
+              onPress={() => toggleSport(sport.key)}
               activeOpacity={0.7}
             >
               {/* Selection indicator */}
               {isSel && (
                 <View style={[styles.checkBadge, { backgroundColor: sport.color }]}>
                   <Ionicons name="checkmark" size={12} color="#0B0E11" />
-                </View>
-              )}
-
-              {/* Lock badge for premium */}
-              {isLocked && !isSel && (
-                <View style={styles.lockBadge}>
-                  <Ionicons name="lock-closed" size={10} color="#FFD700" />
-                  <Text style={styles.lockText}>PRO</Text>
                 </View>
               )}
 

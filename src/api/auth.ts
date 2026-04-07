@@ -219,6 +219,10 @@ export const authApi = {
     );
   },
 
+  completeOnboarding(token: string, data: { sports: string[]; favoriteTeams: { apiId: number; sport: string }[] }) {
+    return apiClient.post<{ message: string }>('/auth/onboarding', data, { token });
+  },
+
   changePassword(token: string, currentPassword: string, newPassword: string) {
     return apiClient.patch<{ message: string }>(
       '/auth/change-password',

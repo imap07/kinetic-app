@@ -34,6 +34,9 @@ import Toast from 'react-native-toast-message';
 import { useLiveGames } from '../contexts/LiveGamesContext';
 import { useStatsSSE, AchievementSSEData } from '../hooks/useStatsSSE';
 import { logSportTabViewed, logLeagueDetailOpened, logPickAttempted } from '../services/analytics';
+import { AdBanner } from '../components/AdBanner';
+import { RewardedAdButton } from '../components/RewardedAdButton';
+import { useAds } from '../contexts/AdContext';
 
 type Props = {
   navigation: NativeStackNavigationProp<HomeStackParamList, 'DashboardHome'>;
@@ -102,6 +105,7 @@ export function DashboardScreen({ navigation }: Props) {
   const { isProMember } = usePurchases();
   const { showAchievementUnlock } = useAchievements();
   const { setLiveCount } = useLiveGames();
+  const { trackAction } = useAds();
   const rootNav = useRootNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const defaultSport = (user?.favoriteSports?.[0] as SportKey) || 'football';
   const [activeSport, setActiveSport] = useState<SportKey>(defaultSport);
@@ -180,33 +184,18 @@ export function DashboardScreen({ navigation }: Props) {
 
   const handleSportChange = useCallback((sport: SportKey) => {
     if (sport === activeSport) return;
-    if (!isProMember && sport !== FREE_SPORT) {
-      const sportMeta = SPORT_TABS.find((t) => t.key === sport);
-      rootNav.navigate('Paywall', {
-        trigger: 'sport_locked',
-        sportName: sportMeta?.name ?? sport,
-      });
-      return;
-    }
     setActiveSport(sport);
     setData(null);
     logSportTabViewed(sport);
-  }, [activeSport, isProMember, rootNav]);
+  }, [activeSport]);
 
   // Free-tier league IDs (must match backend FREE_TIER_LEAGUES)
   const FREE_LEAGUE_IDS = [39, 140, 262, 253];
 
   const handleMatchPress = useCallback((game: any) => {
-    // Block premium league matches for free users
-    if (!isProMember && game.leagueApiId && !FREE_LEAGUE_IDS.includes(game.leagueApiId)) {
-      rootNav.navigate('Paywall', {
-        trigger: 'premium_league',
-        sportName: game.leagueName || 'Premium League',
-      });
-      return;
-    }
+    trackAction();
     navigation.navigate('MatchPrediction', { fixtureApiId: game.apiId, sport: activeSport });
-  }, [isProMember, activeSport, navigation, rootNav]);
+  }, [activeSport, navigation, trackAction]);
 
   const allLiveGames = data?.liveGames ?? [];
   const allTodayGames = data?.todayGames ?? [];
@@ -223,21 +212,6 @@ export function DashboardScreen({ navigation }: Props) {
   useEffect(() => {
     setActiveLeagueFilter(null);
   }, [activeSport]);
-
-  // Smart pills: show max 6 leagues (free ones first, then limit)
-  const MAX_PILLS = 6;
-  const pillLeagues = useMemo(() => {
-    if (!featuredLeagues.length) return [];
-    const free = featuredLeagues.filter((l: any) => l.tier === 'free');
-    const premium = featuredLeagues.filter((l: any) => l.tier === 'premium');
-    const pills = [...free, ...premium].slice(0, MAX_PILLS);
-    // If active filter is a league not in pills, include it so user sees it
-    if (activeLeagueFilter && !pills.some((l: any) => l.apiId === activeLeagueFilter)) {
-      const active = featuredLeagues.find((l: any) => l.apiId === activeLeagueFilter);
-      if (active) pills.splice(pills.length - 1, 1, active);
-    }
-    return pills;
-  }, [featuredLeagues, activeLeagueFilter]);
 
   // Group leagues by category for bottom sheet
   const groupedLeagues = useMemo(() => {
@@ -311,114 +285,72 @@ export function DashboardScreen({ navigation }: Props) {
       {/* Sport Tabs */}
       <SportTabs activeSport={activeSport} onSportChange={handleSportChange} isProMember={isProMember} visibleSports={user?.favoriteSports} />
 
-      {/* League Filter Bar — logo pills + fixed "More" button */}
+      {/* League Filter Bar — All pill + dropdown selector */}
       <View style={styles.leagueFilterContainer}>
-        <ScrollView
-          horizontal
-          style={{ flex: 1 }}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.leagueFilterScroll}
+        {/* "All" pill */}
+        <TouchableOpacity
+          style={[
+            styles.leagueFilterPill,
+            styles.leagueFilterPillFirst,
+            activeLeagueFilter === null && styles.leagueFilterPillActive,
+          ]}
+          onPress={() => setActiveLeagueFilter(null)}
+          activeOpacity={0.7}
         >
-          {/* "All" pill — always first */}
-          <TouchableOpacity
+          <Ionicons
+            name="layers-outline"
+            size={15}
+            color={activeLeagueFilter === null ? colors.primary : colors.onSurfaceVariant}
+          />
+          <Text
             style={[
-              styles.leagueFilterPill,
-              activeLeagueFilter === null && styles.leagueFilterPillActive,
+              styles.leagueFilterText,
+              activeLeagueFilter === null && styles.leagueFilterTextActive,
             ]}
-            onPress={() => setActiveLeagueFilter(null)}
-            activeOpacity={0.7}
           >
-            <Ionicons
-              name="football-outline"
-              size={16}
-              color={activeLeagueFilter === null ? colors.primary : colors.onSurfaceVariant}
-            />
-            <Text
-              style={[
-                styles.leagueFilterText,
-                activeLeagueFilter === null && styles.leagueFilterTextActive,
-              ]}
-            >
-              {t('dashboard.all')}
-            </Text>
-          </TouchableOpacity>
+            {t('dashboard.all')}
+          </Text>
+        </TouchableOpacity>
 
-          {pillLeagues.map((league: any) => {
-            const isActive = activeLeagueFilter === league.apiId;
-            const isPremiumLocked = league.tier === 'premium' && !isProMember;
-            return (
-              <TouchableOpacity
-                key={league.apiId}
-                style={[
-                  styles.leagueFilterPill,
-                  isActive && styles.leagueFilterPillActive,
-                  isPremiumLocked && styles.leagueFilterPillLocked,
-                ]}
-                onPress={() => {
-                  if (isPremiumLocked) {
-                    rootNav.navigate('Paywall', {
-                      trigger: 'premium_league',
-                      sportName: league.name,
-                    });
-                    return;
-                  }
-                  setActiveLeagueFilter(isActive ? null : league.apiId);
-                }}
-                onLongPress={() => {
-                  if (isPremiumLocked) {
-                    rootNav.navigate('Paywall', {
-                      trigger: 'premium_league',
-                      sportName: league.name,
-                    });
-                    return;
-                  }
-                  navigation.navigate('LeagueDetail', {
-                    leagueApiId: league.apiId,
-                    leagueName: league.name,
-                    sport: activeSport,
-                    tier: league.tier,
-                  });
-                }}
-                activeOpacity={0.7}
-              >
-                {league.logo ? (
-                  <ExpoImage
-                    source={{ uri: league.logo }}
-                    style={styles.leagueFilterLogo}
-                    contentFit="contain"
-                    cachePolicy="memory-disk"
-                  />
-                ) : (
-                  <Ionicons name="trophy-outline" size={16} color={colors.onSurfaceVariant} />
-                )}
-                <Text
-                  style={[
-                    styles.leagueFilterText,
-                    isActive && styles.leagueFilterTextActive,
-                    isPremiumLocked && styles.leagueFilterTextLocked,
-                  ]}
-                  numberOfLines={1}
-                >
-                  {league.name}
-                </Text>
-                {isPremiumLocked && (
-                  <Ionicons name="lock-closed" size={10} color="rgba(202,253,0,0.5)" />
-                )}
-              </TouchableOpacity>
+        {/* League dropdown button */}
+        <TouchableOpacity
+          style={[
+            styles.leagueDropdownBtn,
+            activeLeagueFilter !== null && styles.leagueDropdownBtnActive,
+          ]}
+          onPress={() => { setLeagueSearch(''); setShowLeagueSheet(true); }}
+          activeOpacity={0.7}
+        >
+          {activeLeagueFilter !== null && (() => {
+            const activeLg = featuredLeagues.find((l: any) => l.apiId === activeLeagueFilter);
+            return activeLg?.logo ? (
+              <ExpoImage
+                source={{ uri: activeLg.logo }}
+                style={styles.leagueFilterLogo}
+                contentFit="contain"
+                cachePolicy="memory-disk"
+              />
+            ) : (
+              <Ionicons name="trophy-outline" size={15} color={colors.primary} />
             );
-          })}
-        </ScrollView>
-
-        {/* Fixed "More" button — always visible at the right edge */}
-        {featuredLeagues.length > pillLeagues.length && (
-          <TouchableOpacity
-            style={styles.leagueFilterMoreBtn}
-            onPress={() => { setLeagueSearch(''); setShowLeagueSheet(true); }}
-            activeOpacity={0.7}
+          })()}
+          <Text
+            style={[
+              styles.leagueDropdownText,
+              activeLeagueFilter !== null && styles.leagueDropdownTextActive,
+            ]}
+            numberOfLines={1}
           >
-            <Ionicons name="options-outline" size={18} color={colors.primary} />
-          </TouchableOpacity>
-        )}
+            {activeLeagueFilter !== null
+              ? (featuredLeagues.find((l: any) => l.apiId === activeLeagueFilter)?.name ?? t('dashboard.selectLeague'))
+              : t('dashboard.selectLeague')}
+          </Text>
+          <Ionicons
+            name="chevron-down"
+            size={14}
+            color={activeLeagueFilter !== null ? colors.primary : colors.onSurfaceVariant}
+          />
+        </TouchableOpacity>
       </View>
 
       {/* Main Content */}
@@ -542,6 +474,9 @@ export function DashboardScreen({ navigation }: Props) {
           </View>
         )}
 
+        {/* Ad between sections */}
+        <AdBanner placement="home" />
+
         {/* Recent Results - shown AFTER live/upcoming when they exist, or AFTER engagement content when they don't */}
         {hasLiveOrUpcoming && recentGames.length > 0 && (
           <View style={styles.sectionWrap}>
@@ -633,7 +568,7 @@ export function DashboardScreen({ navigation }: Props) {
               <View style={{ flex: 1 }}>
                 <Text style={styles.predictorTitle}>{t('dashboard.yourStats')}</Text>
                 <Text style={styles.predictorSubtitle}>
-                  {isProMember ? t('dashboard.proMember') : t('dashboard.freeTier')} {'\u2022'}{' '}
+                  {t('dashboard.freeTier')} {'\u2022'}{' '}
                   <Text style={styles.predictorPts}>{userStats.totalPoints.toLocaleString()} PTS</Text>
                 </Text>
               </View>
@@ -748,33 +683,8 @@ export function DashboardScreen({ navigation }: Props) {
               const needsPick3 = !dailyStatus.quests.pick3.completed;
 
               // Quest "Cover 2 sports" pending + user is free → conversion moment
-              if (needsMultiSport && !isProMember) {
-                return (
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    style={styles.submitWrap}
-                    onPress={() =>
-                      rootNav.navigate('Paywall', {
-                        trigger: 'quest_multi_sport',
-                        sportName: 'all sports',
-                      })
-                    }
-                  >
-                    <LinearGradient
-                      colors={[colors.primaryContainer, colors.primary]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={styles.submitBtn}
-                    >
-                      <Text style={styles.submitBtnText}>{t('dashboard.unlockAllSports')}</Text>
-                      <Ionicons name="lock-open-outline" size={16} color="#3A4A00" />
-                    </LinearGradient>
-                  </TouchableOpacity>
-                );
-              }
-
-              // Quest "Cover 2 sports" pending + user IS Pro → switch to uncovered sport
-              if (needsMultiSport && isProMember) {
+              // Quest "Cover 2 sports" pending → switch to uncovered sport
+              if (needsMultiSport) {
                 const coveredSports = dailyStatus.quests.multiSport.sportsPlayed || [];
                 const uncovered = SPORT_TABS.find((t) => !coveredSports.includes(t.key));
                 return (
@@ -836,6 +746,10 @@ export function DashboardScreen({ navigation }: Props) {
             })()}
           </View>
         )}
+
+        {/* Ad Banner */}
+        <AdBanner placement="dashboard" />
+        <RewardedAdButton />
 
         {/* Pro Upgrade Banner */}
         <ProUpgradeBanner />
@@ -1005,17 +919,11 @@ export function DashboardScreen({ navigation }: Props) {
                   <Text style={styles.sheetGroupTitle}>{t('dashboard.domesticLeagues')}</Text>
                   {filteredSheetLeagues.domestic.map((league: any) => {
                     const isActive = activeLeagueFilter === league.apiId;
-                    const isPremiumLocked = league.tier === 'premium' && !isProMember;
                     return (
                       <TouchableOpacity
                         key={league.apiId}
                         style={[styles.sheetLeagueRow, isActive && styles.sheetLeagueRowActive]}
                         onPress={() => {
-                          if (isPremiumLocked) {
-                            setShowLeagueSheet(false);
-                            rootNav.navigate('Paywall', { trigger: 'premium_league', sportName: league.name });
-                            return;
-                          }
                           setActiveLeagueFilter(isActive ? null : league.apiId);
                           setShowLeagueSheet(false);
                         }}
@@ -1033,12 +941,7 @@ export function DashboardScreen({ navigation }: Props) {
                             <Text style={styles.sheetLeagueCountry}>{league.countryName}</Text>
                           ) : null}
                         </View>
-                        {isPremiumLocked ? (
-                          <View style={styles.sheetProBadge}>
-                            <Ionicons name="lock-closed" size={10} color={colors.primary} />
-                            <Text style={styles.sheetProText}>PRO</Text>
-                          </View>
-                        ) : isActive ? (
+                        {isActive ? (
                           <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
                         ) : null}
                       </TouchableOpacity>
@@ -1053,17 +956,11 @@ export function DashboardScreen({ navigation }: Props) {
                   <Text style={styles.sheetGroupTitle}>{t('dashboard.cupCompetitions')}</Text>
                   {filteredSheetLeagues.cups.map((league: any) => {
                     const isActive = activeLeagueFilter === league.apiId;
-                    const isPremiumLocked = league.tier === 'premium' && !isProMember;
                     return (
                       <TouchableOpacity
                         key={league.apiId}
                         style={[styles.sheetLeagueRow, isActive && styles.sheetLeagueRowActive]}
                         onPress={() => {
-                          if (isPremiumLocked) {
-                            setShowLeagueSheet(false);
-                            rootNav.navigate('Paywall', { trigger: 'premium_league', sportName: league.name });
-                            return;
-                          }
                           setActiveLeagueFilter(isActive ? null : league.apiId);
                           setShowLeagueSheet(false);
                         }}
@@ -1078,12 +975,7 @@ export function DashboardScreen({ navigation }: Props) {
                             {league.name}
                           </Text>
                         </View>
-                        {isPremiumLocked ? (
-                          <View style={styles.sheetProBadge}>
-                            <Ionicons name="lock-closed" size={10} color={colors.primary} />
-                            <Text style={styles.sheetProText}>PRO</Text>
-                          </View>
-                        ) : isActive ? (
+                        {isActive ? (
                           <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
                         ) : null}
                       </TouchableOpacity>
@@ -1098,17 +990,11 @@ export function DashboardScreen({ navigation }: Props) {
                   <Text style={styles.sheetGroupTitle}>{t('dashboard.international')}</Text>
                   {filteredSheetLeagues.international.map((league: any) => {
                     const isActive = activeLeagueFilter === league.apiId;
-                    const isPremiumLocked = league.tier === 'premium' && !isProMember;
                     return (
                       <TouchableOpacity
                         key={league.apiId}
                         style={[styles.sheetLeagueRow, isActive && styles.sheetLeagueRowActive]}
                         onPress={() => {
-                          if (isPremiumLocked) {
-                            setShowLeagueSheet(false);
-                            rootNav.navigate('Paywall', { trigger: 'premium_league', sportName: league.name });
-                            return;
-                          }
                           setActiveLeagueFilter(isActive ? null : league.apiId);
                           setShowLeagueSheet(false);
                         }}
@@ -1123,12 +1009,7 @@ export function DashboardScreen({ navigation }: Props) {
                             {league.name}
                           </Text>
                         </View>
-                        {isPremiumLocked ? (
-                          <View style={styles.sheetProBadge}>
-                            <Ionicons name="lock-closed" size={10} color={colors.primary} />
-                            <Text style={styles.sheetProText}>PRO</Text>
-                          </View>
-                        ) : isActive ? (
+                        {isActive ? (
                           <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
                         ) : null}
                       </TouchableOpacity>
@@ -1156,6 +1037,7 @@ const styles = StyleSheet.create({
   leagueFilterContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: 'rgba(255,255,255,0.06)',
   },
@@ -1175,6 +1057,36 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(202,253,0,0.08)',
     borderWidth: 1,
     borderColor: 'rgba(202,253,0,0.15)',
+  },
+  leagueFilterPillFirst: {
+    marginLeft: 16,
+  },
+  leagueDropdownBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginHorizontal: 8,
+    borderRadius: 20,
+    backgroundColor: colors.surfaceContainer,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  leagueDropdownBtnActive: {
+    backgroundColor: 'rgba(202,253,0,0.12)',
+    borderColor: colors.primary,
+  },
+  leagueDropdownText: {
+    flex: 1,
+    fontFamily: 'Inter_400Regular',
+    fontSize: 13,
+    color: colors.onSurfaceVariant,
+  },
+  leagueDropdownTextActive: {
+    color: colors.primary,
+    fontFamily: 'Inter_600SemiBold',
   },
   leagueFilterPill: {
     flexDirection: 'row',

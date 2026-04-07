@@ -52,3 +52,5 @@ export { notificationsApi } from './notifications';
 export type { NotificationLog, NotificationHistoryResponse } from './notifications';
 export { achievementsApi } from './achievements';
 export type { Achievement } from './achievements';
+export { rewardsApi } from './rewards';
+export type { RewardStatus } from './rewards';

@@ -19,10 +19,10 @@ import { colors, spacing } from '../theme';
 import Toast from 'react-native-toast-message';
 import { AppHeader } from '../components/AppHeader';
 import { useAuth } from '../contexts/AuthContext';
-import { usePurchases } from '../contexts/PurchasesContext';
 import { predictionsApi, SPORT_TABS } from '../api';
 import type { PredictionData, MyStatsResponse, DetailedStatsResponse } from '../api';
 import type { RootStackParamList } from '../navigation/types';
+import { AdBanner } from '../components/AdBanner';
 
 const TABS = ['active', 'history'] as const;
 
@@ -251,7 +251,6 @@ function PredictionCard({ prediction }: { prediction: PredictionData }) {
 export function MyPicksScreen() {
   const { t } = useTranslation();
   const { tokens } = useAuth();
-  const { isProMember } = usePurchases();
   const rootNav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [activeTab, setActiveTab] = useState(0);
   const [sportFilter, setSportFilter] = useState<string | null>(null);
@@ -286,13 +285,11 @@ export function MyPicksScreen() {
         predictionsApi.getMyPicks(tokens.accessToken, pickParams),
         predictionsApi.getMyStats(tokens.accessToken),
       ];
-      if (isProMember) {
-        promises.push(predictionsApi.getDetailedStats(tokens.accessToken).catch(() => null));
-      }
+      promises.push(predictionsApi.getDetailedStats(tokens.accessToken).catch(() => null));
       const results = await Promise.all(promises);
       setPredictions(results[0].predictions);
       setStats(results[1]);
-      if (isProMember && results[2]) {
+      if (results[2]) {
         setDetailedStats(results[2]);
       }
     } catch (err) {
@@ -301,7 +298,7 @@ export function MyPicksScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [tokens?.accessToken, activeTab, sportFilter, isProMember]);
+  }, [tokens?.accessToken, activeTab, sportFilter]);
 
   useEffect(() => {
     setLoading(true);
@@ -313,10 +310,8 @@ export function MyPicksScreen() {
     fetchData();
   }, [fetchData]);
 
-  return (
-    <View style={styles.container}>
-      <AppHeader showSearch={false} />
-
+  const listHeader = (
+    <>
       {/* Stats Banner */}
       {stats && (
         <View style={styles.statsBanner}>
@@ -347,8 +342,8 @@ export function MyPicksScreen() {
         </View>
       )}
 
-      {/* Pro Detailed Stats or Upgrade CTA */}
-      {isProMember && detailedStats ? (
+      {/* Detailed Stats */}
+      {detailedStats ? (
         <>
           <View style={styles.proStatsCard}>
             <View style={styles.proStatsHeader}>
@@ -376,79 +371,64 @@ export function MyPicksScreen() {
               </View>
             )}
           </View>
-          {/* Weekly Trend Chart */}
           {detailedStats.weeklyTrend && detailedStats.weeklyTrend.length > 0 && (
             <WeeklyTrendChart weeklyTrend={detailedStats.weeklyTrend} />
           )}
         </>
-      ) : !isProMember ? (
-        <TouchableOpacity style={styles.upgradeCard} activeOpacity={0.85} onPress={() => rootNav.navigate('Paywall', { trigger: 'detailed_stats' })}>
-          <LinearGradient
-            colors={['rgba(202,253,0,0.08)', 'rgba(202,253,0,0.02)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.upgradeGradient}
-          >
-            <View style={styles.upgradeRow}>
-              <Ionicons name="lock-closed" size={16} color={colors.primary} />
-              <Text style={styles.upgradeText}>{t('picks.unlockDetailedStats')}</Text>
-              <Text style={styles.upgradeBtn}>{t('matchPrediction.upgrade')}</Text>
-            </View>
-          </LinearGradient>
-        </TouchableOpacity>
       ) : null}
 
       {/* Sport Filter Pills */}
       {availableSports.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.sportFilterScroll}
-        >
-          {/* "All" pill */}
-          <TouchableOpacity
-            style={[
-              styles.sportFilterPill,
-              sportFilter === null && styles.sportFilterPillActive,
-            ]}
-            onPress={() => setSportFilter(null)}
-            activeOpacity={0.7}
+        <View style={styles.sportFilterWrapper}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.sportFilterScroll}
           >
-            <Text
+            <TouchableOpacity
               style={[
-                styles.sportFilterText,
-                sportFilter === null && styles.sportFilterTextActive,
+                styles.sportFilterPill,
+                sportFilter === null && styles.sportFilterPillActive,
               ]}
+              onPress={() => setSportFilter(null)}
+              activeOpacity={0.7}
             >
-              {t('dashboard.all')}
-            </Text>
-          </TouchableOpacity>
-
-          {availableSports.map((sport) => {
-            const isActive = sportFilter === sport.key;
-            return (
-              <TouchableOpacity
-                key={sport.key}
+              <Text
                 style={[
-                  styles.sportFilterPill,
-                  isActive && styles.sportFilterPillActive,
+                  styles.sportFilterText,
+                  sportFilter === null && styles.sportFilterTextActive,
                 ]}
-                onPress={() => setSportFilter(isActive ? null : sport.key)}
-                activeOpacity={0.7}
               >
-                <Text
+                {t('dashboard.all')}
+              </Text>
+            </TouchableOpacity>
+
+            {availableSports.map((sport) => {
+              const isActive = sportFilter === sport.key;
+              return (
+                <TouchableOpacity
+                  key={sport.key}
                   style={[
-                    styles.sportFilterText,
-                    isActive && styles.sportFilterTextActive,
+                    styles.sportFilterPill,
+                    isActive && styles.sportFilterPillActive,
                   ]}
-                  numberOfLines={1}
+                  onPress={() => setSportFilter(isActive ? null : sport.key)}
+                  activeOpacity={0.7}
                 >
-                  {sport.name}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+                  <Text
+                    style={[
+                      styles.sportFilterText,
+                      isActive && styles.sportFilterTextActive,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {sport.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
       )}
 
       {/* Tab Switcher */}
@@ -468,12 +448,11 @@ export function MyPicksScreen() {
         ))}
       </View>
 
-      {/* Predictions List */}
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      ) : predictions.length === 0 ? (
+      {/* Ad Banner */}
+      <AdBanner placement="picks" />
+
+      {/* Empty state (shown inline when no predictions) */}
+      {!loading && predictions.length === 0 && (
         <View style={styles.emptyContainer}>
           <MaterialCommunityIcons name="target" size={48} color={colors.onSurfaceVariant} />
           <Text style={styles.emptyTitle}>
@@ -485,12 +464,25 @@ export function MyPicksScreen() {
               : t('picks.resolvedAppearHere')}
           </Text>
         </View>
+      )}
+    </>
+  );
+
+  return (
+    <View style={styles.container}>
+      <AppHeader showSearch={false} />
+
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
       ) : (
         <FlatList
           data={predictions}
           keyExtractor={(item) => item._id}
           renderItem={({ item }) => <PredictionCard prediction={item} />}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100 }}
+          ListHeaderComponent={listHeader}
+          contentContainerStyle={{ paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
@@ -520,10 +512,13 @@ const styles = StyleSheet.create({
   },
   statDivider: { width: 1, height: 32, backgroundColor: 'rgba(69,72,76,0.3)' },
 
+  sportFilterWrapper: {
+    marginBottom: 12,
+  },
   sportFilterScroll: {
     paddingHorizontal: 16,
-    paddingBottom: 4,
     gap: 8,
+    alignItems: 'center',
   },
   sportFilterPill: {
     flexDirection: 'row',
@@ -550,7 +545,7 @@ const styles = StyleSheet.create({
   },
 
   tabContainer: {
-    flexDirection: 'row', marginHorizontal: 16, marginTop: 4, marginBottom: 16,
+    flexDirection: 'row', marginHorizontal: 16, marginBottom: 16,
     backgroundColor: colors.surfaceContainerLow, borderRadius: 8, padding: 3,
   },
   tabBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 6 },
@@ -602,7 +597,7 @@ const styles = StyleSheet.create({
 const cardStyles = StyleSheet.create({
   card: {
     backgroundColor: colors.surfaceContainerLow, borderRadius: 8,
-    padding: 16, marginBottom: 12, gap: 12,
+    padding: 16, marginBottom: 12, marginHorizontal: 16, gap: 12,
   },
   cardWon: { borderLeftWidth: 3, borderLeftColor: '#16A34A' },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },

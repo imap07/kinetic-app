@@ -4,7 +4,7 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  TouchableOpacity,
+
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
@@ -13,13 +13,9 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius } from '../theme';
 import { LeaguesStackParamList } from '../navigation/types';
 import { useAuth } from '../contexts/AuthContext';
-import { usePurchases } from '../contexts/PurchasesContext';
-import { useNavigation as useRootNavigation } from '@react-navigation/native';
 import { leaderboardApi, predictionsApi } from '../api';
 import type { LeaderboardEntry, MyRankResponse, MyStatsResponse } from '../api';
-import type { RootStackParamList } from '../navigation/types';
 import Toast from 'react-native-toast-message';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 
 type Props = {
@@ -46,14 +42,9 @@ function formatPoints(pts: number): string {
   return pts.toLocaleString();
 }
 
-const FREE_PREVIEW_COUNT = 3;
-const FREE_FADED_COUNT = 5;
-
 export function LeaderboardScreen({ navigation }: Props) {
   const { tokens } = useAuth();
-  const { isProMember } = usePurchases();
   const { t } = useTranslation();
-  const rootNav = useRootNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [myRank, setMyRank] = useState<MyRankResponse | null>(null);
   const [myStats, setMyStats] = useState<MyStatsResponse | null>(null);
@@ -160,10 +151,8 @@ export function LeaderboardScreen({ navigation }: Props) {
   const renderEntry = ({ item }: { item: LeaderboardEntry }) => {
     const isTop3 = item.rank <= 3;
     const isMe = myRank?.entry?.userId === item.userId;
-    const isFaded = !isProMember && item.rank > FREE_PREVIEW_COUNT;
-
     return (
-      <View style={[styles.entryRow, isMe && styles.entryRowMe, isFaded && { opacity: 0.25 }]}>
+      <View style={[styles.entryRow, isMe && styles.entryRowMe]}>
         <View style={styles.entryRankCol}>
           {isTop3 ? (
             <MaterialCommunityIcons name="medal" size={22} color={MEDAL_COLORS[item.rank - 1]} />
@@ -218,41 +207,10 @@ export function LeaderboardScreen({ navigation }: Props) {
         </View>
       ) : (
         <FlatList
-          data={isProMember ? entries : entries.slice(0, FREE_PREVIEW_COUNT + FREE_FADED_COUNT)}
+          data={entries}
           keyExtractor={(item) => item.userId}
           renderItem={renderEntry}
           ListHeaderComponent={renderHeader}
-          ListFooterComponent={
-            !isProMember && entries.length > FREE_PREVIEW_COUNT ? (
-              <View style={styles.proGateWrap}>
-                <LinearGradient
-                  colors={['rgba(11,14,17,0)', 'rgba(11,14,17,0.85)', colors.background]}
-                  style={styles.proGateFade}
-                />
-                <View style={styles.proGateCard}>
-                  <Ionicons name="lock-closed" size={24} color={colors.primary} />
-                  <Text style={styles.proGateTitle}>See full rankings with Kinetic Pro</Text>
-                  <Text style={styles.proGateSubtitle}>
-                    {entries.length}+ players competing. Unlock full rankings to see where you stand.
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.proGateBtn}
-                    onPress={() => rootNav.navigate('Paywall', { trigger: 'leaderboard' })}
-                    activeOpacity={0.8}
-                  >
-                    <LinearGradient
-                      colors={[colors.primaryContainer, colors.primary]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={styles.proGateBtnGradient}
-                    >
-                      <Text style={styles.proGateBtnText}>UNLOCK PRO</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ) : null
-          }
           contentContainerStyle={{ paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -351,33 +309,6 @@ const styles = StyleSheet.create({
   entryPoints: { alignItems: 'flex-end' },
   entryPointsValue: { fontFamily: 'SpaceGrotesk_700Bold', fontSize: 16, color: colors.primary },
   entryPointsLabel: { fontFamily: 'Inter_700Bold', fontSize: 8, color: colors.onSurfaceDim, letterSpacing: 0.8 },
-
-  // Pro Gate
-  proGateWrap: { marginTop: -100, paddingBottom: 20 },
-  proGateFade: { height: 100 },
-  proGateCard: {
-    marginHorizontal: 16,
-    backgroundColor: colors.surfaceContainerLow,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(202,253,0,0.15)',
-    padding: 24,
-    alignItems: 'center',
-    gap: 12,
-  },
-  proGateTitle: {
-    fontFamily: 'SpaceGrotesk_700Bold', fontSize: 20, color: colors.onSurface, textAlign: 'center',
-  },
-  proGateSubtitle: {
-    fontFamily: 'Inter_400Regular', fontSize: 14, lineHeight: 20,
-    color: colors.onSurfaceVariant, textAlign: 'center',
-  },
-  proGateBtn: { borderRadius: 10, overflow: 'hidden', width: '100%', marginTop: 4 },
-  proGateBtnGradient: { paddingVertical: 14, alignItems: 'center', borderRadius: 10 },
-  proGateBtnText: {
-    fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, color: '#4A5E00',
-    letterSpacing: 1, textTransform: 'uppercase',
-  },
 
   // Empty
   emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 32 },

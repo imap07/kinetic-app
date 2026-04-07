@@ -17,8 +17,10 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { colors } from '../theme';
-import { OnboardingScreen, ONBOARDING_COMPLETE_KEY } from '../screens/OnboardingScreen';
+import { ONBOARDING_COMPLETE_KEY } from '../screens/OnboardingScreen';
 import { SportSelectionScreen } from '../screens/SportSelectionScreen';
+import { TeamSelectionScreen } from '../screens/TeamSelectionScreen';
+import { OnboardingCompleteScreen } from '../screens/OnboardingCompleteScreen';
 
 import { LoginScreen } from '../screens/LoginScreen';
 import { EmailAuthScreen } from '../screens/EmailAuthScreen';
@@ -48,7 +50,7 @@ import { EditFavoriteSportsScreen } from '../screens/EditFavoriteSportsScreen';
 import { EditFavoriteLeaguesScreen } from '../screens/EditFavoriteLeaguesScreen';
 import { ChangePasswordScreen } from '../screens/ChangePasswordScreen';
 import { QuestsScreen } from '../screens/QuestsScreen';
-import { LeagueSelectionScreen } from '../screens/LeagueSelectionScreen';
+// LeagueSelectionScreen removed from onboarding V2 flow
 import { logScreenView } from '../services/analytics';
 
 const darkScreenOptions = {
@@ -158,36 +160,44 @@ function MainTabNavigator() {
   );
 }
 
-// ─── Onboarding Wrapper ──────────────────────────────────
-function OnboardingWrapper({ navigation }: any) {
-  const handleComplete = useCallback(() => {
-    navigation.replace('SportSelection');
-  }, [navigation]);
-
-  return <OnboardingScreen onComplete={handleComplete} />;
-}
-
 // ─── Sport Selection Wrapper ─────────────────────────────
 function SportSelectionWrapper({ navigation }: any) {
   const handleComplete = useCallback((selectedSports: string[]) => {
-    navigation.replace('LeagueSelection', { selectedSports });
+    navigation.replace('TeamSelection', { selectedSports });
   }, [navigation]);
 
   return <SportSelectionScreen onComplete={handleComplete} />;
 }
 
-// ─── League Selection Wrapper ────────────────────────────
-function LeagueSelectionWrapper({ navigation, route }: any) {
-  const { refreshProfile } = useAuth();
-  const selectedSports: string[] | undefined = route?.params?.selectedSports;
+// ─── Team Selection Wrapper ──────────────────────────────
+function TeamSelectionWrapper({ navigation, route }: any) {
+  const selectedSports: string[] = route?.params?.selectedSports || ['football'];
 
-  const handleComplete = useCallback(async () => {
-    await AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, 'true');
-    try { await refreshProfile(); } catch {}
+  const handleComplete = useCallback((data: { sports: string[]; favoriteTeams: { apiId: number; sport: string }[]; favoriteDrivers?: any[] }) => {
+    navigation.replace('OnboardingComplete', { sports: data.sports, favoriteTeams: data.favoriteTeams, favoriteDrivers: data.favoriteDrivers });
+  }, [navigation]);
+
+  const handleBack = useCallback(() => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.replace('SportSelection');
+    }
+  }, [navigation]);
+
+  return <TeamSelectionScreen selectedSports={selectedSports as any} onComplete={handleComplete} onBack={handleBack} />;
+}
+
+// ─── Onboarding Complete Wrapper ─────────────────────────
+function OnboardingCompleteWrapper({ navigation, route }: any) {
+  const sports = route?.params?.sports || [];
+  const favoriteTeams = route?.params?.favoriteTeams || [];
+
+  const handleComplete = useCallback(() => {
     navigation.replace('Main');
-  }, [navigation, refreshProfile]);
+  }, [navigation]);
 
-  return <LeagueSelectionScreen onComplete={handleComplete} selectedSports={selectedSports} />;
+  return <OnboardingCompleteScreen sports={sports} favoriteTeams={favoriteTeams} onComplete={handleComplete} />;
 }
 
 // ─── Root Navigator ──────────────────────────────────────
@@ -287,18 +297,18 @@ export function AppNavigator() {
           ) : (
             <>
               <RootStack.Screen
-                name="Onboarding"
-                component={OnboardingWrapper}
+                name="SportSelection"
+                component={SportSelectionWrapper}
                 options={{ animation: 'fade' }}
               />
               <RootStack.Screen
-                name="SportSelection"
-                component={SportSelectionWrapper}
+                name="TeamSelection"
+                component={TeamSelectionWrapper}
                 options={{ animation: 'slide_from_right' }}
               />
               <RootStack.Screen
-                name="LeagueSelection"
-                component={LeagueSelectionWrapper}
+                name="OnboardingComplete"
+                component={OnboardingCompleteWrapper}
                 options={{ animation: 'slide_from_right' }}
               />
               <RootStack.Screen

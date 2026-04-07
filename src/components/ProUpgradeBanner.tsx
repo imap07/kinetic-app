@@ -1,74 +1,47 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { colors, borderRadius, spacing } from '../theme';
+import { useTranslation } from 'react-i18next';
+import { colors, borderRadius } from '../theme';
 import { usePurchases } from '../contexts/PurchasesContext';
 import type { RootStackParamList } from '../navigation/types';
-
-const FEATURES = [
-  'Unlimited daily predictions',
-  'All 6 sports unlocked',
-  'Exact Score predictions (2.5x bonus)',
-  'Detailed stats & weekly trends',
-  'Full leaderboard access',
-];
 
 export function ProUpgradeBanner() {
   const { isProMember } = usePurchases();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { t } = useTranslation();
 
   if (isProMember) return null;
 
   return (
-    <View style={styles.container}>
+    <TouchableOpacity
+      style={styles.container}
+      activeOpacity={0.85}
+      onPress={() => navigation.navigate('Paywall', { trigger: 'remove_ads' })}
+    >
       <LinearGradient
         colors={['rgba(202,253,0,0.08)', 'rgba(202,253,0,0.02)']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.gradient}
       >
-        <View style={styles.iconRow}>
-          <MaterialCommunityIcons
-            name="lightning-bolt"
-            size={22}
-            color={colors.primary}
-          />
-          <Text style={styles.title}>Join Kinetic Pro</Text>
+        <View style={styles.row}>
+          <View style={styles.iconWrap}>
+            <Ionicons name="eye-off" size={18} color={colors.primary} />
+          </View>
+          <View style={styles.textWrap}>
+            <Text style={styles.title}>{t('ads.removeAds')}</Text>
+            <Text style={styles.subtitle}>{t('ads.removeAdsDesc')}</Text>
+          </View>
+          <View style={styles.priceBadge}>
+            <Text style={styles.priceText}>$3.99/mo</Text>
+          </View>
         </View>
-
-        <View style={styles.featureList}>
-          {FEATURES.map((feature) => (
-            <View key={feature} style={styles.featureRow}>
-              <Ionicons
-                name="checkmark-circle"
-                size={16}
-                color={colors.primary}
-              />
-              <Text style={styles.featureText}>{feature}</Text>
-            </View>
-          ))}
-        </View>
-
-        <TouchableOpacity
-          activeOpacity={0.85}
-          style={styles.ctaWrap}
-          onPress={() => navigation.navigate('Paywall', { trigger: 'general' })}
-        >
-          <LinearGradient
-            colors={['#F3FFCA', '#CAFD00']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.ctaBtn}
-          >
-            <Text style={styles.ctaBtnText}>UPGRADE NOW</Text>
-            <Ionicons name="arrow-forward" size={16} color="#4A5E00" />
-          </LinearGradient>
-        </TouchableOpacity>
       </LinearGradient>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -78,58 +51,49 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: 'rgba(202,253,0,0.15)',
+    borderColor: 'rgba(202,253,0,0.12)',
     overflow: 'hidden',
   },
   gradient: {
-    padding: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
-  iconRow: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 16,
+    gap: 12,
+  },
+  iconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(202,253,0,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  textWrap: {
+    flex: 1,
   },
   title: {
     fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 20,
-    lineHeight: 28,
-    color: colors.onSurface,
-    letterSpacing: -0.5,
-  },
-  featureList: {
-    gap: 10,
-    marginBottom: 20,
-  },
-  featureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  featureText: {
-    fontFamily: 'Inter_500Medium',
     fontSize: 14,
-    lineHeight: 20,
+    color: colors.onSurface,
+  },
+  subtitle: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 11,
     color: colors.onSurfaceVariant,
+    marginTop: 2,
   },
-  ctaWrap: {
-    borderRadius: 4,
-    overflow: 'hidden',
+  priceBadge: {
+    backgroundColor: 'rgba(202,253,0,0.12)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
   },
-  ctaBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 4,
-    gap: 8,
-  },
-  ctaBtnText: {
+  priceText: {
     fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 15,
-    lineHeight: 20,
-    color: '#4A5E00',
-    letterSpacing: 0.5,
+    fontSize: 13,
+    color: colors.primary,
   },
 });

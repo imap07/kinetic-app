@@ -21,66 +21,32 @@ import type { RootStackParamList, PaywallTrigger } from '../navigation/types';
 type Props = NativeStackScreenProps<RootStackParamList, 'Paywall'>;
 
 const FEATURE_KEYS = [
-  { icon: 'infinite-outline' as const, textKey: 'paywall.feature1' },
-  { icon: 'football-outline' as const, textKey: 'paywall.feature2' },
-  { icon: 'shield-checkmark-outline' as const, textKey: 'paywall.feature3' },
-  { icon: 'analytics-outline' as const, textKey: 'paywall.feature4' },
-  { icon: 'stats-chart-outline' as const, textKey: 'paywall.feature5' },
-  { icon: 'trophy-outline' as const, textKey: 'paywall.feature6' },
+  { icon: 'eye-off-outline' as const, text: 'Ad-free experience — no more banners or interruptions' },
+  { icon: 'cash-outline' as const, text: '100 bonus coins every month' },
+  { icon: 'heart-outline' as const, text: 'Support Kinetic development — help us grow' },
+  { icon: 'ribbon-outline' as const, text: 'Pro badge on your profile — show off your support' },
 ];
 
-function getContextCard(trigger: PaywallTrigger, params: Props['route']['params'], t: (key: string, opts?: Record<string, unknown>) => string) {
+function getContextCard(trigger: PaywallTrigger, t: (key: string, opts?: Record<string, unknown>) => string) {
   switch (trigger) {
-    case 'daily_limit':
+    case 'remove_ads':
       return {
-        icon: 'time-outline' as const,
-        title: t('paywall.picksUsed', { used: params.dailyUsed ?? 3, limit: params.dailyLimit ?? 3 }),
-        subtitle: t('paywall.upgradeUnlimited'),
-      };
-    case 'exact_score':
-      return {
-        icon: 'bullseye' as const,
-        title: t('paywall.exactScorePro'),
-        subtitle: t('paywall.exactScoreDesc'),
-      };
-    case 'sport_locked':
-      return {
-        icon: 'lock-closed-outline' as const,
-        title: t('paywall.sportPro', { sport: params.sportName ?? 'This sport' }),
-        subtitle: t('paywall.sportProDesc'),
-      };
-    case 'detailed_stats':
-      return {
-        icon: 'bar-chart-outline' as const,
-        title: t('paywall.statsPro'),
-        subtitle: t('paywall.statsProDesc'),
-      };
-    case 'premium_league':
-      return {
-        icon: 'trophy-outline' as const,
-        title: params.sportName ? params.sportName : t('paywall.premiumLeague'),
-        subtitle: params.sportName
-          ? t('paywall.leagueProDescNamed', { league: params.sportName })
-          : t('paywall.leagueProDesc'),
-      };
-    case 'quest_multi_sport':
-      return {
-        icon: 'trophy-outline' as const,
-        title: t('paywall.dailyChallenge'),
-        subtitle: t('paywall.dailyChallengeDesc'),
+        icon: 'eye-off-outline' as const,
+        title: 'Tired of ads?',
+        subtitle: 'Go Pro and enjoy Kinetic completely ad-free.',
       };
     case 'general':
     default:
       return {
         icon: 'flash-outline' as const,
-        title: t('paywall.takeNextLevel'),
-        subtitle: t('paywall.joinThousands'),
+        title: 'Enhance your experience',
+        subtitle: 'Remove ads, earn monthly coins, and support Kinetic.',
       };
   }
 }
 
 export function PaywallScreen({ navigation, route }: Props) {
-  const { trigger, sportName, dailyUsed, dailyLimit } = route.params;
+  const { trigger } = route.params;
   const {
     currentOffering,
     purchasePackage,
@@ -89,7 +55,7 @@ export function PaywallScreen({ navigation, route }: Props) {
   } = usePurchases();
 
   const { t } = useTranslation();
-  const context = getContextCard(trigger, route.params, t);
+  const context = getContextCard(trigger, t);
 
   // Try SDK convenience accessors first, then search availablePackages by lookup_key
   const monthlyPkg =
@@ -105,8 +71,8 @@ export function PaywallScreen({ navigation, route }: Props) {
     ) ??
     null;
 
-  const monthlyPrice = monthlyPkg?.product?.priceString ?? '$5.99';
-  const annualPrice = annualPkg?.product?.priceString ?? '$39.99';
+  const monthlyPrice = monthlyPkg?.product?.priceString ?? '$3.99';
+  const annualPrice = annualPkg?.product?.priceString ?? '$24.99';
 
   // Debug: log offerings state in dev
   if (__DEV__) {
@@ -161,8 +127,8 @@ export function PaywallScreen({ navigation, route }: Props) {
           <View style={styles.iconCircle}>
             <Ionicons name="flash" size={32} color={colors.primary} />
           </View>
-          <Text style={styles.brandLabel}>{t('paywall.title')}</Text>
-          <Text style={styles.headline}>{t('paywall.headline')}</Text>
+          <Text style={styles.brandLabel}>KINETIC PRO</Text>
+          <Text style={styles.headline}>Enjoy Kinetic, Ad-Free</Text>
         </View>
 
         {/* Context Card */}
@@ -185,7 +151,7 @@ export function PaywallScreen({ navigation, route }: Props) {
               <View style={styles.featureCheck}>
                 <Ionicons name="checkmark" size={14} color={colors.background} />
               </View>
-              <Text style={styles.featureText}>{t(f.textKey)}</Text>
+              <Text style={styles.featureText}>{f.text}</Text>
             </View>
           ))}
         </View>
@@ -194,7 +160,7 @@ export function PaywallScreen({ navigation, route }: Props) {
         <View style={styles.socialProof}>
           <MaterialCommunityIcons name="account-group" size={16} color={colors.primary} />
           <Text style={styles.socialProofText}>
-            {t('paywall.joinBest')}
+            Enjoy Kinetic without interruptions
           </Text>
         </View>
 
@@ -206,7 +172,7 @@ export function PaywallScreen({ navigation, route }: Props) {
             activeOpacity={0.8}
           >
             <View style={styles.saveBadge}>
-              <Text style={styles.saveBadgeText}>SAVE 44%</Text>
+              <Text style={styles.saveBadgeText}>SAVE 48%</Text>
             </View>
             <Text style={styles.pricingLabel}>{t('paywall.annual')}</Text>
             <Text style={styles.pricingAmount}>{t('paywall.perYear', { price: annualPrice })}</Text>

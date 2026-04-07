@@ -27,6 +27,7 @@ import { predictionsApi } from '../api/predictions';
 import type { PredictionData } from '../api/predictions';
 import { achievementsApi } from '../api/achievements';
 import type { Achievement } from '../api/achievements';
+import { RewardsProgressCard } from '../components/RewardsProgressCard';
 
 const TIER_CONFIG: Record<string, { label: string; next: string; max: number }> = {
   rookie: { label: 'Rookie', next: 'Bronze', max: 1000 },
@@ -331,7 +332,7 @@ export function ProfileScreen() {
             ) : (
               <>
                 <Text style={styles.subDesc}>
-                  {t('profile.subDesc')}
+                  {t('ads.removeAdsDesc')}
                 </Text>
                 <TouchableOpacity
                   style={styles.upgradeBtnWrap}
@@ -344,7 +345,7 @@ export function ProfileScreen() {
                     end={{ x: 1, y: 1 }}
                     style={styles.upgradeBtn}
                   >
-                    <Text style={styles.upgradeBtnText}>{t('profile.upgradeToPro')}</Text>
+                    <Text style={styles.upgradeBtnText}>{t('ads.removeAds')}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               </>
@@ -556,6 +557,9 @@ export function ProfileScreen() {
             <Feather name="chevron-right" size={16} color={colors.onSurfaceVariant} />
           </TouchableOpacity>
         </View>
+
+        {/* ── Rewards Progress ── */}
+        <RewardsProgressCard />
 
         {/* ── Security & Settings ── */}
         <View style={styles.settingsSection}>

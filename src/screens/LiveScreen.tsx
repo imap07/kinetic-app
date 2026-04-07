@@ -20,10 +20,13 @@ import { AppHeader } from '../components/AppHeader';
 import { SportTabs } from '../components/SportTabs';
 import { useAuth } from '../contexts/AuthContext';
 import { usePurchases } from '../contexts/PurchasesContext';
-import { sportsApi, SPORT_TABS, FREE_SPORT } from '../api/sports';
+import { sportsApi, SPORT_TABS } from '../api/sports';
 import type { SportKey, SportDashboard, SportGame } from '../api/sports';
 import type { LiveStackParamList, RootStackParamList } from '../navigation/types';
 import { useLiveSSE } from '../hooks/useLiveSSE';
+import { AdBanner } from '../components/AdBanner';
+import { RewardedAdButton } from '../components/RewardedAdButton';
+import { useAds } from '../contexts/AdContext';
 
 const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'P', 'BT', 'LIVE', 'Q1', 'Q2', 'Q3', 'Q4', 'OT', 'P1', 'P2', 'P3', 'IN1', 'IN2', 'IN3', 'IN4', 'IN5', 'IN6', 'IN7', 'IN8', 'IN9'];
 const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AOT', 'AP', 'POST', 'Completed'];
@@ -128,6 +131,7 @@ export function LiveScreen() {
   const rootNav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { tokens } = useAuth();
   const { isProMember } = usePurchases();
+  const { trackAction } = useAds();
   const [activeSport, setActiveSport] = useState<SportKey>('football');
   const [data, setData] = useState<SportDashboard | null>(null);
   const [loading, setLoading] = useState(true);
@@ -148,23 +152,23 @@ export function LiveScreen() {
   }, [t]);
   const [selectedDateIdx, setSelectedDateIdx] = useState(1); // default = Today
 
-  // SSE: real-time push from backend
+  // SSE: real-time push from backend — all 11 sports
   const {
-    liveMatches: sseLiveMatches,
+    liveGames: sseLiveGames,
     connected: sseConnected,
   } = useLiveSSE({
     sport: activeSport,
     token: tokens?.accessToken || null,
-    enabled: activeSport === 'football',
+    enabled: true,
   });
 
   useEffect(() => {
-    if (sseConnected && sseLiveMatches.length > 0 && data) {
+    if (sseConnected && sseLiveGames.length > 0 && data) {
       setData((prev) =>
-        prev ? { ...prev, liveGames: sseLiveMatches } : prev,
+        prev ? { ...prev, liveGames: sseLiveGames } : prev,
       );
     }
-  }, [sseLiveMatches, sseConnected]);
+  }, [sseLiveGames, sseConnected]);
 
   const fetchData = useCallback(async () => {
     if (!tokens?.accessToken) return;
@@ -198,17 +202,9 @@ export function LiveScreen() {
 
   const handleSportChange = useCallback((sport: SportKey) => {
     if (sport === activeSport) return;
-    if (!isProMember && sport !== FREE_SPORT) {
-      const sportMeta = SPORT_TABS.find((t) => t.key === sport);
-      rootNav.navigate('Paywall', {
-        trigger: 'sport_locked',
-        sportName: sportMeta?.name ?? sport,
-      });
-      return;
-    }
     setActiveSport(sport);
     setData(null);
-  }, [activeSport, isProMember, rootNav]);
+  }, [activeSport]);
 
   // Filter games for selected date
   const selectedDate = dateOptions[selectedDateIdx].date;
@@ -245,6 +241,7 @@ export function LiveScreen() {
   const leagueGroups = useMemo(() => groupByLeague(todayGames), [todayGames]);
 
   const navigateToGame = (gameApiId: number) => {
+    trackAction();
     navigation.navigate('LiveMatchPrediction', { fixtureApiId: gameApiId, sport: activeSport });
   };
 
@@ -282,6 +279,8 @@ export function LiveScreen() {
           </TouchableOpacity>
         ))}
       </View>
+
+      <AdBanner placement="today" />
 
       <ScrollView
         style={styles.scroll}
@@ -399,6 +398,7 @@ export function LiveScreen() {
           </View>
         )}
 
+        <RewardedAdButton />
         <View style={{ height: 80 }} />
       </ScrollView>
     </View>

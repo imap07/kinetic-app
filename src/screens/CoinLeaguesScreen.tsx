@@ -35,11 +35,12 @@ import { colors, spacing, borderRadius } from '../theme';
 import { ModalCloseButton } from '../components';
 import { useCoins } from '../contexts/CoinContext';
 import { useAuth } from '../contexts/AuthContext';
-import { usePurchases } from '../contexts/PurchasesContext';
 import { leaguesApi } from '../api/leagues';
 import type { CoinLeague, CreateLeagueDto } from '../api/leagues';
 import { SPORT_TABS } from '../api/sports';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { AdBanner } from '../components/AdBanner';
+import { RewardedAdButton } from '../components/RewardedAdButton';
 
 type TabFilter = 'open' | 'my' | 'rankings';
 
@@ -48,7 +49,6 @@ export function CoinLeaguesScreen() {
   const navigation = useNavigation();
   const { tokens, user } = useAuth();
   const { balance, available, refreshBalance } = useCoins();
-  const { isProMember } = usePurchases();
   const { t } = useTranslation();
 
   const [tab, setTab] = useState<TabFilter>('open');
@@ -84,23 +84,7 @@ export function CoinLeaguesScreen() {
     setRefreshing(false);
   }, [fetchLeagues, refreshBalance]);
 
-  // Count how many active paid leagues the user is in
-  const activePaidLeagueCount = myLeagues.filter(
-    (l) => l.entryFee > 0 && (l.status === 'open' || l.status === 'active'),
-  ).length;
-  const canJoinPaidLeague = isProMember || activePaidLeagueCount < 1;
-
   const handleJoin = async (league: CoinLeague) => {
-    // Free users trying to join a 2nd paid league → Paywall
-    if (league.entryFee > 0 && !canJoinPaidLeague) {
-      (navigation as any).navigate('Paywall', {
-        reason: 'league_limit',
-        title: t('leagues.upgradeToPro'),
-        subtitle: t('leagues.upgradeToProDesc'),
-      });
-      return;
-    }
-
     if (available < league.entryFee) {
       Alert.alert(t('leagues.insufficientCoins'), t('leagues.insufficientCoinsDesc', { fee: league.entryFee, available }));
       return;
@@ -120,16 +104,7 @@ export function CoinLeaguesScreen() {
               await leaguesApi.join(tokens!.accessToken, league._id);
               await Promise.all([fetchLeagues(), refreshBalance()]);
             } catch (e: any) {
-              // Backend also validates — if limit hit, show Paywall
-              if (e.message?.includes('Upgrade to Pro')) {
-                (navigation as any).navigate('Paywall', {
-                  reason: 'league_limit',
-                  title: t('leagues.upgradeToPro'),
-                  subtitle: t('leagues.upgradeToProDesc'),
-                });
-              } else {
-                Alert.alert(t('common.error'), e.message || t('leagues.couldNotJoin'));
-              }
+              Alert.alert(t('common.error'), e.message || t('leagues.couldNotJoin'));
             } finally {
               setActionLoading(null);
             }
@@ -211,14 +186,6 @@ export function CoinLeaguesScreen() {
           <MaterialCommunityIcons name="circle-multiple" size={16} color={colors.primary} />
           <Text style={styles.balancePillText}>{t('leagues.coins', { count: available.toLocaleString() })}</Text>
         </View>
-        {!isProMember && (
-          <View style={[styles.balancePill, styles.limitPill]}>
-            <Ionicons name="flash" size={14} color={activePaidLeagueCount >= 1 ? colors.error : colors.primary} />
-            <Text style={[styles.balancePillText, activePaidLeagueCount >= 1 && { color: colors.error }]}>
-              {activePaidLeagueCount}/1 {t('leagues.paidActive')}
-            </Text>
-          </View>
-        )}
       </View>
 
       <View style={styles.tabs}>
@@ -240,6 +207,10 @@ export function CoinLeaguesScreen() {
           </TouchableOpacity>
         ))}
       </View>
+
+      {/* Ad Banner */}
+      <AdBanner placement="leagues" />
+      <RewardedAdButton />
 
       <ScrollView
         style={styles.scroll}
@@ -333,15 +304,6 @@ export function CoinLeaguesScreen() {
                         ) : (
                           <Text style={styles.leaveBtnText}>{t('leagues.leave')}</Text>
                         )}
-                      </TouchableOpacity>
-                    ) : league.entryFee > 0 && !canJoinPaidLeague ? (
-                      <TouchableOpacity
-                        style={[styles.joinBtn, styles.upgradeBtn]}
-                        onPress={() => handleJoin(league)}
-                        disabled={!!actionLoading}
-                      >
-                        <Ionicons name="diamond" size={14} color={colors.onPrimary} style={{ marginRight: 4 }} />
-                        <Text style={styles.joinBtnText}>{t('leagues.upgradeToJoin')}</Text>
                       </TouchableOpacity>
                     ) : (
                       <TouchableOpacity

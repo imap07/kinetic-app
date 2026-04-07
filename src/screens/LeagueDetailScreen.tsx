@@ -16,7 +16,6 @@ import { useTranslation } from 'react-i18next';
 import { colors } from '../theme';
 import Toast from 'react-native-toast-message';
 import { useAuth } from '../contexts/AuthContext';
-import { usePurchases } from '../contexts/PurchasesContext';
 import { leaguesApi } from '../api/leagues';
 import type { CoinLeague } from '../api/leagues';
 import { sportsApi } from '../api/sports';
@@ -82,18 +81,6 @@ export function LeagueDetailScreen() {
     tier?: 'free' | 'premium';
   };
   const { tokens } = useAuth();
-  const { isProMember } = usePurchases();
-
-  // If this is a premium league and user isn't pro, redirect to paywall
-  useEffect(() => {
-    if (tier === 'premium' && !isProMember) {
-      rootNav.navigate('Paywall', {
-        trigger: 'premium_league',
-        sportName: leagueName,
-      });
-      navigation.goBack();
-    }
-  }, [tier, isProMember]);
 
   const [data, setData] = useState<SportLeagueDetail | null>(null);
   const [loading, setLoading] = useState(true);

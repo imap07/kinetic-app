@@ -18,7 +18,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 import { colors } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
-import { usePurchases } from '../contexts/PurchasesContext';
 import { sportsApi } from '../api/sports';
 import type {
   SearchResults,
@@ -69,7 +68,6 @@ export function SearchScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
   const { tokens } = useAuth();
-  const { isProMember } = usePurchases();
   const { t } = useTranslation();
   const inputRef = useRef<TextInput>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -159,11 +157,6 @@ export function SearchScreen() {
 
   const handleTeamPress = (team: SearchTeamResult) => {
     saveRecent(team.name);
-    if (!isProMember && team.leagueTier === 'premium') {
-      navigation.navigate('Paywall', { trigger: 'sport_locked', sportName: team.name });
-      return;
-    }
-    // Navigate to league detail to see team's games
     if (team.leagueApiId) {
       navigation.navigate('Main', {
         screen: 'Home',
@@ -174,10 +167,6 @@ export function SearchScreen() {
 
   const handleLeaguePress = (league: SearchLeagueResult) => {
     saveRecent(league.name);
-    if (!isProMember && league.tier === 'premium') {
-      navigation.navigate('Paywall', { trigger: 'premium_league', sportName: league.name });
-      return;
-    }
     navigation.navigate('Main', {
       screen: 'Home',
       params: { screen: 'LeagueDetail', params: { leagueApiId: league.apiId, sport: 'football' } },
@@ -186,10 +175,6 @@ export function SearchScreen() {
 
   const handleMatchPress = (match: SearchMatchResult) => {
     saveRecent(`${match.homeTeam.name} vs ${match.awayTeam.name}`);
-    if (!isProMember && match.leagueTier === 'premium') {
-      navigation.navigate('Paywall', { trigger: 'premium_league', sportName: match.leagueName });
-      return;
-    }
     navigation.navigate('Main', {
       screen: 'Home',
       params: { screen: 'MatchPrediction', params: { fixtureApiId: match.apiId, sport: 'football' } },
@@ -231,7 +216,6 @@ export function SearchScreen() {
     switch (item.type) {
       case 'team': {
         const team = item.data;
-        const premium = !isProMember && team.leagueTier === 'premium';
         return (
           <TouchableOpacity style={styles.resultRow} onPress={() => handleTeamPress(team)} activeOpacity={0.7}>
             <Logo uri={team.logo} size={32} />
@@ -239,14 +223,12 @@ export function SearchScreen() {
               <Text style={styles.resultTitle} numberOfLines={1}>{team.name}</Text>
               {team.countryName ? <Text style={styles.resultSub}>{team.countryName}</Text> : null}
             </View>
-            {premium && <Ionicons name="lock-closed" size={14} color={colors.primary} />}
             <Ionicons name="chevron-forward" size={16} color={colors.onSurfaceVariant} />
           </TouchableOpacity>
         );
       }
       case 'league': {
         const league = item.data;
-        const premium = !isProMember && league.tier === 'premium';
         return (
           <TouchableOpacity style={styles.resultRow} onPress={() => handleLeaguePress(league)} activeOpacity={0.7}>
             <Logo uri={league.logo} size={32} />
@@ -258,7 +240,6 @@ export function SearchScreen() {
                 </Text>
               ) : null}
             </View>
-            {premium && <Ionicons name="lock-closed" size={14} color={colors.primary} />}
             <Ionicons name="chevron-forward" size={16} color={colors.onSurfaceVariant} />
           </TouchableOpacity>
         );
@@ -268,7 +249,6 @@ export function SearchScreen() {
         const gameDate = new Date(match.date);
         const timeStr = gameDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const dateStr = gameDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
-        const premium = !isProMember && match.leagueTier === 'premium';
         return (
           <TouchableOpacity style={styles.matchRow} onPress={() => handleMatchPress(match)} activeOpacity={0.7}>
             <View style={styles.matchTeams}>
@@ -285,13 +265,9 @@ export function SearchScreen() {
               <Text style={styles.matchTime}>{timeStr}</Text>
               <Text style={styles.matchDate}>{dateStr}</Text>
             </View>
-            {premium ? (
-              <Ionicons name="lock-closed" size={14} color={colors.primary} />
-            ) : (
-              <View style={styles.predictChip}>
-                <Text style={styles.predictChipText}>PREDICT</Text>
-              </View>
-            )}
+            <View style={styles.predictChip}>
+              <Text style={styles.predictChipText}>PREDICT</Text>
+            </View>
           </TouchableOpacity>
         );
       }

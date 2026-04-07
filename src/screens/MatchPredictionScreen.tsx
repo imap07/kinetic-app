@@ -17,7 +17,6 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, borderRadius } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
-import { usePurchases } from '../contexts/PurchasesContext';
 import { footballApi, sportsApi, predictionsApi, SPORT_TABS } from '../api';
 import { FREE_SPORT } from '../api/sports';
 
@@ -25,8 +24,9 @@ import { FREE_SPORT } from '../api/sports';
 const FREE_LEAGUE_IDS = [39, 140, 262, 253]; // Premier, La Liga, Liga MX, MLS
 import type { Fixture, FixtureEvent, FixtureStatistic, TeamLineup, LineupPlayer, SportGame, PredictionData, DailyStatusResponse } from '../api';
 import Toast from 'react-native-toast-message';
-import { logPickAttempted, logPickCompleted, logPaywallShown } from '../services/analytics';
+import { logPickAttempted, logPickCompleted } from '../services/analytics';
 import { FootballPitch } from '../components/FootballPitch';
+import { useAds } from '../contexts/AdContext';
 
 type Props = { navigation: any };
 
@@ -130,7 +130,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
   const route = useRoute<any>();
   const { fixtureApiId, sport = 'football' } = route.params as { fixtureApiId: number; sport?: string };
   const { tokens } = useAuth();
-  const { isProMember } = usePurchases();
+  const { trackAction } = useAds();
 
   const [fixture, setFixture] = useState<Fixture | null>(null);
   const [genericGame, setGenericGame] = useState<SportGame | null>(null);
@@ -152,31 +152,6 @@ export function MatchPredictionScreen({ navigation }: Props) {
   const isFootball = sport === 'football';
   const hasDraw = !NO_DRAW_SPORTS.includes(sport);
   const isF1 = sport === 'formula-1';
-
-  // Block premium sports — kick user back and show paywall
-  useEffect(() => {
-    if (!isProMember && sport !== FREE_SPORT) {
-      const sportMeta = SPORT_TABS.find((t) => t.key === sport);
-      logPaywallShown('sport_locked', sportMeta?.name ?? sport);
-      navigation.goBack();
-      navigation.navigate('Paywall' as any, {
-        trigger: 'sport_locked',
-        sportName: sportMeta?.name ?? sport,
-      });
-    }
-  }, [sport, isProMember, navigation]);
-
-  // Block premium leagues — kick user back and show paywall
-  useEffect(() => {
-    if (!isProMember && fixture?.leagueApiId && !FREE_LEAGUE_IDS.includes(fixture.leagueApiId)) {
-      logPaywallShown('premium_league', fixture.leagueName || 'Premium League');
-      navigation.goBack();
-      navigation.navigate('Paywall' as any, {
-        trigger: 'premium_league',
-        sportName: fixture.leagueName || 'Premium League',
-      });
-    }
-  }, [isProMember, fixture?.leagueApiId, navigation]);
 
   const fetchGame = useCallback(async () => {
     if (!tokens?.accessToken) return;
@@ -261,22 +236,6 @@ export function MatchPredictionScreen({ navigation }: Props) {
 
     logPickAttempted(sport, leagueApiId ?? 0, leagueName ?? '');
 
-    if (predType === 'exact_score' && !isProMember) {
-      logPaywallShown('exact_score', leagueName);
-      navigation.navigate('Paywall' as any, { trigger: 'exact_score' });
-      return;
-    }
-
-    if (!isProMember && dailyStatus && dailyStatus.used >= dailyStatus.limit) {
-      logPaywallShown('daily_limit', leagueName);
-      navigation.navigate('Paywall' as any, {
-        trigger: 'daily_limit',
-        dailyUsed: dailyStatus.used,
-        dailyLimit: dailyStatus.limit,
-      });
-      return;
-    }
-
     if (predType === 'exact_score' && (homeScoreInput === '' || awayScoreInput === '')) {
       Alert.alert(t('matchPrediction.missingScores'), t('matchPrediction.missingScoresDesc'));
       return;
@@ -306,6 +265,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
       setDailyStatus((prev) => prev ? { ...prev, used: prev.used + 1 } : prev);
       logPickCompleted(sport, leagueApiId ?? 0, predType);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      trackAction();
       Alert.alert(t('matchPrediction.predictionSubmitted'), t('matchPrediction.predictionSubmittedDesc'));
     } catch (err: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -580,21 +540,6 @@ export function MatchPredictionScreen({ navigation }: Props) {
                 </View>
               ) : (
                 <>
-                  {/* Daily picks counter */}
-                  {!isProMember && dailyStatus && (
-                    <View style={styles.dailyLimitBanner}>
-                      <MaterialCommunityIcons name="lightning-bolt" size={14} color={colors.primary} />
-                      <Text style={styles.dailyLimitText}>
-                        {t('matchPrediction.freePicksToday', { used: dailyStatus.used, limit: dailyStatus.limit })}
-                      </Text>
-                      {dailyStatus.used >= dailyStatus.limit && (
-                        <TouchableOpacity onPress={() => navigation.navigate('Paywall' as any, { trigger: 'daily_limit', dailyUsed: dailyStatus.used, dailyLimit: dailyStatus.limit })} hitSlop={8}>
-                          <Text style={styles.dailyLimitUpgrade}>{t('matchPrediction.upgrade')}</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  )}
-
                   {/* Prediction type toggle */}
                   {!isF1 && (
                     <View style={styles.typeToggle}>
@@ -608,20 +553,11 @@ export function MatchPredictionScreen({ navigation }: Props) {
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[styles.typeToggleBtn, predType === 'exact_score' && styles.typeToggleBtnActive]}
-                        onPress={() => {
-                          if (!isProMember) {
-                            navigation.navigate('Paywall' as any, { trigger: 'exact_score' });
-                            return;
-                          }
-                          setPredType('exact_score');
-                        }}
+                        onPress={() => setPredType('exact_score')}
                       >
                         <Text style={[styles.typeToggleBtnText, predType === 'exact_score' && styles.typeToggleBtnTextActive]}>
                           {t('matchPrediction.exactScore')}
                         </Text>
-                        {!isProMember && (
-                          <Ionicons name="lock-closed" size={12} color={colors.onSurfaceVariant} />
-                        )}
                       </TouchableOpacity>
                     </View>
                   )}

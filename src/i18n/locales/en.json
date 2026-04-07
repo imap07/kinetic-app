@@ -66,6 +66,7 @@
     "upcoming": "UPCOMING MATCHES",
     "upcomingRaces": "UPCOMING RACES",
     "all": "All",
+    "selectLeague": "Select League",
     "errorLoading": "Error loading games",
     "pullToRetry": "Pull down to try again",
     "today": "TODAY",
@@ -510,6 +511,11 @@
     "sportsSelectedPlural": "{{count}} sports selected",
     "next": "NEXT"
   },
+  "teamSelection": {
+    "step": "Step 2 of 3",
+    "title": "Pick your favorites",
+    "subtitle": "Follow your teams and get personalized picks."
+  },
   "leagueSelection": {
     "step": "Step 3 of 3",
     "title": "Pick your leagues",
@@ -711,5 +717,13 @@
     "loading": "Loading...",
     "comingSoon": "Coming Soon",
     "somethingWrong": "Something went wrong. Please try again."
+  },
+  "ads": {
+    "watchAd": "Watch ad — Earn coins",
+    "remaining": "{{count}} remaining today",
+    "rewardEarned": "Coins added to your balance!",
+    "removeAds": "Remove Ads",
+    "removeAdsDesc": "Enjoy Kinetic ad-free + get monthly coins",
+    "adFreeExperience": "Ad-free experience"
   }
 }

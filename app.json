@@ -14,13 +14,15 @@
     },
     "ios": {
       "supportsTablet": false,
+      "buildNumber": "33",
       "bundleIdentifier": "io.kinetic.app",
       "googleServicesFile": "./GoogleService-Info.plist",
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "Kinetic uses your camera to update your profile photo.",
-        "NSPhotoLibraryUsageDescription": "Kinetic accesses your photo library to update your profile photo."
+        "NSPhotoLibraryUsageDescription": "Kinetic accesses your photo library to update your profile photo.",
+        "NSUserTrackingUsageDescription": "Kinetic uses this to show you relevant ads and improve your experience."
       },
       "appleTeamId": "QY9J3TC5L3"
     },
@@ -37,7 +39,8 @@
       "permissions": [
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE"
-      ]
+      ],
+      "versionCode": 33
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -68,7 +71,15 @@
       "expo-image",
       "@react-native-firebase/app",
       "./plugins/withFirebaseModularHeaders",
-      "expo-localization"
+      "expo-localization",
+      "expo-tracking-transparency",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-9821496555610524~8593987728",
+          "iosAppId": "ca-app-pub-9821496555610524~9907069395"
+        }
+      ]
     ],
     "extra": {
       "eas": {

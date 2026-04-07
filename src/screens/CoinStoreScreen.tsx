@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { colors, spacing, borderRadius } from '../theme';
 import { useCoins } from '../contexts/CoinContext';
 import { usePurchases } from '../contexts/PurchasesContext';
+import { RewardedAdButton } from '../components/RewardedAdButton';
 
 /** Local fallback packages — shown when RevenueCat offerings aren't configured yet */
 const LOCAL_PACKAGES = [
@@ -104,6 +105,9 @@ export function CoinStoreScreen() {
         contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
         showsVerticalScrollIndicator={false}
       >
+        {/* Watch Ad to Earn Coins */}
+        <RewardedAdButton />
+
         {/* Balance */}
         <LinearGradient
           colors={['rgba(202,253,0,0.12)', 'rgba(202,253,0,0.02)']}
@@ -237,8 +241,12 @@ export function CoinStoreScreen() {
                           </Text>
                         )}
                       </View>
-                      <Text style={styles.proTitle}>{pkg.product.title}</Text>
-                      <Text style={styles.proDesc}>{pkg.product.description}</Text>
+                      <Text style={styles.proTitle}>
+                        {isAnnual ? t('coinStore.proAnnual') : t('coinStore.proMonthly')}
+                      </Text>
+                      <Text style={styles.proDesc}>
+                        {isAnnual ? t('coinStore.proAnnualDesc') : t('coinStore.proMonthlyDesc')}
+                      </Text>
                       <View style={styles.proFeatures}>
                         {([
                           t('coinStore.unlimitedPredictions'),

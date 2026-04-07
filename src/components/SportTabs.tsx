@@ -1,19 +1,18 @@
 import React, { useMemo } from 'react';
 import { ScrollView, TouchableOpacity, Text, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme';
-import { SPORT_TABS, FREE_SPORT } from '../api/sports';
+import { SPORT_TABS } from '../api/sports';
 import type { SportKey } from '../api/sports';
 
 interface SportTabsProps {
   activeSport: SportKey;
   onSportChange: (sport: SportKey) => void;
-  isProMember: boolean;
+  isProMember?: boolean;
   /** If provided, only show these sports (from user.favoriteSports) */
   visibleSports?: string[];
 }
 
-export function SportTabs({ activeSport, onSportChange, isProMember, visibleSports }: SportTabsProps) {
+export function SportTabs({ activeSport, onSportChange, visibleSports }: SportTabsProps) {
   const tabs = useMemo(() => {
     if (!visibleSports || visibleSports.length === 0) return SPORT_TABS;
     return SPORT_TABS.filter((t) => visibleSports.includes(t.key));
@@ -28,19 +27,15 @@ export function SportTabs({ activeSport, onSportChange, isProMember, visibleSpor
     >
       {tabs.map((tab) => {
         const isActive = activeSport === tab.key;
-        const locked = !isProMember && tab.key !== FREE_SPORT;
         return (
           <TouchableOpacity
             key={tab.key}
-            style={[styles.tab, isActive && styles.tabActive, locked && styles.tabLocked]}
+            style={[styles.tab, isActive && styles.tabActive]}
             onPress={() => onSportChange(tab.key)}
           >
-            <Text style={[styles.label, isActive && styles.labelActive, locked && styles.labelLocked]}>
+            <Text style={[styles.label, isActive && styles.labelActive]}>
               {tab.name}
             </Text>
-            {locked && (
-              <Ionicons name="lock-closed" size={10} color={colors.onSurfaceVariant} style={{ marginLeft: 4 }} />
-            )}
           </TouchableOpacity>
         );
       })}
@@ -65,6 +60,4 @@ const styles = StyleSheet.create({
     color: colors.onSurface,
   },
   labelActive: { color: '#4A5E00' },
-  tabLocked: { flexDirection: 'row', alignItems: 'center', opacity: 0.6 },
-  labelLocked: { color: colors.onSurfaceVariant },
 });

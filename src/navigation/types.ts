@@ -58,13 +58,7 @@ export type MainTabParamList = {
 };
 
 export type PaywallTrigger =
-  | 'daily_limit'
-  | 'exact_score'
-  | 'sport_locked'
-  | 'detailed_stats'
-  | 'leaderboard'
-  | 'premium_league'
-  | 'quest_multi_sport'
+  | 'remove_ads'
   | 'general';
 
 // Root navigator that switches between Auth, Onboarding, and Main
@@ -72,14 +66,13 @@ export type RootStackParamList = {
   Auth: NavigatorScreenParams<AuthStackParamList>;
   Onboarding: undefined;
   SportSelection: undefined;
+  TeamSelection: { selectedSports: string[] };
+  OnboardingComplete: { sports: string[]; favoriteTeams: { apiId: number; sport: string }[] };
   LeagueSelection: { selectedSports?: string[] };
   Main: NavigatorScreenParams<MainTabParamList>;
   Notifications: undefined;
   Paywall: {
     trigger: PaywallTrigger;
-    sportName?: string;
-    dailyUsed?: number;
-    dailyLimit?: number;
   };
   Search: undefined;
 };
