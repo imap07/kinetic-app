@@ -1348,18 +1348,6 @@ const styles = StyleSheet.create({
   pointsAwardedText: { fontFamily: 'SpaceGrotesk_700Bold', fontSize: 24, color: colors.primary },
   resolvedActual: { fontFamily: 'Inter_500Medium', fontSize: 12, color: colors.onSurfaceDim },
 
-  dailyLimitBanner: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: 'rgba(198,255,0,0.06)', borderRadius: 8,
-    paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1,
-    borderColor: 'rgba(198,255,0,0.12)',
-  },
-  dailyLimitText: {
-    flex: 1, fontFamily: 'Inter_700Bold', fontSize: 12, color: colors.onSurfaceVariant, letterSpacing: 0.3,
-  },
-  dailyLimitUpgrade: {
-    fontFamily: 'Inter_700Bold', fontSize: 11, color: colors.primary, letterSpacing: 0.8,
-  },
 
   infoCard: {
     marginHorizontal: 16, backgroundColor: colors.surfaceContainerLow, borderRadius: 8,

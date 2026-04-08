@@ -171,8 +171,7 @@
     "joinFreeLeagueDesc": "This league is free. Join and compete for points!",
     "paidActive": "paid active",
     "upgradeToJoin": "Upgrade to Join",
-    "upgradeToPro": "Upgrade to Pro",
-    "upgradeToProDesc": "Free members can join 1 paid league at a time. Upgrade to Pro for unlimited leagues!"
+    "upgradeToPro": "Upgrade to Pro"
   },
   "picks": {
     "active": "Active",
@@ -296,7 +295,34 @@
     "hrAgo": "{{count}} hr ago",
     "hrsAgo": "{{count}} hrs ago",
     "dayAgo": "1 day ago",
-    "daysAgo": "{{count}} days ago"
+    "daysAgo": "{{count}} days ago",
+    "loadingMore": "Loading more..."
+  },
+  "notificationPrefs": {
+    "title": "NOTIFICATION SETTINGS",
+    "masterToggle": "Push Notifications",
+    "masterDesc": "Receive alerts for matches, predictions and more",
+    "typesSection": "NOTIFICATION TYPES",
+    "gameStart": "Game Start",
+    "gameStartDesc": "Get notified when followed matches begin",
+    "liveScores": "Live Scores",
+    "liveScoresDesc": "Score updates for followed teams",
+    "gameEnd": "Game End",
+    "gameEndDesc": "Final scores and results",
+    "predictionResults": "Prediction Results",
+    "predictionResultsDesc": "When your predictions are resolved",
+    "coinLeagues": "Coin Leagues",
+    "coinLeaguesDesc": "League start, end, and results",
+    "dailyReminders": "Daily Reminders",
+    "dailyRemindersDesc": "Remind me to make daily picks",
+    "achievements": "Achievements",
+    "achievementsDesc": "Achievement unlocks and rewards",
+    "quietHoursSection": "QUIET HOURS",
+    "quietHours": "Quiet Hours",
+    "quietHoursDesc": "Mute notifications during set hours",
+    "startTime": "Start",
+    "endTime": "End",
+    "updateFailed": "Failed to update preferences"
   },
   "paywall": {
     "title": "KINETIC PRO",
@@ -310,8 +336,6 @@
     "statsPro": "Detailed Stats are Pro-only",
     "statsProDesc": "See your performance breakdown by sport and week",
     "premiumLeague": "Premium League",
-    "leagueProDesc": "Unlock access to all 1,000+ leagues worldwide",
-    "leagueProDescNamed": "{{league}} is a Pro-only league. Upgrade to unlock all leagues worldwide",
     "dailyChallenge": "Complete your Daily Challenge!",
     "dailyChallengeDesc": "Unlock all sports to cover 2+ and earn bonus rewards",
     "takeNextLevel": "Take your predictions to the next level",
@@ -541,8 +565,7 @@
     "saveSport": "SAVE {{count}} SPORT",
     "saveSports": "SAVE {{count}} SPORTS",
     "saveChanges": "SAVE CHANGES",
-    "sportsDesc": "Select the sports you want to see on your dashboard. Soccer is always free.",
-    "sportsDescPro": " Other sports require Kinetic+ Pro.",
+    "sportsDesc": "Select the sports you want to see on your dashboard.",
     "errorSports": "Failed to update favorite sports. Please try again.",
     "errorLeagues": "Failed to update favorite leagues. Please try again.",
     "searchPlaceholder": "Search leagues or countries...",
@@ -552,7 +575,9 @@
     "leaguesSelectedPlural": "{{count}} leagues selected",
     "allLeagues": "All Leagues",
     "featuredLeagues": "Featured Leagues",
-    "leagues": "leagues"
+    "leagues": "leagues",
+    "clearAll": "CLEAR ALL",
+    "allLeaguesSelected": "All leagues will be shown"
   },
   "security": {
     "title": "SECURITY & PRIVACY",

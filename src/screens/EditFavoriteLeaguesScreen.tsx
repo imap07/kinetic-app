@@ -28,7 +28,6 @@ import {
 import { sportsApi, SPORT_TABS, SportLeague } from '../api/sports';
 import type { SportKey } from '../api/sports';
 
-const MIN_LEAGUES = 1;
 const MAX_LEAGUES = 30;
 
 // Unified league shape
@@ -38,7 +37,6 @@ interface UnifiedLeague {
   logo: string;
   countryName: string;
   countryFlag?: string;
-  tier?: 'free' | 'premium';
   isFeatured: boolean;
   priority: number;
   region?: string;
@@ -52,7 +50,6 @@ function toUnified(league: FootballLeague): UnifiedLeague {
     logo: league.logo,
     countryName: league.countryName,
     countryFlag: league.countryFlag,
-    tier: league.tier,
     isFeatured: league.isFeatured,
     priority: league.priority ?? 99,
     region: league.region,
@@ -67,7 +64,6 @@ function sportLeagueToUnified(league: SportLeague, sport: string): UnifiedLeague
     logo: league.logo,
     countryName: league.countryName || '',
     countryFlag: league.countryFlag,
-    tier: league.tier,
     isFeatured: league.isFeatured ?? true,
     priority: 99,
     sport,
@@ -230,11 +226,6 @@ const LeagueCard = memo(function LeagueCard({
           <Text style={styles.leagueCountry} numberOfLines={1}>
             {league.countryName}
           </Text>
-          {league.tier === 'free' && (
-            <View style={styles.freeBadge}>
-              <Text style={styles.freeBadgeText}>FREE</Text>
-            </View>
-          )}
         </View>
       </View>
       <View style={[styles.checkbox, selected && styles.checkboxSelected]}>
@@ -414,7 +405,7 @@ export function EditFavoriteLeaguesScreen() {
   }, []);
 
   const handleSave = useCallback(async () => {
-    if (!tokens?.accessToken || selected.size < MIN_LEAGUES) return;
+    if (!tokens?.accessToken) return;
     setSaving(true);
     try {
       await footballLeaguesApi.setFavoriteLeagues(tokens.accessToken, Array.from(selected));
@@ -442,7 +433,7 @@ export function EditFavoriteLeaguesScreen() {
     selected.size !== originalLeagueIds.size ||
     Array.from(selected).some((id) => !originalLeagueIds.has(id));
 
-  const canSave = selected.size >= MIN_LEAGUES && hasChanges;
+  const canSave = hasChanges;
   const sportLoading = !leagueCache[activeSport];
 
   const regionLabel = isFootball
@@ -547,7 +538,14 @@ export function EditFavoriteLeaguesScreen() {
           ListHeaderComponent={
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionLabel}>{regionLabel}</Text>
-              <Text style={styles.sectionCount}>{filtered.length} {t('editFavorites.leagues')}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                {selected.size > 0 && (
+                  <TouchableOpacity onPress={() => setSelected(new Set())}>
+                    <Text style={styles.clearAllText}>{t('editFavorites.clearAll')}</Text>
+                  </TouchableOpacity>
+                )}
+                <Text style={styles.sectionCount}>{filtered.length} {t('editFavorites.leagues')}</Text>
+              </View>
             </View>
           }
           ListEmptyComponent={
@@ -566,7 +564,9 @@ export function EditFavoriteLeaguesScreen() {
         <View style={[styles.ctaContainer, { paddingBottom: insets.bottom + 16 }]}>
           <View style={styles.ctaSummary}>
             <Text style={styles.ctaSummaryText}>
-              {selected.size !== 1
+              {selected.size === 0
+                ? t('editFavorites.allLeaguesSelected')
+                : selected.size !== 1
                 ? t('editFavorites.leaguesSelectedPlural', { count: selected.size })
                 : t('editFavorites.leaguesSelected', { count: selected.size })}
             </Text>
@@ -750,6 +750,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.onSurfaceVariant,
   },
+  clearAllText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 12,
+    color: colors.primary,
+    letterSpacing: 0.3,
+  },
 
   // League list
   listContainer: { flex: 1 },
@@ -794,18 +800,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_500Medium',
     fontSize: 12,
     color: colors.onSurfaceVariant,
-  },
-  freeBadge: {
-    backgroundColor: 'rgba(91,239,144,0.12)',
-    borderRadius: 4,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-  },
-  freeBadgeText: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 9,
-    color: '#5BEF90',
-    letterSpacing: 0.5,
   },
   checkbox: {
     width: 22,

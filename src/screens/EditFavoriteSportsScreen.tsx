@@ -249,12 +249,6 @@ export function EditFavoriteSportsScreen() {
                 {sport.description}
               </Text>
 
-              {/* Free badge */}
-              {sport.isFree && (
-                <View style={styles.freeBadge}>
-                  <Text style={styles.freeBadgeText}>FREE</Text>
-                </View>
-              )}
             </TouchableOpacity>
           );
         })}
@@ -391,20 +385,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 15,
     color: colors.onSurfaceVariant,
-  },
-  freeBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(91,239,144,0.12)',
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    marginTop: 2,
-  },
-  freeBadgeText: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 9,
-    color: '#5BEF90',
-    letterSpacing: 0.5,
   },
 
   // Footer CTA

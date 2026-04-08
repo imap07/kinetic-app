@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
-  Switch,
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
@@ -18,15 +17,24 @@ import { useAuth } from '../contexts/AuthContext';
 import { notificationsApi } from '../api/notifications';
 import type { NotificationLog } from '../api/notifications';
 
-type NotifType = 'prediction_result' | 'league_update' | 'achievement' | 'system';
-
 function getNotifIcon(type: string, read: boolean) {
   const iconColor = read ? colors.onSurfaceDim : colors.primary;
   switch (type) {
+    case 'prediction_resolved':
     case 'prediction_result':
       return <MaterialCommunityIcons name="poll" size={20} color={iconColor} />;
+    case 'game_start':
+      return <Feather name="play-circle" size={20} color={iconColor} />;
+    case 'live_score':
+      return <Feather name="activity" size={20} color={iconColor} />;
+    case 'game_end':
+      return <Feather name="flag" size={20} color={iconColor} />;
+    case 'coin_league_start':
+    case 'coin_league_end':
     case 'league_update':
       return <Ionicons name="trophy" size={20} color={read ? colors.onSurfaceDim : '#FFD700'} />;
+    case 'daily_reminder':
+      return <Feather name="clock" size={20} color={iconColor} />;
     case 'achievement':
       return <Ionicons name="flame" size={20} color={read ? colors.onSurfaceDim : '#FC5B00'} />;
     case 'system':
@@ -55,21 +63,33 @@ export function NotificationsScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { tokens } = useAuth();
-  const [pushEnabled, setPushEnabled] = useState(true);
   const [notifications, setNotifications] = useState<NotificationLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const loadingMoreRef = useRef(false);
 
-  const fetchNotifications = useCallback(async () => {
+  const fetchNotifications = useCallback(async (pageNum = 1, append = false) => {
     if (!tokens?.accessToken) return;
     try {
-      const res = await notificationsApi.getHistory(tokens.accessToken);
-      setNotifications(res?.notifications ?? []);
+      const res = await notificationsApi.getHistory(tokens.accessToken, pageNum);
+      const items = res?.data ?? [];
+      if (append) {
+        setNotifications((prev) => [...prev, ...items]);
+      } else {
+        setNotifications(items);
+      }
+      setPage(pageNum);
+      setHasMore(pageNum < (res?.totalPages ?? 1));
     } catch {
-      setNotifications([]);
+      if (!append) setNotifications([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setLoadingMore(false);
+      loadingMoreRef.current = false;
     }
   }, [tokens?.accessToken]);
 
@@ -79,8 +99,17 @@ export function NotificationsScreen() {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchNotifications();
+    setPage(1);
+    setHasMore(true);
+    fetchNotifications(1, false);
   }, [fetchNotifications]);
+
+  const onEndReached = useCallback(() => {
+    if (!hasMore || loadingMoreRef.current || loading) return;
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    fetchNotifications(page + 1, true);
+  }, [hasMore, loading, page, fetchNotifications]);
 
   const handleMarkAllRead = async () => {
     if (!tokens?.accessToken) return;
@@ -92,8 +121,93 @@ export function NotificationsScreen() {
     }
   };
 
+  const handleMarkRead = async (id: string) => {
+    if (!tokens?.accessToken) return;
+    setNotifications((prev) =>
+      prev.map((n) => (n._id === id ? { ...n, read: true } : n)),
+    );
+    try {
+      await notificationsApi.markRead(id, tokens.accessToken);
+    } catch {
+      // silent — already updated locally
+    }
+  };
+
   const unreadNotifs = (notifications ?? []).filter((n) => !n.read);
   const readNotifs = (notifications ?? []).filter((n) => n.read);
+
+  const renderNotifCard = (n: NotificationLog, isUnread: boolean) => (
+    <TouchableOpacity
+      key={n._id}
+      activeOpacity={0.7}
+      onPress={() => {
+        if (!n.read) handleMarkRead(n._id);
+      }}
+      style={[styles.notifCard, isUnread && styles.notifCardUnread]}
+    >
+      <View style={[styles.iconCircle, isUnread && { backgroundColor: 'rgba(202,253,0,0.1)' }]}>
+        {getNotifIcon(n.type, !isUnread)}
+      </View>
+      <View style={styles.notifContent}>
+        {isUnread ? (
+          <View style={styles.notifTop}>
+            <Text style={styles.notifTitle}>{n.title}</Text>
+            <View style={styles.unreadDot} />
+          </View>
+        ) : (
+          <Text style={styles.notifTitleRead}>{n.title}</Text>
+        )}
+        <Text style={isUnread ? styles.notifMessage : styles.notifMessageRead}>{n.body}</Text>
+        <Text style={styles.notifTime}>{formatNotifTime(n.createdAt, t)}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+
+  const renderListContent = () => {
+    if (loading) {
+      return <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 32 }} />;
+    }
+
+    if (notifications.length === 0) {
+      return (
+        <View style={styles.emptyState}>
+          <Feather name="bell-off" size={32} color={colors.onSurfaceVariant} />
+          <Text style={styles.emptyText}>{t('notifications.empty')}</Text>
+        </View>
+      );
+    }
+
+    return (
+      <>
+        {/* Unread section */}
+        {unreadNotifs.length > 0 && (
+          <>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionLabel}>{t('notifications.new')}</Text>
+              <TouchableOpacity onPress={handleMarkAllRead}>
+                <Text style={styles.markRead}>{t('notifications.markAllRead')}</Text>
+              </TouchableOpacity>
+            </View>
+            {unreadNotifs.map((n) => renderNotifCard(n, true))}
+          </>
+        )}
+
+        {/* Read section */}
+        {readNotifs.length > 0 && (
+          <>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionLabel}>{t('notifications.earlier')}</Text>
+            </View>
+            {readNotifs.map((n) => renderNotifCard(n, false))}
+          </>
+        )}
+
+        {loadingMore && (
+          <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 16 }} />
+        )}
+      </>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -102,90 +216,24 @@ export function NotificationsScreen() {
           <Feather name="arrow-left" size={22} color={colors.onSurface} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('notifications.title')}</Text>
-        <View style={{ width: 22 }} />
+        <TouchableOpacity onPress={() => (navigation as any).navigate('NotificationPreferences')} hitSlop={12}>
+          <Feather name="settings" size={20} color={colors.onSurfaceVariant} />
+        </TouchableOpacity>
       </View>
 
-      <ScrollView
+      <FlatList
+        data={[1]}
+        keyExtractor={() => 'content'}
+        renderItem={() => renderListContent()}
         style={styles.scroll}
         contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
         showsVerticalScrollIndicator={false}
+        onEndReached={onEndReached}
+        onEndReachedThreshold={0.3}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
-      >
-        {/* Push toggle */}
-        <View style={styles.toggleRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.toggleLabel}>{t('notifications.pushNotifications')}</Text>
-            <Text style={styles.toggleSub}>{t('notifications.pushDesc')}</Text>
-          </View>
-          <Switch
-            value={pushEnabled}
-            onValueChange={setPushEnabled}
-            trackColor={{ false: colors.surfaceContainerHighest, true: 'rgba(202,253,0,0.3)' }}
-            thumbColor={pushEnabled ? colors.primary : colors.onSurfaceDim}
-          />
-        </View>
-
-        {loading ? (
-          <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 32 }} />
-        ) : notifications.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Feather name="bell-off" size={32} color={colors.onSurfaceVariant} />
-            <Text style={styles.emptyText}>{t('notifications.empty')}</Text>
-          </View>
-        ) : (
-          <>
-            {/* Unread section */}
-            {unreadNotifs.length > 0 && (
-              <>
-                <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionLabel}>{t('notifications.new')}</Text>
-                  <TouchableOpacity onPress={handleMarkAllRead}>
-                    <Text style={styles.markRead}>{t('notifications.markAllRead')}</Text>
-                  </TouchableOpacity>
-                </View>
-                {unreadNotifs.map((n) => (
-                  <View key={n._id} style={[styles.notifCard, styles.notifCardUnread]}>
-                    <View style={[styles.iconCircle, { backgroundColor: 'rgba(202,253,0,0.1)' }]}>
-                      {getNotifIcon(n.type, false)}
-                    </View>
-                    <View style={styles.notifContent}>
-                      <View style={styles.notifTop}>
-                        <Text style={styles.notifTitle}>{n.title}</Text>
-                        <View style={styles.unreadDot} />
-                      </View>
-                      <Text style={styles.notifMessage}>{n.body}</Text>
-                      <Text style={styles.notifTime}>{formatNotifTime(n.createdAt, t)}</Text>
-                    </View>
-                  </View>
-                ))}
-              </>
-            )}
-
-            {/* Read section */}
-            {readNotifs.length > 0 && (
-              <>
-                <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionLabel}>{t('notifications.earlier')}</Text>
-                </View>
-                {readNotifs.map((n) => (
-                  <View key={n._id} style={styles.notifCard}>
-                    <View style={styles.iconCircle}>
-                      {getNotifIcon(n.type, true)}
-                    </View>
-                    <View style={styles.notifContent}>
-                      <Text style={styles.notifTitleRead}>{n.title}</Text>
-                      <Text style={styles.notifMessageRead}>{n.body}</Text>
-                      <Text style={styles.notifTime}>{formatNotifTime(n.createdAt, t)}</Text>
-                    </View>
-                  </View>
-                ))}
-              </>
-            )}
-          </>
-        )}
-      </ScrollView>
+      />
     </View>
   );
 }
@@ -209,30 +257,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   scroll: { flex: 1 },
-
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing['2xl'],
-    paddingVertical: spacing.lg,
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.sm,
-    backgroundColor: colors.surfaceContainerLow,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.outlineVariant,
-  },
-  toggleLabel: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 14,
-    color: colors.onSurface,
-  },
-  toggleSub: {
-    fontFamily: 'Inter_400Regular',
-    fontSize: 12,
-    color: colors.onSurfaceDim,
-    marginTop: 2,
-  },
 
   emptyState: {
     alignItems: 'center',

@@ -36,6 +36,7 @@ import { MyPicksScreen } from '../screens/MyPicksScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { EditProfileScreen } from '../screens/EditProfileScreen';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
+import { NotificationPreferencesScreen } from '../screens/NotificationPreferencesScreen';
 import { SecurityPrivacyScreen } from '../screens/SecurityPrivacyScreen';
 import { WalletRewardsScreen } from '../screens/WalletRewardsScreen';
 import { LeagueDetailScreen } from '../screens/LeagueDetailScreen';
@@ -129,6 +130,7 @@ function ProfileNavigator() {
       <ProfileStack.Screen name="EditFavoriteLeagues" component={EditFavoriteLeaguesScreen} />
       <ProfileStack.Screen name="ChangePassword" component={ChangePasswordScreen} />
       <ProfileStack.Screen name="Notifications" component={NotificationsScreen} />
+      <ProfileStack.Screen name="NotificationPreferences" component={NotificationPreferencesScreen} />
       <ProfileStack.Screen name="SecurityPrivacy" component={SecurityPrivacyScreen} />
       <ProfileStack.Screen name="WalletRewards" component={WalletRewardsScreen} />
       <ProfileStack.Screen name="CoinStore" component={CoinStoreScreen} />

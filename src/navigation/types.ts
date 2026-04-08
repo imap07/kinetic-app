@@ -35,6 +35,7 @@ export type ProfileStackParamList = {
   EditFavoriteLeagues: undefined;
   ChangePassword: undefined;
   Notifications: undefined;
+  NotificationPreferences: undefined;
   SecurityPrivacy: undefined;
   WalletRewards: undefined;
   CoinStore: undefined;

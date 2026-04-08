@@ -19,7 +19,6 @@ import Toast from 'react-native-toast-message';
 import { AppHeader } from '../components/AppHeader';
 import { SportTabs } from '../components/SportTabs';
 import { useAuth } from '../contexts/AuthContext';
-import { usePurchases } from '../contexts/PurchasesContext';
 import { sportsApi, SPORT_TABS } from '../api/sports';
 import type { SportKey, SportDashboard, SportGame } from '../api/sports';
 import type { LiveStackParamList, RootStackParamList } from '../navigation/types';
@@ -130,7 +129,6 @@ export function LiveScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<LiveStackParamList>>();
   const rootNav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { tokens } = useAuth();
-  const { isProMember } = usePurchases();
   const { trackAction } = useAds();
   const [activeSport, setActiveSport] = useState<SportKey>('football');
   const [data, setData] = useState<SportDashboard | null>(null);
@@ -249,7 +247,7 @@ export function LiveScreen() {
     return (
       <View style={styles.container}>
         <AppHeader />
-        <SportTabs activeSport={activeSport} onSportChange={handleSportChange} isProMember={isProMember} />
+        <SportTabs activeSport={activeSport} onSportChange={handleSportChange} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -262,7 +260,7 @@ export function LiveScreen() {
   return (
     <View style={styles.container}>
       <AppHeader />
-      <SportTabs activeSport={activeSport} onSportChange={handleSportChange} isProMember={isProMember} />
+      <SportTabs activeSport={activeSport} onSportChange={handleSportChange} />
 
       {/* Date pills */}
       <View style={styles.datePills}>

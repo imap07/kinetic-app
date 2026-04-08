@@ -67,27 +67,13 @@ export function CoinLeagueDetailScreen() {
             leagueRes.sport as SportKey,
           );
 
-          // Build a set of free-tier league IDs from featuredLeagues
-          const freeLeagueIds = new Set(
-            (dashboard.featuredLeagues || [])
-              .filter((l) => l.tier === 'free')
-              .map((l) => l.apiId),
-          );
-          const isPro = user?.isPremium ?? false;
-
           // Filter matches based on league context
           const filterMatches = (games: SportGame[]) => {
-            let filtered = games;
-
             // Themed league: only show matches from that specific league
             if (leagueRes.isThemed && leagueRes.footballLeagueApiId) {
-              filtered = filtered.filter((g) => g.leagueApiId === leagueRes.footballLeagueApiId);
-            } else if (!isPro) {
-              // Generic league + free user: only show free-tier matches
-              filtered = filtered.filter((g) => freeLeagueIds.has(g.leagueApiId));
+              return games.filter((g) => g.leagueApiId === leagueRes.footballLeagueApiId);
             }
-
-            return filtered;
+            return games;
           };
 
           // Filter ALL matches to only those within league date range

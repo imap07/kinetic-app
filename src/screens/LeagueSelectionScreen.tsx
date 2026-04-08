@@ -295,11 +295,6 @@ const LeagueCard = memo(function LeagueCard({
           <Text style={styles.leagueCountry} numberOfLines={1}>
             {league.countryName}
           </Text>
-          {league.tier === 'free' && (
-            <View style={styles.freeBadge}>
-              <Text style={styles.freeBadgeText}>FREE</Text>
-            </View>
-          )}
         </View>
       </View>
       <View style={[styles.checkbox, selected && styles.checkboxSelected]}>
@@ -940,18 +935,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_500Medium',
     fontSize: 12,
     color: colors.onSurfaceVariant,
-  },
-  freeBadge: {
-    backgroundColor: 'rgba(91,239,144,0.12)',
-    borderRadius: 4,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-  },
-  freeBadgeText: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 9,
-    color: '#5BEF90',
-    letterSpacing: 0.5,
   },
   checkbox: {
     width: 22,

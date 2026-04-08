@@ -24,7 +24,6 @@ import { HomeStackParamList, RootStackParamList } from '../navigation/types';
 import { AppHeader } from '../components/AppHeader';
 import { ProUpgradeBanner, SportTabs, ModalCloseButton } from '../components';
 import { useAuth } from '../contexts/AuthContext';
-import { usePurchases } from '../contexts/PurchasesContext';
 import { useAchievements } from '../contexts/AchievementContext';
 import { sportsApi, SPORT_TABS, FREE_SPORT, RECENT_GAMES_LIMIT } from '../api/sports';
 import type { SportKey, SportDashboard, SportGame } from '../api/sports';
@@ -102,7 +101,6 @@ function TeamLogo({ uri, size = 32 }: { uri?: string; size?: number }) {
 export function DashboardScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const { tokens, user } = useAuth();
-  const { isProMember } = usePurchases();
   const { showAchievementUnlock } = useAchievements();
   const { setLiveCount } = useLiveGames();
   const { trackAction } = useAds();
@@ -189,9 +187,6 @@ export function DashboardScreen({ navigation }: Props) {
     logSportTabViewed(sport);
   }, [activeSport]);
 
-  // Free-tier league IDs (must match backend FREE_TIER_LEAGUES)
-  const FREE_LEAGUE_IDS = [39, 140, 262, 253];
-
   const handleMatchPress = useCallback((game: any) => {
     trackAction();
     navigation.navigate('MatchPrediction', { fixtureApiId: game.apiId, sport: activeSport });
@@ -270,7 +265,7 @@ export function DashboardScreen({ navigation }: Props) {
     return (
       <View style={styles.container}>
         <AppHeader />
-        <SportTabs activeSport={activeSport} onSportChange={handleSportChange} isProMember={isProMember} visibleSports={user?.favoriteSports} />
+        <SportTabs activeSport={activeSport} onSportChange={handleSportChange} visibleSports={user?.favoriteSports} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -283,7 +278,7 @@ export function DashboardScreen({ navigation }: Props) {
       <AppHeader />
 
       {/* Sport Tabs */}
-      <SportTabs activeSport={activeSport} onSportChange={handleSportChange} isProMember={isProMember} visibleSports={user?.favoriteSports} />
+      <SportTabs activeSport={activeSport} onSportChange={handleSportChange} visibleSports={user?.favoriteSports} />
 
       {/* League Filter Bar — All pill + dropdown selector */}
       <View style={styles.leagueFilterContainer}>

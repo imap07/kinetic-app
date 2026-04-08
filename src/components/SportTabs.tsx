@@ -7,7 +7,6 @@ import type { SportKey } from '../api/sports';
 interface SportTabsProps {
   activeSport: SportKey;
   onSportChange: (sport: SportKey) => void;
-  isProMember?: boolean;
   /** If provided, only show these sports (from user.favoriteSports) */
   visibleSports?: string[];
 }

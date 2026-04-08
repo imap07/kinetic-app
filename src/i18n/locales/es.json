@@ -171,8 +171,7 @@
     "joinFreeLeagueDesc": "Esta liga es gratis. ¡Únete y compite por puntos!",
     "paidActive": "de pago activa",
     "upgradeToJoin": "Upgrade para Unirse",
-    "upgradeToPro": "Mejora a Pro",
-    "upgradeToProDesc": "Los miembros gratuitos pueden unirse a 1 liga de pago a la vez. ¡Mejora a Pro para ligas ilimitadas!"
+    "upgradeToPro": "Mejora a Pro"
   },
   "picks": {
     "active": "Activos",
@@ -296,7 +295,34 @@
     "hrAgo": "Hace {{count}} hr",
     "hrsAgo": "Hace {{count}} hrs",
     "dayAgo": "Hace 1 día",
-    "daysAgo": "Hace {{count}} días"
+    "daysAgo": "Hace {{count}} días",
+    "loadingMore": "Cargando más..."
+  },
+  "notificationPrefs": {
+    "title": "AJUSTES DE NOTIFICACIONES",
+    "masterToggle": "Notificaciones Push",
+    "masterDesc": "Recibe alertas de partidos, predicciones y más",
+    "typesSection": "TIPOS DE NOTIFICACIÓN",
+    "gameStart": "Inicio de Partido",
+    "gameStartDesc": "Avísame cuando inicien partidos seguidos",
+    "liveScores": "Marcadores en Vivo",
+    "liveScoresDesc": "Cambios de marcador de equipos seguidos",
+    "gameEnd": "Fin de Partido",
+    "gameEndDesc": "Marcadores finales y resultados",
+    "predictionResults": "Resultados de Predicciones",
+    "predictionResultsDesc": "Cuando se resuelvan tus predicciones",
+    "coinLeagues": "Ligas de Monedas",
+    "coinLeaguesDesc": "Inicio, fin y resultados de ligas",
+    "dailyReminders": "Recordatorios Diarios",
+    "dailyRemindersDesc": "Recordarme hacer mis picks diarios",
+    "achievements": "Logros",
+    "achievementsDesc": "Logros desbloqueados y recompensas",
+    "quietHoursSection": "HORAS DE SILENCIO",
+    "quietHours": "Horas de Silencio",
+    "quietHoursDesc": "Silenciar notificaciones en horario definido",
+    "startTime": "Inicio",
+    "endTime": "Fin",
+    "updateFailed": "Error al actualizar preferencias"
   },
   "paywall": {
     "title": "KINETIC PRO",
@@ -310,8 +336,6 @@
     "statsPro": "Estadísticas son Pro",
     "statsProDesc": "Ve tu rendimiento por deporte y semana",
     "premiumLeague": "Liga Premium",
-    "leagueProDesc": "Desbloquea acceso a más de 1,000 ligas",
-    "leagueProDescNamed": "{{league}} es una liga exclusiva Pro. Mejora tu plan para acceder a todas las ligas",
     "dailyChallenge": "¡Completa tu Reto Diario!",
     "dailyChallengeDesc": "Desbloquea todos los deportes para cubrir 2+ y ganar recompensas",
     "takeNextLevel": "Lleva tus predicciones al siguiente nivel",
@@ -541,8 +565,7 @@
     "saveSport": "GUARDAR {{count}} DEPORTE",
     "saveSports": "GUARDAR {{count}} DEPORTES",
     "saveChanges": "GUARDAR CAMBIOS",
-    "sportsDesc": "Selecciona los deportes que quieres ver en tu dashboard. El fútbol siempre es gratis.",
-    "sportsDescPro": " Otros deportes requieren Kinetic+ Pro.",
+    "sportsDesc": "Selecciona los deportes que quieres ver en tu dashboard.",
     "errorSports": "Error al actualizar deportes favoritos. Intenta de nuevo.",
     "errorLeagues": "Error al actualizar ligas favoritas. Intenta de nuevo.",
     "searchPlaceholder": "Busca ligas o países...",
@@ -552,7 +575,9 @@
     "leaguesSelectedPlural": "{{count}} ligas seleccionadas",
     "allLeagues": "Todas las ligas",
     "featuredLeagues": "Ligas destacadas",
-    "leagues": "ligas"
+    "leagues": "ligas",
+    "clearAll": "QUITAR TODO",
+    "allLeaguesSelected": "Se mostrarán todas las ligas"
   },
   "security": {
     "title": "SEGURIDAD Y PRIVACIDAD",
