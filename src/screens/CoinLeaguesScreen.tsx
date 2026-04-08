@@ -14,7 +14,7 @@
  * - 10% platform fee on resolved league prize pools.
  * - Drives coin purchases (RevenueCat IAP) as users need coins to participate.
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -26,6 +26,7 @@ import {
   RefreshControl,
   TextInput,
   Modal,
+  Share,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -52,6 +53,7 @@ export function CoinLeaguesScreen() {
   const { t } = useTranslation();
 
   const [tab, setTab] = useState<TabFilter>('open');
+  const [activeSport, setActiveSport] = useState<string>('all');
   const [leagues, setLeagues] = useState<CoinLeague[]>([]);
   const [myLeagues, setMyLeagues] = useState<CoinLeague[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,11 +61,20 @@ export function CoinLeaguesScreen() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
+  // Sports the user follows (for filter chips)
+  const sportFilters = useMemo(() => {
+    const userSports = user?.favoriteSports?.length
+      ? SPORT_TABS.filter((s) => user.favoriteSports!.includes(s.key))
+      : SPORT_TABS;
+    return [{ key: 'all', name: t('leagues.allSports') }, ...userSports];
+  }, [user?.favoriteSports, t]);
+
   const fetchLeagues = useCallback(async () => {
     if (!tokens?.accessToken) return;
     try {
+      const sportFilter = activeSport !== 'all' ? activeSport : undefined;
       const [openRes, myRes] = await Promise.all([
-        leaguesApi.getAll(tokens.accessToken, { status: 'open' }),
+        leaguesApi.getAll(tokens.accessToken, { status: 'open', sport: sportFilter }),
         leaguesApi.getMyLeagues(tokens.accessToken),
       ]);
       setLeagues(openRes.leagues);
@@ -71,7 +82,7 @@ export function CoinLeaguesScreen() {
     } catch {
       // Fetch failed silently
     }
-  }, [tokens?.accessToken]);
+  }, [tokens?.accessToken, activeSport]);
 
   useEffect(() => {
     setLoading(true);
@@ -160,7 +171,22 @@ export function CoinLeaguesScreen() {
     String(league.creatorId) === user?.id ||
     league.participants.some((p) => String(p.userId) === user?.id);
 
-  const displayLeagues = tab === 'open' ? leagues : myLeagues;
+  const filteredMyLeagues = useMemo(() => {
+    if (activeSport === 'all') return myLeagues;
+    return myLeagues.filter((l) => l.sport === activeSport);
+  }, [myLeagues, activeSport]);
+
+  const displayLeagues = tab === 'open' ? leagues : filteredMyLeagues;
+
+  const handleShare = async (league: CoinLeague) => {
+    const code = league.inviteCode;
+    if (!code) return;
+    try {
+      await Share.share({
+        message: t('leagues.shareMessage', { name: league.name, code, url: `https://kineticapp.ca/join/${code}` }),
+      });
+    } catch {}
+  };
 
   const statusColor = (status: string) => {
     switch (status) {
@@ -207,6 +233,29 @@ export function CoinLeaguesScreen() {
           </TouchableOpacity>
         ))}
       </View>
+
+      {/* Sport Filter */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.sportFilterRow}
+        contentContainerStyle={styles.sportFilterContent}
+      >
+        {sportFilters.map((s) => {
+          const isActive = activeSport === s.key;
+          return (
+            <TouchableOpacity
+              key={s.key}
+              style={[styles.sportFilterChip, isActive && styles.sportFilterChipActive]}
+              onPress={() => setActiveSport(s.key)}
+            >
+              <Text style={[styles.sportFilterText, isActive && styles.sportFilterTextActive]}>
+                {s.name}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
 
       {/* Ad Banner */}
       <AdBanner placement="leagues" />
@@ -293,33 +342,44 @@ export function CoinLeaguesScreen() {
 
                 {league.status === 'open' && (
                   <View style={styles.leagueActions}>
-                    {isMember ? (
-                      <TouchableOpacity
-                        style={styles.leaveBtn}
-                        onPress={() => handleLeave(league)}
-                        disabled={!!actionLoading}
-                      >
-                        {isActionLoading ? (
-                          <ActivityIndicator size="small" color={colors.error} />
-                        ) : (
-                          <Text style={styles.leaveBtnText}>{t('leagues.leave')}</Text>
-                        )}
-                      </TouchableOpacity>
-                    ) : (
-                      <TouchableOpacity
-                        style={styles.joinBtn}
-                        onPress={() => handleJoin(league)}
-                        disabled={!!actionLoading}
-                      >
-                        {isActionLoading ? (
-                          <ActivityIndicator size="small" color={colors.onPrimary} />
-                        ) : (
-                          <Text style={styles.joinBtnText}>
-                            {league.entryFee === 0 ? t('leagues.join') : t('leagues.joinLeague')}
-                          </Text>
-                        )}
-                      </TouchableOpacity>
-                    )}
+                    <View style={styles.leagueActionsRow}>
+                      {isMember ? (
+                        <TouchableOpacity
+                          style={[styles.leaveBtn, { flex: 1 }]}
+                          onPress={() => handleLeave(league)}
+                          disabled={!!actionLoading}
+                        >
+                          {isActionLoading ? (
+                            <ActivityIndicator size="small" color={colors.error} />
+                          ) : (
+                            <Text style={styles.leaveBtnText}>{t('leagues.leave')}</Text>
+                          )}
+                        </TouchableOpacity>
+                      ) : (
+                        <TouchableOpacity
+                          style={[styles.joinBtn, { flex: 1 }]}
+                          onPress={() => handleJoin(league)}
+                          disabled={!!actionLoading}
+                        >
+                          {isActionLoading ? (
+                            <ActivityIndicator size="small" color={colors.onPrimary} />
+                          ) : (
+                            <Text style={styles.joinBtnText}>
+                              {league.entryFee === 0 ? t('leagues.join') : t('leagues.joinLeague')}
+                            </Text>
+                          )}
+                        </TouchableOpacity>
+                      )}
+                      {league.inviteCode && (
+                        <TouchableOpacity
+                          style={styles.shareBtn}
+                          onPress={() => handleShare(league)}
+                          hitSlop={8}
+                        >
+                          <Ionicons name="share-outline" size={18} color={colors.primary} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
                   </View>
                 )}
 
@@ -429,17 +489,17 @@ function CreateLeagueModal({
             <ModalCloseButton onClose={onClose} variant="sheet" />
           </View>
 
-          <Text style={modalStyles.label}>League Name</Text>
+          <Text style={modalStyles.label}>{t('leagues.leagueName')}</Text>
           <TextInput
             style={modalStyles.input}
             value={name}
             onChangeText={setName}
-            placeholder="e.g. Weekend Warriors"
+            placeholder={t('leagues.leagueNamePlaceholder')}
             placeholderTextColor={colors.onSurfaceDim}
             maxLength={40}
           />
 
-          <Text style={modalStyles.label}>Sport</Text>
+          <Text style={modalStyles.label}>{t('leagues.sport')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={modalStyles.sportRow}>
             {availableSports.map((s) => (
               <TouchableOpacity
@@ -456,7 +516,7 @@ function CreateLeagueModal({
             ))}
           </ScrollView>
 
-          <Text style={modalStyles.label}>Entry Fee</Text>
+          <Text style={modalStyles.label}>{t('leagues.entryFeeLabel')}</Text>
           <View style={modalStyles.tierRow}>
             {TIERS.map((t) => (
               <TouchableOpacity
@@ -476,8 +536,8 @@ function CreateLeagueModal({
 
           <Text style={modalStyles.hint}>
             {entryFee === 0
-              ? 'Free league — ranking only, no coins at stake.'
-              : `League starts in 24h, runs for 7 days. Top 3 win prizes. 10% platform fee applies.`}
+              ? t('leagues.freeLeagueHint')
+              : t('leagues.paidLeagueHint')}
           </Text>
 
           <TouchableOpacity
@@ -488,7 +548,7 @@ function CreateLeagueModal({
             {isLoading ? (
               <ActivityIndicator size="small" color={colors.onPrimary} />
             ) : (
-              <Text style={modalStyles.submitBtnText}>{t('leagues.join')}</Text>
+              <Text style={modalStyles.submitBtnText}>{t('leagues.create')}</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -706,6 +766,22 @@ const styles = StyleSheet.create({
     color: colors.onSurface,
   },
 
+  sportFilterRow: { maxHeight: 40, marginBottom: spacing.sm },
+  sportFilterContent: { paddingHorizontal: spacing.lg, gap: spacing.xs },
+  sportFilterChip: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.surfaceContainerHighest,
+  },
+  sportFilterChipActive: { backgroundColor: colors.primary },
+  sportFilterText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12,
+    color: colors.onSurfaceVariant,
+  },
+  sportFilterTextActive: { color: colors.onPrimary },
+
   scroll: { flex: 1 },
 
   emptyState: {
@@ -805,6 +881,19 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.outlineVariant,
     paddingTop: spacing.md,
+  },
+  leagueActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  shareBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(202,253,0,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   joinBtn: {
     backgroundColor: colors.primary,

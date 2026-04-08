@@ -39,6 +39,7 @@ export interface CoinLeague {
   footballLeagueName?: string;
   footballLeagueLogo?: string;
   isThemed?: boolean;
+  inviteCode?: string;
 }
 
 export interface LeaguesListResponse {
@@ -131,6 +132,10 @@ export const leaguesApi = {
       `/leagues/themed/${footballLeagueApiId}`,
       { token },
     );
+  },
+
+  getByInviteCode(token: string, code: string) {
+    return apiClient.get<CoinLeague>(`/leagues/invite/${code}`, { token });
   },
 
   getLeaderboard(token: string, leagueId: string) {

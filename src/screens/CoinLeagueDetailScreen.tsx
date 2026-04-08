@@ -217,16 +217,18 @@ export function CoinLeagueDetailScreen() {
 
   const handleInvite = async () => {
     if (!league) return;
-    const feeText = league.entryFee === 0 ? 'FREE' : `${league.entryFee} coins`;
+    const feeText = league.entryFee === 0 ? t('leagues.free') : `${league.entryFee} coins`;
     const spots = league.maxParticipants - league.participants.length;
-    const deepLink = Linking.createURL(`/league/${leagueId}`);
+    const inviteUrl = league.inviteCode
+      ? `https://kineticapp.ca/join/${league.inviteCode}`
+      : Linking.createURL(`/league/${leagueId}`);
     try {
       await Share.share({
-        message: `Join my prediction league "${league.name}" on Kinetic! 🏆\n\n` +
-          `⚽ Sport: ${sportMeta?.name ?? league.sport}\n` +
-          `🎟️ Entry: ${feeText}\n` +
-          `👥 ${spots} spots left\n\n` +
-          `Think you can beat me?\n${deepLink}`,
+        message: t('leagues.shareMessage', {
+          name: league.name,
+          code: league.inviteCode || '',
+          url: inviteUrl,
+        }) + `\n\n⚽ ${sportMeta?.name ?? league.sport} · 🎟️ ${feeText} · 👥 ${spots} spots`,
       });
     } catch { /* user cancelled */ }
   };

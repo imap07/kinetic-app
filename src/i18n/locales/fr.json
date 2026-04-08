@@ -170,8 +170,18 @@
     "free": "GRATUIT",
     "joinFreeLeagueDesc": "Cette ligue est gratuite. Rejoins et rivalise pour des points !",
     "paidActive": "payante active",
-    "upgradeToJoin": "Passe Pro pour Rejoindre",
-    "upgradeToPro": "Passe à Pro"
+    "allSports": "Tous",
+    "shareMessage": "Rejoins ma ligue \"{{name}}\" sur Kinetic ! Code : {{code}} ou clique : {{url}}",
+    "shareInvite": "Partager l'Invitation",
+    "inviteCode": "Code d'Invitation",
+    "copiedCode": "Code copié !",
+    "leagueName": "Nom de la Ligue",
+    "leagueNamePlaceholder": "ex. Guerriers du Weekend",
+    "sport": "Sport",
+    "entryFeeLabel": "Frais d'Entrée",
+    "freeLeagueHint": "Pas de pièces en jeu — classement seulement.",
+    "paidLeagueHint": "La ligue commence dans 24h, dure 7 jours. Top 3 gagnent des prix. 10% de frais.",
+    "create": "CRÉER UNE LIGUE"
   },
   "picks": {
     "active": "Actifs",

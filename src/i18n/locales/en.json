@@ -170,8 +170,18 @@
     "free": "FREE",
     "joinFreeLeagueDesc": "This league is free. Join and compete for points!",
     "paidActive": "paid active",
-    "upgradeToJoin": "Upgrade to Join",
-    "upgradeToPro": "Upgrade to Pro"
+    "allSports": "All",
+    "shareMessage": "Join my league \"{{name}}\" on Kinetic! Use code: {{code}} or tap: {{url}}",
+    "shareInvite": "Share Invite",
+    "inviteCode": "Invite Code",
+    "copiedCode": "Code copied!",
+    "leagueName": "League Name",
+    "leagueNamePlaceholder": "e.g. Weekend Warriors",
+    "sport": "Sport",
+    "entryFeeLabel": "Entry Fee",
+    "freeLeagueHint": "No coins at stake — ranking only.",
+    "paidLeagueHint": "League starts in 24h, runs for 7 days. Top 3 win prizes. 10% platform fee applies.",
+    "create": "CREATE LEAGUE"
   },
   "picks": {
     "active": "Active",
