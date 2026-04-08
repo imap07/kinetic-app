@@ -447,7 +447,7 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
             ListHeaderComponent={
               <TouchableOpacity style={styles.f1DriverBtn} onPress={() => setF1DriverSheet(true)} activeOpacity={0.8}>
                 <Ionicons name="person-circle-outline" size={18} color={selectedDriverId ? sportColor : colors.onSurfaceVariant} />
-                <Text style={[styles.f1DriverBtnText, selectedDriverId && { color: sportColor }]}>
+                <Text style={[styles.f1DriverBtnText, selectedDriverId ? { color: sportColor } : null]}>
                   {selectedDriverId ? `Following: ${selectedDriverName}` : 'Follow a driver (optional)'}
                 </Text>
                 <Ionicons name="chevron-forward" size={15} color={colors.onSurfaceDim} />
