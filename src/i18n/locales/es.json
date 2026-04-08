@@ -181,7 +181,20 @@
     "entryFeeLabel": "Costo de Entrada",
     "freeLeagueHint": "Sin monedas en juego — solo ranking.",
     "paidLeagueHint": "La liga empieza en 24h, dura 7 días. Top 3 ganan premios. 10% de comisión.",
-    "create": "CREAR LIGA"
+    "create": "CREAR LIGA",
+    "leagueNameRequired": "El nombre de la liga es obligatorio.",
+    "couldNotCreate": "No se pudo crear la liga.",
+    "tierFree": "Gratis",
+    "tierRankingOnly": "Solo ranking",
+    "tierCasual": "Casual",
+    "tierCompetitive": "Competitivo",
+    "tierHighStakes": "Altas apuestas",
+    "tierElite": "Élite",
+    "youPlaced": "¡Quedaste #{{position}}! +{{coins}} monedas",
+    "youWon": "¡Ganaste!",
+    "winnerDeclared": "Ganador declarado",
+    "winnersCount": "{{count}} ganadores",
+    "spotsLeft": "{{count}} lugares"
   },
   "picks": {
     "active": "Activos",

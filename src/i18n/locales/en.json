@@ -181,7 +181,20 @@
     "entryFeeLabel": "Entry Fee",
     "freeLeagueHint": "No coins at stake — ranking only.",
     "paidLeagueHint": "League starts in 24h, runs for 7 days. Top 3 win prizes. 10% platform fee applies.",
-    "create": "CREATE LEAGUE"
+    "create": "CREATE LEAGUE",
+    "leagueNameRequired": "League name is required.",
+    "couldNotCreate": "Could not create league.",
+    "tierFree": "Free",
+    "tierRankingOnly": "Ranking only",
+    "tierCasual": "Casual",
+    "tierCompetitive": "Competitive",
+    "tierHighStakes": "High Stakes",
+    "tierElite": "Elite",
+    "youPlaced": "You placed #{{position}}! +{{coins}} coins",
+    "youWon": "You won!",
+    "winnerDeclared": "Winner declared",
+    "winnersCount": "{{count}} winners",
+    "spotsLeft": "{{count}} spots left"
   },
   "picks": {
     "active": "Active",

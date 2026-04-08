@@ -181,7 +181,20 @@
     "entryFeeLabel": "Frais d'Entrée",
     "freeLeagueHint": "Pas de pièces en jeu — classement seulement.",
     "paidLeagueHint": "La ligue commence dans 24h, dure 7 jours. Top 3 gagnent des prix. 10% de frais.",
-    "create": "CRÉER UNE LIGUE"
+    "create": "CRÉER UNE LIGUE",
+    "leagueNameRequired": "Le nom de la ligue est obligatoire.",
+    "couldNotCreate": "Impossible de créer la ligue.",
+    "tierFree": "Gratuit",
+    "tierRankingOnly": "Classement uniquement",
+    "tierCasual": "Casual",
+    "tierCompetitive": "Compétitif",
+    "tierHighStakes": "Enjeux élevés",
+    "tierElite": "Élite",
+    "youPlaced": "Tu es #{{position}} ! +{{coins}} pièces",
+    "youWon": "Tu as gagné !",
+    "winnerDeclared": "Gagnant déclaré",
+    "winnersCount": "{{count}} gagnants",
+    "spotsLeft": "{{count}} places"
   },
   "picks": {
     "active": "Actifs",

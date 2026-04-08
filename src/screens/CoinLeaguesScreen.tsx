@@ -161,7 +161,7 @@ export function CoinLeaguesScreen() {
       setShowCreate(false);
       await Promise.all([fetchLeagues(), refreshBalance()]);
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'Could not create league.');
+      Alert.alert(t('common.error'), e.message || t('leagues.couldNotCreate'));
     } finally {
       setActionLoading(null);
     }
@@ -388,8 +388,8 @@ export function CoinLeaguesScreen() {
                     <Ionicons name="trophy" size={14} color="#FFD700" />
                     <Text style={styles.winnerText}>
                       {league.winners.find((w) => String(w.userId) === user?.id)
-                        ? `You placed #${league.winners.find((w) => String(w.userId) === user?.id)?.position}! +${league.winners.find((w) => String(w.userId) === user?.id)?.coinsWon} coins`
-                        : `${league.winners.length} winners`}
+                        ? t('leagues.youPlaced', { position: league.winners.find((w) => String(w.userId) === user?.id)?.position, coins: league.winners.find((w) => String(w.userId) === user?.id)?.coinsWon })
+                        : t('leagues.winnersCount', { count: league.winners.length })}
                     </Text>
                   </View>
                 )}
@@ -397,7 +397,7 @@ export function CoinLeaguesScreen() {
                   <View style={styles.winnerRow}>
                     <Ionicons name="trophy" size={14} color="#FFD700" />
                     <Text style={styles.winnerText}>
-                      {String(league.winnerId) === user?.id ? 'You won!' : 'Winner declared'}
+                      {String(league.winnerId) === user?.id ? t('leagues.youWon') : t('leagues.winnerDeclared')}
                     </Text>
                   </View>
                 )}
@@ -453,16 +453,16 @@ function CreateLeagueModal({
   }, [visible]);
 
   const TIERS = [
-    { fee: 0, label: 'Free', desc: 'Ranking only' },
-    { fee: 5, label: '5', desc: 'Casual' },
-    { fee: 15, label: '15', desc: 'Competitive' },
-    { fee: 50, label: '50', desc: 'High Stakes' },
-    { fee: 100, label: '100', desc: 'Elite' },
+    { fee: 0, label: t('leagues.tierFree'), desc: t('leagues.tierRankingOnly') },
+    { fee: 5, label: '5', desc: t('leagues.tierCasual') },
+    { fee: 15, label: '15', desc: t('leagues.tierCompetitive') },
+    { fee: 50, label: '50', desc: t('leagues.tierHighStakes') },
+    { fee: 100, label: '100', desc: t('leagues.tierElite') },
   ];
 
   const handleSubmit = () => {
     if (!name.trim()) {
-      Alert.alert(t('common.error'), 'League name is required.');
+      Alert.alert(t('common.error'), t('leagues.leagueNameRequired'));
       return;
     }
     const now = new Date();

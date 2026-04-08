@@ -228,7 +228,7 @@ export function CoinLeagueDetailScreen() {
           name: league.name,
           code: league.inviteCode || '',
           url: inviteUrl,
-        }) + `\n\n⚽ ${sportMeta?.name ?? league.sport} · 🎟️ ${feeText} · 👥 ${spots} spots`,
+        }) + `\n\n⚽ ${sportMeta?.name ?? league.sport} · 🎟️ ${feeText} · 👥 ${t('leagues.spotsLeft', { count: spots })}`,
       });
     } catch { /* user cancelled */ }
   };
