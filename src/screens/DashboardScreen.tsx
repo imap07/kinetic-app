@@ -27,7 +27,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useAchievements } from '../contexts/AchievementContext';
 import { sportsApi, SPORT_TABS, FREE_SPORT, RECENT_GAMES_LIMIT } from '../api/sports';
 import type { SportKey, SportDashboard, SportGame } from '../api/sports';
-import { predictionsApi } from '../api/predictions';
+import { predictionsApi, fetchPickedGameIds } from '../api/predictions';
 import type { DailyStatusResponse, MyStatsResponse } from '../api/predictions';
 import Toast from 'react-native-toast-message';
 import { useLiveGames } from '../contexts/LiveGamesContext';
@@ -98,6 +98,23 @@ function TeamLogo({ uri, size = 32 }: { uri?: string; size?: number }) {
   );
 }
 
+function PickedBadge() {
+  return (
+    <View style={pickedBadgeStyles.container}>
+      <Ionicons name="checkmark-circle" size={14} color={colors.primary} />
+    </View>
+  );
+}
+
+const pickedBadgeStyles = StyleSheet.create({
+  container: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    zIndex: 10,
+  },
+});
+
 export function DashboardScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const { tokens, user } = useAuth();
@@ -113,6 +130,7 @@ export function DashboardScreen({ navigation }: Props) {
   const [dailyStatus, setDailyStatus] = useState<DailyStatusResponse | null>(null);
   const [userStats, setUserStats] = useState<MyStatsResponse | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
+  const [pickedGameIds, setPickedGameIds] = useState<Set<number>>(new Set());
 
   const fetchDashboard = useCallback(async () => {
     if (!tokens?.accessToken) return;
@@ -153,11 +171,22 @@ export function DashboardScreen({ navigation }: Props) {
     fetchUserStats();
   }, [fetchUserStats]);
 
+  const fetchPickedIds = useCallback(async () => {
+    if (!tokens?.accessToken) return;
+    try {
+      const ids = await fetchPickedGameIds(tokens.accessToken);
+      setPickedGameIds(ids);
+    } catch (_) { /* silent */ }
+  }, [tokens?.accessToken]);
+
+  useEffect(() => { fetchPickedIds(); }, [fetchPickedIds]);
+
   // Re-fetch stats every time the dashboard gains focus (e.g. after submitting a prediction)
   useFocusEffect(
     useCallback(() => {
       fetchUserStats();
-    }, [fetchUserStats])
+      fetchPickedIds();
+    }, [fetchUserStats, fetchPickedIds])
   );
 
   // Real-time stats via SSE — updates instantly when predictions are created/deleted/resolved
@@ -178,7 +207,8 @@ export function DashboardScreen({ navigation }: Props) {
     setRefreshing(true);
     fetchDashboard();
     fetchUserStats();
-  }, [fetchDashboard, fetchUserStats]);
+    fetchPickedIds();
+  }, [fetchDashboard, fetchUserStats, fetchPickedIds]);
 
   const handleSportChange = useCallback((sport: SportKey) => {
     if (sport === activeSport) return;
@@ -261,6 +291,23 @@ export function DashboardScreen({ navigation }: Props) {
   const isF1 = activeSport === 'formula-1';
   const hasLiveOrUpcoming = liveGames.length > 0 || upcomingGames.length > 0;
 
+  // F1: Group upcoming sessions by GP (competitionName) — shows full race weekend schedule
+  const f1NextGpSessions = useMemo(() => {
+    if (!isF1 || upcomingGames.length === 0) return [];
+    const gpName = upcomingGames[0]?.competitionName || upcomingGames[0]?.leagueName || '';
+    if (!gpName) return upcomingGames.slice(0, 7);
+    return upcomingGames.filter((g) => (g.competitionName || g.leagueName) === gpName);
+  }, [isF1, upcomingGames]);
+
+  const f1NextGpName = f1NextGpSessions[0]?.competitionName || f1NextGpSessions[0]?.leagueName || '';
+  // F1 circuit data may be a nested object or flat fields on the document
+  const f1NextGpCircuit = f1NextGpSessions[0]?.circuit || (f1NextGpSessions[0]?.circuitName ? {
+    name: f1NextGpSessions[0].circuitName!,
+    image: f1NextGpSessions[0].circuitImage,
+    city: f1NextGpSessions[0].city,
+    country: f1NextGpSessions[0].country,
+  } : null);
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -280,7 +327,15 @@ export function DashboardScreen({ navigation }: Props) {
       {/* Sport Tabs */}
       <SportTabs activeSport={activeSport} onSportChange={handleSportChange} visibleSports={user?.favoriteSports} />
 
-      {/* League Filter Bar — All pill + dropdown selector */}
+      {/* League Filter Bar — hidden for F1 (F1 uses race weekends, not leagues) */}
+      {isF1 ? (
+        <View style={styles.f1SeasonBar}>
+          <Ionicons name="car-sport" size={15} color={colors.primary} />
+          <Text style={styles.f1SeasonLabel}>
+            {t('dashboard.f1Season', { year: new Date().getFullYear() })}
+          </Text>
+        </View>
+      ) : (
       <View style={styles.leagueFilterContainer}>
         {/* "All" pill */}
         <TouchableOpacity
@@ -347,6 +402,7 @@ export function DashboardScreen({ navigation }: Props) {
           />
         </TouchableOpacity>
       </View>
+      )}
 
       {/* Main Content */}
       <ScrollView
@@ -376,6 +432,7 @@ export function DashboardScreen({ navigation }: Props) {
                 onPress={() => handleMatchPress(game)}
                 activeOpacity={0.7}
               >
+                {pickedGameIds.has(game.apiId) && <PickedBadge />}
                 <View style={styles.liveAccent} />
                 <View style={styles.liveBody}>
                   <View style={styles.liveBadgeRow}>
@@ -406,10 +463,68 @@ export function DashboardScreen({ navigation }: Props) {
           </View>
         )}
 
-        {hasLiveOrUpcoming && upcomingGames.length > 0 && (
+        {/* F1: Next GP Weekend Card */}
+        {isF1 && f1NextGpSessions.length > 0 && (
+          <View style={styles.sectionWrap}>
+            <Text style={styles.thrillersHeading}>{t('dashboard.nextGrandPrix')}</Text>
+            <View style={styles.f1GpCard}>
+              {f1NextGpCircuit?.image ? (
+                <ExpoImage
+                  source={{ uri: f1NextGpCircuit.image }}
+                  style={styles.f1GpCircuitImage}
+                  contentFit="contain"
+                  cachePolicy="memory-disk"
+                />
+              ) : null}
+              <Text style={styles.f1GpTitle}>{f1NextGpName}</Text>
+              {f1NextGpCircuit && (
+                <Text style={styles.f1GpLocation}>
+                  {f1NextGpCircuit.name} — {f1NextGpCircuit.city}, {f1NextGpCircuit.country}
+                </Text>
+              )}
+              <View style={styles.f1ScheduleList}>
+                {f1NextGpSessions.map((session) => {
+                  const sessionDate = new Date(session.date);
+                  const dayLabel = sessionDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+                  const timeLabel = sessionDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                  const sessionType = session.type || 'Race';
+                  return (
+                    <TouchableOpacity
+                      key={session.apiId}
+                      style={styles.f1SessionRow}
+                      onPress={() => handleMatchPress(session)}
+                      activeOpacity={0.7}
+                    >
+                      {pickedGameIds.has(session.apiId) && <PickedBadge />}
+                      <View style={[
+                        styles.f1SessionTypeBadge,
+                        sessionType.toLowerCase().includes('race') && styles.f1SessionTypeBadgeRace,
+                      ]}>
+                        <Text style={[
+                          styles.f1SessionTypeText,
+                          sessionType.toLowerCase().includes('race') && styles.f1SessionTypeTextRace,
+                        ]}>
+                          {sessionType}
+                        </Text>
+                      </View>
+                      <View style={styles.f1SessionInfo}>
+                        <Text style={styles.f1SessionDay}>{dayLabel}</Text>
+                        <Text style={styles.f1SessionTime}>{timeLabel}</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={14} color={colors.onSurfaceDim} />
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Non-F1: Horizontal upcoming games */}
+        {!isF1 && hasLiveOrUpcoming && upcomingGames.length > 0 && (
           <View style={styles.sectionWrap}>
             <Text style={styles.thrillersHeading}>
-              {isF1 ? t('dashboard.upcomingRaces') : t('dashboard.upcoming')}
+              {t('dashboard.upcoming')}
             </Text>
             <FlatList
               horizontal
@@ -426,43 +541,27 @@ export function DashboardScreen({ navigation }: Props) {
                   onPress={() => handleMatchPress(game)}
                   activeOpacity={0.7}
                 >
-                  {isF1 ? (
-                    <View style={styles.f1UpcomingCard}>
-                      <Text style={styles.gameCardLeague}>
-                        {game.competitionName || game.leagueName}
+                  {pickedGameIds.has(game.apiId) && <PickedBadge />}
+                  <View style={styles.gameCardTop}>
+                    <Text style={styles.gameCardLeague}>
+                      {game.leagueName} {'\u2022'} {formatGameTime(game.date, t)}
+                    </Text>
+                  </View>
+                  <View style={styles.gameTeamsRow}>
+                    <View style={styles.gameTeamCol}>
+                      <TeamLogo uri={game.homeTeam?.logo} size={40} />
+                      <Text style={styles.gameTeamName} numberOfLines={2}>
+                        {game.homeTeam?.name}
                       </Text>
-                      <Text style={styles.f1CircuitName}>
-                        {game.circuit?.name ?? ''}
-                      </Text>
-                      <Text style={styles.f1CircuitLocation}>
-                        {game.circuit?.city ?? ''}{game.circuit?.country ? `, ${game.circuit.country}` : ''}
-                      </Text>
-                      <Text style={styles.f1DateTime}>{formatGameTime(game.date, t)}</Text>
                     </View>
-                  ) : (
-                    <>
-                      <View style={styles.gameCardTop}>
-                        <Text style={styles.gameCardLeague}>
-                          {game.leagueName} {'\u2022'} {formatGameTime(game.date, t)}
-                        </Text>
-                      </View>
-                      <View style={styles.gameTeamsRow}>
-                        <View style={styles.gameTeamCol}>
-                          <TeamLogo uri={game.homeTeam?.logo} size={40} />
-                          <Text style={styles.gameTeamName} numberOfLines={2}>
-                            {game.homeTeam?.name}
-                          </Text>
-                        </View>
-                        <Text style={styles.gameVsLabel}>VS</Text>
-                        <View style={styles.gameTeamCol}>
-                          <TeamLogo uri={game.awayTeam?.logo} size={40} />
-                          <Text style={styles.gameTeamName} numberOfLines={2}>
-                            {game.awayTeam?.name}
-                          </Text>
-                        </View>
-                      </View>
-                    </>
-                  )}
+                    <Text style={styles.gameVsLabel}>VS</Text>
+                    <View style={styles.gameTeamCol}>
+                      <TeamLogo uri={game.awayTeam?.logo} size={40} />
+                      <Text style={styles.gameTeamName} numberOfLines={2}>
+                        {game.awayTeam?.name}
+                      </Text>
+                    </View>
+                  </View>
                 </TouchableOpacity>
               )}
             />
@@ -488,17 +587,24 @@ export function DashboardScreen({ navigation }: Props) {
                 onPress={() => handleMatchPress(game)}
                 activeOpacity={0.7}
               >
+                {pickedGameIds.has(game.apiId) && <PickedBadge />}
                 {isF1 ? (
                   <View style={styles.f1RaceRow}>
                     <View style={styles.f1RaceInfo}>
                       <Text style={styles.f1RaceName}>{game.competitionName || game.leagueName}</Text>
                       <Text style={styles.f1CircuitName}>
-                        {game.circuit?.name ?? ''} {game.circuit?.country ? `- ${game.circuit.country}` : ''}
+                        {game.circuit?.name || game.circuitName || ''} {(game.circuit?.country || game.country) ? ` — ${game.circuit?.country || game.country}` : ''}
                       </Text>
+                      {game.results?.[0] && (
+                        <View style={styles.f1WinnerRow}>
+                          <Ionicons name="trophy" size={12} color={colors.primary} />
+                          <Text style={styles.f1WinnerText}>{game.results[0].driverName || 'TBD'}</Text>
+                        </View>
+                      )}
                       <Text style={styles.recentDateText}>{formatGameTime(game.date, t)}</Text>
                     </View>
                     <View style={styles.f1StatusBadge}>
-                      <Text style={styles.f1StatusText}>{game.status}</Text>
+                      <Text style={styles.f1StatusText}>{game.type || 'Race'}</Text>
                     </View>
                   </View>
                 ) : (
@@ -783,17 +889,24 @@ export function DashboardScreen({ navigation }: Props) {
                 onPress={() => handleMatchPress(game)}
                 activeOpacity={0.7}
               >
+                {pickedGameIds.has(game.apiId) && <PickedBadge />}
                 {isF1 ? (
                   <View style={styles.f1RaceRow}>
                     <View style={styles.f1RaceInfo}>
                       <Text style={styles.f1RaceName}>{game.competitionName || game.leagueName}</Text>
                       <Text style={styles.f1CircuitName}>
-                        {game.circuit?.name ?? ''} {game.circuit?.country ? `- ${game.circuit.country}` : ''}
+                        {game.circuit?.name || game.circuitName || ''} {(game.circuit?.country || game.country) ? ` — ${game.circuit?.country || game.country}` : ''}
                       </Text>
+                      {game.results?.[0] && (
+                        <View style={styles.f1WinnerRow}>
+                          <Ionicons name="trophy" size={12} color={colors.primary} />
+                          <Text style={styles.f1WinnerText}>{game.results[0].driverName || 'TBD'}</Text>
+                        </View>
+                      )}
                       <Text style={styles.recentDateText}>{formatGameTime(game.date, t)}</Text>
                     </View>
                     <View style={styles.f1StatusBadge}>
-                      <Text style={styles.f1StatusText}>{game.status}</Text>
+                      <Text style={styles.f1StatusText}>{game.type || 'Race'}</Text>
                     </View>
                   </View>
                 ) : (
@@ -1539,6 +1652,109 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   f1UpcomingCard: { gap: 6 },
+  f1SeasonBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
+  },
+  f1SeasonLabel: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 13,
+    color: colors.primary,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  f1GpCard: {
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: 16,
+    padding: 20,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(202,253,0,0.1)',
+  },
+  f1GpCircuitImage: {
+    width: '100%',
+    height: 100,
+    marginBottom: 8,
+    opacity: 0.8,
+  },
+  f1GpTitle: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 20,
+    color: colors.onSurface,
+    letterSpacing: -0.5,
+  },
+  f1GpLocation: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 13,
+    color: colors.onSurfaceVariant,
+    marginBottom: 8,
+  },
+  f1ScheduleList: {
+    gap: 4,
+    marginTop: 8,
+  },
+  f1SessionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    backgroundColor: colors.surfaceContainer,
+  },
+  f1SessionTypeBadge: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    minWidth: 70,
+    alignItems: 'center',
+  },
+  f1SessionTypeBadgeRace: {
+    backgroundColor: 'rgba(202,253,0,0.12)',
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  f1SessionTypeText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 11,
+    color: colors.onSurfaceVariant,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  f1SessionTypeTextRace: {
+    color: colors.primary,
+  },
+  f1SessionInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  f1SessionDay: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 13,
+    color: colors.onSurface,
+  },
+  f1SessionTime: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 12,
+    color: colors.primary,
+  },
+  f1WinnerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 2,
+  },
+  f1WinnerText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 12,
+    color: colors.primary,
+  },
 
   // Upcoming
   thrillersHeading: {

@@ -74,11 +74,17 @@ export interface SportGame {
   homeScore?: any;
   awayScore?: any;
   isLive: boolean;
-  // F1 specific
+  // F1 specific (nested object format)
   circuit?: { name: string; image: string; city: string; country: string };
   competitionName?: string;
+  competitionId?: number;
   results?: any[];
   type?: string;
+  // F1 flat fields (some documents store these directly)
+  circuitName?: string;
+  circuitImage?: string;
+  city?: string;
+  country?: string;
 }
 
 export interface SportDashboard {
@@ -181,6 +187,18 @@ export const sportsApi = {
   getF1Teams(token: string, search?: string): Promise<F1TeamsResponse> {
     const qs = search ? `?search=${encodeURIComponent(search)}` : '';
     return apiClient.get<F1TeamsResponse>(`/sports/formula-1/popular-teams${qs}`, { token });
+  },
+
+  getGameEvents(token: string, sport: SportKey, gameApiId: number) {
+    return apiClient.get<any>(`/sports/${sport}/games/${gameApiId}/events`, { token });
+  },
+
+  getGameTeamStats(token: string, sport: SportKey, gameApiId: number) {
+    return apiClient.get<any>(`/sports/${sport}/games/${gameApiId}/team-stats`, { token });
+  },
+
+  getH2H(token: string, sport: SportKey, team1: number, team2: number) {
+    return apiClient.get<any>(`/sports/${sport}/h2h?team1=${team1}&team2=${team2}`, { token });
   },
 
   search(token: string, query: string) {
