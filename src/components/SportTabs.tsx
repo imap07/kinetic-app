@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { ScrollView, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../theme';
 import { SPORT_TABS } from '../api/sports';
 import type { SportKey } from '../api/sports';
@@ -12,6 +13,7 @@ interface SportTabsProps {
 }
 
 export function SportTabs({ activeSport, onSportChange, visibleSports }: SportTabsProps) {
+  const { t } = useTranslation();
   const tabs = useMemo(() => {
     if (!visibleSports || visibleSports.length === 0) return SPORT_TABS;
     return SPORT_TABS.filter((t) => visibleSports.includes(t.key));
@@ -33,7 +35,7 @@ export function SportTabs({ activeSport, onSportChange, visibleSports }: SportTa
             onPress={() => onSportChange(tab.key)}
           >
             <Text style={[styles.label, isActive && styles.labelActive]}>
-              {tab.name}
+              {t(`sportNames.${tab.key}`, { defaultValue: tab.name })}
             </Text>
           </TouchableOpacity>
         );

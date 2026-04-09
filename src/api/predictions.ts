@@ -129,6 +129,12 @@ export interface MyRankResponse {
   entry: LeaderboardEntry | null;
 }
 
+/** Fetch the set of gameApiIds the user has already predicted on (pending + resolved). */
+export async function fetchPickedGameIds(token: string): Promise<Set<number>> {
+  const res = await apiClient.get<MyPicksResponse>('/predictions/my-picks?limit=500', { token });
+  return new Set(res.predictions.map((p) => p.gameApiId));
+}
+
 export const predictionsApi = {
   create: (payload: CreatePredictionPayload, token: string) =>
     apiClient.post<PredictionData>('/predictions', payload, { token }),
@@ -163,6 +169,100 @@ export const predictionsApi = {
 
   getDetailedStats: (token: string) =>
     apiClient.get<DetailedStatsResponse>('/predictions/my-stats/detailed', { token }),
+};
+
+// ────────── F1 Predictions API ──────────
+
+export type F1PredictionType =
+  | 'race_winner'
+  | 'podium'
+  | 'head_to_head'
+  | 'fastest_lap'
+  | 'points_finish'
+  | 'qualifying_pole';
+
+export interface F1PredictionData {
+  _id: string;
+  userId: string;
+  sport: string;
+  raceApiId: number;
+  raceDate: string;
+  competitionName: string;
+  circuitName: string;
+  predictionType: F1PredictionType;
+  predictedDriverApiId?: number;
+  predictedDriverName?: string;
+  predictedDriverImage?: string;
+  predictedDriverTeam?: string;
+  podiumPicks?: { position: number; driverApiId: number; driverName: string; driverImage?: string }[];
+  driverA?: { apiId: number; name: string; image?: string; teamName?: string };
+  driverB?: { apiId: number; name: string; image?: string; teamName?: string };
+  predictedWinner?: 'A' | 'B';
+  pointsFinishDriverApiId?: number;
+  pointsFinishDriverName?: string;
+  pointsFinishPrediction?: boolean;
+  oddsMultiplier: number;
+  status: 'pending' | 'won' | 'lost' | 'void' | 'partial' | 'cancelled';
+  pointsAwarded: number;
+  resolvedAt: string | null;
+  createdAt: string;
+}
+
+export interface CreateF1PredictionPayload {
+  raceApiId: number;
+  predictionType: F1PredictionType;
+  predictedDriverApiId?: number;
+  podiumPicks?: { position: number; driverApiId: number }[];
+  driverAApiId?: number;
+  driverBApiId?: number;
+  predictedWinner?: 'A' | 'B';
+  pointsFinishDriverApiId?: number;
+  pointsFinishPrediction?: boolean;
+}
+
+export interface F1DriverOption {
+  driverApiId: number;
+  driverName: string;
+  driverAbbr: string;
+  driverNumber: number;
+  driverImage: string;
+  teamName: string;
+  teamLogo: string;
+  championshipPosition: number;
+  championshipPoints: number;
+}
+
+export interface F1Matchup {
+  type: 'teammate' | 'rivalry';
+  label: string;
+  driverA: F1DriverOption;
+  driverB: F1DriverOption;
+}
+
+export const f1PredictionsApi = {
+  create: (payload: CreateF1PredictionPayload, token: string) =>
+    apiClient.post<F1PredictionData>('/predictions/f1', payload, { token }),
+
+  getForRace: (raceApiId: number, token: string) =>
+    apiClient.get<F1PredictionData[]>(`/predictions/f1/race/${raceApiId}`, { token }),
+
+  getMyPicks: (token: string, params?: { status?: 'pending' | 'resolved'; page?: number; limit?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.status) qs.set('status', params.status);
+    if (params?.page) qs.set('page', String(params.page));
+    if (params?.limit) qs.set('limit', String(params.limit));
+    const query = qs.toString() ? `?${qs.toString()}` : '';
+    return apiClient.get<{ predictions: F1PredictionData[]; total: number }>(`/predictions/f1/my-picks${query}`, { token });
+  },
+
+  getDrivers: (raceApiId: number, token: string) =>
+    apiClient.get<F1DriverOption[]>(`/predictions/f1/drivers/${raceApiId}`, { token }),
+
+  getMatchups: (raceApiId: number, token: string) =>
+    apiClient.get<F1Matchup[]>(`/predictions/f1/matchups/${raceApiId}`, { token }),
+
+  delete: (predictionId: string, token: string) =>
+    apiClient.delete<void>(`/predictions/f1/${predictionId}`, { token }),
 };
 
 export const leaderboardApi = {

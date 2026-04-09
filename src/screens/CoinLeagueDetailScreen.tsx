@@ -26,6 +26,7 @@ import { predictionsApi } from '../api/predictions';
 import type { PredictionData } from '../api/predictions';
 import type { LeaguesStackParamList } from '../navigation/types';
 import { Image } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 
 type RouteParams = RouteProp<LeaguesStackParamList, 'CoinLeagueDetail'>;
 
@@ -334,7 +335,9 @@ export function CoinLeagueDetailScreen() {
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statLabel}>{t('leagueDetail.type')}</Text>
-            <Text style={styles.statValue}>{league.leagueType === 'weekly' ? t('leagueDetail.weekly') : t('leagueDetail.matchday')}</Text>
+            <Text style={styles.statValue}>
+              {league.leagueType === 'race_weekend' ? t('leagueDetail.raceWeekend') : league.leagueType === 'weekly' ? t('leagueDetail.weekly') : t('leagueDetail.matchday')}
+            </Text>
           </View>
         </View>
 
@@ -376,7 +379,11 @@ export function CoinLeagueDetailScreen() {
                 {actionLoading ? (
                   <ActivityIndicator size="small" color={colors.error} />
                 ) : (
-                  <Text style={styles.leaveBtnText}>{t('leagueDetail.leaveLeague')}</Text>
+                  <Text style={styles.leaveBtnText}>
+                    {String(league.creatorId) === user?.id && !league.isSystemLeague
+                      ? t('leagueDetail.deleteLeague')
+                      : t('leagueDetail.leaveLeague')}
+                  </Text>
                 )}
               </TouchableOpacity>
             ) : (
@@ -393,8 +400,68 @@ export function CoinLeagueDetailScreen() {
           </View>
         )}
 
-        {/* Matches Section */}
-        {isParticipant && league.status !== 'completed' && league.status !== 'cancelled' && (
+        {/* F1 Race Weekend Section */}
+        {league.sport === 'formula-1' && isParticipant && league.status !== 'completed' && league.status !== 'cancelled' && (
+          <View style={styles.f1Section}>
+            {/* Circuit image */}
+            {league.f1CircuitImage ? (
+              <ExpoImage
+                source={{ uri: league.f1CircuitImage }}
+                style={styles.f1CircuitImg}
+                contentFit="contain"
+                cachePolicy="memory-disk"
+              />
+            ) : null}
+
+            {/* GP Info */}
+            <View style={styles.f1GpInfo}>
+              <Ionicons name="car-sport" size={20} color={colors.primary} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.f1GpName}>{league.f1CompetitionName || league.name}</Text>
+                {league.f1CircuitName ? (
+                  <Text style={styles.f1CircuitName}>{league.f1CircuitName}</Text>
+                ) : null}
+              </View>
+            </View>
+
+            {/* Pick types info */}
+            <View style={styles.f1PickTypes}>
+              {[
+                { icon: 'trophy', label: t('leagueDetail.f1Winner'), pts: '30' },
+                { icon: 'podium', label: t('leagueDetail.f1Podium'), pts: '50' },
+                { icon: 'people', label: 'H2H', pts: '10' },
+                { icon: 'speedometer', label: t('leagueDetail.f1Fastest'), pts: '20' },
+                { icon: 'flag', label: t('leagueDetail.f1Points'), pts: '8' },
+              ].map((item) => (
+                <View key={item.label} style={styles.f1PickTypeChip}>
+                  <Ionicons name={item.icon as any} size={12} color={colors.primary} />
+                  <Text style={styles.f1PickTypeLabel}>{item.label}</Text>
+                  <Text style={styles.f1PickTypePts}>{item.pts}pts</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* CTA Button */}
+            <TouchableOpacity
+              style={styles.f1CtaBtn}
+              activeOpacity={0.85}
+              onPress={() => {
+                (navigation as any).navigate('LeagueF1RacePrediction', {
+                  raceApiId: league.f1RaceApiId,
+                  competitionName: league.f1CompetitionName,
+                  circuitName: league.f1CircuitName,
+                });
+              }}
+            >
+              <Ionicons name="car-sport" size={20} color={colors.background} />
+              <Text style={styles.f1CtaBtnText}>{t('leagueDetail.makePredictions')}</Text>
+              <Ionicons name="chevron-forward" size={18} color={colors.background} />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Matches Section (non-F1) */}
+        {league.sport !== 'formula-1' && isParticipant && league.status !== 'completed' && league.status !== 'cancelled' && (
           <View style={styles.matchesSection}>
             <Text style={styles.sectionTitle}>{t('leagueDetail.matches')}</Text>
             <View style={styles.matchTabs}>
@@ -1076,5 +1143,79 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_400Regular',
     fontSize: 11,
     color: colors.onSurfaceDim,
+  },
+  // ─── F1 Race Weekend ────────────────────────────
+  f1Section: {
+    marginHorizontal: spacing.md,
+    marginTop: spacing.lg,
+    backgroundColor: colors.surfaceContainer,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(202,253,0,0.12)',
+    gap: 14,
+  },
+  f1CircuitImg: {
+    width: '100%',
+    height: 140,
+    borderRadius: borderRadius.md,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+  },
+  f1GpInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  f1GpName: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 18,
+    color: colors.onSurface,
+    letterSpacing: -0.3,
+  },
+  f1CircuitName: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 13,
+    color: colors.onSurfaceVariant,
+    marginTop: 2,
+  },
+  f1PickTypes: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  f1PickTypeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  f1PickTypeLabel: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 11,
+    color: colors.onSurface,
+  },
+  f1PickTypePts: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 10,
+    color: colors.onSurfaceDim,
+  },
+  f1CtaBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    borderRadius: borderRadius.md,
+    marginTop: 4,
+  },
+  f1CtaBtnText: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 15,
+    color: colors.background,
+    letterSpacing: -0.2,
   },
 });

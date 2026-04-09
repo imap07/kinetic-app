@@ -72,7 +72,7 @@ export function CoinStoreScreen() {
   };
 
   const handleSubscribe = async (pkg: any) => {
-    if (!hasRCPackages) {
+    if (!pkg) {
       Alert.alert(t('coinStore.comingSoon'), t('coinStore.comingSoonDesc'));
       return;
     }
@@ -249,7 +249,6 @@ export function CoinStoreScreen() {
                       </Text>
                       <View style={styles.proFeatures}>
                         {([
-                          t('coinStore.unlimitedPredictions'),
                           t('coinStore.allSportsUnlocked'),
                           t('coinStore.coinsPerMonth'),
                           t('coinStore.detailedStats'),
@@ -283,7 +282,6 @@ export function CoinStoreScreen() {
                     <Text style={styles.proDesc}>{t('coinStore.proMonthlyDesc')}</Text>
                     <View style={styles.proFeatures}>
                       {([
-                        t('coinStore.unlimitedPredictions'),
                         t('coinStore.allSportsUnlocked'),
                         t('coinStore.coinsPerMonth'),
                         t('coinStore.detailedStats'),
@@ -316,7 +314,6 @@ export function CoinStoreScreen() {
                     <Text style={styles.proDesc}>{t('coinStore.proAnnualDesc')}</Text>
                     <View style={styles.proFeatures}>
                       {([
-                        t('coinStore.unlimitedPredictions'),
                         t('coinStore.allSportsUnlocked'),
                         t('coinStore.coinsPerYear'),
                         t('coinStore.detailedStats'),

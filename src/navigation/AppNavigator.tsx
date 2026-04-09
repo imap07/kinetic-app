@@ -51,6 +51,7 @@ import { EditFavoriteSportsScreen } from '../screens/EditFavoriteSportsScreen';
 import { EditFavoriteLeaguesScreen } from '../screens/EditFavoriteLeaguesScreen';
 import { ChangePasswordScreen } from '../screens/ChangePasswordScreen';
 import { QuestsScreen } from '../screens/QuestsScreen';
+import F1RacePredictionScreen from '../screens/F1RacePredictionScreen';
 // LeagueSelectionScreen removed from onboarding V2 flow
 import { logScreenView } from '../services/analytics';
 
@@ -84,6 +85,7 @@ function HomeNavigator() {
       <HomeStack.Screen name="DashboardHome" component={DashboardScreen} />
       <HomeStack.Screen name="LeagueDetail" component={LeagueDetailScreen} />
       <HomeStack.Screen name="MatchPrediction" component={MatchPredictionScreen} />
+      <HomeStack.Screen name="F1RacePrediction" component={F1RacePredictionScreen} />
       <HomeStack.Screen name="PickSummary" component={PickSummaryScreen} />
       <HomeStack.Screen name="Quests" component={QuestsScreen} />
     </HomeStack.Navigator>
@@ -98,6 +100,7 @@ function LiveNavigator() {
     <LiveStack.Navigator screenOptions={darkScreenOptions}>
       <LiveStack.Screen name="LiveHome" component={LiveScreen} />
       <LiveStack.Screen name="LiveMatchPrediction" component={MatchPredictionScreen} />
+      <LiveStack.Screen name="LiveF1RacePrediction" component={F1RacePredictionScreen} />
       <LiveStack.Screen name="LivePickSummary" component={PickSummaryScreen} />
     </LiveStack.Navigator>
   );
@@ -112,6 +115,7 @@ function LeaguesNavigator() {
       <LeaguesStack.Screen name="LeaguesHome" component={CoinLeaguesScreen} />
       <LeaguesStack.Screen name="CoinLeagueDetail" component={CoinLeagueDetailScreen} />
       <LeaguesStack.Screen name="LeagueMatchPrediction" component={MatchPredictionScreen} />
+      <LeaguesStack.Screen name="LeagueF1RacePrediction" component={F1RacePredictionScreen} />
       <LeaguesStack.Screen name="LeaguePickSummary" component={PickSummaryScreen} />
       <LeaguesStack.Screen name="Leaderboard" component={LeaderboardScreen} />
     </LeaguesStack.Navigator>

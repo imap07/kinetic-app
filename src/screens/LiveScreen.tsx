@@ -10,7 +10,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
@@ -20,6 +20,7 @@ import { AppHeader } from '../components/AppHeader';
 import { SportTabs } from '../components/SportTabs';
 import { useAuth } from '../contexts/AuthContext';
 import { sportsApi, SPORT_TABS } from '../api/sports';
+import { fetchPickedGameIds } from '../api/predictions';
 import type { SportKey, SportDashboard, SportGame } from '../api/sports';
 import type { LiveStackParamList, RootStackParamList } from '../navigation/types';
 import { useLiveSSE } from '../hooks/useLiveSSE';
@@ -134,6 +135,7 @@ export function LiveScreen() {
   const [data, setData] = useState<SportDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [pickedGameIds, setPickedGameIds] = useState<Set<number>>(new Set());
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const dateOptions = useMemo((): DateOption[] => {
@@ -193,10 +195,22 @@ export function LiveScreen() {
     };
   }, [fetchData, sseConnected]);
 
+  const fetchPickedIds = useCallback(async () => {
+    if (!tokens?.accessToken) return;
+    try {
+      const ids = await fetchPickedGameIds(tokens.accessToken);
+      setPickedGameIds(ids);
+    } catch (_) { /* silent */ }
+  }, [tokens?.accessToken]);
+
+  useEffect(() => { fetchPickedIds(); }, [fetchPickedIds]);
+  useFocusEffect(useCallback(() => { fetchPickedIds(); }, [fetchPickedIds]));
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchData();
-  }, [fetchData]);
+    fetchPickedIds();
+  }, [fetchData, fetchPickedIds]);
 
   const handleSportChange = useCallback((sport: SportKey) => {
     if (sport === activeSport) return;
@@ -361,12 +375,16 @@ export function LiveScreen() {
                       </View>
                     </View>
 
-                    {/* Action hint for upcoming */}
-                    {isUpcoming && (
+                    {/* Picked indicator */}
+                    {pickedGameIds.has(game.apiId) ? (
+                      <View style={styles.pickedBadge}>
+                        <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
+                      </View>
+                    ) : isUpcoming ? (
                       <View style={styles.predictBadge}>
                         <Text style={styles.predictBadgeText}>{t('live.predict')}</Text>
                       </View>
-                    )}
+                    ) : null}
                   </TouchableOpacity>
                 );
               })}
@@ -557,6 +575,12 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 
+  pickedBadge: {
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   predictBadge: {
     backgroundColor: 'rgba(202,253,0,0.1)',
     borderRadius: 4,

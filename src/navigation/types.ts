@@ -9,11 +9,19 @@ export type AuthStackParamList = {
   ResetPassword: { email: string; code: string };
 };
 
+// F1 race prediction screen params (shared across stacks)
+export type F1RacePredictionParams = {
+  raceApiId: number;
+  competitionName?: string;
+  circuitName?: string;
+};
+
 // Home tab nested stack (Dashboard -> MatchPrediction -> PickSummary)
 export type HomeStackParamList = {
   DashboardHome: undefined;
   LeagueDetail: { leagueApiId: number; leagueName: string; sport: string; tier?: 'free' | 'premium' };
   MatchPrediction: { fixtureApiId: number; sport?: string };
+  F1RacePrediction: F1RacePredictionParams;
   PickSummary: undefined;
   Quests: undefined;
 };
@@ -23,6 +31,7 @@ export type LeaguesStackParamList = {
   LeaguesHome: undefined;
   CoinLeagueDetail: { leagueId: string };
   LeagueMatchPrediction: { fixtureApiId: number; sport?: string };
+  LeagueF1RacePrediction: F1RacePredictionParams;
   LeaguePickSummary: undefined;
   Leaderboard: undefined;
 };
@@ -46,6 +55,7 @@ export type ProfileStackParamList = {
 export type LiveStackParamList = {
   LiveHome: undefined;
   LiveMatchPrediction: { fixtureApiId: number; sport?: string };
+  LiveF1RacePrediction: F1RacePredictionParams;
   LivePickSummary: undefined;
 };
 

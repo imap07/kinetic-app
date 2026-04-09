@@ -235,6 +235,7 @@ export function NotificationPreferencesScreen() {
             <Text
               style={[
                 styles.rowLabel,
+                { flex: 1 },
                 (!prefs.quietHoursEnabled || typesDisabled) && styles.rowLabelDisabled,
               ]}
             >
@@ -258,6 +259,7 @@ export function NotificationPreferencesScreen() {
             <Text
               style={[
                 styles.rowLabel,
+                { flex: 1 },
                 (!prefs.quietHoursEnabled || typesDisabled) && styles.rowLabelDisabled,
               ]}
             >

@@ -10,7 +10,9 @@ import {
   RefreshControl,
   TextInput,
   Alert,
+  Modal,
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { useTranslation } from 'react-i18next';
 import { useRoute } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -349,6 +351,27 @@ export function MatchPredictionScreen({ navigation }: Props) {
   const [genericH2HLoading, setGenericH2HLoading] = useState(false);
   const [genericH2HLoaded, setGenericH2HLoaded] = useState(false);
 
+  // F1 circuit fullscreen
+  const [f1CircuitFullscreen, setF1CircuitFullscreen] = useState(false);
+
+  // F1 driver profile modal
+  const [f1DriverModal, setF1DriverModal] = useState<any>(null);
+  const [f1DriverLoading, setF1DriverLoading] = useState(false);
+
+  const openDriverProfile = useCallback(async (driverApiId: number) => {
+    if (!driverApiId || !tokens?.accessToken) return;
+    setF1DriverLoading(true);
+    setF1DriverModal(null);
+    try {
+      const data = await sportsApi.getDriverProfile(tokens.accessToken, 'formula-1', driverApiId);
+      if (data) setF1DriverModal(data);
+    } catch (err) {
+      console.warn('Failed to load driver profile', err);
+    } finally {
+      setF1DriverLoading(false);
+    }
+  }, [tokens?.accessToken]);
+
   const isFootball = sport === 'football';
   const hasDraw = !NO_DRAW_SPORTS.includes(sport);
   const isF1 = sport === 'formula-1';
@@ -662,7 +685,13 @@ export function MatchPredictionScreen({ navigation }: Props) {
 
             {/* Circuit info */}
             {f1CircuitImage ? (
-              <Image source={{ uri: f1CircuitImage }} style={styles.f1DetailCircuitImage} resizeMode="contain" />
+              <TouchableOpacity activeOpacity={0.85} onPress={() => setF1CircuitFullscreen(true)}>
+                <ExpoImage source={{ uri: f1CircuitImage }} style={styles.f1DetailCircuitImage} contentFit="contain" cachePolicy="memory-disk" />
+                <View style={styles.f1CircuitZoomHint}>
+                  <Ionicons name="expand-outline" size={14} color="rgba(255,255,255,0.5)" />
+                  <Text style={styles.f1CircuitZoomHintText}>Tap to expand</Text>
+                </View>
+              </TouchableOpacity>
             ) : null}
             <Text style={styles.f1DetailCircuitName}>{f1CircuitName}</Text>
             <Text style={styles.f1DetailCircuitLocation}>{f1CircuitCity}{f1Country ? `, ${f1Country}` : ''}</Text>
@@ -687,32 +716,76 @@ export function MatchPredictionScreen({ navigation }: Props) {
               </View>
             )}
 
-            {/* Race Results */}
+            {/* Fastest Lap — prominent card */}
+            {f1FastestDriver ? (() => {
+              const flResult = f1Results.find((r: any) => r.driverName === f1FastestDriver);
+              return (
+                <View style={styles.f1FastestLapCard}>
+                  <View style={styles.f1FastestLapHeader}>
+                    <Ionicons name="flash" size={18} color="#A855F7" />
+                    <Text style={styles.f1FastestLapTitle}>{t('matchPrediction.fastestLap')}</Text>
+                    <Ionicons name="flash" size={18} color="#A855F7" />
+                  </View>
+                  <View style={styles.f1FastestLapBody}>
+                    {flResult?.driverImage ? (
+                      <ExpoImage source={{ uri: flResult.driverImage }} style={styles.f1FastestLapDriverImg} contentFit="cover" cachePolicy="memory-disk" />
+                    ) : null}
+                    <View style={styles.f1FastestLapInfo}>
+                      <Text style={styles.f1FastestLapDriverName}>{f1FastestDriver}</Text>
+                      {flResult?.teamName ? <Text style={styles.f1FastestLapTeam}>{flResult.teamName}</Text> : null}
+                    </View>
+                    <View style={styles.f1FastestLapTimeBox}>
+                      <Text style={styles.f1FastestLapTimeLabel}>LAP TIME</Text>
+                      <Text style={styles.f1FastestLapTimeValue}>{f1FastestTime}</Text>
+                    </View>
+                  </View>
+                </View>
+              );
+            })() : null}
+
+            {/* Race Results — full grid */}
             {f1Results.length > 0 && (
               <View style={styles.f1ResultsSection}>
                 <Text style={styles.f1ResultsTitle}>{t('matchPrediction.raceResults')}</Text>
-                {f1Results.slice(0, 10).map((result: any, idx: number) => (
+                {f1Results.map((result: any, idx: number) => (
                   <View key={idx} style={[styles.f1ResultRow, idx === 0 && styles.f1ResultRowWinner]}>
+                    {/* Position */}
                     <Text style={[styles.f1ResultPos, idx < 3 && styles.f1ResultPosPodium]}>
                       P{result.position || idx + 1}
                     </Text>
+                    {/* Driver photo */}
+                    <TouchableOpacity activeOpacity={0.7} onPress={() => openDriverProfile(result.driverApiId)}>
+                      {result.driverImage ? (
+                        <ExpoImage source={{ uri: result.driverImage }} style={styles.f1ResultDriverImg} contentFit="cover" cachePolicy="memory-disk" />
+                      ) : (
+                        <View style={styles.f1ResultDriverImgPlaceholder}>
+                          <Ionicons name="person" size={18} color={colors.onSurfaceDim} />
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                    {/* Name + team */}
                     <View style={styles.f1ResultDriverInfo}>
-                      <Text style={styles.f1ResultDriverName}>{result.driverName || 'Unknown'}</Text>
-                      <Text style={styles.f1ResultTeamName}>{result.teamName || ''}</Text>
+                      <TouchableOpacity activeOpacity={0.7} onPress={() => openDriverProfile(result.driverApiId)}>
+                        <Text style={styles.f1ResultDriverName} numberOfLines={1}>{result.driverName || 'Unknown'}</Text>
+                      </TouchableOpacity>
+                      <View style={styles.f1ResultTeamRow}>
+                        {(result.teamLogoHD || result.teamLogo) ? (
+                          <ExpoImage source={{ uri: result.teamLogoHD || result.teamLogo }} style={styles.f1ResultTeamLogoInline} contentFit="contain" cachePolicy="memory-disk" />
+                        ) : null}
+                        <Text style={styles.f1ResultTeamName} numberOfLines={1}>{result.teamName || ''}</Text>
+                      </View>
                     </View>
-                    <Text style={styles.f1ResultTime}>
-                      {idx === 0 ? (result.time || '') : (result.time || '')}
-                    </Text>
+                    {/* Time + pits */}
+                    <View style={styles.f1ResultTimeCol}>
+                      <Text style={styles.f1ResultTime} numberOfLines={1}>
+                        {result.time || (result.gap ? `+${result.gap}` : 'DNF')}
+                      </Text>
+                      {result.pits != null && (
+                        <Text style={styles.f1ResultPits}>{result.pits} pit{result.pits !== 1 ? 's' : ''}</Text>
+                      )}
+                    </View>
                   </View>
                 ))}
-                {f1FastestDriver ? (
-                  <View style={styles.f1FastestLap}>
-                    <Ionicons name="flash" size={14} color="#A855F7" />
-                    <Text style={styles.f1FastestLapText}>
-                      {t('matchPrediction.fastestLap')}: {f1FastestDriver} — {f1FastestTime}
-                    </Text>
-                  </View>
-                ) : null}
               </View>
             )}
 
@@ -853,8 +926,35 @@ export function MatchPredictionScreen({ navigation }: Props) {
           })()}
         </View>
 
-        {/* PREDICTION CARD */}
-        <View style={styles.predictCard}>
+        {/* F1 PREDICTION CTA — redirect to dedicated F1 prediction screen */}
+        {isF1 && !isFinished && (
+          <TouchableOpacity
+            style={styles.f1PredictCta}
+            activeOpacity={0.85}
+            onPress={() => {
+              const raceApiId = f1Race?.apiId || fixtureApiId;
+              navigation.navigate('F1RacePrediction', {
+                raceApiId,
+                competitionName: f1GpName,
+                circuitName: f1CircuitName,
+              });
+            }}
+          >
+            <View style={styles.f1PredictCtaInner}>
+              <View style={styles.f1PredictCtaIcon}>
+                <Ionicons name="car-sport" size={24} color="#FFF" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.f1PredictCtaTitle}>{t('matchPrediction.f1MakePredictions')}</Text>
+                <Text style={styles.f1PredictCtaSubtitle}>{t('matchPrediction.f1PredictionTypes')}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.primary} />
+            </View>
+          </TouchableOpacity>
+        )}
+
+        {/* PREDICTION CARD (non-F1 sports) */}
+        {!isF1 && <View style={styles.predictCard}>
           <View style={styles.predictHeader}>
             <Text style={styles.cardTitle}>
               {existingPrediction ? t('matchPrediction.yourPrediction') : t('matchPrediction.makeYourPrediction')}
@@ -1076,7 +1176,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
               )}
             </>
           )}
-        </View>
+        </View>}
 
         {/* === GENERIC SPORT TABS (non-football) === */}
         {!isFootball && !isF1 && genericGame && (() => {
@@ -1578,6 +1678,93 @@ export function MatchPredictionScreen({ navigation }: Props) {
         )}
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* F1 Circuit Fullscreen Modal */}
+      {isF1 && f1CircuitImage ? (
+        <Modal visible={f1CircuitFullscreen} transparent animationType="fade" onRequestClose={() => setF1CircuitFullscreen(false)}>
+          <TouchableOpacity style={styles.f1CircuitFsOverlay} activeOpacity={1} onPress={() => setF1CircuitFullscreen(false)}>
+            <ExpoImage source={{ uri: f1CircuitImage }} style={styles.f1CircuitFsImage} contentFit="contain" cachePolicy="memory-disk" />
+            <Text style={styles.f1CircuitFsName}>{f1CircuitName}</Text>
+            <Text style={styles.f1CircuitFsLocation}>{f1CircuitCity}{f1Country ? `, ${f1Country}` : ''}</Text>
+            <TouchableOpacity style={styles.f1CircuitFsClose} onPress={() => setF1CircuitFullscreen(false)}>
+              <Ionicons name="close-circle" size={36} color="#fff" />
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
+      ) : null}
+
+      {/* F1 Driver Profile Modal */}
+      {(f1DriverModal || f1DriverLoading) && (
+        <Modal visible transparent animationType="fade" onRequestClose={() => setF1DriverModal(null)}>
+          <TouchableOpacity style={styles.f1DriverModalOverlay} activeOpacity={1} onPress={() => setF1DriverModal(null)}>
+            <View style={styles.f1DriverModalCard}>
+              {f1DriverLoading ? (
+                <ActivityIndicator size="large" color={colors.primary} style={{ padding: 40 }} />
+              ) : f1DriverModal ? (
+                <>
+                  {/* Bio header — centered photo */}
+                  <View style={styles.f1DriverModalBioHeader}>
+                    {f1DriverModal.image ? (
+                      <ExpoImage source={{ uri: f1DriverModal.image }} style={styles.f1DriverModalImg} contentFit="cover" cachePolicy="memory-disk" />
+                    ) : (
+                      <View style={[styles.f1DriverModalImg, { alignItems: 'center', justifyContent: 'center' }]}>
+                        <Ionicons name="person" size={48} color={colors.onSurfaceDim} />
+                      </View>
+                    )}
+                    {f1DriverModal.number ? (
+                      <Text style={styles.f1DriverModalNumber}>#{f1DriverModal.number}</Text>
+                    ) : null}
+                    <Text style={styles.f1DriverModalName}>{f1DriverModal.name}</Text>
+                    {f1DriverModal.team?.name ? (
+                      <Text style={styles.f1DriverModalTeamName}>{f1DriverModal.team.name}</Text>
+                    ) : null}
+                    {f1DriverModal.birthplace ? (
+                      <View style={styles.f1DriverModalLocationRow}>
+                        <Ionicons name="location-outline" size={13} color={colors.onSurfaceDim} />
+                        <Text style={styles.f1DriverModalLocation}>{f1DriverModal.birthplace}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+
+                  {/* Stats grid */}
+                  <View style={styles.f1DriverModalStatsGrid}>
+                    {[
+                      { label: 'Position', value: f1DriverModal.stats?.position ? `P${f1DriverModal.stats.position}` : '—', icon: 'podium-outline' },
+                      { label: 'Points', value: f1DriverModal.stats?.points ?? '—', icon: 'star-outline' },
+                      { label: 'Wins', value: f1DriverModal.stats?.wins ?? '—', icon: 'trophy-outline' },
+                      { label: 'Podiums', value: f1DriverModal.stats?.podiums ?? '—', icon: 'medal-outline' },
+                      { label: 'WDC', value: f1DriverModal.stats?.worldChampionships ?? '—', icon: 'ribbon-outline' },
+                      { label: 'GPs', value: f1DriverModal.stats?.grandsPrixEntered ?? '—', icon: 'flag-outline' },
+                    ].map((stat, i) => (
+                      <View key={i} style={styles.f1DriverModalStatItem}>
+                        <Ionicons name={stat.icon as any} size={16} color={colors.primary} />
+                        <Text style={styles.f1DriverModalStatValue}>{stat.value}</Text>
+                        <Text style={styles.f1DriverModalStatLabel}>{stat.label}</Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  {/* Career stats row */}
+                  {f1DriverModal.stats?.careerPoints ? (
+                    <View style={styles.f1DriverModalCareer}>
+                      <Text style={styles.f1DriverModalCareerText}>Career Points: {f1DriverModal.stats.careerPoints}</Text>
+                      {f1DriverModal.stats?.highestRaceFinish ? (
+                        <Text style={styles.f1DriverModalCareerText}>Best Finish: P{f1DriverModal.stats.highestRaceFinish}</Text>
+                      ) : null}
+                      {f1DriverModal.stats?.highestGridPosition ? (
+                        <Text style={styles.f1DriverModalCareerText}>Best Grid: P{f1DriverModal.stats.highestGridPosition}</Text>
+                      ) : null}
+                    </View>
+                  ) : null}
+                </>
+              ) : null}
+              <TouchableOpacity style={styles.f1DriverModalClose} onPress={() => setF1DriverModal(null)}>
+                <Ionicons name="close-circle" size={32} color="rgba(255,255,255,0.6)" />
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+      )}
     </View>
   );
 }
@@ -1998,22 +2185,277 @@ const styles = StyleSheet.create({
   f1DetailCircuitLocation: { fontFamily: 'Inter_500Medium', fontSize: 14, color: colors.onSurfaceVariant },
   f1DetailInfoRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
   f1DetailInfoText: { fontFamily: 'Inter_500Medium', fontSize: 13, color: colors.onSurfaceVariant },
+  f1FastestLapCard: {
+    marginTop: 20,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(168,85,247,0.4)',
+    backgroundColor: 'rgba(168,85,247,0.06)',
+    overflow: 'hidden',
+  },
+  f1FastestLapHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(168,85,247,0.12)',
+  },
+  f1FastestLapTitle: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 13,
+    color: '#A855F7',
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+  },
+  f1FastestLapBody: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    gap: 12,
+  },
+  f1FastestLapDriverImg: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(168,85,247,0.15)',
+  },
+  f1FastestLapInfo: { flex: 1, gap: 2 },
+  f1FastestLapDriverName: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 16,
+    color: '#C084FC',
+  },
+  f1FastestLapTeam: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 11,
+    color: 'rgba(192,132,252,0.6)',
+  },
+  f1FastestLapTimeBox: {
+    alignItems: 'flex-end',
+    gap: 2,
+  },
+  f1FastestLapTimeLabel: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 9,
+    color: 'rgba(168,85,247,0.6)',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  f1FastestLapTimeValue: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 18,
+    color: '#A855F7',
+  },
   f1ResultsSection: { marginTop: 20, gap: 4 },
   f1ResultsTitle: { fontFamily: 'SpaceGrotesk_700Bold', fontSize: 16, color: colors.onSurface, letterSpacing: -0.3, marginBottom: 8, textTransform: 'uppercase' },
   f1ResultRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
     paddingVertical: 10, paddingHorizontal: 12,
-    backgroundColor: colors.surfaceContainer, borderRadius: 8, marginBottom: 4,
+    backgroundColor: colors.surfaceContainer, borderRadius: 12, marginBottom: 4,
   },
   f1ResultRowWinner: { backgroundColor: 'rgba(202,253,0,0.08)', borderWidth: 1, borderColor: 'rgba(202,253,0,0.2)' },
-  f1ResultPos: { fontFamily: 'SpaceGrotesk_700Bold', fontSize: 16, color: colors.onSurfaceVariant, minWidth: 32 },
+  f1ResultPos: { fontFamily: 'SpaceGrotesk_700Bold', fontSize: 15, color: colors.onSurfaceVariant, width: 30, textAlign: 'center' },
   f1ResultPosPodium: { color: colors.primary },
-  f1ResultDriverInfo: { flex: 1, gap: 2 },
+  f1ResultDriverImg: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  f1ResultDriverImgPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  f1ResultTeamLogoWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  f1ResultTeamLogo: {
+    width: 22,
+    height: 22,
+  },
+  f1ResultDriverInfo: { flex: 1, gap: 3 },
+  f1ResultTeamRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  f1ResultTeamLogoInline: { width: 18, height: 14 },
   f1ResultDriverName: { fontFamily: 'Inter_700Bold', fontSize: 14, color: colors.onSurface },
-  f1ResultTeamName: { fontFamily: 'Inter_400Regular', fontSize: 11, color: colors.onSurfaceDim },
+  f1ResultTeamName: { fontFamily: 'Inter_600SemiBold', fontSize: 12, color: colors.onSurfaceVariant },
+  f1ResultRightCol: { alignItems: 'flex-end', gap: 4 },
+  f1ResultTimeCol: { alignItems: 'flex-end', minWidth: 64, gap: 1 },
   f1ResultTime: { fontFamily: 'Inter_500Medium', fontSize: 12, color: colors.onSurfaceVariant },
-  f1FastestLap: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: 'rgba(168,85,247,0.08)', borderRadius: 8 },
-  f1FastestLapText: { fontFamily: 'Inter_600SemiBold', fontSize: 12, color: '#A855F7' },
+  f1ResultPits: { fontFamily: 'Inter_400Regular', fontSize: 10, color: colors.onSurfaceDim },
+  f1ChampionshipBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 20,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+  },
+  f1ChampionshipBtnText: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 15,
+    color: colors.background,
+    letterSpacing: -0.3,
+  },
+  f1ResultAvatarWrap: {},
+  f1CircuitZoomHint: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: -20, paddingRight: 8, paddingBottom: 4 },
+  f1CircuitZoomHintText: { fontFamily: 'Inter_400Regular', fontSize: 10, color: 'rgba(255,255,255,0.4)' },
+  f1CircuitFsOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center', alignItems: 'center' },
+  f1CircuitFsImage: { width: '100%', height: 300 },
+  f1CircuitFsName: { fontFamily: 'SpaceGrotesk_700Bold', fontSize: 20, color: '#fff', marginTop: 16, textAlign: 'center', paddingHorizontal: 24 },
+  f1CircuitFsLocation: { fontFamily: 'Inter_400Regular', fontSize: 14, color: 'rgba(255,255,255,0.5)', marginTop: 4 },
+  f1CircuitFsClose: { position: 'absolute', top: 60, right: 24 },
   f1UpcomingNotice: { alignItems: 'center', justifyContent: 'center', gap: 12, paddingVertical: 40 },
   f1UpcomingNoticeText: { fontFamily: 'Inter_500Medium', fontSize: 16, color: colors.onSurfaceVariant, textAlign: 'center' },
+  // Driver profile modal
+  f1DriverModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  f1DriverModalCard: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    overflow: 'hidden',
+    paddingBottom: 8,
+  },
+  f1DriverModalBioHeader: {
+    alignItems: 'center',
+    paddingTop: 28,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    gap: 6,
+    backgroundColor: 'rgba(202,253,0,0.04)',
+  },
+  f1DriverModalImg: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 3,
+    borderColor: 'rgba(202,253,0,0.25)',
+    marginBottom: 8,
+  },
+  f1DriverModalNumber: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 14,
+    color: colors.primary,
+    letterSpacing: 1,
+  },
+  f1DriverModalName: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 22,
+    color: colors.onSurface,
+    letterSpacing: -0.5,
+    textAlign: 'center',
+  },
+  f1DriverModalTeamName: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 14,
+    color: colors.onSurfaceVariant,
+    textAlign: 'center',
+  },
+  f1DriverModalLocationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  f1DriverModalLocation: { fontFamily: 'Inter_400Regular', fontSize: 12, color: colors.onSurfaceDim },
+  f1DriverModalStatsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    padding: 16,
+    gap: 8,
+  },
+  f1DriverModalStatItem: {
+    width: '30%',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 10,
+  },
+  f1DriverModalStatValue: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 20,
+    color: colors.onSurface,
+  },
+  f1DriverModalStatLabel: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 10,
+    color: colors.onSurfaceDim,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  f1DriverModalCareer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  f1DriverModalCareerText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 11,
+    color: colors.onSurfaceVariant,
+  },
+  f1DriverModalClose: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+  },
+  f1PredictCta: {
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 12,
+    borderRadius: 16,
+    backgroundColor: 'rgba(202,253,0,0.08)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(202,253,0,0.25)',
+    overflow: 'hidden',
+  },
+  f1PredictCtaInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    gap: 14,
+  },
+  f1PredictCtaIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  f1PredictCtaTitle: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 16,
+    color: colors.onSurface,
+    letterSpacing: -0.3,
+  },
+  f1PredictCtaSubtitle: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 12,
+    color: colors.onSurfaceVariant,
+    marginTop: 2,
+  },
 });

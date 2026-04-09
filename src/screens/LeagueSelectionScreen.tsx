@@ -97,6 +97,7 @@ function SportTabBar({
   onSelect: (s: string) => void;
   leagueCounts: Record<string, number>;
 }) {
+  const { t } = useTranslation();
   if (sports.length <= 1) return null;
 
   return (
@@ -120,7 +121,7 @@ function SportTabBar({
               activeOpacity={0.7}
             >
               <Text style={[styles.sportTabText, isActive && { color: colors.onSurface, fontFamily: 'SpaceGrotesk_700Bold' }]}>
-                {meta?.name || s}
+                {t(`sportNames.${s}`, { defaultValue: meta?.name || s })}
               </Text>
               {count !== undefined && count > 0 && (
                 <Text style={[styles.sportTabCount, isActive && { color }]}>

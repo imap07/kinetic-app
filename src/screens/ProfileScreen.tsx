@@ -417,7 +417,7 @@ export function ProfileScreen() {
                         !a.unlocked && { color: 'rgba(248,249,254,0.5)' },
                       ]}
                     >
-                      {a.title}
+                      {t(`achievements.${a.key}.title`, { defaultValue: a.title })}
                     </Text>
                     {a.unlocked && (
                       <View style={styles.achieveUnlockedBadge}>
@@ -425,7 +425,7 @@ export function ProfileScreen() {
                       </View>
                     )}
                   </View>
-                  <Text style={styles.achieveDesc}>{a.description}</Text>
+                  <Text style={styles.achieveDesc}>{t(`achievements.${a.key}.description`, { defaultValue: a.description })}</Text>
 
                   {/* Progress bar */}
                   {!a.unlocked && a.progress && a.progress.target > 0 && (

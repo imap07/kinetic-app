@@ -8,7 +8,7 @@ type Props = {
   awayLineup: TeamLineup;
 };
 
-const PITCH_RATIO = 1.5; // height / width
+const PITCH_RATIO = 1.55; // height / width — slightly taller to prevent bottom cutoff
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const PITCH_WIDTH = SCREEN_WIDTH - 32; // 16px margin each side
 const PITCH_HEIGHT = PITCH_WIDTH * PITCH_RATIO;
@@ -109,8 +109,8 @@ function renderTeamOnPitch(
 
     const numCols = playersInRow.length;
     // Y position: distribute rows evenly within the half
-    const yPadding = 16;
-    const availableHeight = halfHeight - yPadding * 2;
+    const yPadding = 24;
+    const availableHeight = halfHeight - yPadding * 2 - 16; // extra space for jersey name text
     let yPos: number;
     if (isHome) {
       // Home on top: row 1 (GK) at top, last row near middle
@@ -188,7 +188,7 @@ export function FootballPitch({ homeLineup, awayLineup }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 12 },
+  container: { gap: 12, paddingBottom: 8 },
   formationHeader: {
     flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 4,
   },

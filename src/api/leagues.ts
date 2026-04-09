@@ -23,7 +23,7 @@ export interface CoinLeague {
   maxParticipants: number;
   participants: LeagueParticipant[];
   status: 'open' | 'active' | 'resolving' | 'completed' | 'cancelled';
-  leagueType: 'weekly' | 'matchday';
+  leagueType: 'weekly' | 'matchday' | 'race_weekend';
   startDate: string;
   endDate: string;
   prizePool: number;
@@ -40,6 +40,11 @@ export interface CoinLeague {
   footballLeagueLogo?: string;
   isThemed?: boolean;
   inviteCode?: string;
+  // F1 Race Weekend fields
+  f1RaceApiId?: number;
+  f1CompetitionName?: string;
+  f1CircuitName?: string;
+  f1CircuitImage?: string;
 }
 
 export interface LeaguesListResponse {
@@ -56,7 +61,7 @@ export interface CreateLeagueDto {
   maxParticipants?: number;
   startDate: string;
   endDate: string;
-  leagueType?: 'weekly' | 'matchday';
+  leagueType?: 'weekly' | 'matchday' | 'race_weekend';
   // Themed CoinLeague fields
   footballLeagueApiId?: number;
   footballLeagueName?: string;

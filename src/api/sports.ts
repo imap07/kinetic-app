@@ -180,6 +180,14 @@ export const sportsApi = {
     return apiClient.get<SportGame>(`/sports/${sport}/games/${gameApiId}`, { token });
   },
 
+  getChampionshipStandings(token: string, sport: SportKey) {
+    return apiClient.get<any>(`/sports/${sport}/championship`, { token });
+  },
+
+  getDriverProfile(token: string, sport: SportKey, driverApiId: number) {
+    return apiClient.get<any>(`/sports/${sport}/drivers/${driverApiId}`, { token });
+  },
+
   getLeagues(token: string, sport: SportKey) {
     return apiClient.get<SportLeague[]>(`/sports/${sport}/leagues`, { token });
   },

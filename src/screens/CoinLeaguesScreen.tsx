@@ -126,13 +126,14 @@ export function CoinLeaguesScreen() {
   };
 
   const handleLeave = async (league: CoinLeague) => {
+    const isCreator = String(league.creatorId) === user?.id && !league.isSystemLeague;
     Alert.alert(
-      t('leagues.leaveLeague'),
-      t('leagues.leaveLeagueDesc'),
+      isCreator ? t('leagues.deleteLeague') : t('leagues.leaveLeague'),
+      isCreator ? t('leagues.deleteLeagueDesc') : t('leagues.leaveLeagueDesc'),
       [
         { text: t('leagues.cancel'), style: 'cancel' },
         {
-          text: t('leagues.leave'),
+          text: isCreator ? t('leagues.delete') : t('leagues.leave'),
           style: 'destructive',
           onPress: async () => {
             setActionLoading(league._id);
@@ -352,7 +353,11 @@ export function CoinLeaguesScreen() {
                           {isActionLoading ? (
                             <ActivityIndicator size="small" color={colors.error} />
                           ) : (
-                            <Text style={styles.leaveBtnText}>{t('leagues.leave')}</Text>
+                            <Text style={styles.leaveBtnText}>
+                              {String(league.creatorId) === user?.id && !league.isSystemLeague
+                                ? t('leagues.delete')
+                                : t('leagues.leave')}
+                            </Text>
                           )}
                         </TouchableOpacity>
                       ) : (
@@ -466,7 +471,8 @@ function CreateLeagueModal({
       return;
     }
     const now = new Date();
-    const startDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const isF1 = sport === 'formula-1';
+    const startDate = new Date(now.getTime() + (isF1 ? 5 * 60 * 1000 : 24 * 60 * 60 * 1000));
     const endDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
     onCreate({
@@ -475,7 +481,7 @@ function CreateLeagueModal({
       entryFee,
       startDate: startDate.toISOString(),
       endDate: endDate.toISOString(),
-      leagueType: 'weekly',
+      leagueType: isF1 ? 'race_weekend' : 'weekly',
     });
   };
 
@@ -766,21 +772,22 @@ const styles = StyleSheet.create({
     color: colors.onSurface,
   },
 
-  sportFilterRow: { maxHeight: 40, marginBottom: spacing.sm },
-  sportFilterContent: { paddingHorizontal: spacing.lg, gap: spacing.xs },
+  sportFilterRow: { maxHeight: 44, marginBottom: 4 },
+  sportFilterContent: { paddingHorizontal: 16, gap: 6, alignItems: 'center' as const },
   sportFilterChip: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.full,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
     backgroundColor: colors.surfaceContainerHighest,
   },
   sportFilterChipActive: { backgroundColor: colors.primary },
   sportFilterText: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 12,
-    color: colors.onSurfaceVariant,
+    fontFamily: 'Inter_700Bold',
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.onSurface,
   },
-  sportFilterTextActive: { color: colors.onPrimary },
+  sportFilterTextActive: { color: '#4A5E00' },
 
   scroll: { flex: 1 },
 

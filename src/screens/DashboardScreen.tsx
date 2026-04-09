@@ -219,7 +219,15 @@ export function DashboardScreen({ navigation }: Props) {
 
   const handleMatchPress = useCallback((game: any) => {
     trackAction();
-    navigation.navigate('MatchPrediction', { fixtureApiId: game.apiId, sport: activeSport });
+    if (activeSport === 'formula-1') {
+      navigation.navigate('F1RacePrediction', {
+        raceApiId: game.apiId,
+        competitionName: game.competitionName || game.leagueName,
+        circuitName: game.circuit?.name || game.circuitName,
+      });
+    } else {
+      navigation.navigate('MatchPrediction', { fixtureApiId: game.apiId, sport: activeSport });
+    }
   }, [activeSport, navigation, trackAction]);
 
   const allLiveGames = data?.liveGames ?? [];
@@ -288,8 +296,24 @@ export function DashboardScreen({ navigation }: Props) {
     setLiveCount(allLiveGames.length);
   }, [allLiveGames.length, setLiveCount]);
 
+  const [f1CircuitModalVisible, setF1CircuitModalVisible] = useState(false);
+  const [f1Standings, setF1Standings] = useState<any[]>([]);
+  const [f1Constructors, setF1Constructors] = useState<any[]>([]);
+  const [f1StandingsExpanded, setF1StandingsExpanded] = useState(false);
+  const [f1StandingsTab, setF1StandingsTab] = useState<'drivers' | 'constructors'>('drivers');
   const isF1 = activeSport === 'formula-1';
   const hasLiveOrUpcoming = liveGames.length > 0 || upcomingGames.length > 0;
+
+  // F1: Fetch championship standings
+  useEffect(() => {
+    if (!isF1 || !tokens?.accessToken) return;
+    sportsApi.getChampionshipStandings(tokens.accessToken, 'formula-1')
+      .then((res: any) => {
+        setF1Standings(res?.drivers || []);
+        setF1Constructors(res?.constructors || []);
+      })
+      .catch(() => {});
+  }, [isF1, tokens?.accessToken]);
 
   // F1: Group upcoming sessions by GP (competitionName) — shows full race weekend schedule
   const f1NextGpSessions = useMemo(() => {
@@ -420,20 +444,107 @@ export function DashboardScreen({ navigation }: Props) {
         {/* Other sports: Live > Upcoming > Recent > Predictor > Challenge > Pro > Leagues */}
         {/* Other sports (no live): Predictor > Challenge > Pro > Recent > Leagues */}
 
+        {/* F1: Championship Standings with Drivers / Constructors tabs */}
+        {isF1 && f1Standings.length > 0 && (
+          <View style={styles.sectionWrap}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="trophy" size={18} color={colors.primary} />
+              <Text style={styles.sectionHeadingRow}>{t('dashboard.championshipStandings')}</Text>
+            </View>
+            {/* Tabs */}
+            <View style={styles.f1StandingsTabs}>
+              <TouchableOpacity
+                style={[styles.f1StandingsTab, f1StandingsTab === 'drivers' && styles.f1StandingsTabActive]}
+                onPress={() => { setF1StandingsTab('drivers'); setF1StandingsExpanded(false); }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="person" size={14} color={f1StandingsTab === 'drivers' ? colors.background : colors.onSurfaceVariant} />
+                <Text style={[styles.f1StandingsTabText, f1StandingsTab === 'drivers' && styles.f1StandingsTabTextActive]}>
+                  {t('dashboard.drivers')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.f1StandingsTab, f1StandingsTab === 'constructors' && styles.f1StandingsTabActive]}
+                onPress={() => { setF1StandingsTab('constructors'); setF1StandingsExpanded(false); }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="car-sport" size={14} color={f1StandingsTab === 'constructors' ? colors.background : colors.onSurfaceVariant} />
+                <Text style={[styles.f1StandingsTabText, f1StandingsTab === 'constructors' && styles.f1StandingsTabTextActive]}>
+                  {t('dashboard.constructors')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.f1StandingsCard}>
+              {f1StandingsTab === 'drivers' ? (
+                <>
+                  {(f1StandingsExpanded ? f1Standings : f1Standings.slice(0, 5)).map((d: any, idx: number) => (
+                    <View key={d.driverApiId || idx} style={[styles.f1StandingsRow, idx === 0 && styles.f1StandingsRowLeader]}>
+                      <Text style={[styles.f1StandingsPos, idx < 3 && styles.f1StandingsPosPodium]}>
+                        P{d.position || idx + 1}
+                      </Text>
+                      {d.driverImage ? (
+                        <ExpoImage source={{ uri: d.driverImage }} style={styles.f1StandingsDriverImg} contentFit="cover" cachePolicy="memory-disk" />
+                      ) : <View style={styles.f1StandingsDriverImg} />}
+                      <View style={styles.f1StandingsInfo}>
+                        <Text style={styles.f1StandingsName}>{d.driverName}</Text>
+                        <Text style={styles.f1StandingsTeam}>{d.teamName}</Text>
+                      </View>
+                      <View style={styles.f1StandingsPointsCol}>
+                        <Text style={styles.f1StandingsPoints}>{d.points || 0}</Text>
+                        <Text style={styles.f1StandingsPtsLabel}>PTS</Text>
+                      </View>
+                    </View>
+                  ))}
+                </>
+              ) : (
+                <>
+                  {(f1StandingsExpanded ? f1Constructors : f1Constructors.slice(0, 5)).map((team: any, idx: number) => (
+                    <View key={team.teamApiId || idx} style={[styles.f1StandingsRow, idx === 0 && styles.f1StandingsRowLeader]}>
+                      <Text style={[styles.f1StandingsPos, idx < 3 && styles.f1StandingsPosPodium]}>
+                        P{team.rank || idx + 1}
+                      </Text>
+                      {(team.teamLogoHD || team.teamLogo) ? (
+                        <ExpoImage source={{ uri: team.teamLogoHD || team.teamLogo }} style={styles.f1StandingsConstructorLogo} contentFit="contain" cachePolicy="memory-disk" />
+                      ) : <View style={styles.f1StandingsConstructorLogo} />}
+                      <View style={styles.f1StandingsInfo}>
+                        <Text style={styles.f1StandingsName}>{team.teamName}</Text>
+                      </View>
+                      <View style={styles.f1StandingsPointsCol}>
+                        <Text style={styles.f1StandingsPoints}>{team.points || 0}</Text>
+                        <Text style={styles.f1StandingsPtsLabel}>PTS</Text>
+                      </View>
+                    </View>
+                  ))}
+                </>
+              )}
+              <TouchableOpacity
+                style={styles.f1StandingsToggle}
+                activeOpacity={0.7}
+                onPress={() => setF1StandingsExpanded(!f1StandingsExpanded)}
+              >
+                <Text style={styles.f1StandingsToggleText}>
+                  {f1StandingsExpanded ? t('dashboard.showLess') : t('dashboard.viewFullStandings')}
+                </Text>
+                <Ionicons name={f1StandingsExpanded ? 'chevron-up' : 'chevron-down'} size={14} color={colors.primary} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* F1: Next GP always at the top */}
         {isF1 && f1NextGpSessions.length > 0 && (
           <View style={styles.sectionWrap}>
             <Text style={styles.thrillersHeading}>{t('dashboard.nextGrandPrix')}</Text>
             <View style={styles.f1GpCard}>
-              {f1NextGpCircuit?.image ? (
-                <ExpoImage
-                  source={{ uri: f1NextGpCircuit.image }}
-                  style={styles.f1GpCircuitImage}
-                  contentFit="contain"
-                  cachePolicy="memory-disk"
-                />
-              ) : null}
-              <Text style={styles.f1GpTitle}>{f1NextGpName}</Text>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => {
+                  const raceSession = f1NextGpSessions.find((s) => s.type === 'Race') || f1NextGpSessions[f1NextGpSessions.length - 1];
+                  if (raceSession) handleMatchPress(raceSession);
+                }}
+              >
+                <Text style={styles.f1GpTitle}>{f1NextGpName} <Ionicons name="chevron-forward" size={16} color={colors.primary} /></Text>
+              </TouchableOpacity>
               {f1NextGpCircuit && (
                 <Text style={styles.f1GpLocation}>
                   {f1NextGpCircuit.name} — {f1NextGpCircuit.city}, {f1NextGpCircuit.country}
@@ -492,24 +603,42 @@ export function DashboardScreen({ navigation }: Props) {
                 activeOpacity={0.7}
               >
                 {pickedGameIds.has(game.apiId) && <PickedBadge />}
-                <View style={styles.f1RaceRow}>
-                  <View style={styles.f1RaceInfo}>
-                    <Text style={styles.f1RaceName}>{game.competitionName || game.leagueName}</Text>
-                    <Text style={styles.f1CircuitName}>
-                      {game.circuit?.name || game.circuitName || ''} {(game.circuit?.country || game.country) ? ` — ${game.circuit?.country || game.country}` : ''}
+                {/* Header: GP name + badge */}
+                <View style={styles.f1RecentHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.f1RaceName} numberOfLines={1}>{game.competitionName || game.leagueName}</Text>
+                    <Text style={styles.f1CircuitName} numberOfLines={1}>
+                      {game.circuit?.name || game.circuitName || ''}{(game.circuit?.country || game.country) ? ` — ${game.circuit?.country || game.country}` : ''}
                     </Text>
-                    {game.results?.[0] && (
-                      <View style={styles.f1WinnerRow}>
-                        <Ionicons name="trophy" size={12} color={colors.primary} />
-                        <Text style={styles.f1WinnerText}>{game.results[0].driverName || 'TBD'}</Text>
-                      </View>
-                    )}
-                    <Text style={styles.recentDateText}>{formatGameTime(game.date, t)}</Text>
                   </View>
                   <View style={styles.f1StatusBadge}>
                     <Text style={styles.f1StatusText}>{game.type || 'Race'}</Text>
                   </View>
                 </View>
+                {/* Winner row */}
+                {game.results?.[0] && (
+                  <View style={styles.f1WinnerRow}>
+                    {game.results[0].driverImage ? (
+                      <ExpoImage source={{ uri: game.results[0].driverImage }} style={styles.f1WinnerDriverImg} contentFit="cover" cachePolicy="memory-disk" />
+                    ) : (
+                      <View style={styles.f1WinnerDriverImgPlaceholder}>
+                        <Ionicons name="person" size={16} color={colors.onSurfaceDim} />
+                      </View>
+                    )}
+                    <View style={styles.f1WinnerInfo}>
+                      <View style={styles.f1WinnerNameRow}>
+                        <Ionicons name="trophy" size={12} color={colors.primary} />
+                        <Text style={styles.f1WinnerText} numberOfLines={1}>{game.results[0].driverName || 'TBD'}</Text>
+                      </View>
+                      {game.results[0].teamName ? (
+                        <Text style={styles.f1WinnerTeamName} numberOfLines={1}>{game.results[0].teamName}</Text>
+                      ) : null}
+                    </View>
+                    {(game.results[0].teamLogoHD || game.results[0].teamLogo) ? (
+                      <ExpoImage source={{ uri: game.results[0].teamLogoHD || game.results[0].teamLogo }} style={styles.f1WinnerTeamLogoHD} contentFit="contain" cachePolicy="memory-disk" />
+                    ) : null}
+                  </View>
+                )}
               </TouchableOpacity>
             ))}
           </View>
@@ -629,8 +758,8 @@ export function DashboardScreen({ navigation }: Props) {
               >
                 {pickedGameIds.has(game.apiId) && <PickedBadge />}
                 {isF1 ? (
-                  <View style={styles.f1RaceRow}>
-                    <View style={styles.f1RaceInfo}>
+                  <View style={styles.f1RecentHeader}>
+                    <View style={styles.f1WinnerInfo}>
                       <Text style={styles.f1RaceName}>{game.competitionName || game.leagueName}</Text>
                       <Text style={styles.f1CircuitName}>
                         {game.circuit?.name || game.circuitName || ''} {(game.circuit?.country || game.country) ? ` — ${game.circuit?.country || game.country}` : ''}
@@ -827,7 +956,11 @@ export function DashboardScreen({ navigation }: Props) {
               // Quest "Cover 2 sports" pending → switch to uncovered sport
               if (needsMultiSport) {
                 const coveredSports = dailyStatus.quests.multiSport.sportsPlayed || [];
-                const uncovered = SPORT_TABS.find((t) => !coveredSports.includes(t.key));
+                // Prefer active sport if not yet covered, otherwise find any uncovered sport
+                const activeSportTab = SPORT_TABS.find((t) => t.key === activeSport);
+                const uncovered = (!coveredSports.includes(activeSport) && activeSportTab)
+                  ? activeSportTab
+                  : SPORT_TABS.find((t) => !coveredSports.includes(t.key));
                 return (
                   <TouchableOpacity
                     activeOpacity={0.8}
@@ -849,7 +982,7 @@ export function DashboardScreen({ navigation }: Props) {
                       style={styles.submitBtn}
                     >
                       <Text style={styles.submitBtnText}>
-                        {uncovered ? t('dashboard.pickInSport', { sport: uncovered.name.toUpperCase() }) : t('dashboard.startPicking')}
+                        {uncovered ? t('dashboard.pickInSport', { sport: t(`sportNames.${uncovered.key}`, { defaultValue: uncovered.name }).toUpperCase() }) : t('dashboard.startPicking')}
                       </Text>
                       <Ionicons name="arrow-forward" size={16} color="#3A4A00" />
                     </LinearGradient>
@@ -931,8 +1064,8 @@ export function DashboardScreen({ navigation }: Props) {
               >
                 {pickedGameIds.has(game.apiId) && <PickedBadge />}
                 {isF1 ? (
-                  <View style={styles.f1RaceRow}>
-                    <View style={styles.f1RaceInfo}>
+                  <View style={styles.f1RecentHeader}>
+                    <View style={styles.f1WinnerInfo}>
                       <Text style={styles.f1RaceName}>{game.competitionName || game.leagueName}</Text>
                       <Text style={styles.f1CircuitName}>
                         {game.circuit?.name || game.circuitName || ''} {(game.circuit?.country || game.country) ? ` — ${game.circuit?.country || game.country}` : ''}
@@ -1010,6 +1143,36 @@ export function DashboardScreen({ navigation }: Props) {
 
         <View style={{ height: 96 }} />
       </ScrollView>
+
+      {/* F1: Fullscreen circuit image modal */}
+      {isF1 && f1NextGpCircuit?.image && (
+        <Modal
+          visible={f1CircuitModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setF1CircuitModalVisible(false)}
+        >
+          <TouchableOpacity
+            style={styles.f1CircuitModalOverlay}
+            activeOpacity={1}
+            onPress={() => setF1CircuitModalVisible(false)}
+          >
+            <View style={styles.f1CircuitModalContent}>
+              <ExpoImage
+                source={{ uri: f1NextGpCircuit.image }}
+                style={styles.f1CircuitModalImage}
+                contentFit="contain"
+                cachePolicy="memory-disk"
+              />
+              <Text style={styles.f1CircuitModalName}>{f1NextGpCircuit.name}</Text>
+              <Text style={styles.f1CircuitModalLocation}>{f1NextGpCircuit.city}, {f1NextGpCircuit.country}</Text>
+            </View>
+            <TouchableOpacity style={styles.f1CircuitModalClose} onPress={() => setF1CircuitModalVisible(false)}>
+              <Ionicons name="close-circle" size={36} color="#fff" />
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
+      )}
 
       {/* League Selector Bottom Sheet */}
       <Modal visible={showLeagueSheet} animationType="slide" transparent>
@@ -1648,12 +1811,12 @@ const styles = StyleSheet.create({
   },
 
   // F1 specific
-  f1RaceRow: {
+  f1RecentHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'flex-start',
+    gap: 10,
+    marginBottom: 2,
   },
-  f1RaceInfo: { flex: 1, gap: 4 },
   f1RaceName: {
     fontFamily: 'Inter_700Bold',
     fontSize: 14,
@@ -1708,6 +1871,91 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
+  f1StandingsCard: {
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(202,253,0,0.08)',
+  },
+  f1StandingsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.04)',
+  },
+  f1StandingsRowLeader: {
+    backgroundColor: 'rgba(202,253,0,0.06)',
+  },
+  f1StandingsPos: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 14,
+    color: colors.onSurfaceVariant,
+    minWidth: 28,
+  },
+  f1StandingsPosPodium: { color: colors.primary },
+  f1StandingsDriverImg: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  f1StandingsTabs: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 10,
+  },
+  f1StandingsTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: colors.surfaceContainerLow,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  f1StandingsTabActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  f1StandingsTabText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 13,
+    color: colors.onSurfaceVariant,
+  },
+  f1StandingsTabTextActive: {
+    color: colors.background,
+  },
+  f1StandingsConstructorLogo: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  f1StandingsInfo: { flex: 1, gap: 1 },
+  f1StandingsName: { fontFamily: 'Inter_700Bold', fontSize: 13, color: colors.onSurface },
+  f1StandingsTeam: { fontFamily: 'Inter_400Regular', fontSize: 10, color: colors.onSurfaceDim },
+  f1StandingsPointsCol: { alignItems: 'flex-end' },
+  f1StandingsPoints: { fontFamily: 'SpaceGrotesk_700Bold', fontSize: 16, color: colors.primary },
+  f1StandingsPtsLabel: { fontFamily: 'Inter_400Regular', fontSize: 8, color: colors.onSurfaceDim, letterSpacing: 1 },
+  f1StandingsToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 10,
+  },
+  f1StandingsToggleText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12,
+    color: colors.primary,
+  },
   f1GpCard: {
     backgroundColor: colors.surfaceContainerLow,
     borderRadius: 16,
@@ -1751,8 +1999,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.06)',
     borderRadius: 6,
     paddingHorizontal: 10,
-    paddingVertical: 4,
-    minWidth: 70,
+    paddingVertical: 6,
+    width: 120,
     alignItems: 'center',
   },
   f1SessionTypeBadgeRace: {
@@ -1787,13 +2035,71 @@ const styles = StyleSheet.create({
   f1WinnerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginTop: 2,
+    gap: 10,
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.05)',
+  },
+  f1WinnerInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  f1WinnerNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
   f1WinnerText: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 12,
+    fontSize: 14,
     color: colors.primary,
+  },
+  f1WinnerDriverImg: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  f1WinnerDriverImgPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  f1WinnerTeamLogoWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  f1WinnerTeamLogo: {
+    width: 24,
+    height: 24,
+  },
+  f1WinnerTeamName: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12,
+    color: colors.onSurfaceVariant,
+  },
+  f1WinnerTeamLogoHD: {
+    width: 40,
+    height: 28,
+  },
+  f1RecentDate: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 11,
+    color: colors.onSurfaceDim,
   },
 
   // Upcoming
@@ -1978,5 +2284,38 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
     color: colors.onSurfaceVariant,
+  },
+  f1CircuitModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.92)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  f1CircuitModalContent: {
+    width: '90%',
+    alignItems: 'center',
+  },
+  f1CircuitModalImage: {
+    width: '100%',
+    height: 280,
+    marginBottom: 16,
+  },
+  f1CircuitModalName: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 20,
+    color: '#fff',
+    textAlign: 'center',
+  },
+  f1CircuitModalLocation: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.6)',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  f1CircuitModalClose: {
+    position: 'absolute',
+    top: 60,
+    right: 24,
   },
 });

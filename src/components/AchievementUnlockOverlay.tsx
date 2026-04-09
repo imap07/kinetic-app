@@ -10,6 +10,7 @@ import {
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -39,6 +40,7 @@ const ICON_MAP: Record<string, keyof typeof Ionicons.glyphMap> = {
 const AUTO_DISMISS_MS = 4500;
 
 export function AchievementUnlockOverlay({ achievement, onDismiss }: Props) {
+  const { t } = useTranslation();
   const slideAnim = useRef(new Animated.Value(-200)).current;
   const scaleAnim = useRef(new Animated.Value(0.3)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -194,9 +196,9 @@ export function AchievementUnlockOverlay({ achievement, onDismiss }: Props) {
 
             {/* Text */}
             <View style={styles.textArea}>
-              <Text style={styles.label}>ACHIEVEMENT UNLOCKED</Text>
-              <Text style={styles.title}>{achievement.title}</Text>
-              <Text style={styles.description}>{achievement.description}</Text>
+              <Text style={styles.label}>{t('profile.achievementUnlocked')}</Text>
+              <Text style={styles.title}>{t(`achievements.${achievement.key}.title`, { defaultValue: achievement.title })}</Text>
+              <Text style={styles.description}>{t(`achievements.${achievement.key}.description`, { defaultValue: achievement.description })}</Text>
             </View>
 
             {/* Points badge */}
