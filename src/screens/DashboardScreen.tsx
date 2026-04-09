@@ -484,7 +484,7 @@ export function DashboardScreen({ navigation }: Props) {
               <MaterialCommunityIcons name="clock-check-outline" size={18} color={colors.primary} />
               <Text style={styles.sectionHeadingRow}>{t('dashboard.recentRaces')}</Text>
             </View>
-            {recentGames.slice(0, RECENT_GAMES_LIMIT).map((game) => (
+            {recentGames.map((game) => (
               <TouchableOpacity
                 key={game.apiId || game._id}
                 style={styles.todayCard}
