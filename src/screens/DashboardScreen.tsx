@@ -416,54 +416,11 @@ export function DashboardScreen({ navigation }: Props) {
           />
         }
       >
-        {/* When live/upcoming exist: Live > Upcoming > Recent > Predictor > Challenge > Pro > Leagues */}
-        {/* When NO live/upcoming: Predictor > Challenge > Pro > Recent (LAST RESULTS) > Leagues */}
+        {/* F1 layout: Next GP > Recent Races > (engagement content below) */}
+        {/* Other sports: Live > Upcoming > Recent > Predictor > Challenge > Pro > Leagues */}
+        {/* Other sports (no live): Predictor > Challenge > Pro > Recent > Leagues */}
 
-        {hasLiveOrUpcoming && liveGames.length > 0 && (
-          <View style={styles.sectionWrap}>
-            <View style={styles.liveHeaderRow}>
-              <View style={styles.liveDot} />
-              <Text style={styles.liveSectionTitle}>{t('dashboard.liveAction')}</Text>
-            </View>
-            {liveGames.map((game) => (
-              <TouchableOpacity
-                key={game.apiId || game._id}
-                style={styles.liveCard}
-                onPress={() => handleMatchPress(game)}
-                activeOpacity={0.7}
-              >
-                {pickedGameIds.has(game.apiId) && <PickedBadge />}
-                <View style={styles.liveAccent} />
-                <View style={styles.liveBody}>
-                  <View style={styles.liveBadgeRow}>
-                    <View style={styles.liveBadge}>
-                      <Text style={styles.liveBadgeText}>{getGameStatusLabel(game, t)}</Text>
-                    </View>
-                    <Text style={styles.liveLeagueText}>{game.leagueName}</Text>
-                  </View>
-                  <View style={styles.liveScoresBlock}>
-                    <View style={styles.liveTeamRow}>
-                      <View style={styles.liveTeamLeft}>
-                        <TeamLogo uri={game.homeTeam?.logo} size={24} />
-                        <Text style={styles.liveTeamName}>{game.homeTeam?.name}</Text>
-                      </View>
-                      <Text style={styles.liveScoreValue}>{game.homeTotal ?? '-'}</Text>
-                    </View>
-                    <View style={styles.liveTeamRow}>
-                      <View style={styles.liveTeamLeft}>
-                        <TeamLogo uri={game.awayTeam?.logo} size={24} />
-                        <Text style={styles.liveTeamName}>{game.awayTeam?.name}</Text>
-                      </View>
-                      <Text style={styles.liveScoreValue}>{game.awayTotal ?? '-'}</Text>
-                    </View>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-
-        {/* F1: Next GP Weekend Card */}
+        {/* F1: Next GP always at the top */}
         {isF1 && f1NextGpSessions.length > 0 && (
           <View style={styles.sectionWrap}>
             <Text style={styles.thrillersHeading}>{t('dashboard.nextGrandPrix')}</Text>
@@ -520,6 +477,89 @@ export function DashboardScreen({ navigation }: Props) {
           </View>
         )}
 
+        {/* F1: Recent races right after next GP */}
+        {isF1 && recentGames.length > 0 && (
+          <View style={styles.sectionWrap}>
+            <View style={styles.sectionHeader}>
+              <MaterialCommunityIcons name="clock-check-outline" size={18} color={colors.primary} />
+              <Text style={styles.sectionHeadingRow}>{t('dashboard.recentRaces')}</Text>
+            </View>
+            {recentGames.slice(0, RECENT_GAMES_LIMIT).map((game) => (
+              <TouchableOpacity
+                key={game.apiId || game._id}
+                style={styles.todayCard}
+                onPress={() => handleMatchPress(game)}
+                activeOpacity={0.7}
+              >
+                {pickedGameIds.has(game.apiId) && <PickedBadge />}
+                <View style={styles.f1RaceRow}>
+                  <View style={styles.f1RaceInfo}>
+                    <Text style={styles.f1RaceName}>{game.competitionName || game.leagueName}</Text>
+                    <Text style={styles.f1CircuitName}>
+                      {game.circuit?.name || game.circuitName || ''} {(game.circuit?.country || game.country) ? ` — ${game.circuit?.country || game.country}` : ''}
+                    </Text>
+                    {game.results?.[0] && (
+                      <View style={styles.f1WinnerRow}>
+                        <Ionicons name="trophy" size={12} color={colors.primary} />
+                        <Text style={styles.f1WinnerText}>{game.results[0].driverName || 'TBD'}</Text>
+                      </View>
+                    )}
+                    <Text style={styles.recentDateText}>{formatGameTime(game.date, t)}</Text>
+                  </View>
+                  <View style={styles.f1StatusBadge}>
+                    <Text style={styles.f1StatusText}>{game.type || 'Race'}</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* Non-F1: Live games */}
+        {!isF1 && hasLiveOrUpcoming && liveGames.length > 0 && (
+          <View style={styles.sectionWrap}>
+            <View style={styles.liveHeaderRow}>
+              <View style={styles.liveDot} />
+              <Text style={styles.liveSectionTitle}>{t('dashboard.liveAction')}</Text>
+            </View>
+            {liveGames.map((game) => (
+              <TouchableOpacity
+                key={game.apiId || game._id}
+                style={styles.liveCard}
+                onPress={() => handleMatchPress(game)}
+                activeOpacity={0.7}
+              >
+                {pickedGameIds.has(game.apiId) && <PickedBadge />}
+                <View style={styles.liveAccent} />
+                <View style={styles.liveBody}>
+                  <View style={styles.liveBadgeRow}>
+                    <View style={styles.liveBadge}>
+                      <Text style={styles.liveBadgeText}>{getGameStatusLabel(game, t)}</Text>
+                    </View>
+                    <Text style={styles.liveLeagueText}>{game.leagueName}</Text>
+                  </View>
+                  <View style={styles.liveScoresBlock}>
+                    <View style={styles.liveTeamRow}>
+                      <View style={styles.liveTeamLeft}>
+                        <TeamLogo uri={game.homeTeam?.logo} size={24} />
+                        <Text style={styles.liveTeamName}>{game.homeTeam?.name}</Text>
+                      </View>
+                      <Text style={styles.liveScoreValue}>{game.homeTotal ?? '-'}</Text>
+                    </View>
+                    <View style={styles.liveTeamRow}>
+                      <View style={styles.liveTeamLeft}>
+                        <TeamLogo uri={game.awayTeam?.logo} size={24} />
+                        <Text style={styles.liveTeamName}>{game.awayTeam?.name}</Text>
+                      </View>
+                      <Text style={styles.liveScoreValue}>{game.awayTotal ?? '-'}</Text>
+                    </View>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
         {/* Non-F1: Horizontal upcoming games */}
         {!isF1 && hasLiveOrUpcoming && upcomingGames.length > 0 && (
           <View style={styles.sectionWrap}>
@@ -571,8 +611,8 @@ export function DashboardScreen({ navigation }: Props) {
         {/* Ad between sections */}
         <AdBanner placement="home" />
 
-        {/* Recent Results - shown AFTER live/upcoming when they exist, or AFTER engagement content when they don't */}
-        {hasLiveOrUpcoming && recentGames.length > 0 && (
+        {/* Recent Results - shown AFTER live/upcoming when they exist (F1 handled above) */}
+        {!isF1 && hasLiveOrUpcoming && recentGames.length > 0 && (
           <View style={styles.sectionWrap}>
             <View style={styles.sectionHeader}>
               <MaterialCommunityIcons name="clock-check-outline" size={18} color={colors.primary} />
@@ -873,8 +913,8 @@ export function DashboardScreen({ navigation }: Props) {
           <Feather name="chevron-right" size={16} color={colors.onSurfaceVariant} />
         </TouchableOpacity>
 
-        {/* Recent Results - shown AFTER engagement content when no live/upcoming */}
-        {!hasLiveOrUpcoming && recentGames.length > 0 && (
+        {/* Recent Results - shown AFTER engagement content when no live/upcoming (F1 handled above) */}
+        {!isF1 && !hasLiveOrUpcoming && recentGames.length > 0 && (
           <View style={styles.sectionWrap}>
             <View style={styles.sectionHeader}>
               <MaterialCommunityIcons name="clock-check-outline" size={18} color={colors.primary} />
