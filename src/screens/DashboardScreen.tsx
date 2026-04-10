@@ -219,13 +219,16 @@ export function DashboardScreen({ navigation }: Props) {
 
   const handleMatchPress = useCallback((game: any) => {
     trackAction();
-    if (activeSport === 'formula-1') {
+    const isFinished = ['FT', 'AET', 'AP', 'Cancelled', 'Completed', 'Ended', 'Abandoned'].includes(game.status);
+    if (activeSport === 'formula-1' && !isFinished) {
+      // Upcoming/live F1 race → prediction screen
       navigation.navigate('F1RacePrediction', {
         raceApiId: game.apiId,
         competitionName: game.competitionName || game.leagueName,
         circuitName: game.circuit?.name || game.circuitName,
       });
     } else {
+      // Finished F1 race or any other sport → match detail (results, fastest lap, etc.)
       navigation.navigate('MatchPrediction', { fixtureApiId: game.apiId, sport: activeSport });
     }
   }, [activeSport, navigation, trackAction]);
@@ -611,12 +614,21 @@ export function DashboardScreen({ navigation }: Props) {
                       {game.circuit?.name || game.circuitName || ''}{(game.circuit?.country || game.country) ? ` — ${game.circuit?.country || game.country}` : ''}
                     </Text>
                   </View>
-                  <View style={styles.f1StatusBadge}>
-                    <Text style={styles.f1StatusText}>{game.type || 'Race'}</Text>
+                  <View style={[styles.f1StatusBadge, game.status === 'Cancelled' && styles.f1CancelledBadge]}>
+                    <Text style={[styles.f1StatusText, game.status === 'Cancelled' && styles.f1CancelledText]}>
+                      {game.status === 'Cancelled' ? t('dashboard.cancelled') : (game.type || 'Race')}
+                    </Text>
                   </View>
                 </View>
+                {/* Cancelled notice */}
+                {game.status === 'Cancelled' && (
+                  <View style={styles.f1CancelledNotice}>
+                    <Ionicons name="warning-outline" size={14} color="#FF6B6B" />
+                    <Text style={styles.f1CancelledNoticeText}>{t('dashboard.raceCancelled')}</Text>
+                  </View>
+                )}
                 {/* Winner row */}
-                {game.results?.[0] && (
+                {game.status !== 'Cancelled' && game.results?.[0] && (
                   <View style={styles.f1WinnerRow}>
                     {game.results[0].driverImage ? (
                       <ExpoImage source={{ uri: game.results[0].driverImage }} style={styles.f1WinnerDriverImg} contentFit="cover" cachePolicy="memory-disk" />
@@ -1853,6 +1865,30 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: colors.primary,
     letterSpacing: 0.5,
+  },
+  f1CancelledBadge: {
+    backgroundColor: 'rgba(239,68,68,0.15)',
+  },
+  f1CancelledText: {
+    color: '#FF6B6B',
+  },
+  f1CancelledNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(239,68,68,0.08)',
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#EF4444',
+  },
+  f1CancelledNoticeText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 12,
+    color: '#FCA5A5',
+    flex: 1,
   },
   f1UpcomingCard: { gap: 6 },
   f1SeasonBar: {

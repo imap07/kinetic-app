@@ -78,6 +78,8 @@
     "recentRaces": "CARRERAS RECIENTES",
     "f1Season": "TEMPORADA {{year}}",
     "nextGrandPrix": "PRÓXIMO GRAN PREMIO",
+    "cancelled": "CANCELADO",
+    "raceCancelled": "Esta carrera fue cancelada por la FIA.",
     "championshipStandings": "CLASIFICACIÓN DEL CAMPEONATO",
     "viewFullStandings": "Ver clasificación completa",
     "showLess": "Ver menos",
