@@ -16,7 +16,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import * as SecureStore from 'expo-secure-store';
 import { colors, spacing, borderRadius } from '../theme';
 import { ModalCloseButton } from '../components';
 import { legalApi, authApi } from '../api';
@@ -139,9 +138,11 @@ export function SecurityPrivacyScreen() {
   const handleBiometricToggle = useCallback(
     async (value: boolean) => {
       if (value) {
-        // Enable: requires biometric verification
+        // Enable: read tokens from AuthContext (the only source of truth) so
+        // we always use the freshest pair after a refresh round-trip. Reading
+        // SecureStore directly here was racy with the single-flight refresher.
         const email = user?.email ?? '';
-        const refreshToken = await SecureStore.getItemAsync('kinetic_refresh_token');
+        const refreshToken = tokens?.refreshToken;
         if (!email || !refreshToken) {
           Alert.alert(t('common.error'), t('security.biometricEnableError'));
           return;
@@ -157,14 +158,14 @@ export function SecurityPrivacyScreen() {
         setBiometricEnabled(false);
       }
     },
-    [user?.email],
+    [user?.email, tokens?.refreshToken],
   );
 
   const fetchSessions = useCallback(async () => {
     try {
       setSessionsLoading(true);
-      const accessToken = await SecureStore.getItemAsync('kinetic_access_token');
-      const refreshToken = await SecureStore.getItemAsync('kinetic_refresh_token');
+      const accessToken = tokens?.accessToken;
+      const refreshToken = tokens?.refreshToken;
       if (!accessToken) return;
       const res = await authApi.getSessions(accessToken, refreshToken || undefined);
       setSessions(res.sessions);
@@ -173,7 +174,7 @@ export function SecurityPrivacyScreen() {
     } finally {
       setSessionsLoading(false);
     }
-  }, []);
+  }, [tokens?.accessToken, tokens?.refreshToken]);
 
   useEffect(() => {
     fetchSessions();
@@ -191,7 +192,7 @@ export function SecurityPrivacyScreen() {
           onPress: async () => {
             try {
               setRevokingId(sessionId);
-              const accessToken = await SecureStore.getItemAsync('kinetic_access_token');
+              const accessToken = tokens?.accessToken;
               if (!accessToken) return;
               await authApi.deleteSession(accessToken, sessionId);
               setSessions((prev) => prev.filter((s) => s.id !== sessionId));
@@ -204,7 +205,7 @@ export function SecurityPrivacyScreen() {
         },
       ],
     );
-  }, []);
+  }, [tokens?.accessToken]);
 
   const formatLastActive = (dateStr: string) => {
     const date = new Date(dateStr);

@@ -32,7 +32,10 @@ export function GiftcardRedeemScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { tokens } = useAuth();
-  const { available, balance, refreshBalance } = useCoins();
+  // We only need `available` (= balance - locked) for redemption gating and
+  // display. `balance` would include coins that are locked in active leagues
+  // and would let the user think they can spend more than they actually can.
+  const { available, refreshBalance } = useCoins();
   const { t } = useTranslation();
 
   const [tab, setTab] = useState<TabFilter>('catalog');

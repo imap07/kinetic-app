@@ -12,7 +12,6 @@ export interface FootballLeague {
   countryCode?: string;
   countryFlag?: string;
   region: string;
-  tier: 'free' | 'premium';
   priority: number;
   isFeatured: boolean;
   seeded: boolean;
@@ -43,11 +42,10 @@ export const REGION_ORDER = ['latam', 'north-america', 'europe', 'world', 'asia'
 // ─── API ───────────────────────────────────────────────────
 
 export const footballLeaguesApi = {
-  /** Get all football leagues, optionally filtered by region/tier */
-  getGlobalLeagues(token: string, region?: string, tier?: string) {
+  /** Get all football leagues, optionally filtered by region. */
+  getGlobalLeagues(token: string, region?: string) {
     const params = new URLSearchParams();
     if (region) params.set('region', region);
-    if (tier) params.set('tier', tier);
     const qs = params.toString();
     return apiClient.get<GlobalLeaguesResponse>(
       `/football/leagues/global${qs ? `?${qs}` : ''}`,

@@ -54,7 +54,6 @@ export interface SportLeague {
   season?: string | number;
   isFeatured?: boolean;
   isActive?: boolean;
-  tier?: 'free' | 'premium';
 }
 
 export interface SportGame {
@@ -249,7 +248,6 @@ export interface SearchTeamResult {
   logo?: string;
   countryName?: string;
   leagueApiId?: number;
-  leagueTier?: 'free' | 'premium';
 }
 
 export interface SearchLeagueResult {
@@ -259,7 +257,6 @@ export interface SearchLeagueResult {
   countryName?: string;
   countryFlag?: string;
   type?: string;
-  tier?: 'free' | 'premium';
   region?: string;
 }
 
@@ -270,7 +267,6 @@ export interface SearchMatchResult {
   leagueApiId: number;
   leagueName: string;
   leagueLogo?: string;
-  leagueTier?: 'free' | 'premium';
   homeTeam: { apiId: number; name: string; logo?: string };
   awayTeam: { apiId: number; name: string; logo?: string };
 }

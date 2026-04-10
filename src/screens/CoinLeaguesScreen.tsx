@@ -39,7 +39,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { leaguesApi } from '../api/leagues';
 import type { CoinLeague, CreateLeagueDto } from '../api/leagues';
 import { SPORT_TABS } from '../api/sports';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AdBanner } from '../components/AdBanner';
 import { RewardedAdButton } from '../components/RewardedAdButton';
 
@@ -49,7 +48,10 @@ export function CoinLeaguesScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { tokens, user } = useAuth();
-  const { balance, available, refreshBalance } = useCoins();
+  // `available` excludes coins already locked in other open leagues, which is
+  // the only number that can correctly gate join/create. `balance` would be
+  // misleading because it includes locked entry fees the user can't spend.
+  const { available, refreshBalance } = useCoins();
   const { t } = useTranslation();
 
   const [tab, setTab] = useState<TabFilter>('open');

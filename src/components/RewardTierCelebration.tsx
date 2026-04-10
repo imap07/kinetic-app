@@ -5,13 +5,10 @@ import {
   StyleSheet,
   TouchableOpacity,
   Animated,
-  Dimensions,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRewards } from '../contexts/RewardsContext';
-
-const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
 interface TierInfo {
   icon: string;

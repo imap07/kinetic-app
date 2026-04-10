@@ -19,20 +19,20 @@ import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image as ExpoImage } from 'expo-image';
 import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
-import { colors, spacing } from '../theme';
+import { colors } from '../theme';
 import { HomeStackParamList, RootStackParamList } from '../navigation/types';
 import { AppHeader } from '../components/AppHeader';
 import { ProUpgradeBanner, SportTabs, ModalCloseButton } from '../components';
 import { useAuth } from '../contexts/AuthContext';
 import { useAchievements } from '../contexts/AchievementContext';
-import { sportsApi, SPORT_TABS, FREE_SPORT, RECENT_GAMES_LIMIT } from '../api/sports';
+import { sportsApi, SPORT_TABS, RECENT_GAMES_LIMIT } from '../api/sports';
 import type { SportKey, SportDashboard, SportGame } from '../api/sports';
 import { predictionsApi, fetchPickedGameIds } from '../api/predictions';
 import type { DailyStatusResponse, MyStatsResponse } from '../api/predictions';
 import Toast from 'react-native-toast-message';
 import { useLiveGames } from '../contexts/LiveGamesContext';
 import { useStatsSSE, AchievementSSEData } from '../hooks/useStatsSSE';
-import { logSportTabViewed, logLeagueDetailOpened, logPickAttempted } from '../services/analytics';
+import { logSportTabViewed } from '../services/analytics';
 import { AdBanner } from '../components/AdBanner';
 import { RewardedAdButton } from '../components/RewardedAdButton';
 import { useAds } from '../contexts/AdContext';
@@ -862,16 +862,13 @@ export function DashboardScreen({ navigation }: Props) {
               <View style={{ flex: 1 }}>
                 <Text style={styles.predictorTitle}>{t('dashboard.yourStats')}</Text>
                 <Text style={styles.predictorSubtitle}>
-                  {t('dashboard.freeTier')} {'\u2022'}{' '}
                   <Text style={styles.predictorPts}>{userStats.totalPoints.toLocaleString()} PTS</Text>
                 </Text>
               </View>
 
-              {/* Daily picks circular indicator */}
+              {/* Today's picks counter (informational only — there is no daily limit) */}
               <View style={styles.dailyRing}>
-                <Text style={styles.dailyRingValue}>
-                  {dailyStatus.used}<Text style={styles.dailyRingLimit}>/{dailyStatus.limit > 0 ? dailyStatus.limit : '∞'}</Text>
-                </Text>
+                <Text style={styles.dailyRingValue}>{dailyStatus.picksToday}</Text>
                 <Text style={styles.dailyRingLabel}>TODAY</Text>
               </View>
             </View>
@@ -902,14 +899,29 @@ export function DashboardScreen({ navigation }: Props) {
               </View>
             </View>
 
-            {/* Bottom row: quests link */}
+            {/* Bottom row: quest progress (replaces the old free-tier ring fill) */}
             <View style={styles.goalLabelRow}>
               <View style={styles.progressTrack}>
                 <LinearGradient
                   colors={[colors.primaryContainer, colors.primary]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
-                  style={[styles.progressFill, { width: `${dailyStatus.limit > 0 ? Math.min((dailyStatus.used / dailyStatus.limit) * 100, 100) : 0}%` }]}
+                  style={[
+                    styles.progressFill,
+                    {
+                      width: `${
+                        dailyStatus.quests
+                          ? ([
+                              dailyStatus.quests.pick3.completed,
+                              dailyStatus.quests.multiSport.completed,
+                              dailyStatus.quests.bonusReward.completed,
+                            ].filter(Boolean).length /
+                              3) *
+                            100
+                          : 0
+                      }%`,
+                    },
+                  ]}
                 />
               </View>
               <TouchableOpacity onPress={() => navigation.navigate('Quests')} hitSlop={8}>
@@ -1628,11 +1640,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 22,
     color: '#FFFFFF',
-  },
-  dailyRingLimit: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 12,
-    color: colors.onSurfaceVariant,
   },
   dailyRingLabel: {
     fontFamily: 'Inter_600SemiBold',

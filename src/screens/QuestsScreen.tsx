@@ -129,15 +129,14 @@ export function QuestsScreen({ navigation }: Props) {
           <Text style={styles.bannerDesc}>{t('quests.completeAll')}</Text>
         </View>
 
-        {/* Daily Status */}
+        {/* Daily Status — informational counter only, the app has no daily limit */}
         {loading ? (
           <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 24 }} />
         ) : dailyStatus ? (
           <View style={styles.statusCard}>
             <Text style={styles.statusLabel}>{t('quests.todaysPicks')}</Text>
-            <Text style={styles.statusValue}>
-              {dailyStatus.used} / {dailyStatus.limit > 0 ? dailyStatus.limit : '∞'}
-            </Text>
+            <Text style={styles.statusValue}>{dailyStatus.picksToday}</Text>
+            {/* Quest completion progress bar (replaces the old free-tier fraction bar) */}
             <View style={styles.progressTrack}>
               <LinearGradient
                 colors={[colors.primaryContainer, colors.primary]}
@@ -145,7 +144,19 @@ export function QuestsScreen({ navigation }: Props) {
                 end={{ x: 1, y: 1 }}
                 style={[
                   styles.progressFill,
-                  { width: `${dailyStatus.limit > 0 ? Math.min((dailyStatus.used / dailyStatus.limit) * 100, 100) : 0}%` },
+                  {
+                    width: `${
+                      quests
+                        ? ([
+                            quests.pick3.completed,
+                            quests.multiSport.completed,
+                            quests.bonusReward.completed,
+                          ].filter(Boolean).length /
+                            3) *
+                          100
+                        : 0
+                    }%`,
+                  },
                 ]}
               />
             </View>

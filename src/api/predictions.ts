@@ -79,10 +79,16 @@ export interface QuestProgress {
   bonusReward: { completed: boolean };
 }
 
+/**
+ * Today's activity summary.
+ *
+ * `picksToday` is informational only — there is NO daily limit. The app is
+ * open and Pro subscriptions only remove ads + grant monthly bonus coins.
+ * Anything that consumes this should display "X picks today" (or the quest
+ * progress) but must NEVER use it as a gate.
+ */
 export interface DailyStatusResponse {
-  used: number;
-  limit: number;
-  isPremium: boolean;
+  picksToday: number;
   quests?: QuestProgress;
 }
 

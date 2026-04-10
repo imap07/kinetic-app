@@ -39,7 +39,6 @@ interface UnifiedLeague {
   logo: string;
   countryName: string;
   countryFlag?: string;
-  tier?: 'free' | 'premium';
   isFeatured: boolean;
   priority: number;
   region?: string;
@@ -53,7 +52,6 @@ function toUnified(league: FootballLeague): UnifiedLeague {
     logo: league.logo,
     countryName: league.countryName,
     countryFlag: league.countryFlag,
-    tier: league.tier,
     isFeatured: league.isFeatured,
     priority: league.priority ?? 99,
     region: league.region,
@@ -68,7 +66,6 @@ function sportLeagueToUnified(league: SportLeague, sport: string): UnifiedLeague
     logo: league.logo,
     countryName: league.countryName || '',
     countryFlag: league.countryFlag,
-    tier: league.tier,
     isFeatured: league.isFeatured ?? true,
     priority: 99,
     sport,

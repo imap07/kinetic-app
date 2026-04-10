@@ -19,12 +19,8 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, borderRadius } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
-import { footballApi, sportsApi, predictionsApi, SPORT_TABS } from '../api';
-import { FREE_SPORT } from '../api/sports';
-
-// Must match backend FREE_TIER_LEAGUES
-const FREE_LEAGUE_IDS = [39, 140, 262, 253]; // Premier, La Liga, Liga MX, MLS
-import type { Fixture, FixtureEvent, FixtureStatistic, TeamLineup, LineupPlayer, SportGame, PredictionData, DailyStatusResponse } from '../api';
+import { footballApi, sportsApi, predictionsApi } from '../api';
+import type { Fixture, FixtureEvent, FixtureStatistic, SportGame, PredictionData } from '../api';
 import Toast from 'react-native-toast-message';
 import { logPickAttempted, logPickCompleted } from '../services/analytics';
 import { FootballPitch } from '../components/FootballPitch';
@@ -333,7 +329,6 @@ export function MatchPredictionScreen({ navigation }: Props) {
   const [homeScoreInput, setHomeScoreInput] = useState('');
   const [awayScoreInput, setAwayScoreInput] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [dailyStatus, setDailyStatus] = useState<DailyStatusResponse | null>(null);
 
   const [h2hFixtures, setH2hFixtures] = useState<Fixture[]>([]);
   const [h2hLoading, setH2hLoading] = useState(false);
@@ -358,6 +353,10 @@ export function MatchPredictionScreen({ navigation }: Props) {
   const [f1DriverModal, setF1DriverModal] = useState<any>(null);
   const [f1DriverLoading, setF1DriverLoading] = useState(false);
 
+  // Football player profile modal
+  const [playerModal, setPlayerModal] = useState<any>(null);
+  const [playerModalLoading, setPlayerModalLoading] = useState(false);
+
   const openDriverProfile = useCallback(async (driverApiId: number) => {
     if (!driverApiId || !tokens?.accessToken) return;
     setF1DriverLoading(true);
@@ -369,6 +368,20 @@ export function MatchPredictionScreen({ navigation }: Props) {
       console.warn('Failed to load driver profile', err);
     } finally {
       setF1DriverLoading(false);
+    }
+  }, [tokens?.accessToken]);
+
+  const openPlayerProfile = useCallback(async (playerApiId: number) => {
+    if (!playerApiId || !tokens?.accessToken) return;
+    setPlayerModalLoading(true);
+    setPlayerModal(null);
+    try {
+      const data = await footballApi.getPlayerProfile(tokens.accessToken, playerApiId);
+      if (data) setPlayerModal(data);
+    } catch (err) {
+      console.warn('Failed to load player profile', err);
+    } finally {
+      setPlayerModalLoading(false);
     }
   }, [tokens?.accessToken]);
 
@@ -387,13 +400,15 @@ export function MatchPredictionScreen({ navigation }: Props) {
         setGenericGame(game);
       }
 
-      const [predResult, statusResult] = await Promise.all([
-        predictionsApi.getPredictionForGame(sport, fixtureApiId, tokens.accessToken),
-        predictionsApi.getDailyStatus(tokens.accessToken),
-      ]);
+      // Note: we intentionally do NOT fetch /daily-status here. There is no
+      // daily pick limit and this screen has no quest UI to feed. The Dashboard
+      // and Quests screens own that data and refresh themselves via SSE.
+      const { prediction } = await predictionsApi.getPredictionForGame(
+        sport,
+        fixtureApiId,
+        tokens.accessToken,
+      );
 
-      setDailyStatus(statusResult);
-      const { prediction } = predResult;
       if (prediction) {
         setExistingPrediction(prediction);
         setSelectedOutcome(prediction.predictedOutcome);
@@ -502,7 +517,6 @@ export function MatchPredictionScreen({ navigation }: Props) {
 
   const isFinished = FINISHED_STATUSES.includes(gameStatus);
   const isLive = LIVE_STATUSES.includes(gameStatus);
-  const canPredict = !isFinished && !isLive && !existingPrediction;
 
   const statusDisplay = getStatusDisplay(gameStatus, t, statusLong, fixture?.elapsed, fixture?.date || genericGame?.date);
 
@@ -537,7 +551,6 @@ export function MatchPredictionScreen({ navigation }: Props) {
 
       const result = await predictionsApi.create(payload, tokens.accessToken);
       setExistingPrediction(result);
-      setDailyStatus((prev) => prev ? { ...prev, used: prev.used + 1 } : prev);
       logPickCompleted(sport, leagueApiId ?? 0, predType);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       trackAction();
@@ -1265,7 +1278,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
                 { key: 'events' as const, label: t('matchPrediction.matchEvents'), show: events.length > 0 },
                 { key: 'statistics' as const, label: t('matchPrediction.matchStatistics'), show: stats.length >= 2 },
                 { key: 'lineups' as const, label: t('matchPrediction.lineups'), show: lineups.length >= 2 },
-                { key: 'h2h' as const, label: 'H2H', show: true },
+                { key: 'h2h' as const, label: t('matchPrediction.h2hTab'), show: true },
               ]).filter(tab => tab.show).map((tab) => (
                 <TouchableOpacity
                   key={tab.key}
@@ -1422,7 +1435,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
               <View style={styles.card}>
                 {/* Football Pitch Visualization */}
                 {lineups[0]?.startXI?.some(p => p.grid) && (
-                  <FootballPitch homeLineup={lineups[0]} awayLineup={lineups[1]} />
+                  <FootballPitch homeLineup={lineups[0]} awayLineup={lineups[1]} onPlayerPress={openPlayerProfile} />
                 )}
 
                 {/* Coaches */}
@@ -1430,7 +1443,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
                   <View style={styles.coachRow}>
                     <View style={styles.coachSide}>
                       {lineups[0]?.coachPhoto ? (
-                        <Image source={{ uri: lineups[0].coachPhoto }} style={styles.coachPhoto} />
+                        <ExpoImage source={{ uri: lineups[0].coachPhoto }} style={styles.coachPhoto} contentFit="cover" cachePolicy="memory-disk" />
                       ) : (
                         <View style={styles.coachPhotoFallback}>
                           <Ionicons name="person" size={12} color={colors.onSurfaceVariant} />
@@ -1442,7 +1455,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
                     <View style={[styles.coachSide, { justifyContent: 'flex-end' }]}>
                       <Text style={styles.coachName} numberOfLines={1}>{lineups[1]?.coachName || '—'}</Text>
                       {lineups[1]?.coachPhoto ? (
-                        <Image source={{ uri: lineups[1].coachPhoto }} style={styles.coachPhoto} />
+                        <ExpoImage source={{ uri: lineups[1].coachPhoto }} style={styles.coachPhoto} contentFit="cover" cachePolicy="memory-disk" />
                       ) : (
                         <View style={styles.coachPhotoFallback}>
                           <Ionicons name="person" size={12} color={colors.onSurfaceVariant} />
@@ -1457,39 +1470,43 @@ export function MatchPredictionScreen({ navigation }: Props) {
                 <View style={styles.lineupColumns}>
                   <View style={styles.lineupCol}>
                     {lineups[0]?.startXI.map((p, i) => (
-                      <View key={p.apiId || i} style={styles.playerRow}>
-                        {p.photo ? (
-                          <Image source={{ uri: p.photo }} style={styles.playerPhoto} />
-                        ) : (
-                          <View style={styles.playerPhotoFallback}>
-                            <Text style={styles.playerNumberFallback}>{p.number}</Text>
-                          </View>
-                        )}
+                      <TouchableOpacity key={p.apiId || i} style={styles.playerRow} activeOpacity={0.6} onPress={() => p.apiId && openPlayerProfile(p.apiId)}>
+                        <View style={styles.playerPhotoRing}>
+                          {p.photo ? (
+                            <ExpoImage source={{ uri: p.photo }} style={styles.playerPhoto} contentFit="cover" cachePolicy="memory-disk" />
+                          ) : (
+                            <View style={styles.playerPhotoFallback}>
+                              <Ionicons name="person" size={14} color={colors.onSurfaceDim} />
+                            </View>
+                          )}
+                        </View>
                         <View style={{ flex: 1 }}>
                           <Text style={styles.playerName} numberOfLines={1}>{p.name}</Text>
                           <Text style={styles.playerPos}>{p.pos === 'G' ? 'GK' : p.pos === 'D' ? 'DEF' : p.pos === 'M' ? 'MID' : 'FWD'}</Text>
                         </View>
-                        <Text style={styles.playerNumber}>{p.number}</Text>
-                      </View>
+                        <Ionicons name="chevron-forward" size={12} color={colors.onSurfaceDim} />
+                      </TouchableOpacity>
                     ))}
                   </View>
                   <View style={styles.lineupDivider} />
                   <View style={styles.lineupCol}>
                     {lineups[1]?.startXI.map((p, i) => (
-                      <View key={p.apiId || i} style={styles.playerRow}>
-                        {p.photo ? (
-                          <Image source={{ uri: p.photo }} style={styles.playerPhoto} />
-                        ) : (
-                          <View style={styles.playerPhotoFallback}>
-                            <Text style={styles.playerNumberFallback}>{p.number}</Text>
-                          </View>
-                        )}
+                      <TouchableOpacity key={p.apiId || i} style={styles.playerRow} activeOpacity={0.6} onPress={() => p.apiId && openPlayerProfile(p.apiId)}>
+                        <View style={styles.playerPhotoRing}>
+                          {p.photo ? (
+                            <ExpoImage source={{ uri: p.photo }} style={styles.playerPhoto} contentFit="cover" cachePolicy="memory-disk" />
+                          ) : (
+                            <View style={styles.playerPhotoFallback}>
+                              <Ionicons name="person" size={14} color={colors.onSurfaceDim} />
+                            </View>
+                          )}
+                        </View>
                         <View style={{ flex: 1 }}>
                           <Text style={styles.playerName} numberOfLines={1}>{p.name}</Text>
                           <Text style={styles.playerPos}>{p.pos === 'G' ? 'GK' : p.pos === 'D' ? 'DEF' : p.pos === 'M' ? 'MID' : 'FWD'}</Text>
                         </View>
-                        <Text style={styles.playerNumber}>{p.number}</Text>
-                      </View>
+                        <Ionicons name="chevron-forward" size={12} color={colors.onSurfaceDim} />
+                      </TouchableOpacity>
                     ))}
                   </View>
                 </View>
@@ -1501,33 +1518,33 @@ export function MatchPredictionScreen({ navigation }: Props) {
                     <View style={styles.lineupColumns}>
                       <View style={styles.lineupCol}>
                         {lineups[0]?.substitutes.map((p, i) => (
-                          <View key={p.apiId || i} style={styles.subRow}>
+                          <TouchableOpacity key={p.apiId || i} style={styles.subRow} activeOpacity={0.6} onPress={() => p.apiId && openPlayerProfile(p.apiId)}>
                             {p.photo ? (
-                              <Image source={{ uri: p.photo }} style={styles.subPhoto} />
+                              <ExpoImage source={{ uri: p.photo }} style={styles.subPhoto} contentFit="cover" cachePolicy="memory-disk" />
                             ) : (
                               <View style={styles.subPhotoFallback}>
-                                <Text style={styles.subNumberFallback}>{p.number}</Text>
+                                <Ionicons name="person" size={10} color={colors.onSurfaceDim} />
                               </View>
                             )}
                             <Text style={styles.subName} numberOfLines={1}>{p.name}</Text>
                             <Text style={styles.subNumber}>{p.number}</Text>
-                          </View>
+                          </TouchableOpacity>
                         ))}
                       </View>
                       <View style={styles.lineupDivider} />
                       <View style={styles.lineupCol}>
                         {lineups[1]?.substitutes.map((p, i) => (
-                          <View key={p.apiId || i} style={styles.subRow}>
+                          <TouchableOpacity key={p.apiId || i} style={styles.subRow} activeOpacity={0.6} onPress={() => p.apiId && openPlayerProfile(p.apiId)}>
                             {p.photo ? (
-                              <Image source={{ uri: p.photo }} style={styles.subPhoto} />
+                              <ExpoImage source={{ uri: p.photo }} style={styles.subPhoto} contentFit="cover" cachePolicy="memory-disk" />
                             ) : (
                               <View style={styles.subPhotoFallback}>
-                                <Text style={styles.subNumberFallback}>{p.number}</Text>
+                                <Ionicons name="person" size={10} color={colors.onSurfaceDim} />
                               </View>
                             )}
                             <Text style={styles.subName} numberOfLines={1}>{p.name}</Text>
                             <Text style={styles.subNumber}>{p.number}</Text>
-                          </View>
+                          </TouchableOpacity>
                         ))}
                       </View>
                     </View>
@@ -1586,18 +1603,30 @@ export function MatchPredictionScreen({ navigation }: Props) {
                       );
                     })()}
                     {h2hFixtures.slice(0, 5).map((f, idx) => {
-                      const currentHomeId = fixture?.homeTeam?.apiId;
-                      const isCurrentHomeWin =
-                        (f.homeTeam.apiId === currentHomeId && f.homeGoals > f.awayGoals) ||
-                        (f.awayTeam.apiId === currentHomeId && f.awayGoals > f.homeGoals);
                       const isDraw = f.homeGoals === f.awayGoals;
+                      const homeWon = f.homeGoals > f.awayGoals;
+                      const awayWon = f.awayGoals > f.homeGoals;
+                      // Home team result
+                      const homeResult = isDraw ? 'D' : homeWon ? 'W' : 'L';
+                      const awayResult = isDraw ? 'D' : awayWon ? 'W' : 'L';
+                      const resultStyle = (r: string) => [
+                        styles.h2hResultDot,
+                        r === 'W' ? styles.h2hResultWin : r === 'L' ? styles.h2hResultLoss : styles.h2hResultDraw,
+                      ];
+                      const resultTextStyle = (r: string) => [
+                        styles.h2hResultDotText,
+                        r === 'W' ? styles.h2hResultDotTextWin : r === 'L' ? styles.h2hResultDotTextLoss : styles.h2hResultDotTextDraw,
+                      ];
                       return (
                         <View key={f.apiId || idx} style={styles.h2hRow}>
                           <Text style={styles.h2hDate}>
                             {new Date(f.date).toLocaleDateString([], { month: 'short', year: 'numeric' })}
                           </Text>
+                          <View style={resultStyle(homeResult)}>
+                            <Text style={resultTextStyle(homeResult)}>{homeResult}</Text>
+                          </View>
                           <View style={styles.h2hTeamCell}>
-                            <Text style={[styles.h2hTeam, { textAlign: 'right' }, !isDraw && f.homeGoals > f.awayGoals ? { color: '#A3FF00', fontFamily: 'Inter_700Bold' } : {}]} numberOfLines={1}>
+                            <Text style={[styles.h2hTeam, { textAlign: 'right' }, homeWon ? { color: '#A3FF00', fontFamily: 'Inter_700Bold' } : {}]} numberOfLines={1}>
                               {f.homeTeam.name}
                             </Text>
                             {f.homeTeam.logo ? (
@@ -1611,26 +1640,12 @@ export function MatchPredictionScreen({ navigation }: Props) {
                             {f.awayTeam.logo ? (
                               <Image source={{ uri: f.awayTeam.logo }} style={styles.h2hTeamLogo} resizeMode="contain" />
                             ) : null}
-                            <Text style={[styles.h2hTeam, { textAlign: 'left' }, !isDraw && f.awayGoals > f.homeGoals ? { color: '#A3FF00', fontFamily: 'Inter_700Bold' } : {}]} numberOfLines={1}>
+                            <Text style={[styles.h2hTeam, { textAlign: 'left' }, awayWon ? { color: '#A3FF00', fontFamily: 'Inter_700Bold' } : {}]} numberOfLines={1}>
                               {f.awayTeam.name}
                             </Text>
                           </View>
-                          <View
-                            style={[
-                              styles.h2hResultDot,
-                              isDraw
-                                ? styles.h2hResultDraw
-                                : isCurrentHomeWin
-                                  ? styles.h2hResultWin
-                                  : styles.h2hResultLoss,
-                            ]}
-                          >
-                            <Text style={[
-                              styles.h2hResultDotText,
-                              isDraw ? styles.h2hResultDotTextDraw : isCurrentHomeWin ? styles.h2hResultDotTextWin : styles.h2hResultDotTextLoss,
-                            ]}>
-                              {isDraw ? 'D' : isCurrentHomeWin ? 'W' : 'L'}
-                            </Text>
+                          <View style={resultStyle(awayResult)}>
+                            <Text style={resultTextStyle(awayResult)}>{awayResult}</Text>
                           </View>
                         </View>
                       );
@@ -1692,6 +1707,126 @@ export function MatchPredictionScreen({ navigation }: Props) {
           </TouchableOpacity>
         </Modal>
       ) : null}
+
+      {/* Football Player Profile Modal */}
+      {(playerModal || playerModalLoading) && (
+        <Modal visible transparent animationType="fade" onRequestClose={() => setPlayerModal(null)}>
+          <TouchableOpacity style={styles.playerModalOverlay} activeOpacity={1} onPress={() => setPlayerModal(null)}>
+            <View style={styles.playerModalCard}>
+              {playerModalLoading ? (
+                <ActivityIndicator size="large" color={colors.primary} style={{ padding: 40 }} />
+              ) : playerModal ? (
+                <>
+                  {/* Header */}
+                  <View style={styles.playerModalHeader}>
+                    {playerModal.photo ? (
+                      <ExpoImage source={{ uri: playerModal.photo }} style={styles.playerModalImg} contentFit="cover" cachePolicy="memory-disk" />
+                    ) : (
+                      <View style={[styles.playerModalImg, { alignItems: 'center', justifyContent: 'center' }]}>
+                        <Ionicons name="person" size={48} color={colors.onSurfaceDim} />
+                      </View>
+                    )}
+                    {playerModal.number ? (
+                      <Text style={styles.playerModalNumber}>#{playerModal.number}</Text>
+                    ) : null}
+                    <Text style={styles.playerModalName}>
+                      {playerModal.firstname && playerModal.lastname
+                        ? `${playerModal.firstname} ${playerModal.lastname}`
+                        : playerModal.name}
+                    </Text>
+                    <View style={styles.playerModalMeta}>
+                      {playerModal.teamLogo ? (
+                        <ExpoImage source={{ uri: playerModal.teamLogo }} style={{ width: 18, height: 18 }} contentFit="contain" cachePolicy="memory-disk" />
+                      ) : null}
+                      <Text style={styles.playerModalTeam}>{playerModal.teamName}</Text>
+                    </View>
+                    <View style={styles.playerModalTags}>
+                      {playerModal.position ? (
+                        <View style={styles.playerModalTag}>
+                          <Text style={styles.playerModalTagText}>{playerModal.position}</Text>
+                        </View>
+                      ) : null}
+                      {playerModal.nationality ? (
+                        <View style={styles.playerModalTag}>
+                          <Ionicons name="flag-outline" size={10} color={colors.primary} />
+                          <Text style={styles.playerModalTagText}>{playerModal.nationality}</Text>
+                        </View>
+                      ) : null}
+                      {playerModal.age ? (
+                        <View style={styles.playerModalTag}>
+                          <Text style={styles.playerModalTagText}>{playerModal.age} yrs</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                    {(playerModal.height || playerModal.weight) ? (
+                      <Text style={styles.playerModalPhysical}>
+                        {[playerModal.height, playerModal.weight].filter(Boolean).join('  ·  ')}
+                      </Text>
+                    ) : null}
+                  </View>
+
+                  {/* Season Stats */}
+                  {playerModal.stats ? (
+                    <>
+                      <View style={styles.playerModalStatsHeader}>
+                        {playerModal.stats.leagueLogo ? (
+                          <ExpoImage source={{ uri: playerModal.stats.leagueLogo }} style={{ width: 16, height: 16 }} contentFit="contain" cachePolicy="memory-disk" />
+                        ) : null}
+                        <Text style={styles.playerModalStatsTitle}>
+                          {playerModal.stats.league ? `${playerModal.stats.season}/${playerModal.stats.season + 1} · ${playerModal.stats.league}` : `Season Stats`}
+                        </Text>
+                      </View>
+                      <View style={styles.playerModalStatsGrid}>
+                        {[
+                          { label: t('matchPrediction.playerApps') || 'Apps', value: playerModal.stats.appearances, icon: 'shirt-outline' },
+                          { label: t('matchPrediction.playerGoals') || 'Goals', value: playerModal.stats.goals, icon: 'football-outline' },
+                          { label: t('matchPrediction.playerAssists') || 'Assists', value: playerModal.stats.assists, icon: 'hand-left-outline' },
+                          { label: t('matchPrediction.playerRating') || 'Rating', value: playerModal.stats.rating || '—', icon: 'star-outline' },
+                          { label: t('matchPrediction.playerYellow') || 'Yellow', value: playerModal.stats.yellowCards, icon: 'square' },
+                          { label: t('matchPrediction.playerRed') || 'Red', value: playerModal.stats.redCards, icon: 'square' },
+                        ].map((stat, i) => (
+                          <View key={i} style={styles.playerModalStatItem}>
+                            <Ionicons
+                              name={stat.icon as any}
+                              size={16}
+                              color={stat.label === 'Yellow' ? '#FACC15' : stat.label === 'Red' ? '#EF4444' : colors.primary}
+                            />
+                            <Text style={styles.playerModalStatValue}>{stat.value}</Text>
+                            <Text style={styles.playerModalStatLabel}>{stat.label}</Text>
+                          </View>
+                        ))}
+                      </View>
+
+                      {/* Extra stats row */}
+                      <View style={styles.playerModalExtras}>
+                        {playerModal.stats.minutes > 0 ? (
+                          <Text style={styles.playerModalExtraText}>⏱ {playerModal.stats.minutes}'</Text>
+                        ) : null}
+                        {playerModal.stats.passAccuracy ? (
+                          <Text style={styles.playerModalExtraText}>Pass {playerModal.stats.passAccuracy}</Text>
+                        ) : null}
+                        {playerModal.stats.tackles > 0 ? (
+                          <Text style={styles.playerModalExtraText}>Tackles {playerModal.stats.tackles}</Text>
+                        ) : null}
+                        {playerModal.stats.saves > 0 ? (
+                          <Text style={styles.playerModalExtraText}>Saves {playerModal.stats.saves}</Text>
+                        ) : null}
+                      </View>
+                    </>
+                  ) : (
+                    <View style={{ padding: 20, alignItems: 'center' }}>
+                      <Text style={styles.playerModalExtraText}>{t('matchPrediction.noStatsYet')}</Text>
+                    </View>
+                  )}
+                </>
+              ) : null}
+              <TouchableOpacity style={styles.playerModalClose} onPress={() => setPlayerModal(null)}>
+                <Ionicons name="close-circle" size={32} color="rgba(255,255,255,0.6)" />
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+      )}
 
       {/* F1 Driver Profile Modal */}
       {(f1DriverModal || f1DriverLoading) && (
@@ -1863,16 +1998,16 @@ const styles = StyleSheet.create({
   // Tab bar
   tabBar: {
     flexDirection: 'row', marginHorizontal: 16, marginBottom: 16,
-    backgroundColor: 'rgba(30,32,36,0.8)', borderRadius: 10, padding: 4, gap: 4,
+    backgroundColor: 'rgba(30,32,36,0.8)', borderRadius: 12, padding: 4, gap: 4,
   },
   tabItem: {
-    flex: 1, paddingVertical: 10, paddingHorizontal: 6, alignItems: 'center', justifyContent: 'center',
+    flex: 1, paddingVertical: 10, paddingHorizontal: 8, alignItems: 'center', justifyContent: 'center',
     borderRadius: 8,
   },
   tabItemActive: { backgroundColor: '#A3FF00' },
   tabText: {
-    fontFamily: 'Inter_700Bold', fontSize: 10, color: 'rgba(255,255,255,0.5)',
-    letterSpacing: 0.6, textTransform: 'uppercase',
+    fontFamily: 'Inter_700Bold', fontSize: 11, color: 'rgba(255,255,255,0.5)',
+    letterSpacing: 0.5, textTransform: 'uppercase', textAlign: 'center',
   },
   tabTextActive: { color: '#0D0D0D' },
   halfSeparator: {
@@ -2155,13 +2290,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingVertical: 6, paddingHorizontal: 4, borderRadius: 4,
   },
-  playerPhoto: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.surfaceContainerHighest },
-  playerPhotoFallback: {
-    width: 32, height: 32, borderRadius: 16, backgroundColor: colors.surfaceContainerHighest,
+  playerPhotoRing: {
+    width: 36, height: 36, borderRadius: 18,
+    borderWidth: 1.5, borderColor: 'rgba(163,255,0,0.3)',
     alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.04)',
   },
-  playerNumberFallback: {
-    fontFamily: 'Inter_700Bold', fontSize: 11, color: colors.onSurfaceVariant,
+  playerPhoto: { width: 30, height: 30, borderRadius: 15 },
+  playerPhotoFallback: {
+    width: 30, height: 30, borderRadius: 15, backgroundColor: colors.surfaceContainerHighest,
+    alignItems: 'center', justifyContent: 'center',
   },
   playerName: { fontFamily: 'Inter_700Bold', fontSize: 11, color: colors.onSurface },
   playerPos: { fontFamily: 'Inter_500Medium', fontSize: 9, color: colors.onSurfaceVariant, letterSpacing: 0.5 },
@@ -2169,12 +2307,14 @@ const styles = StyleSheet.create({
   subRow: {
     flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4, paddingHorizontal: 4,
   },
-  subPhoto: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.surfaceContainerHighest },
+  subPhoto: {
+    width: 24, height: 24, borderRadius: 12, backgroundColor: colors.surfaceContainerHighest,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+  },
   subPhotoFallback: {
     width: 24, height: 24, borderRadius: 12, backgroundColor: colors.surfaceContainerHighest,
     alignItems: 'center', justifyContent: 'center',
   },
-  subNumberFallback: { fontFamily: 'Inter_700Bold', fontSize: 9, color: colors.onSurfaceVariant },
   subName: { flex: 1, fontFamily: 'Inter_500Medium', fontSize: 10, color: colors.onSurfaceDim },
   subNumber: { fontFamily: 'Inter_700Bold', fontSize: 10, color: colors.onSurfaceVariant, minWidth: 18, textAlign: 'right' },
 
@@ -2422,6 +2562,67 @@ const styles = StyleSheet.create({
     top: 8,
     right: 8,
   },
+  // Football player profile modal
+  playerModalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', padding: 24,
+  },
+  playerModalCard: {
+    width: '100%', maxWidth: 380, backgroundColor: colors.surface, borderRadius: 20, overflow: 'hidden', paddingBottom: 8,
+  },
+  playerModalHeader: {
+    alignItems: 'center', paddingTop: 28, paddingBottom: 16, paddingHorizontal: 20, gap: 4,
+    backgroundColor: 'rgba(163,255,0,0.04)',
+  },
+  playerModalImg: {
+    width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 3, borderColor: 'rgba(163,255,0,0.25)', marginBottom: 8,
+  },
+  playerModalNumber: {
+    fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, color: colors.primary, letterSpacing: 1,
+  },
+  playerModalName: {
+    fontFamily: 'SpaceGrotesk_700Bold', fontSize: 22, color: colors.onSurface,
+    letterSpacing: -0.5, textAlign: 'center',
+  },
+  playerModalMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
+  playerModalTeam: { fontFamily: 'Inter_600SemiBold', fontSize: 14, color: colors.onSurfaceVariant },
+  playerModalTags: { flexDirection: 'row', gap: 6, marginTop: 8, flexWrap: 'wrap', justifyContent: 'center' },
+  playerModalTag: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4,
+  },
+  playerModalTagText: { fontFamily: 'Inter_600SemiBold', fontSize: 11, color: colors.onSurfaceVariant, letterSpacing: 0.3 },
+  playerModalPhysical: {
+    fontFamily: 'Inter_400Regular', fontSize: 12, color: colors.onSurfaceDim, marginTop: 4,
+  },
+  playerModalStatsHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6,
+  },
+  playerModalStatsTitle: {
+    fontFamily: 'Inter_700Bold', fontSize: 10, color: colors.onSurfaceDim,
+    letterSpacing: 0.8, textTransform: 'uppercase',
+  },
+  playerModalStatsGrid: {
+    flexDirection: 'row', flexWrap: 'wrap', padding: 12, paddingTop: 4, gap: 8,
+  },
+  playerModalStatItem: {
+    width: '30%', alignItems: 'center', gap: 4, paddingVertical: 12,
+    backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 10,
+  },
+  playerModalStatValue: {
+    fontFamily: 'SpaceGrotesk_700Bold', fontSize: 20, color: colors.onSurface,
+  },
+  playerModalStatLabel: {
+    fontFamily: 'Inter_400Regular', fontSize: 10, color: colors.onSurfaceDim,
+    textTransform: 'uppercase', letterSpacing: 0.5,
+  },
+  playerModalExtras: {
+    flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12,
+    paddingHorizontal: 16, paddingBottom: 16,
+  },
+  playerModalExtraText: { fontFamily: 'Inter_500Medium', fontSize: 11, color: colors.onSurfaceVariant },
+  playerModalClose: { position: 'absolute', top: 8, right: 8 },
+
   f1PredictCta: {
     marginHorizontal: 16,
     marginTop: 8,

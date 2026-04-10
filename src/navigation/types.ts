@@ -19,7 +19,7 @@ export type F1RacePredictionParams = {
 // Home tab nested stack (Dashboard -> MatchPrediction -> PickSummary)
 export type HomeStackParamList = {
   DashboardHome: undefined;
-  LeagueDetail: { leagueApiId: number; leagueName: string; sport: string; tier?: 'free' | 'premium' };
+  LeagueDetail: { leagueApiId: number; leagueName: string; sport: string };
   MatchPrediction: { fixtureApiId: number; sport?: string };
   F1RacePrediction: F1RacePredictionParams;
   PickSummary: undefined;

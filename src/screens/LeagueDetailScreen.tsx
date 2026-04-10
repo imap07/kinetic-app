@@ -74,11 +74,10 @@ export function LeagueDetailScreen() {
   const navigation = useNavigation<Nav>();
   const rootNav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<any>();
-  const { leagueApiId, leagueName, sport, tier } = route.params as {
+  const { leagueApiId, leagueName, sport } = route.params as {
     leagueApiId: number;
     leagueName: string;
     sport: SportKey;
-    tier?: 'free' | 'premium';
   };
   const { tokens } = useAuth();
 
