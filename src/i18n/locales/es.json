@@ -620,7 +620,11 @@
     "featuredLeagues": "Ligas destacadas",
     "leagues": "ligas",
     "clearAll": "QUITAR TODO",
-    "allLeaguesSelected": "Se mostrarán todas las ligas"
+    "allLeaguesSelected": "Se mostrarán todas las ligas",
+    "f1SeasonTitle": "F1 Temporada {{season}}",
+    "f1SeasonSub": "{{count}} carreras de Grand Prix",
+    "f1Following": "Estás siguiendo toda la temporada de F1. Todas las carreras aparecerán en tu dashboard.",
+    "f1NotFollowing": "Activa para seguir todas las carreras de F1 esta temporada y recibir actualizaciones."
   },
   "security": {
     "title": "SEGURIDAD Y PRIVACIDAD",

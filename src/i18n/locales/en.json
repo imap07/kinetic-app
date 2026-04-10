@@ -620,7 +620,11 @@
     "featuredLeagues": "Featured Leagues",
     "leagues": "leagues",
     "clearAll": "CLEAR ALL",
-    "allLeaguesSelected": "All leagues will be shown"
+    "allLeaguesSelected": "All leagues will be shown",
+    "f1SeasonTitle": "F1 Season {{season}}",
+    "f1SeasonSub": "{{count}} Grand Prix races",
+    "f1Following": "You're following the full F1 season. All races will appear on your dashboard.",
+    "f1NotFollowing": "Toggle on to follow all F1 races this season and get updates on your dashboard."
   },
   "security": {
     "title": "SECURITY & PRIVACY",

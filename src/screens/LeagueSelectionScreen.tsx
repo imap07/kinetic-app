@@ -413,6 +413,12 @@ export function LeagueSelectionScreen({ onComplete, selectedSports }: Props) {
   // Current sport data
   const currentLeagues = leagueCache[activeSport] || [];
   const isFootball = activeSport === 'football';
+  const isF1 = activeSport === 'formula-1';
+
+  const f1Following = useMemo(() => {
+    if (!isF1) return false;
+    return currentLeagues.some((l) => selected.has(l.apiId));
+  }, [isF1, currentLeagues, selected]);
 
   const availableRegions = useMemo(() => {
     if (!isFootball) return [];
@@ -431,6 +437,7 @@ export function LeagueSelectionScreen({ onComplete, selectedSports }: Props) {
   const leagueCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const [sport, leagues] of Object.entries(leagueCache)) {
+      if (sport === 'formula-1') continue;
       counts[sport] = leagues.length;
     }
     return counts;
@@ -529,30 +536,32 @@ export function LeagueSelectionScreen({ onComplete, selectedSports }: Props) {
         leagueCounts={leagueCounts}
       />
 
-      {/* Search */}
-      <View style={[styles.searchContainer, searchFocused && styles.searchContainerFocused]}>
-        <Ionicons
-          name="search"
-          size={18}
-          color={searchFocused ? colors.primary : colors.onSurfaceVariant}
-        />
-        <TextInput
-          style={styles.searchInput}
-          placeholder={t('leagueSelection.searchPlaceholder')}
-          placeholderTextColor={colors.onSurfaceVariant}
-          value={search}
-          onChangeText={setSearch}
-          onFocus={() => setSearchFocused(true)}
-          onBlur={() => setSearchFocused(false)}
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-        {search.length > 0 && (
-          <TouchableOpacity onPress={() => setSearch('')}>
-            <Ionicons name="close-circle" size={18} color={colors.onSurfaceVariant} />
-          </TouchableOpacity>
-        )}
-      </View>
+      {/* Search — hidden for F1 */}
+      {!isF1 && (
+        <View style={[styles.searchContainer, searchFocused && styles.searchContainerFocused]}>
+          <Ionicons
+            name="search"
+            size={18}
+            color={searchFocused ? colors.primary : colors.onSurfaceVariant}
+          />
+          <TextInput
+            style={styles.searchInput}
+            placeholder={t('leagueSelection.searchPlaceholder')}
+            placeholderTextColor={colors.onSurfaceVariant}
+            value={search}
+            onChangeText={setSearch}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch('')}>
+              <Ionicons name="close-circle" size={18} color={colors.onSurfaceVariant} />
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
 
       {/* Region filters — football only */}
       {isFootball && (
@@ -568,6 +577,59 @@ export function LeagueSelectionScreen({ onComplete, selectedSports }: Props) {
       {sportLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : isF1 ? (
+        /* ── F1: single season toggle ── */
+        <View style={styles.f1SeasonContainer}>
+          <View style={styles.f1SeasonCard}>
+            <View style={styles.f1SeasonHeader}>
+              <View style={styles.f1SeasonBadge}>
+                <MaterialCommunityIcons name="flag-checkered" size={24} color="#0B0E11" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.f1SeasonTitle}>{t('editFavorites.f1SeasonTitle', { season: new Date().getFullYear() })}</Text>
+                <Text style={styles.f1SeasonSub}>{t('editFavorites.f1SeasonSub', { count: currentLeagues.length })}</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.f1Toggle, f1Following && styles.f1ToggleOn]}
+                onPress={() => {
+                  const allF1Ids = currentLeagues.map((l) => l.apiId);
+                  setSelected((prev) => {
+                    const next = new Set(prev);
+                    if (f1Following) {
+                      allF1Ids.forEach((id) => next.delete(id));
+                    } else {
+                      allF1Ids.forEach((id) => next.add(id));
+                    }
+                    return next;
+                  });
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.f1ToggleKnob, f1Following && styles.f1ToggleKnobOn]} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.f1Divider} />
+            <Text style={styles.f1SeasonDesc}>
+              {f1Following
+                ? t('editFavorites.f1Following')
+                : t('editFavorites.f1NotFollowing')}
+            </Text>
+            {f1Following && (
+              <View style={styles.f1GpList}>
+                {currentLeagues.slice(0, 6).map((l) => (
+                  <View key={l.apiId} style={styles.f1GpChip}>
+                    <Text style={styles.f1GpChipText} numberOfLines={1}>{l.name.replace(' Grand Prix', ' GP')}</Text>
+                  </View>
+                ))}
+                {currentLeagues.length > 6 && (
+                  <View style={[styles.f1GpChip, styles.f1GpChipMore]}>
+                    <Text style={styles.f1GpChipText}>+{currentLeagues.length - 6}</Text>
+                  </View>
+                )}
+              </View>
+            )}
+          </View>
         </View>
       ) : (
         <FlatList
@@ -1016,4 +1078,22 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
   },
   ctaTextActive: { color: '#3A4A00' },
+
+  // ─── F1 Season Toggle ──────────────────────────────────
+  f1SeasonContainer: { flex: 1, paddingHorizontal: 20, paddingTop: 24 },
+  f1SeasonCard: { backgroundColor: colors.surfaceContainerHigh, borderRadius: 20, padding: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  f1SeasonHeader: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  f1SeasonBadge: { width: 48, height: 48, borderRadius: 14, backgroundColor: '#FF4444', alignItems: 'center', justifyContent: 'center' },
+  f1SeasonTitle: { fontFamily: 'SpaceGrotesk_700Bold', fontSize: 18, color: colors.onSurface, letterSpacing: -0.3 },
+  f1SeasonSub: { fontFamily: 'Inter_500Medium', fontSize: 13, color: colors.onSurfaceVariant, marginTop: 2 },
+  f1Toggle: { width: 52, height: 30, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.12)', padding: 3, justifyContent: 'center' },
+  f1ToggleOn: { backgroundColor: '#CAFD00' },
+  f1ToggleKnob: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#6B7280' },
+  f1ToggleKnobOn: { backgroundColor: '#0B0E11', alignSelf: 'flex-end' },
+  f1Divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.08)', marginVertical: 18 },
+  f1SeasonDesc: { fontFamily: 'Inter_400Regular', fontSize: 14, color: colors.onSurfaceVariant, lineHeight: 20 },
+  f1GpList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 16 },
+  f1GpChip: { backgroundColor: 'rgba(255,68,68,0.12)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
+  f1GpChipMore: { backgroundColor: 'rgba(255,255,255,0.08)' },
+  f1GpChipText: { fontFamily: 'Inter_600SemiBold', fontSize: 12, color: '#FF6B6B' },
 });

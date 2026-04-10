@@ -620,7 +620,11 @@
     "featuredLeagues": "Ligues en vedette",
     "leagues": "ligues",
     "clearAll": "TOUT EFFACER",
-    "allLeaguesSelected": "Toutes les ligues seront affichées"
+    "allLeaguesSelected": "Toutes les ligues seront affichées",
+    "f1SeasonTitle": "F1 Saison {{season}}",
+    "f1SeasonSub": "{{count}} courses de Grand Prix",
+    "f1Following": "Vous suivez toute la saison F1. Toutes les courses apparaîtront sur votre tableau de bord.",
+    "f1NotFollowing": "Activez pour suivre toutes les courses F1 cette saison et recevoir des mises à jour."
   },
   "security": {
     "title": "SÉCURITÉ ET CONFIDENTIALITÉ",
