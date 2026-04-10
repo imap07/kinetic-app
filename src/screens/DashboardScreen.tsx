@@ -218,8 +218,11 @@ export function DashboardScreen({ navigation }: Props) {
   }, [activeSport]);
 
   const handleMatchPress = useCallback((game: any) => {
+    // Cancelled games are not clickable
+    if (['Cancelled', 'Abandoned', 'WO'].includes(game.status)) return;
+
     trackAction();
-    const isFinished = ['FT', 'AET', 'AP', 'Cancelled', 'Completed', 'Ended', 'Abandoned'].includes(game.status);
+    const isFinished = ['FT', 'AET', 'AP', 'Completed', 'Ended'].includes(game.status);
     if (activeSport === 'formula-1' && !isFinished) {
       // Upcoming/live F1 race → prediction screen
       navigation.navigate('F1RacePrediction', {
@@ -801,32 +804,41 @@ export function DashboardScreen({ navigation }: Props) {
                       <Text style={styles.todayLeagueName}>{game.leagueName}</Text>
                       <Text style={styles.recentDateText}>{formatGameTime(game.date, t)}</Text>
                     </View>
-                    <View style={styles.todayMatchRow}>
-                      <View style={styles.todayTeamCol}>
-                        <TeamLogo uri={game.homeTeam?.logo} size={28} />
-                        <Text style={styles.todayTeamName} numberOfLines={1}>
-                          {game.homeTeam?.name}
-                        </Text>
+                    {['Cancelled', 'Abandoned', 'WO'].includes(game.status) ? (
+                      <View style={styles.f1CancelledNotice}>
+                        <Ionicons name="warning-outline" size={14} color="#FF6B6B" />
+                        <Text style={styles.f1CancelledNoticeText}>{t('dashboard.matchCancelled')}</Text>
                       </View>
-                      <View style={styles.todayScoreCol}>
-                        <Text style={styles.todayScoreText}>
-                          {game.homeTotal ?? '-'}
-                        </Text>
-                        <Text style={styles.todayScoreDivider}>-</Text>
-                        <Text style={styles.todayScoreText}>
-                          {game.awayTotal ?? '-'}
-                        </Text>
-                      </View>
-                      <View style={styles.todayTeamCol}>
-                        <TeamLogo uri={game.awayTeam?.logo} size={28} />
-                        <Text style={styles.todayTeamName} numberOfLines={1}>
-                          {game.awayTeam?.name}
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={styles.recentStatusRow}>
-                      <Text style={styles.recentStatusText}>{t('dashboard.ft')}</Text>
-                    </View>
+                    ) : (
+                      <>
+                        <View style={styles.todayMatchRow}>
+                          <View style={styles.todayTeamCol}>
+                            <TeamLogo uri={game.homeTeam?.logo} size={28} />
+                            <Text style={styles.todayTeamName} numberOfLines={1}>
+                              {game.homeTeam?.name}
+                            </Text>
+                          </View>
+                          <View style={styles.todayScoreCol}>
+                            <Text style={styles.todayScoreText}>
+                              {game.homeTotal ?? '-'}
+                            </Text>
+                            <Text style={styles.todayScoreDivider}>-</Text>
+                            <Text style={styles.todayScoreText}>
+                              {game.awayTotal ?? '-'}
+                            </Text>
+                          </View>
+                          <View style={styles.todayTeamCol}>
+                            <TeamLogo uri={game.awayTeam?.logo} size={28} />
+                            <Text style={styles.todayTeamName} numberOfLines={1}>
+                              {game.awayTeam?.name}
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={styles.recentStatusRow}>
+                          <Text style={styles.recentStatusText}>{t('dashboard.ft')}</Text>
+                        </View>
+                      </>
+                    )}
                   </>
                 )}
               </TouchableOpacity>

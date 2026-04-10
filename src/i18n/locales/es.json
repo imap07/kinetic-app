@@ -80,6 +80,7 @@
     "nextGrandPrix": "PRÓXIMO GRAN PREMIO",
     "cancelled": "CANCELADO",
     "raceCancelled": "Esta carrera fue cancelada por la FIA.",
+    "matchCancelled": "Este partido ha sido cancelado.",
     "championshipStandings": "CLASIFICACIÓN DEL CAMPEONATO",
     "viewFullStandings": "Ver clasificación completa",
     "showLess": "Ver menos",
