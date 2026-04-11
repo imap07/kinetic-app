@@ -148,7 +148,7 @@ export default function App() {
             <LiveGamesProvider>
               <AchievementProvider>
                 <RewardsProvider>
-                  <StatusBar style="light" />
+                  <StatusBar style="light" backgroundColor="#0B0E11" translucent={false} />
                   <AppNavigator />
                   <RewardTierCelebration />
                   <Toast config={toastConfig} topOffset={60} />

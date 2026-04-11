@@ -26,6 +26,15 @@
       },
       "appleTeamId": "QY9J3TC5L3"
     },
+    "androidStatusBar": {
+      "backgroundColor": "#0B0E11",
+      "barStyle": "light-content",
+      "translucent": false
+    },
+    "androidNavigationBar": {
+      "backgroundColor": "#0B0E11",
+      "barStyle": "light-content"
+    },
     "android": {
       "package": "io.kinetic.app",
       "googleServicesFile": "./google-services.json",
