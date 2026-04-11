@@ -1,19 +1,56 @@
 #!/usr/bin/env bash
 # ─── Kinetic — Local Android Build ────────────────────────────────────────────
 # Uso:
-#   npm run build:android             → APK de release (testing / Play Console verify)
-#   npm run build:android:production  → AAB para Play Store
+#   npm run build:android                          → APK de release (testing / Play verify)
+#   npm run build:android:production               → AAB para Play Store
+#   npm run build:android -- --no-bump             → reusa el versionCode actual (retry)
+#   npm run build:android:production -- --no-bump  → idem para AAB
 #
-# Prerequisitos:
+# Flags soportadas:
+#   --production   → genera AAB (bundleRelease) en vez de APK (assembleRelease)
+#   --no-bump      → NO incrementa versionCode, usa el que ya está en app.json
+#                    (útil para rebuild después de un error sin gastar número)
+#
+# Comportamiento por default:
+#   1. Bumpea iOS buildNumber + Android versionCode en lockstep (app.json)
+#   2. Corre expo prebuild --platform android --clean
+#   3. Copia credentials/keystore.properties → android/keystore.properties
+#   4. Corre ./gradlew assembleRelease (o bundleRelease en --production)
+#
+# Prerequisitos (una vez):
 #   1. Java 17+:  java -version
-#   2. Android build-tools 34 instalados:
-#      sdkmanager "build-tools;34.0.0"
+#   2. Android SDK (ANDROID_HOME) con build-tools, platform-tools
 #   3. credentials/kinetic-upload-key.keystore  (descargado de EAS una vez)
 #   4. credentials/keystore.properties          (copiado de .template y rellenado)
 # ──────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
-PRODUCTION=${1:-""}
+# ── Android SDK ────────────────────────────────────────────────────────────────
+# Set ANDROID_HOME if not already defined. Checks common locations.
+if [ -z "${ANDROID_HOME:-}" ]; then
+  if [ -d "/Volumes/SSD/android-sdk" ]; then
+    export ANDROID_HOME="/Volumes/SSD/android-sdk"
+  elif [ -d "$HOME/Library/Android/sdk" ]; then
+    export ANDROID_HOME="$HOME/Library/Android/sdk"
+  elif [ -d "$HOME/Android/Sdk" ]; then
+    export ANDROID_HOME="$HOME/Android/Sdk"
+  fi
+fi
+if [ -n "${ANDROID_HOME:-}" ]; then
+  export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/tools:$PATH"
+fi
+
+# ── Parse flags ────────────────────────────────────────────────────────────────
+PRODUCTION=""
+SKIP_BUMP=""
+for arg in "$@"; do
+  case "$arg" in
+    --production|production) PRODUCTION="--production" ;;
+    --no-bump)               SKIP_BUMP="1" ;;
+    *)                       ;;
+  esac
+done
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
@@ -56,9 +93,48 @@ fi
 echo "✅  Prerequisitos OK"
 echo ""
 
+# ── Production environment (NODE_ENV=production → loads .env.production) ─────
+export NODE_ENV=production
+
+# Source .env.production so we can validate the API URL before building.
+if [ -f "$PROJECT_DIR/.env.production" ]; then
+  # shellcheck source=/dev/null
+  set -a
+  . "$PROJECT_DIR/.env.production"
+  set +a
+fi
+
+if [ -z "${EXPO_PUBLIC_API_URL:-}" ]; then
+  echo "❌  EXPO_PUBLIC_API_URL is not set (missing .env.production?)."
+  exit 1
+fi
+
+case "$EXPO_PUBLIC_API_URL" in
+  https://*) ;;
+  *)
+    echo "❌  EXPO_PUBLIC_API_URL must start with https:// for release builds."
+    echo "    Current value: $EXPO_PUBLIC_API_URL"
+    echo "    Fix .env.production before rebuilding."
+    exit 1
+    ;;
+esac
+
+echo "🌐 Using API URL: $EXPO_PUBLIC_API_URL"
+echo ""
+
+# ── Bump version (iOS buildNumber + Android versionCode in lockstep) ──────────
+cd "$PROJECT_DIR"
+if [ -z "$SKIP_BUMP" ]; then
+  echo "🔢 Bumpeando versionCode..."
+  node scripts/bump-build.js --no-prebuild
+  echo ""
+else
+  echo "⏭  Saltando bump (--no-bump). Usando versionCode actual."
+  echo ""
+fi
+
 # ── Prebuild ───────────────────────────────────────────────────────────────────
 echo "🔨 Prebuild Android (limpio)..."
-cd "$PROJECT_DIR"
 LANG=en_US.UTF-8 npx expo prebuild --platform android --clean
 echo ""
 
