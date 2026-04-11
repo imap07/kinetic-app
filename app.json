@@ -27,12 +27,6 @@
       "appleTeamId": "QY9J3TC5L3"
     },
     "androidStatusBar": {
-      "backgroundColor": "#0B0E11",
-      "barStyle": "light-content",
-      "translucent": false
-    },
-    "androidNavigationBar": {
-      "backgroundColor": "#0B0E11",
       "barStyle": "light-content"
     },
     "android": {
@@ -81,6 +75,7 @@
       "@react-native-firebase/app",
       "./plugins/withFirebaseModularHeaders",
       "./plugins/withAdiRegistration",
+      "./plugins/withAndroidSigning",
       "expo-localization",
       "expo-tracking-transparency",
       [

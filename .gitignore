@@ -44,3 +44,7 @@ yarn-error.*
 # Claude Code
 .claude/
 *.keystore
+
+# Android signing credentials (never commit)
+credentials/keystore.properties
+credentials/*.keystore

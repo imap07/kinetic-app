@@ -1,6 +1,8 @@
 import './src/i18n';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { Platform } from 'react-native';
+import * as NavigationBar from 'expo-navigation-bar';
 import { View, ActivityIndicator, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import {
   useFonts,
@@ -121,6 +123,16 @@ const errorStyles = StyleSheet.create({
 });
 
 export default function App() {
+  // ── Android navigation bar color ──────────────────────────────────────────
+  // Required on Android 15+ (edge-to-edge enforcement). Sets the bottom
+  // navigation bar (home/back buttons) to the same dark background as the app.
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      NavigationBar.setBackgroundColorAsync('#0B0E11');
+      NavigationBar.setButtonStyleAsync('light');
+    }
+  }, []);
+
   const [fontsLoaded] = useFonts({
     SpaceGrotesk_400Regular,
     SpaceGrotesk_500Medium,
@@ -148,7 +160,7 @@ export default function App() {
             <LiveGamesProvider>
               <AchievementProvider>
                 <RewardsProvider>
-                  <StatusBar style="light" backgroundColor="#0B0E11" translucent={false} />
+                  <StatusBar style="light" />
                   <AppNavigator />
                   <RewardTierCelebration />
                   <Toast config={toastConfig} topOffset={60} />

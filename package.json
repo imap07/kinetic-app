@@ -2,12 +2,18 @@
   "name": "kinetic-app",
   "version": "1.0.0",
   "main": "index.ts",
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "build": "node scripts/bump-build.js"
+    "build": "node scripts/bump-build.js",
+    "build:android": "bash scripts/build-android.sh",
+    "build:android:production": "bash scripts/build-android.sh --production"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",
@@ -35,6 +41,7 @@
     "expo-linking": "~55.0.12",
     "expo-local-authentication": "~55.0.13",
     "expo-localization": "~55.0.13",
+    "expo-navigation-bar": "~55.0.12",
     "expo-notifications": "~55.0.18",
     "expo-secure-store": "~55.0.13",
     "expo-status-bar": "~55.0.5",
