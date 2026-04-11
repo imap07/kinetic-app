@@ -88,7 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       refreshTokens: async () => {
         const rt = tokensRef.current?.refreshToken;
         if (!rt) throw new Error('No refresh token');
-        const { tokens: newTokens } = await authApi.refreshTokens(rt, rt);
+        const { tokens: newTokens } = await authApi.refreshTokens(rt);
         tokensRef.current = newTokens;
         await persistTokens(newTokens);
         setState((s) => ({ ...s, tokens: newTokens }));
@@ -127,7 +127,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (err instanceof ApiError && err.status === 401) {
             try {
               const { tokens: newTokens } = await authApi.refreshTokens(
-                stored.refreshToken,
                 stored.refreshToken,
               );
               await persistTokens(newTokens);
@@ -191,7 +190,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const { tokens: newTokens } = await authApi.refreshTokens(
-        result.refreshToken,
         result.refreshToken,
       );
       await persistTokens(newTokens);

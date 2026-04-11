@@ -134,6 +134,21 @@ else
 fi
 
 # ── Prebuild ───────────────────────────────────────────────────────────────────
+# Kill any gradle daemon holding open file handles inside android/ and then
+# force-remove the folder. Expo's `--clean` uses rimraf which fails with
+# ENOTEMPTY if another process (Android Studio, gradle daemon, Spotlight,
+# a stray `adb`) is still touching files under android/app/build.
+if [ -d "$PROJECT_DIR/android" ]; then
+  echo "🧹 Matando gradle daemon y limpiando android/ a mano..."
+  if [ -x "$PROJECT_DIR/android/gradlew" ]; then
+    (cd "$PROJECT_DIR/android" && ./gradlew --stop >/dev/null 2>&1) || true
+  fi
+  # Give macOS a moment to release file handles (fseventsd, Spotlight, etc.)
+  sleep 1
+  rm -rf "$PROJECT_DIR/android"
+  echo ""
+fi
+
 echo "🔨 Prebuild Android (limpio)..."
 LANG=en_US.UTF-8 npx expo prebuild --platform android --clean
 echo ""

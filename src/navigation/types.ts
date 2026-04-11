@@ -73,13 +73,33 @@ export type PaywallTrigger =
   | 'remove_ads'
   | 'general';
 
+// Self-reported acquisition channel. Must stay in sync with the backend
+// AcquisitionSource enum in src/users/schemas/user.schema.ts.
+export type AcquisitionSourceKey =
+  | 'instagram'
+  | 'tiktok'
+  | 'friend'
+  | 'appstore'
+  | 'google'
+  | 'youtube'
+  | 'twitter'
+  | 'other';
+
 // Root navigator that switches between Auth, Onboarding, and Main
 export type RootStackParamList = {
   Auth: NavigatorScreenParams<AuthStackParamList>;
   Onboarding: undefined;
   SportSelection: undefined;
   TeamSelection: { selectedSports: string[] };
-  OnboardingComplete: { sports: string[]; favoriteTeams: { apiId: number; sport: string }[] };
+  AcquisitionSource: {
+    sports: string[];
+    favoriteTeams: { apiId: number; sport: string }[];
+  };
+  OnboardingComplete: {
+    sports: string[];
+    favoriteTeams: { apiId: number; sport: string }[];
+    acquisitionSource?: AcquisitionSourceKey | null;
+  };
   LeagueSelection: { selectedSports?: string[] };
   Main: NavigatorScreenParams<MainTabParamList>;
   Notifications: undefined;

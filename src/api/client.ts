@@ -105,7 +105,16 @@ async function request<T>(
   // ─── Auto-refresh on 401 ───────────────────────────────
   // If the request was authenticated with a token and the server returned
   // 401 ("Unauthorized" / token expired), try to refresh once and replay.
-  if (res.status === 401 && token && !_isRetry && tokenProvider) {
+  //
+  // IMPORTANT: skip this path for `/auth/refresh` itself. If the refresh
+  // endpoint returns 401 (e.g. because the server nuked the user's stored
+  // refresh token) we MUST NOT call `refreshTokensOnce()` again from
+  // inside the refresh promise — doing so deadlocks: the inner call
+  // awaits `pendingRefresh`, which is the very promise it's running
+  // inside of. The symptom was the splash screen hanging forever for
+  // users whose refresh had been invalidated server-side.
+  const isRefreshCall = path === '/auth/refresh';
+  if (res.status === 401 && token && !_isRetry && tokenProvider && !isRefreshCall) {
     try {
       const newTokens = await refreshTokensOnce();
       return request<T>(method, path, {

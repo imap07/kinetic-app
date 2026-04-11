@@ -103,7 +103,19 @@ export const notificationsApi = {
 
   updatePreferences: (
     token: string,
-    patch: Partial<Omit<NotificationPreferences, '_id' | 'userId'>>,
+    // `types` is partial — the backend merges the patch into the current
+    // sub-object, so a single-key update like { types: { gameStart: false } }
+    // is valid. Don't widen this to `NotificationTypes` or TS will start
+    // demanding every toggle in every write.
+    patch: {
+      enabled?: boolean;
+      types?: Partial<NotificationTypes>;
+      liveScoreFrequency?: NotificationPreferences['liveScoreFrequency'];
+      quietHoursEnabled?: boolean;
+      quietHoursStart?: string;
+      quietHoursEnd?: string;
+      timezone?: string;
+    },
   ) =>
     apiClient.put<NotificationPreferencesResponse>(
       '/notifications/preferences',

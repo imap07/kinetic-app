@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "942851412014-oj772o14sk2rsg7uv726opto8cko23d4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "io.kinetic.app",
+            "certificate_hash": "f7f5ecdddaa8daa74b44499b1cf1f20a159c5353"
+          }
+        },
+        {
           "client_id": "942851412014-8f1gm6sr5luif1f7rtscj60pvpd3ic9n.apps.googleusercontent.com",
           "client_type": 3
         }

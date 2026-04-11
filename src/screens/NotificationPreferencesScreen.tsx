@@ -15,7 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import { colors, spacing, borderRadius } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
-import { notificationsApi } from '../api/notifications';
+import { notificationsApi, NotificationTypes } from '../api/notifications';
 
 const SPORT_LABELS: Record<string, string> = {
   football: 'Football',
@@ -45,7 +45,13 @@ const SPORT_ICONS: Record<string, string> = {
   mma: '🥊',
 };
 
-interface NotificationPreferences {
+/**
+ * Local UI state is kept FLAT for simplicity, but the backend stores
+ * `types` as a nested sub-object and the master toggle under the key
+ * `enabled` (not `pushEnabled`). The load/save paths below translate
+ * between the two shapes — do NOT send this shape directly to the API.
+ */
+interface LocalPrefs {
   pushEnabled: boolean;
   gameStart: boolean;
   liveScores: boolean;
@@ -59,7 +65,7 @@ interface NotificationPreferences {
   quietHoursEnd: string;
 }
 
-const DEFAULT_PREFS: NotificationPreferences = {
+const DEFAULT_PREFS: LocalPrefs = {
   pushEnabled: true,
   gameStart: true,
   liveScores: true,
@@ -73,21 +79,52 @@ const DEFAULT_PREFS: NotificationPreferences = {
   quietHoursEnd: '07:00',
 };
 
-type PrefKey = keyof NotificationPreferences;
+type PrefKey = keyof LocalPrefs;
+
+// Keys that map 1:1 into the backend `types` sub-object.
+const TYPE_KEYS: ReadonlyArray<keyof NotificationTypes> = [
+  'gameStart',
+  'liveScores',
+  'gameEnd',
+  'predictionResults',
+  'coinLeagues',
+  'dailyReminders',
+  'achievements',
+];
 
 export function NotificationPreferencesScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const { tokens, user } = useAuth();
-  const [prefs, setPrefs] = useState<NotificationPreferences>(DEFAULT_PREFS);
+  const [prefs, setPrefs] = useState<LocalPrefs>(DEFAULT_PREFS);
   const [loading, setLoading] = useState(true);
 
+  /**
+   * Load preferences from the backend and flatten them into the UI state.
+   * Backend shape: { preferences: { enabled, types: {...}, quietHours... } }
+   * UI shape:      { pushEnabled, gameStart, ..., quietHours... } (flat)
+   */
   const fetchPreferences = useCallback(async () => {
     if (!tokens?.accessToken) return;
     try {
       const res = await notificationsApi.getPreferences(tokens.accessToken);
-      if (res) setPrefs({ ...DEFAULT_PREFS, ...res });
+      const remote = res?.preferences;
+      if (remote) {
+        setPrefs({
+          pushEnabled: remote.enabled ?? true,
+          gameStart: remote.types?.gameStart ?? true,
+          liveScores: remote.types?.liveScores ?? true,
+          gameEnd: remote.types?.gameEnd ?? true,
+          predictionResults: remote.types?.predictionResults ?? true,
+          coinLeagues: remote.types?.coinLeagues ?? true,
+          dailyReminders: remote.types?.dailyReminders ?? true,
+          achievements: remote.types?.achievements ?? true,
+          quietHoursEnabled: remote.quietHoursEnabled ?? false,
+          quietHoursStart: remote.quietHoursStart ?? '23:00',
+          quietHoursEnd: remote.quietHoursEnd ?? '07:00',
+        });
+      }
     } catch {
       // keep defaults
     } finally {
@@ -99,13 +136,37 @@ export function NotificationPreferencesScreen() {
     fetchPreferences();
   }, [fetchPreferences]);
 
+  /**
+   * Flip a single toggle and send the patch in the shape the backend expects.
+   * The screen keeps a flat local state for convenience, so we translate
+   * back to nested (`{ types: {...} }`) or to the correct top-level field
+   * name (`enabled` instead of `pushEnabled`) on each write.
+   */
   const handleToggle = useCallback(
     async (key: PrefKey, value: boolean) => {
       if (!tokens?.accessToken) return;
       const prev = prefs;
       setPrefs((p) => ({ ...p, [key]: value }));
+
+      // Build the backend-shaped patch for this one toggle.
+      let patch: Parameters<typeof notificationsApi.updatePreferences>[1];
+      if (key === 'pushEnabled') {
+        patch = { enabled: value };
+      } else if ((TYPE_KEYS as readonly string[]).includes(key)) {
+        patch = { types: { [key]: value } as Partial<NotificationTypes> };
+      } else if (key === 'quietHoursEnabled') {
+        patch = { quietHoursEnabled: value };
+      } else if (key === 'quietHoursStart') {
+        patch = { quietHoursStart: value as unknown as string };
+      } else if (key === 'quietHoursEnd') {
+        patch = { quietHoursEnd: value as unknown as string };
+      } else {
+        // Shouldn't happen, but bail safely rather than sending garbage.
+        return;
+      }
+
       try {
-        await notificationsApi.updatePreferences(tokens.accessToken, { [key]: value });
+        await notificationsApi.updatePreferences(tokens.accessToken, patch);
       } catch {
         setPrefs(prev);
         Alert.alert(t('notificationPrefs.errorTitle'), t('notificationPrefs.errorMessage'));

@@ -581,6 +581,21 @@
     "title": "Pick your favorites",
     "subtitle": "Follow your teams and get personalized picks."
   },
+  "acquisitionSource": {
+    "step": "Step 3 of 3",
+    "title": "How did you hear about us?",
+    "subtitle": "Totally optional — it just helps us know where our fans come from.",
+    "instagram": "Instagram",
+    "tiktok": "TikTok",
+    "youtube": "YouTube",
+    "twitter": "X / Twitter",
+    "friend": "A friend told me",
+    "appstore": "App Store",
+    "google": "Google search",
+    "other": "Somewhere else",
+    "continue": "CONTINUE",
+    "skip": "Skip for now"
+  },
   "leagueSelection": {
     "step": "Step 3 of 3",
     "title": "Pick your leagues",

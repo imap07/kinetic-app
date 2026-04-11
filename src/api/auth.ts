@@ -87,6 +87,17 @@ interface SessionsResponse {
 
 export type SocialProvider = 'google' | 'apple' | 'x';
 
+// Keep in sync with the backend `AcquisitionSource` enum.
+export type AcquisitionSourceKey =
+  | 'instagram'
+  | 'tiktok'
+  | 'friend'
+  | 'appstore'
+  | 'google'
+  | 'youtube'
+  | 'twitter'
+  | 'other';
+
 export const authApi = {
   register(email: string, password: string, displayName: string) {
     return apiClient.post<AuthResponse>('/auth/register', {
@@ -116,11 +127,25 @@ export const authApi = {
     });
   },
 
-  refreshTokens(refreshToken: string, token: string) {
+  /**
+   * Rotate the token pair.
+   *
+   * ⚠️ DO NOT pass a Bearer token to this endpoint. The backend
+   * authenticates the refresh call via the `refreshToken` in the body
+   * (see `JwtRefreshStrategy`), never via the Authorization header.
+   *
+   * More importantly: attaching ANY token here would make `apiClient`
+   * treat a 401 from `/auth/refresh` as a retryable request and
+   * recursively call `refreshTokensOnce()` from inside the refresh
+   * promise it's currently awaiting — a self-deadlock that stalls the
+   * splash screen forever. This bit us on the `carlosmv28` admin-user
+   * bug: the user's `refreshToken` column was wiped, `/auth/refresh`
+   * returned 401, and the client froze instead of logging out.
+   */
+  refreshTokens(refreshToken: string) {
     return apiClient.post<TokensResponse>(
       '/auth/refresh',
       { refreshToken },
-      { token },
     );
   },
 
@@ -219,8 +244,32 @@ export const authApi = {
     );
   },
 
-  completeOnboarding(token: string, data: { sports: string[]; favoriteTeams: { apiId: number; sport: string }[] }) {
+  completeOnboarding(
+    token: string,
+    data: {
+      sports: string[];
+      favoriteTeams: { apiId: number; sport: string }[];
+      // Self-reported attribution collected during onboarding. Optional
+      // because users can skip the question, and older clients that don't
+      // know about the field shouldn't break the endpoint.
+      acquisitionSource?: AcquisitionSourceKey | null;
+    },
+  ) {
     return apiClient.post<{ message: string }>('/auth/onboarding', data, { token });
+  },
+
+  /**
+   * Dedicated endpoint to set just the acquisition source. Used as a
+   * fallback when the bundled onboarding call fails for unrelated reasons
+   * (e.g. team validation), and also as the path for users who want to
+   * answer "How did you hear about us?" after onboarding is done.
+   */
+  setAcquisitionSource(token: string, source: AcquisitionSourceKey) {
+    return apiClient.patch<{ message: string; acquisitionSource: string }>(
+      '/auth/acquisition-source',
+      { source },
+      { token },
+    );
   },
 
   changePassword(token: string, currentPassword: string, newPassword: string) {

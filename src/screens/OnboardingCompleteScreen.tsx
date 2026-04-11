@@ -17,6 +17,7 @@ import { authApi } from '../api';
 import type { SportKey } from '../api/sports';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ONBOARDING_COMPLETE_KEY } from './OnboardingScreen';
+import type { AcquisitionSourceKey } from './AcquisitionSourceScreen';
 
 interface FavoriteTeam {
   apiId: number;
@@ -26,6 +27,10 @@ interface FavoriteTeam {
 interface Props {
   sports: SportKey[];
   favoriteTeams: FavoriteTeam[];
+  // Null when the user skipped the "How did you hear about us?" step.
+  // We only forward it to the backend when it's present so skipping
+  // doesn't overwrite any previously-saved value.
+  acquisitionSource?: AcquisitionSourceKey | null;
   onComplete: () => void;
 }
 
@@ -43,7 +48,12 @@ const SPORT_LABELS: Record<string, string> = {
   mma: 'MMA',
 };
 
-export function OnboardingCompleteScreen({ sports, favoriteTeams, onComplete }: Props) {
+export function OnboardingCompleteScreen({
+  sports,
+  favoriteTeams,
+  acquisitionSource,
+  onComplete,
+}: Props) {
   const { tokens, refreshProfile } = useAuth();
   const { t } = useTranslation();
   const [saving, setSaving] = useState(false);
@@ -55,19 +65,34 @@ export function OnboardingCompleteScreen({ sports, favoriteTeams, onComplete }: 
       await authApi.completeOnboarding(tokens.accessToken, {
         sports,
         favoriteTeams: favoriteTeams.map((ft) => ({ apiId: ft.apiId, sport: ft.sport })),
+        // Only include the field when the user actually picked something.
+        // Undefined means "don't touch it server-side" — important so
+        // skipping never clobbers a previously answered value.
+        ...(acquisitionSource ? { acquisitionSource } : {}),
       });
-      await AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, 'true');
-      try { await refreshProfile(); } catch {}
-      onComplete();
     } catch {
-      // Still navigate — data was saved in previous steps
-      await AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, 'true');
-      try { await refreshProfile(); } catch {}
-      onComplete();
-    } finally {
-      setSaving(false);
+      // Bundled call failed (e.g. team payload validation). Fall through —
+      // data from previous steps was saved individually, and we still need
+      // to make sure the attribution answer lands if the user gave one.
     }
-  }, [tokens?.accessToken, sports, favoriteTeams, onComplete, refreshProfile]);
+
+    // Belt-and-suspenders: if the user answered "How did you hear about
+    // us?", hit the dedicated endpoint too. It's idempotent — if the
+    // bundled call already set it, this is a harmless overwrite with
+    // the same value.
+    if (acquisitionSource) {
+      try {
+        await authApi.setAcquisitionSource(tokens.accessToken, acquisitionSource);
+      } catch {
+        // Attribution is best-effort; don't block onboarding on it.
+      }
+    }
+
+    await AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, 'true');
+    try { await refreshProfile(); } catch {}
+    setSaving(false);
+    onComplete();
+  }, [tokens?.accessToken, sports, favoriteTeams, acquisitionSource, onComplete, refreshProfile]);
 
   return (
     <View style={styles.container}>

@@ -20,6 +20,7 @@ import { colors } from '../theme';
 import { ONBOARDING_COMPLETE_KEY } from '../screens/OnboardingScreen';
 import { SportSelectionScreen } from '../screens/SportSelectionScreen';
 import { TeamSelectionScreen } from '../screens/TeamSelectionScreen';
+import { AcquisitionSourceScreen, AcquisitionSourceKey } from '../screens/AcquisitionSourceScreen';
 import { OnboardingCompleteScreen } from '../screens/OnboardingCompleteScreen';
 
 import { LoginScreen } from '../screens/LoginScreen';
@@ -181,8 +182,15 @@ function SportSelectionWrapper({ navigation }: any) {
 function TeamSelectionWrapper({ navigation, route }: any) {
   const selectedSports: string[] = route?.params?.selectedSports || ['football'];
 
+  // After picking teams we route to the attribution step (AcquisitionSource)
+  // instead of jumping straight to OnboardingComplete. The final write to
+  // /auth/onboarding happens in OnboardingCompleteScreen so everything lands
+  // in a single backend call — sports + teams + acquisitionSource together.
   const handleComplete = useCallback((data: { sports: string[]; favoriteTeams: { apiId: number; sport: string }[]; favoriteDrivers?: any[] }) => {
-    navigation.replace('OnboardingComplete', { sports: data.sports, favoriteTeams: data.favoriteTeams, favoriteDrivers: data.favoriteDrivers });
+    navigation.replace('AcquisitionSource', {
+      sports: data.sports,
+      favoriteTeams: data.favoriteTeams,
+    });
   }, [navigation]);
 
   const handleBack = useCallback(() => {
@@ -196,16 +204,51 @@ function TeamSelectionWrapper({ navigation, route }: any) {
   return <TeamSelectionScreen selectedSports={selectedSports as any} onComplete={handleComplete} onBack={handleBack} />;
 }
 
+// ─── Acquisition Source Wrapper ──────────────────────────
+// Forwards the user's selection (or null on skip) through to
+// OnboardingCompleteScreen, which issues the actual API call.
+function AcquisitionSourceWrapper({ navigation, route }: any) {
+  const sports: string[] = route?.params?.sports || [];
+  const favoriteTeams: { apiId: number; sport: string }[] = route?.params?.favoriteTeams || [];
+
+  const handleComplete = useCallback(
+    (source: AcquisitionSourceKey | null) => {
+      navigation.replace('OnboardingComplete', {
+        sports,
+        favoriteTeams,
+        acquisitionSource: source,
+      });
+    },
+    [navigation, sports, favoriteTeams],
+  );
+
+  const handleBack = useCallback(() => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    }
+  }, [navigation]);
+
+  return <AcquisitionSourceScreen onComplete={handleComplete} onBack={handleBack} />;
+}
+
 // ─── Onboarding Complete Wrapper ─────────────────────────
 function OnboardingCompleteWrapper({ navigation, route }: any) {
   const sports = route?.params?.sports || [];
   const favoriteTeams = route?.params?.favoriteTeams || [];
+  const acquisitionSource: AcquisitionSourceKey | null = route?.params?.acquisitionSource ?? null;
 
   const handleComplete = useCallback(() => {
     navigation.replace('Main');
   }, [navigation]);
 
-  return <OnboardingCompleteScreen sports={sports} favoriteTeams={favoriteTeams} onComplete={handleComplete} />;
+  return (
+    <OnboardingCompleteScreen
+      sports={sports}
+      favoriteTeams={favoriteTeams}
+      acquisitionSource={acquisitionSource}
+      onComplete={handleComplete}
+    />
+  );
 }
 
 // ─── Root Navigator ──────────────────────────────────────
@@ -322,6 +365,11 @@ export function AppNavigator() {
               <RootStack.Screen
                 name="TeamSelection"
                 component={TeamSelectionWrapper}
+                options={{ animation: 'slide_from_right' }}
+              />
+              <RootStack.Screen
+                name="AcquisitionSource"
+                component={AcquisitionSourceWrapper}
                 options={{ animation: 'slide_from_right' }}
               />
               <RootStack.Screen

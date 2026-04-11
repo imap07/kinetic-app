@@ -581,6 +581,21 @@
     "title": "Choisissez vos favoris",
     "subtitle": "Suivez vos équipes et recevez des picks personnalisés."
   },
+  "acquisitionSource": {
+    "step": "Étape 3 sur 3",
+    "title": "Comment nous avez-vous connus ?",
+    "subtitle": "Totalement optionnel — ça nous aide juste à savoir d'où viennent nos fans.",
+    "instagram": "Instagram",
+    "tiktok": "TikTok",
+    "youtube": "YouTube",
+    "twitter": "X / Twitter",
+    "friend": "Un ami me l'a dit",
+    "appstore": "App Store",
+    "google": "Recherche Google",
+    "other": "Ailleurs",
+    "continue": "CONTINUER",
+    "skip": "Passer pour l'instant"
+  },
   "leagueSelection": {
     "step": "Étape 3 sur 3",
     "title": "Choisis tes ligues",
