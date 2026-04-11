@@ -20,6 +20,10 @@ import { colors, typography, spacing, borderRadius } from '../theme';
 import { AuthStackParamList } from '../navigation/types';
 import { useAuth } from '../contexts/AuthContext';
 import { ApiError } from '../api';
+import {
+  validatePassword,
+  PASSWORD_MIN_LENGTH,
+} from '../services/passwordPolicy';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'ResetPassword'>;
 
@@ -34,8 +38,12 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Same policy as the backend DTO — 10 chars + upper/lower/digit/symbol.
+  // We show a per-rule checklist below the field so users can see exactly
+  // which rule is missing instead of guessing.
+  const policyCheck = validatePassword(password);
   const canSubmit =
-    password.length >= 6 && confirmPassword === password && !loading;
+    policyCheck.valid && confirmPassword === password && !loading;
 
   const handleReset = async () => {
     if (!canSubmit) return;
@@ -125,6 +133,27 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
               />
             </TouchableOpacity>
           </View>
+
+          {password.length > 0 && (
+            <View style={styles.policyBox}>
+              <PolicyItem
+                ok={policyCheck.checks.length}
+                label={t('passwordPolicy.ruleLength', { count: PASSWORD_MIN_LENGTH })}
+              />
+              <PolicyItem
+                ok={policyCheck.checks.upper && policyCheck.checks.lower}
+                label={t('passwordPolicy.ruleMixedCase')}
+              />
+              <PolicyItem
+                ok={policyCheck.checks.digit}
+                label={t('passwordPolicy.ruleDigit')}
+              />
+              <PolicyItem
+                ok={policyCheck.checks.symbol}
+                label={t('passwordPolicy.ruleSymbol')}
+              />
+            </View>
+          )}
         </View>
 
         <View style={styles.inputSection}>
@@ -167,6 +196,26 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
         <Text style={styles.footerText}>{t('resetPassword.footerText')}</Text>
       </ScrollView>
     </KeyboardAvoidingView>
+  );
+}
+
+function PolicyItem({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <View style={styles.policyRow}>
+      <Feather
+        name={ok ? 'check-circle' : 'circle'}
+        size={13}
+        color={ok ? colors.primary : colors.onSurfaceDim}
+      />
+      <Text
+        style={[
+          styles.policyText,
+          ok && { color: colors.onSurface },
+        ]}
+      >
+        {label}
+      </Text>
+    </View>
   );
 }
 
@@ -250,5 +299,19 @@ const styles = StyleSheet.create({
     color: colors.onSurfaceDim,
     letterSpacing: 1.5,
     marginBottom: 20,
+  },
+  policyBox: {
+    marginTop: 10,
+    gap: 5,
+  },
+  policyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  policyText: {
+    ...typography.bodySm,
+    color: colors.onSurfaceDim,
+    fontSize: 12,
   },
 });

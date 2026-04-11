@@ -20,6 +20,10 @@ import { colors, typography, spacing, borderRadius } from '../theme';
 import { AuthStackParamList } from '../navigation/types';
 import { useAuth } from '../contexts/AuthContext';
 import { ApiError } from '../api';
+import {
+  validatePassword,
+  PASSWORD_MIN_LENGTH,
+} from '../services/passwordPolicy';
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'EmailAuth'>;
@@ -39,9 +43,19 @@ export function EmailAuthScreen({ navigation }: Props) {
 
   const isLogin = mode === 'login';
 
+  // Login accepts any non-empty password — the server decides. We do NOT
+  // leak the password policy on the login screen (would tell an attacker
+  // which accounts pre-date a policy change).
+  //
+  // Register must match the backend DTO exactly (10 chars, mixed case,
+  // digit, symbol) or the server will reject with 400.
+  const passwordCheck = validatePassword(password);
+
   const canSubmit = isLogin
-    ? email.trim() && password.length >= 6
-    : email.trim() && password.length >= 6 && displayName.trim().length >= 2;
+    ? !!email.trim() && password.length > 0
+    : !!email.trim() &&
+      passwordCheck.valid &&
+      displayName.trim().length >= 2;
 
   const handleSubmit = async () => {
     if (!canSubmit || loading) return;
@@ -181,6 +195,33 @@ export function EmailAuthScreen({ navigation }: Props) {
               />
             </TouchableOpacity>
           </View>
+
+          {/*
+            Password checklist — only shown in register mode, only once the
+            user has started typing. Keeps the login UX clean (we never
+            reveal the current policy to login users, that would leak
+            "your old password is below the current policy" info).
+          */}
+          {!isLogin && password.length > 0 && (
+            <View style={styles.policyBox}>
+              <PolicyItem
+                ok={passwordCheck.checks.length}
+                label={t('passwordPolicy.ruleLength', { count: PASSWORD_MIN_LENGTH })}
+              />
+              <PolicyItem
+                ok={passwordCheck.checks.upper && passwordCheck.checks.lower}
+                label={t('passwordPolicy.ruleMixedCase')}
+              />
+              <PolicyItem
+                ok={passwordCheck.checks.digit}
+                label={t('passwordPolicy.ruleDigit')}
+              />
+              <PolicyItem
+                ok={passwordCheck.checks.symbol}
+                label={t('passwordPolicy.ruleSymbol')}
+              />
+            </View>
+          )}
         </View>
 
         {isLogin && (
@@ -223,6 +264,31 @@ export function EmailAuthScreen({ navigation }: Props) {
         <View style={styles.spacer} />
       </ScrollView>
     </KeyboardAvoidingView>
+  );
+}
+
+/**
+ * One row of the password checklist. Green check when the rule passes,
+ * muted dot when it doesn't. Never red — nagging red isn't useful while
+ * the user is still typing.
+ */
+function PolicyItem({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <View style={styles.policyRow}>
+      <Feather
+        name={ok ? 'check-circle' : 'circle'}
+        size={14}
+        color={ok ? colors.primary : colors.onSurfaceDim}
+      />
+      <Text
+        style={[
+          styles.policyText,
+          ok && { color: colors.onSurface },
+        ]}
+      >
+        {label}
+      </Text>
+    </View>
   );
 }
 
@@ -324,5 +390,20 @@ const styles = StyleSheet.create({
   spacer: {
     flexGrow: 1,
     minHeight: 32,
+  },
+  policyBox: {
+    marginTop: 10,
+    paddingHorizontal: 4,
+    gap: 6,
+  },
+  policyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  policyText: {
+    ...typography.bodySm,
+    color: colors.onSurfaceDim,
+    fontSize: 12,
   },
 });

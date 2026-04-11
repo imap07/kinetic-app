@@ -12,6 +12,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "build": "node scripts/bump-build.js",
+    "build:ios": "node scripts/bump-build.js",
     "build:android": "bash scripts/build-android.sh",
     "build:android:production": "bash scripts/build-android.sh --production"
   },

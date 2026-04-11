@@ -20,17 +20,56 @@ export function RewardedAdButton() {
   const handlePress = async () => {
     setLoading(true);
     try {
-      const coins = await showRewardedAd();
-      if (coins > 0) {
+      const result = await showRewardedAd();
+      if (result.coins > 0) {
         Toast.show({
           type: 'success',
-          text1: `+${coins} coins!`,
+          text1: `+${result.coins} coins!`,
           text2: t('ads.rewardEarned'),
           visibilityTime: 2500,
         });
+        return;
+      }
+
+      // Non-success paths — each gets a distinct toast so the user knows
+      // whether to try again, come back tomorrow, or check their network.
+      switch (result.error) {
+        case 'daily_limit':
+          Toast.show({
+            type: 'info',
+            text1: t('ads.dailyLimitTitle'),
+            text2: t('ads.dailyLimitDesc'),
+            visibilityTime: 3000,
+          });
+          break;
+        case 'ad_unavailable':
+          Toast.show({
+            type: 'info',
+            text1: t('ads.notReadyTitle'),
+            text2: t('ads.notReadyDesc'),
+            visibilityTime: 2500,
+          });
+          break;
+        case 'network':
+          Toast.show({
+            type: 'error',
+            text1: t('common.error'),
+            text2: t('ads.networkError'),
+            visibilityTime: 3000,
+          });
+          break;
+        case 'aborted':
+          // User dismissed the ad early — no toast, the absence of a
+          // reward is signal enough.
+          break;
       }
     } catch {
-      // Silent fail
+      Toast.show({
+        type: 'error',
+        text1: t('common.error'),
+        text2: t('common.somethingWrong'),
+        visibilityTime: 3000,
+      });
     } finally {
       setLoading(false);
     }

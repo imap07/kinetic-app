@@ -25,6 +25,8 @@ import Toast from 'react-native-toast-message';
 import { logPickAttempted, logPickCompleted } from '../services/analytics';
 import { FootballPitch } from '../components/FootballPitch';
 import { useAds } from '../contexts/AdContext';
+import { useGameSubscription } from '../hooks/useGameSubscription';
+import { Feather } from '@expo/vector-icons';
 
 type Props = { navigation: any };
 
@@ -518,6 +520,27 @@ export function MatchPredictionScreen({ navigation }: Props) {
   const isFinished = FINISHED_STATUSES.includes(gameStatus);
   const isLive = LIVE_STATUSES.includes(gameStatus);
 
+  // ── Follow match (game subscription) ──────────────────────────────────────
+  const { isSubscribed, toggle: toggleSubscription } = useGameSubscription({
+    token: tokens?.accessToken,
+    sport,
+    gameApiId: fixtureApiId,
+    homeTeamName,
+    awayTeamName,
+    leagueName,
+  });
+
+  const handleFollowPress = useCallback(async () => {
+    await toggleSubscription();
+    Toast.show({
+      type: 'success',
+      text1: isSubscribed
+        ? t('notificationPrefs.matchUnfollowed')
+        : t('notificationPrefs.matchFollowed'),
+      visibilityTime: 2000,
+    });
+  }, [toggleSubscription, isSubscribed, t]);
+
   const statusDisplay = getStatusDisplay(gameStatus, t, statusLong, fixture?.elapsed, fixture?.date || genericGame?.date);
 
   const handleSubmitPrediction = async () => {
@@ -672,8 +695,14 @@ export function MatchPredictionScreen({ navigation }: Props) {
         <Text style={styles.headerTitle} numberOfLines={1}>
           {isF1 ? (f1GpName || t('matchPrediction.raceDetails')) : (leagueName || t('matchPrediction.matchDetails'))}
         </Text>
-        {!isF1 && leagueLogo ? (
-          <Image source={{ uri: leagueLogo }} style={{ width: 28, height: 28 }} resizeMode="contain" />
+        {!isF1 ? (
+          <TouchableOpacity onPress={handleFollowPress} style={styles.bellBtn} hitSlop={8}>
+            <Feather
+              name={isSubscribed ? 'bell' : 'bell-off'}
+              size={20}
+              color={isSubscribed ? colors.primary : colors.onSurfaceDim}
+            />
+          </TouchableOpacity>
         ) : (
           <View style={{ width: 28 }} />
         )}
@@ -1914,6 +1943,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg, paddingTop: 56, paddingBottom: 12,
   },
   backBtn: {
+    width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.surfaceContainerLow,
+  },
+  bellBtn: {
     width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center',
     backgroundColor: colors.surfaceContainerLow,
   },

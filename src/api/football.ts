@@ -191,6 +191,10 @@ export const footballApi = {
     );
   },
 
+  getPlayerProfile(token: string, playerApiId: number) {
+    return apiClient.get<any>(`/football/players/${playerApiId}/profile`, { token });
+  },
+
   getHeadToHead(token: string, team1Id: number, team2Id: number) {
     return apiClient.get<{ fixtures: Fixture[] }>(
       `/football/h2h/${team1Id}/${team2Id}`,

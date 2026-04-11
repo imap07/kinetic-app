@@ -1,11 +1,16 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme';
 import type { TeamLineup, LineupPlayer } from '../api';
 
 type Props = {
   homeLineup: TeamLineup;
   awayLineup: TeamLineup;
+  homeColor?: string;
+  awayColor?: string;
+  onPlayerPress?: (playerApiId: number) => void;
 };
 
 const PITCH_RATIO = 1.55; // height / width — slightly taller to prevent bottom cutoff
@@ -18,13 +23,15 @@ const HALF_HEIGHT = PITCH_HEIGHT / 2;
 function Jersey({ player, color, textColor }: { player: LineupPlayer; color: string; textColor: string }) {
   return (
     <View style={jerseyStyles.container}>
-      {player.photo ? (
-        <Image source={{ uri: player.photo }} style={jerseyStyles.photo} />
-      ) : (
-        <View style={[jerseyStyles.circle, { backgroundColor: color }]}>
-          <Text style={[jerseyStyles.number, { color: textColor }]}>{player.number}</Text>
-        </View>
-      )}
+      <View style={[jerseyStyles.ring, { borderColor: color }]}>
+        {player.photo ? (
+          <ExpoImage source={{ uri: player.photo }} style={jerseyStyles.photo} contentFit="cover" cachePolicy="memory-disk" />
+        ) : (
+          <View style={[jerseyStyles.circle, { backgroundColor: color }]}>
+            <Text style={[jerseyStyles.number, { color: textColor }]}>{player.number}</Text>
+          </View>
+        )}
+      </View>
       <Text style={jerseyStyles.name} numberOfLines={1}>{player.name.split(' ').pop()}</Text>
     </View>
   );
@@ -32,20 +39,24 @@ function Jersey({ player, color, textColor }: { player: LineupPlayer; color: str
 
 const jerseyStyles = StyleSheet.create({
   container: { alignItems: 'center', width: 56 },
-  circle: {
-    width: 34, height: 34, borderRadius: 17,
+  ring: {
+    width: 38, height: 38, borderRadius: 19,
+    borderWidth: 2,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: 'rgba(0,0,0,0.25)',
+  },
+  circle: {
+    width: 32, height: 32, borderRadius: 16,
+    alignItems: 'center', justifyContent: 'center',
   },
   photo: {
-    width: 34, height: 34, borderRadius: 17,
-    borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)',
+    width: 32, height: 32, borderRadius: 16,
   },
   number: { fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, lineHeight: 17 },
   name: {
     fontFamily: 'Inter_600SemiBold', fontSize: 8, color: '#fff',
-    marginTop: 2, textAlign: 'center', letterSpacing: 0.2,
-    textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2,
+    marginTop: 3, textAlign: 'center', letterSpacing: 0.2,
+    textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3,
   },
 });
 
@@ -88,12 +99,14 @@ function renderTeamOnPitch(
   isHome: boolean,
   halfHeight: number,
   pitchWidth: number,
+  teamColor: string = isHome ? '#1E40AF' : '#DC2626',
+  onPlayerPress?: (playerApiId: number) => void,
 ) {
   const rows = groupByRow(lineup.startXI);
   const totalRows = rows.size;
   const sortedRowKeys = [...rows.keys()].sort((a, b) => a - b);
 
-  const jerseyColor = isHome ? '#1E40AF' : '#DC2626'; // blue vs red
+  const jerseyColor = teamColor;
   const textColor = '#fff';
 
   const elements: React.ReactNode[] = [];
@@ -126,7 +139,20 @@ function renderTeamOnPitch(
       const availableWidth = pitchWidth - xPadding * 2;
       const xPos = xPadding + ((colIndex + 0.5) / numCols) * availableWidth;
 
-      elements.push(
+      const playerView = onPlayerPress && player.apiId ? (
+        <TouchableOpacity
+          key={`${isHome ? 'h' : 'a'}-${player.apiId || player.number}-${rowKey}`}
+          style={{
+            position: 'absolute',
+            left: xPos - 28,
+            top: (isHome ? 0 : halfHeight) + yPos - 20,
+          }}
+          activeOpacity={0.7}
+          onPress={() => onPlayerPress(player.apiId)}
+        >
+          <Jersey player={player} color={jerseyColor} textColor={textColor} />
+        </TouchableOpacity>
+      ) : (
         <View
           key={`${isHome ? 'h' : 'a'}-${player.apiId || player.number}-${rowKey}`}
           style={{
@@ -136,26 +162,27 @@ function renderTeamOnPitch(
           }}
         >
           <Jersey player={player} color={jerseyColor} textColor={textColor} />
-        </View>,
+        </View>
       );
+      elements.push(playerView);
     });
   });
 
   return elements;
 }
 
-export function FootballPitch({ homeLineup, awayLineup }: Props) {
+export function FootballPitch({ homeLineup, awayLineup, homeColor = '#1E40AF', awayColor = '#DC2626', onPlayerPress }: Props) {
   return (
     <View style={styles.container}>
       {/* Formation labels */}
       <View style={styles.formationHeader}>
         <View style={styles.formationSide}>
-          <View style={[styles.formationDot, { backgroundColor: '#1E40AF' }]} />
+          <View style={[styles.formationDot, { backgroundColor: homeColor }]} />
           <Text style={styles.formationLabel}>{homeLineup.teamName}</Text>
           <Text style={styles.formationValue}>{homeLineup.formation}</Text>
         </View>
         <View style={styles.formationSide}>
-          <View style={[styles.formationDot, { backgroundColor: '#DC2626' }]} />
+          <View style={[styles.formationDot, { backgroundColor: awayColor }]} />
           <Text style={styles.formationLabel}>{awayLineup.teamName}</Text>
           <Text style={styles.formationValue}>{awayLineup.formation}</Text>
         </View>
@@ -180,17 +207,18 @@ export function FootballPitch({ homeLineup, awayLineup }: Props) {
         <View style={[styles.cornerArc, styles.cornerBR]} />
 
         {/* Players */}
-        {renderTeamOnPitch(homeLineup, true, HALF_HEIGHT, PITCH_WIDTH)}
-        {renderTeamOnPitch(awayLineup, false, HALF_HEIGHT, PITCH_WIDTH)}
+        {renderTeamOnPitch(homeLineup, true, HALF_HEIGHT, PITCH_WIDTH, homeColor, onPlayerPress)}
+        {renderTeamOnPitch(awayLineup, false, HALF_HEIGHT, PITCH_WIDTH, awayColor, onPlayerPress)}
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 12, paddingBottom: 8 },
+  container: { gap: 12, paddingBottom: 8, alignItems: 'center' },
   formationHeader: {
     flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 4,
+    alignSelf: 'stretch',
   },
   formationSide: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   formationDot: { width: 8, height: 8, borderRadius: 4 },

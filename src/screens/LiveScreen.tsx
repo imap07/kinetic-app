@@ -252,6 +252,8 @@ export function LiveScreen() {
 
   const leagueGroups = useMemo(() => groupByLeague(todayGames), [todayGames]);
 
+  const isF1 = activeSport === 'formula-1';
+
   const navigateToGame = (gameApiId: number) => {
     trackAction();
     navigation.navigate('LiveMatchPrediction', { fixtureApiId: gameApiId, sport: activeSport });
@@ -353,30 +355,57 @@ export function LiveScreen() {
                       )}
                     </View>
 
-                    {/* Teams + scores */}
-                    <View style={styles.teamsCol}>
-                      <View style={styles.teamRow}>
-                        <TeamLogo uri={game.homeTeam?.logo} size={20} />
-                        <Text style={[styles.teamName, isLive && styles.teamNameLive]} numberOfLines={1}>
-                          {game.homeTeam?.name}
+                    {/* Teams + scores — F1 uses GP/circuit layout */}
+                    {isF1 ? (
+                      <View style={styles.teamsCol}>
+                        <Text style={[styles.f1GpName, isLive && styles.teamNameLive]} numberOfLines={1}>
+                          {game.competitionName || game.leagueName}
                         </Text>
-                        <Text style={[styles.score, isLive && styles.scoreLive]}>
-                          {game.homeTotal ?? '-'}
-                        </Text>
+                        {(game.circuit?.name || (game as any).circuitName) ? (
+                          <Text style={styles.f1CircuitText} numberOfLines={1}>
+                            <Ionicons name="location-outline" size={11} color={colors.onSurfaceVariant} />
+                            {' '}{game.circuit?.name || (game as any).circuitName}
+                            {(game.circuit?.country || (game as any).country) ? ` · ${game.circuit?.country || (game as any).country}` : ''}
+                          </Text>
+                        ) : null}
                       </View>
-                      <View style={styles.teamRow}>
-                        <TeamLogo uri={game.awayTeam?.logo} size={20} />
-                        <Text style={[styles.teamName, isLive && styles.teamNameLive]} numberOfLines={1}>
-                          {game.awayTeam?.name}
-                        </Text>
-                        <Text style={[styles.score, isLive && styles.scoreLive]}>
-                          {game.awayTotal ?? '-'}
-                        </Text>
+                    ) : (
+                      <View style={styles.teamsCol}>
+                        <View style={styles.teamRow}>
+                          <TeamLogo uri={game.homeTeam?.logo} size={20} />
+                          <Text style={[styles.teamName, isLive && styles.teamNameLive]} numberOfLines={1}>
+                            {game.homeTeam?.name}
+                          </Text>
+                          <Text style={[styles.score, isLive && styles.scoreLive]}>
+                            {game.homeTotal ?? '-'}
+                          </Text>
+                        </View>
+                        <View style={styles.teamRow}>
+                          <TeamLogo uri={game.awayTeam?.logo} size={20} />
+                          <Text style={[styles.teamName, isLive && styles.teamNameLive]} numberOfLines={1}>
+                            {game.awayTeam?.name}
+                          </Text>
+                          <Text style={[styles.score, isLive && styles.scoreLive]}>
+                            {game.awayTotal ?? '-'}
+                          </Text>
+                        </View>
                       </View>
-                    </View>
+                    )}
 
-                    {/* Picked indicator */}
-                    {pickedGameIds.has(game.apiId) ? (
+                    {/* Right badge: session type for F1, picked/predict for others */}
+                    {isF1 ? (
+                      <View style={[
+                        styles.f1SessionBadge,
+                        (game.type || '').toLowerCase().includes('race') && styles.f1SessionBadgeRace,
+                      ]}>
+                        <Text style={[
+                          styles.f1SessionBadgeText,
+                          (game.type || '').toLowerCase().includes('race') && styles.f1SessionBadgeTextRace,
+                        ]}>
+                          {game.type || 'Race'}
+                        </Text>
+                      </View>
+                    ) : pickedGameIds.has(game.apiId) ? (
                       <View style={styles.pickedBadge}>
                         <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
                       </View>
@@ -394,7 +423,7 @@ export function LiveScreen() {
           <View style={styles.emptyState}>
             <View style={styles.emptyIconWrap}>
               <Ionicons
-                name={selectedDateIdx === 1 ? 'football-outline' : 'calendar-outline'}
+                name={isF1 ? 'car-sport-outline' : selectedDateIdx === 1 ? 'football-outline' : 'calendar-outline'}
                 size={40}
                 color={colors.onSurfaceVariant}
               />
@@ -616,6 +645,39 @@ const styles = StyleSheet.create({
     color: colors.onSurface,
     textAlign: 'center',
   },
+  // F1-specific styles
+  f1GpName: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 13,
+    color: colors.onSurface,
+  },
+  f1CircuitText: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 11,
+    color: colors.onSurfaceVariant,
+    marginTop: 2,
+  },
+  f1SessionBadge: {
+    backgroundColor: colors.surfaceContainerHighest,
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    alignItems: 'center',
+  },
+  f1SessionBadgeRace: {
+    backgroundColor: 'rgba(202,253,0,0.1)',
+  },
+  f1SessionBadgeText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 9,
+    color: colors.onSurfaceVariant,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  f1SessionBadgeTextRace: {
+    color: colors.primary,
+  },
+
   emptySubtitle: {
     fontFamily: 'Inter_400Regular',
     fontSize: 14,

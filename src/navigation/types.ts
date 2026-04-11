@@ -45,6 +45,7 @@ export type ProfileStackParamList = {
   ChangePassword: undefined;
   Notifications: undefined;
   NotificationPreferences: undefined;
+  SportNotificationPreferences: { sport: string; sportName: string };
   SecurityPrivacy: undefined;
   WalletRewards: undefined;
   CoinStore: undefined;

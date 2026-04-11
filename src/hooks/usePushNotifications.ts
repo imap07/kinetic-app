@@ -15,9 +15,22 @@ Notifications.setNotificationHandler({
   }),
 });
 
+/**
+ * All console output in this file is gated behind `__DEV__` so release
+ * builds don't leak push-token registration status / permission state
+ * into logcat or the iOS device console. Those messages would otherwise
+ * give an on-device attacker a rough map of our push flow.
+ */
+function devLog(...args: unknown[]): void {
+  if (__DEV__) {
+    // eslint-disable-next-line no-console
+    console.log(...args);
+  }
+}
+
 async function registerForPushNotificationsAsync(): Promise<string | null> {
   if (!Device.isDevice) {
-    console.log('Push notifications require a physical device');
+    devLog('Push notifications require a physical device');
     return null;
   }
 
@@ -39,7 +52,7 @@ async function registerForPushNotificationsAsync(): Promise<string | null> {
   }
 
   if (finalStatus !== 'granted') {
-    console.log('Push notification permission not granted');
+    devLog('Push notification permission not granted');
     return null;
   }
 
@@ -51,7 +64,7 @@ async function registerForPushNotificationsAsync(): Promise<string | null> {
     });
     return tokenData.data;
   } catch (err) {
-    console.log('Failed to get Expo push token:', err);
+    devLog('Failed to get Expo push token:', err);
     return null;
   }
 }
@@ -73,9 +86,9 @@ export function usePushNotifications(authToken: string | null | undefined) {
       try {
         await authApi.registerPushToken(token, authToken);
         registeredRef.current = true;
-        console.log('Push token registered with backend');
+        devLog('Push token registered with backend');
       } catch (err) {
-        console.log('Failed to register push token with backend:', err);
+        devLog('Failed to register push token with backend:', err);
       }
     });
 
@@ -85,7 +98,7 @@ export function usePushNotifications(authToken: string | null | undefined) {
 
     responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data;
-      console.log('Notification tapped:', data);
+      devLog('Notification tapped:', data);
     });
 
     return () => {

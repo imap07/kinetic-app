@@ -2,11 +2,13 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authApi, ApiError } from '../api';
+import { registerTokenProvider } from '../api/client';
 import type { AuthTokens, User, SocialProvider, UpdateProfileData, UpdatePreferencesData } from '../api';
 import { signOutFromGoogle } from '../services/googleAuth';
 import { ONBOARDING_COMPLETE_KEY } from '../screens/OnboardingScreen';
 import { logLogin, logSignUp, logLogout, setAnalyticsUser, clearAnalyticsUser } from '../services/analytics';
 import { attemptBiometricLogin, isBiometricLoginEnabled, enableBiometricLogin, disableBiometricLogin } from '../services/biometricAuth';
+import { getOrCreateDeviceFingerprint } from '../services/deviceFingerprint';
 
 const ACCESS_TOKEN_KEY = 'kinetic_access_token';
 const REFRESH_TOKEN_KEY = 'kinetic_refresh_token';
@@ -78,9 +80,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setState({ user: null, tokens: null, isAuthenticated: false, isLoading: false });
   }, []);
 
+  // ─── Wire token provider so apiClient can auto-refresh on 401 ───
+  useEffect(() => {
+    registerTokenProvider({
+      getAccessToken: () => tokensRef.current?.accessToken ?? null,
+      getRefreshToken: () => tokensRef.current?.refreshToken ?? null,
+      refreshTokens: async () => {
+        const rt = tokensRef.current?.refreshToken;
+        if (!rt) throw new Error('No refresh token');
+        const { tokens: newTokens } = await authApi.refreshTokens(rt, rt);
+        tokensRef.current = newTokens;
+        await persistTokens(newTokens);
+        setState((s) => ({ ...s, tokens: newTokens }));
+        return newTokens;
+      },
+      onAuthFailure: () => {
+        clearTokens().catch(() => {});
+        clearAuth();
+      },
+    });
+    return () => {
+      registerTokenProvider(null);
+    };
+  }, [clearAuth]);
+
   useEffect(() => {
     (async () => {
       try {
+        // Prime the per-install device fingerprint BEFORE any API call
+        // so the x-device-fingerprint header is populated from request #1.
+        // This is a single SecureStore read; cached in memory thereafter.
+        await getOrCreateDeviceFingerprint();
+
         const stored = await loadTokens();
         if (!stored) {
           setState((s) => ({ ...s, isLoading: false }));

@@ -17,6 +17,34 @@ import { colors, spacing, borderRadius } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import { notificationsApi } from '../api/notifications';
 
+const SPORT_LABELS: Record<string, string> = {
+  football: 'Football',
+  basketball: 'Basketball',
+  hockey: 'Hockey',
+  'american-football': 'Am. Football',
+  baseball: 'Baseball',
+  'formula-1': 'Formula 1',
+  afl: 'AFL',
+  handball: 'Handball',
+  rugby: 'Rugby',
+  volleyball: 'Volleyball',
+  mma: 'MMA',
+};
+
+const SPORT_ICONS: Record<string, string> = {
+  football: '⚽',
+  basketball: '🏀',
+  hockey: '🏒',
+  'american-football': '🏈',
+  baseball: '⚾',
+  'formula-1': '🏎️',
+  afl: '🏉',
+  handball: '🤾',
+  rugby: '🏉',
+  volleyball: '🏐',
+  mma: '🥊',
+};
+
 interface NotificationPreferences {
   pushEnabled: boolean;
   gameStart: boolean;
@@ -50,8 +78,8 @@ type PrefKey = keyof NotificationPreferences;
 export function NotificationPreferencesScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation();
-  const { tokens } = useAuth();
+  const navigation = useNavigation<any>();
+  const { tokens, user } = useAuth();
   const [prefs, setPrefs] = useState<NotificationPreferences>(DEFAULT_PREFS);
   const [loading, setLoading] = useState(true);
 
@@ -207,6 +235,46 @@ export function NotificationPreferencesScreen() {
             typesDisabled,
           )}
         </View>
+
+        {/* By Sport */}
+        {user?.favoriteSports && user.favoriteSports.length > 0 && (
+          <>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionLabel}>{t('notificationPrefs.bySportSection')}</Text>
+            </View>
+            <Text style={styles.sectionDesc}>{t('notificationPrefs.bySportDesc')}</Text>
+            <View style={styles.card}>
+              {user.favoriteSports.map((sport, idx) => {
+                const sportName = SPORT_LABELS[sport] ?? sport;
+                const icon = SPORT_ICONS[sport] ?? '🏅';
+                return (
+                  <React.Fragment key={sport}>
+                    {idx > 0 && <View style={styles.divider} />}
+                    <TouchableOpacity
+                      style={styles.row}
+                      activeOpacity={0.7}
+                      disabled={typesDisabled}
+                      onPress={() =>
+                        navigation.navigate('SportNotificationPreferences', {
+                          sport,
+                          sportName,
+                        })
+                      }
+                    >
+                      <Text style={styles.sportIcon}>{icon}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.rowLabel, typesDisabled && styles.rowLabelDisabled]}>
+                          {sportName}
+                        </Text>
+                      </View>
+                      <Feather name="chevron-right" size={16} color={colors.onSurfaceDim} />
+                    </TouchableOpacity>
+                  </React.Fragment>
+                );
+              })}
+            </View>
+          </>
+        )}
 
         {/* Quiet Hours */}
         <View style={styles.sectionHeader}>
@@ -376,5 +444,16 @@ const styles = StyleSheet.create({
   },
   timeValueDisabled: {
     color: colors.onSurfaceDim,
+  },
+  sectionDesc: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 12,
+    color: colors.onSurfaceDim,
+    paddingHorizontal: spacing['2xl'],
+    marginBottom: spacing.md,
+  },
+  sportIcon: {
+    fontSize: 18,
+    marginRight: spacing.md,
   },
 });

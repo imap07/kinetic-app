@@ -57,7 +57,31 @@ export interface NotificationPreferencesResponse {
   preferences: NotificationPreferences;
 }
 
+// ─── Game Subscription types ────────────────────────────────────────────────
+
+export interface GameSubscription {
+  _id: string;
+  sport: string;
+  gameApiId: number;
+  homeTeamName: string;
+  awayTeamName: string;
+  leagueName?: string;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export interface SubscribeGameParams {
+  sport: string;
+  gameApiId: number;
+  homeTeamName: string;
+  awayTeamName: string;
+  leagueName?: string;
+}
+
+// ─── API client ─────────────────────────────────────────────────────────────
+
 export const notificationsApi = {
+  // ── History ──────────────────────────────────────────────────────────────
   getHistory: (token: string, page = 1, limit = 20) =>
     apiClient.get<NotificationHistoryResponse>(
       `/notifications/history?page=${page}&limit=${limit}`,
@@ -70,6 +94,7 @@ export const notificationsApi = {
   markRead: (id: string, token: string) =>
     apiClient.patch<void>(`/notifications/history/${id}/read`, {}, { token }),
 
+  // ── Preferences ───────────────────────────────────────────────────────────
   getPreferences: (token: string) =>
     apiClient.get<NotificationPreferencesResponse>(
       '/notifications/preferences',
@@ -83,6 +108,12 @@ export const notificationsApi = {
     apiClient.put<NotificationPreferencesResponse>(
       '/notifications/preferences',
       patch,
+      { token },
+    ),
+
+  getSportOverride: (token: string, sport: string) =>
+    apiClient.get<{ sport: string; override: Partial<NotificationTypes> | null }>(
+      `/notifications/preferences/sport/${sport}`,
       { token },
     ),
 
@@ -100,6 +131,32 @@ export const notificationsApi = {
   removeSportOverride: (token: string, sport: string) =>
     apiClient.delete<NotificationPreferencesResponse>(
       `/notifications/preferences/sport/${sport}`,
+      { token },
+    ),
+
+  // ── Game subscriptions ────────────────────────────────────────────────────
+  subscribeToGame: (token: string, params: SubscribeGameParams) =>
+    apiClient.post<{ subscribed: boolean; subscription: GameSubscription }>(
+      '/notifications/game-subscriptions',
+      params,
+      { token },
+    ),
+
+  unsubscribeFromGame: (token: string, gameApiId: number) =>
+    apiClient.delete<{ subscribed: boolean }>(
+      `/notifications/game-subscriptions/${gameApiId}`,
+      { token },
+    ),
+
+  getGameSubscriptionStatus: (token: string, gameApiId: number) =>
+    apiClient.get<{ gameApiId: number; subscribed: boolean }>(
+      `/notifications/game-subscriptions/${gameApiId}`,
+      { token },
+    ),
+
+  getGameSubscriptions: (token: string) =>
+    apiClient.get<{ subscriptions: GameSubscription[] }>(
+      '/notifications/game-subscriptions',
       { token },
     ),
 };

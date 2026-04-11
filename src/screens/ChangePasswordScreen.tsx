@@ -18,8 +18,11 @@ import { useTranslation } from 'react-i18next';
 import { colors, spacing, borderRadius } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import { authApi, ApiError } from '../api';
-
-const MIN_PASSWORD_LENGTH = 6;
+import {
+  validatePassword,
+  passwordStrength,
+  PASSWORD_MIN_LENGTH,
+} from '../services/passwordPolicy';
 
 export function ChangePasswordScreen() {
   const insets = useSafeAreaInsets();
@@ -36,12 +39,18 @@ export function ChangePasswordScreen() {
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  // Validation
+  // Validation — new password must satisfy the full backend policy
+  // (10 chars + upper/lower/digit/symbol). The check mirrors the DTO so
+  // we never submit something the server will 400.
   const currentValid = currentPassword.length > 0;
-  const newValid = newPassword.length >= MIN_PASSWORD_LENGTH;
+  const newPolicyCheck = validatePassword(newPassword);
+  const newValid = newPolicyCheck.valid;
   const confirmValid = confirmPassword === newPassword && confirmPassword.length > 0;
   const passwordsDifferent = newPassword !== currentPassword || newPassword.length === 0;
   const canSubmit = currentValid && newValid && confirmValid && passwordsDifferent;
+
+  // 0..4 strength used by the progress bar + label.
+  const strength = passwordStrength(newPassword);
 
   const handleSubmit = async () => {
     if (!canSubmit || !tokens?.accessToken) return;
@@ -53,7 +62,7 @@ export function ChangePasswordScreen() {
 
     setSaving(true);
     try {
-      const res = await authApi.changePassword(tokens.accessToken, currentPassword, newPassword);
+      await authApi.changePassword(tokens.accessToken, currentPassword, newPassword);
       Alert.alert(
         t('changePassword.successTitle'),
         t('changePassword.successDesc'),
@@ -163,14 +172,33 @@ export function ChangePasswordScreen() {
                 />
               </TouchableOpacity>
             </View>
-            {newPassword.length > 0 && !newValid && (
-              <Text style={styles.errorText}>{t('changePassword.minChars', { count: MIN_PASSWORD_LENGTH })}</Text>
-            )}
             {newPassword.length > 0 && newPassword === currentPassword && (
               <Text style={styles.errorText}>{t('changePassword.mustBeDifferent')}</Text>
             )}
 
-            {/* Strength indicators */}
+            {/* Per-rule checklist (mirrors backend policy exactly) */}
+            {newPassword.length > 0 && (
+              <View style={styles.policyBox}>
+                <PolicyItem
+                  ok={newPolicyCheck.checks.length}
+                  label={t('passwordPolicy.ruleLength', { count: PASSWORD_MIN_LENGTH })}
+                />
+                <PolicyItem
+                  ok={newPolicyCheck.checks.upper && newPolicyCheck.checks.lower}
+                  label={t('passwordPolicy.ruleMixedCase')}
+                />
+                <PolicyItem
+                  ok={newPolicyCheck.checks.digit}
+                  label={t('passwordPolicy.ruleDigit')}
+                />
+                <PolicyItem
+                  ok={newPolicyCheck.checks.symbol}
+                  label={t('passwordPolicy.ruleSymbol')}
+                />
+              </View>
+            )}
+
+            {/* Strength bar driven by passwordStrength() */}
             {newPassword.length > 0 && (
               <View style={styles.strengthRow}>
                 <View
@@ -178,18 +206,27 @@ export function ChangePasswordScreen() {
                     styles.strengthBar,
                     {
                       backgroundColor:
-                        newPassword.length >= 10
+                        strength >= 4
                           ? '#5BEF90'
-                          : newPassword.length >= MIN_PASSWORD_LENGTH
+                          : strength >= 3
                             ? '#FBBF24'
                             : '#FF7351',
                     },
-                    { flex: Math.min(newPassword.length / 12, 1) },
+                    { flex: strength / 4 },
                   ]}
                 />
-                <View style={[styles.strengthBarBg, { flex: Math.max(1 - newPassword.length / 12, 0) }]} />
+                <View
+                  style={[
+                    styles.strengthBarBg,
+                    { flex: Math.max(1 - strength / 4, 0) },
+                  ]}
+                />
                 <Text style={styles.strengthLabel}>
-                  {newPassword.length >= 10 ? t('changePassword.strengthStrong') : newPassword.length >= MIN_PASSWORD_LENGTH ? t('changePassword.strengthGood') : t('changePassword.strengthWeak')}
+                  {strength >= 4
+                    ? t('changePassword.strengthStrong')
+                    : strength >= 3
+                      ? t('changePassword.strengthGood')
+                      : t('changePassword.strengthWeak')}
                 </Text>
               </View>
             )}
@@ -250,6 +287,30 @@ export function ChangePasswordScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+    </View>
+  );
+}
+
+/**
+ * One row of the password checklist — mirrors the same component in
+ * EmailAuthScreen but scoped locally so each screen can theme it.
+ */
+function PolicyItem({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <View style={styles.policyRow}>
+      <Feather
+        name={ok ? 'check-circle' : 'circle'}
+        size={13}
+        color={ok ? colors.primary : colors.onSurfaceDim}
+      />
+      <Text
+        style={[
+          styles.policyText,
+          ok && { color: colors.onSurface },
+        ]}
+      >
+        {label}
+      </Text>
     </View>
   );
 }
@@ -374,5 +435,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#4A5E00',
     letterSpacing: 0.5,
+  },
+  policyBox: {
+    marginTop: 10,
+    paddingHorizontal: 2,
+    gap: 5,
+  },
+  policyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  policyText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 12,
+    color: colors.onSurfaceDim,
   },
 });
