@@ -13,7 +13,7 @@ const path = require('path');
  *
  * Once the package name is verified, this plugin can be removed.
  */
-const ADI_TOKEN = 'CNFZE7H23SPTUAAAAAAAAAAAA';
+const ADI_TOKEN = 'CNFZE7H23SPTUAAAAAAAAAAAAA'; // 26 chars — verified from Play Console
 
 module.exports = function withAdiRegistration(config) {
   return withDangerousMod(config, [
