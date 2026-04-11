@@ -83,6 +83,8 @@ export type RootStackParamList = {
   LeagueSelection: { selectedSports?: string[] };
   Main: NavigatorScreenParams<MainTabParamList>;
   Notifications: undefined;
+  NotificationPreferences: undefined;
+  SportNotificationPreferences: { sport: string; sportName: string };
   Paywall: {
     trigger: PaywallTrigger;
   };

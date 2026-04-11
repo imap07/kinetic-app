@@ -292,6 +292,16 @@ export function AppNavigator() {
                 options={{ animation: 'slide_from_right' }}
               />
               <RootStack.Screen
+                name="NotificationPreferences"
+                component={NotificationPreferencesScreen}
+                options={{ animation: 'slide_from_right' }}
+              />
+              <RootStack.Screen
+                name="SportNotificationPreferences"
+                component={SportNotificationPreferencesScreen}
+                options={{ animation: 'slide_from_right' }}
+              />
+              <RootStack.Screen
                 name="Paywall"
                 component={PaywallScreen}
                 options={{ animation: 'slide_from_bottom', presentation: 'fullScreenModal' }}
@@ -327,6 +337,16 @@ export function AppNavigator() {
               <RootStack.Screen
                 name="Notifications"
                 component={NotificationsScreen}
+                options={{ animation: 'slide_from_right' }}
+              />
+              <RootStack.Screen
+                name="NotificationPreferences"
+                component={NotificationPreferencesScreen}
+                options={{ animation: 'slide_from_right' }}
+              />
+              <RootStack.Screen
+                name="SportNotificationPreferences"
+                component={SportNotificationPreferencesScreen}
                 options={{ animation: 'slide_from_right' }}
               />
               <RootStack.Screen
