@@ -95,7 +95,7 @@ export function AcquisitionSourceScreen({ onComplete, onBack }: Props) {
           </TouchableOpacity>
         )}
         <Text style={styles.stepLabel}>
-          {t('acquisitionSource.step', 'Step 3 of 3')}
+          {t('acquisitionSource.step', 'STEP 4 OF 4')}
         </Text>
         <Text style={styles.title}>
           {t('acquisitionSource.title', 'How did you hear about us?')}

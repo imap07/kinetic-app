@@ -91,14 +91,34 @@ export type RootStackParamList = {
   Onboarding: undefined;
   SportSelection: undefined;
   TeamSelection: { selectedSports: string[] };
+  NotificationSetup: {
+    sports: string[];
+    favoriteTeams: { apiId: number; sport: string }[];
+  };
   AcquisitionSource: {
     sports: string[];
     favoriteTeams: { apiId: number; sport: string }[];
+    permissionGranted?: boolean;
+    notificationScope?: 'my_teams' | 'all_games';
+    notificationTypes?: {
+      gameStart: boolean;
+      liveScores: boolean;
+      gameEnd: boolean;
+      predictionResults: boolean;
+    };
   };
   OnboardingComplete: {
     sports: string[];
     favoriteTeams: { apiId: number; sport: string }[];
     acquisitionSource?: AcquisitionSourceKey | null;
+    permissionGranted?: boolean;
+    notificationScope?: 'my_teams' | 'all_games';
+    notificationTypes?: {
+      gameStart: boolean;
+      liveScores: boolean;
+      gameEnd: boolean;
+      predictionResults: boolean;
+    };
   };
   LeagueSelection: { selectedSports?: string[] };
   Main: NavigatorScreenParams<MainTabParamList>;

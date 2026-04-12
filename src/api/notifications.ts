@@ -44,6 +44,7 @@ export interface NotificationPreferences {
   _id: string;
   userId: string;
   enabled: boolean;
+  notificationScope: 'my_teams' | 'all_games';
   types: NotificationTypes;
   sportOverrides: Record<string, Partial<NotificationTypes>>;
   liveScoreFrequency: 'every_goal' | 'halftime_only' | 'off';
@@ -110,6 +111,7 @@ export const notificationsApi = {
     patch: {
       enabled?: boolean;
       types?: Partial<NotificationTypes>;
+      notificationScope?: 'my_teams' | 'all_games';
       liveScoreFrequency?: NotificationPreferences['liveScoreFrequency'];
       quietHoursEnabled?: boolean;
       quietHoursStart?: string;

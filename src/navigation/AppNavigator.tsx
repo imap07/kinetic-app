@@ -21,6 +21,7 @@ import { ONBOARDING_COMPLETE_KEY } from '../screens/OnboardingScreen';
 import { SportSelectionScreen } from '../screens/SportSelectionScreen';
 import { TeamSelectionScreen } from '../screens/TeamSelectionScreen';
 import { AcquisitionSourceScreen, AcquisitionSourceKey } from '../screens/AcquisitionSourceScreen';
+import { NotificationSetupScreen, NotificationSetupResult } from '../screens/NotificationSetupScreen';
 import { OnboardingCompleteScreen } from '../screens/OnboardingCompleteScreen';
 
 import { LoginScreen } from '../screens/LoginScreen';
@@ -182,12 +183,9 @@ function SportSelectionWrapper({ navigation }: any) {
 function TeamSelectionWrapper({ navigation, route }: any) {
   const selectedSports: string[] = route?.params?.selectedSports || ['football'];
 
-  // After picking teams we route to the attribution step (AcquisitionSource)
-  // instead of jumping straight to OnboardingComplete. The final write to
-  // /auth/onboarding happens in OnboardingCompleteScreen so everything lands
-  // in a single backend call — sports + teams + acquisitionSource together.
+  // After picking teams we route to notification setup before the attribution step.
   const handleComplete = useCallback((data: { sports: string[]; favoriteTeams: { apiId: number; sport: string }[]; favoriteDrivers?: any[] }) => {
-    navigation.replace('AcquisitionSource', {
+    navigation.replace('NotificationSetup', {
       sports: data.sports,
       favoriteTeams: data.favoriteTeams,
     });
@@ -204,12 +202,49 @@ function TeamSelectionWrapper({ navigation, route }: any) {
   return <TeamSelectionScreen selectedSports={selectedSports as any} onComplete={handleComplete} onBack={handleBack} />;
 }
 
+// ─── Notification Setup Wrapper ──────────────────────────
+function NotificationSetupWrapper({ navigation, route }: any) {
+  const sports: string[] = route?.params?.sports || [];
+  const favoriteTeams: { apiId: number; sport: string }[] = route?.params?.favoriteTeams || [];
+
+  const handleComplete = useCallback(
+    (result: NotificationSetupResult) => {
+      navigation.replace('AcquisitionSource', {
+        sports,
+        favoriteTeams,
+        permissionGranted: result.permissionGranted,
+        notificationScope: result.scope,
+        notificationTypes: {
+          gameStart: result.gameStart,
+          liveScores: result.liveScores,
+          gameEnd: result.gameEnd,
+          predictionResults: result.predictionResults,
+        },
+      });
+    },
+    [navigation, sports, favoriteTeams],
+  );
+
+  const handleBack = useCallback(() => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.replace('TeamSelection', { selectedSports: sports });
+    }
+  }, [navigation, sports]);
+
+  return <NotificationSetupScreen onComplete={handleComplete} onBack={handleBack} />;
+}
+
 // ─── Acquisition Source Wrapper ──────────────────────────
 // Forwards the user's selection (or null on skip) through to
 // OnboardingCompleteScreen, which issues the actual API call.
 function AcquisitionSourceWrapper({ navigation, route }: any) {
   const sports: string[] = route?.params?.sports || [];
   const favoriteTeams: { apiId: number; sport: string }[] = route?.params?.favoriteTeams || [];
+  const permissionGranted = route?.params?.permissionGranted;
+  const notificationScope = route?.params?.notificationScope;
+  const notificationTypes = route?.params?.notificationTypes;
 
   const handleComplete = useCallback(
     (source: AcquisitionSourceKey | null) => {
@@ -217,9 +252,12 @@ function AcquisitionSourceWrapper({ navigation, route }: any) {
         sports,
         favoriteTeams,
         acquisitionSource: source,
+        permissionGranted,
+        notificationScope,
+        notificationTypes,
       });
     },
-    [navigation, sports, favoriteTeams],
+    [navigation, sports, favoriteTeams, permissionGranted, notificationScope, notificationTypes],
   );
 
   const handleBack = useCallback(() => {
@@ -236,6 +274,9 @@ function OnboardingCompleteWrapper({ navigation, route }: any) {
   const sports = route?.params?.sports || [];
   const favoriteTeams = route?.params?.favoriteTeams || [];
   const acquisitionSource: AcquisitionSourceKey | null = route?.params?.acquisitionSource ?? null;
+  const permissionGranted = route?.params?.permissionGranted;
+  const notificationScope = route?.params?.notificationScope;
+  const notificationTypes = route?.params?.notificationTypes;
 
   const handleComplete = useCallback(() => {
     navigation.replace('Main');
@@ -246,6 +287,9 @@ function OnboardingCompleteWrapper({ navigation, route }: any) {
       sports={sports}
       favoriteTeams={favoriteTeams}
       acquisitionSource={acquisitionSource}
+      permissionGranted={permissionGranted}
+      notificationScope={notificationScope}
+      notificationTypes={notificationTypes}
       onComplete={handleComplete}
     />
   );
@@ -294,7 +338,7 @@ export function AppNavigator() {
   }, [isAuthenticated, user]);
 
   const linking: LinkingOptions<RootStackParamList> = {
-    prefixes: [Linking.createURL('/'), 'https://kinetic.app'],
+    prefixes: [Linking.createURL('/'), 'https://kineticapp.ca'],
     config: {
       screens: {
         Main: {
@@ -365,6 +409,11 @@ export function AppNavigator() {
               <RootStack.Screen
                 name="TeamSelection"
                 component={TeamSelectionWrapper}
+                options={{ animation: 'slide_from_right' }}
+              />
+              <RootStack.Screen
+                name="NotificationSetup"
+                component={NotificationSetupWrapper}
                 options={{ animation: 'slide_from_right' }}
               />
               <RootStack.Screen

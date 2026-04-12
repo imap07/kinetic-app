@@ -926,5 +926,41 @@
     "rugby": "Rugby",
     "volleyball": "Voleibol",
     "mma": "MMA"
+  },
+  "notificationSetup": {
+    "step": "PASO 3 DE 4",
+    "title": "No te pierdas nada",
+    "subtitle": "Elige qué notificaciones quieres recibir. Puedes cambiarlo en cualquier momento en Ajustes.",
+    "enableNotifications": "Activar Notificaciones",
+    "enableSubtitle": "Toca para permitir que Kinetic te envíe actualizaciones",
+    "notificationsEnabled": "Notificaciones Activadas",
+    "enabledSubtitle": "Recibirás actualizaciones para las opciones de abajo",
+    "notifyAbout": "Notificarme sobre",
+    "myTeams": "Mis Equipos y Ligas",
+    "myTeamsDesc": "Solo partidos de los equipos que seleccionaste",
+    "recommended": "Recomendado",
+    "allGames": "Todos los Partidos",
+    "allGamesDesc": "Todos los partidos de tus deportes favoritos (alto volumen)",
+    "notificationTypes": "Tipos de notificación",
+    "gameKickoff": "Inicio del Partido",
+    "gameKickoffDesc": "Cuando comienza un partido que sigues",
+    "liveScores": "Marcadores en Vivo",
+    "liveScoresDesc": "Goles, puntos y cambios en el marcador",
+    "finalResults": "Resultados Finales",
+    "finalResultsDesc": "Cuando termina un partido que sigues",
+    "predictionResults": "Resultados de Predicciones",
+    "predictionResultsDesc": "Cuando se resuelven tus predicciones",
+    "continue": "CONTINUAR",
+    "alertTitle": "Notificaciones Desactivadas",
+    "alertMessage": "Para recibir actualizaciones, activa las notificaciones en los ajustes de tu dispositivo.",
+    "alertCancel": "Cancelar",
+    "alertOpenSettings": "Abrir Ajustes"
+  },
+  "onboardingComplete": {
+    "title": "¡Todo listo!",
+    "subtitle": "Tu feed personalizado está listo",
+    "letsGo": "¡Vamos!",
+    "notifMyTeams": "Notificaciones: Mis Equipos",
+    "notifAllGames": "Notificaciones: Todos los Partidos"
   }
 }

@@ -13,7 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 import { colors } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
-import { authApi } from '../api';
+import { authApi, notificationsApi } from '../api';
 import type { SportKey } from '../api/sports';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ONBOARDING_COMPLETE_KEY } from './OnboardingScreen';
@@ -28,9 +28,17 @@ interface Props {
   sports: SportKey[];
   favoriteTeams: FavoriteTeam[];
   // Null when the user skipped the "How did you hear about us?" step.
-  // We only forward it to the backend when it's present so skipping
-  // doesn't overwrite any previously-saved value.
   acquisitionSource?: AcquisitionSourceKey | null;
+  // Whether the user granted push notification permission during onboarding
+  permissionGranted?: boolean;
+  // Notification preferences from the onboarding setup screen
+  notificationScope?: 'my_teams' | 'all_games';
+  notificationTypes?: {
+    gameStart: boolean;
+    liveScores: boolean;
+    gameEnd: boolean;
+    predictionResults: boolean;
+  };
   onComplete: () => void;
 }
 
@@ -52,6 +60,9 @@ export function OnboardingCompleteScreen({
   sports,
   favoriteTeams,
   acquisitionSource,
+  permissionGranted,
+  notificationScope,
+  notificationTypes,
   onComplete,
 }: Props) {
   const { tokens, refreshProfile } = useAuth();
@@ -61,38 +72,49 @@ export function OnboardingCompleteScreen({
   const handleLetsGo = useCallback(async () => {
     if (!tokens?.accessToken) return;
     setSaving(true);
+
+    let onboardingSuccess = false;
     try {
       await authApi.completeOnboarding(tokens.accessToken, {
         sports,
         favoriteTeams: favoriteTeams.map((ft) => ({ apiId: ft.apiId, sport: ft.sport })),
-        // Only include the field when the user actually picked something.
-        // Undefined means "don't touch it server-side" — important so
-        // skipping never clobbers a previously answered value.
         ...(acquisitionSource ? { acquisitionSource } : {}),
       });
-    } catch {
-      // Bundled call failed (e.g. team payload validation). Fall through —
-      // data from previous steps was saved individually, and we still need
-      // to make sure the attribution answer lands if the user gave one.
+      onboardingSuccess = true;
+    } catch (err) {
+      console.warn('[Onboarding] completeOnboarding failed:', err);
     }
 
-    // Belt-and-suspenders: if the user answered "How did you hear about
-    // us?", hit the dedicated endpoint too. It's idempotent — if the
-    // bundled call already set it, this is a harmless overwrite with
-    // the same value.
+    // Save notification preferences (best-effort)
+    if (notificationScope || notificationTypes) {
+      try {
+        await notificationsApi.updatePreferences(tokens.accessToken, {
+          enabled: permissionGranted ?? false,
+          ...(notificationScope ? { notificationScope } : {}),
+          ...(notificationTypes ? { types: notificationTypes } : {}),
+        });
+      } catch (err) {
+        console.warn('[Onboarding] notification preferences save failed:', err);
+      }
+    }
+
+    // Belt-and-suspenders for attribution
     if (acquisitionSource) {
       try {
         await authApi.setAcquisitionSource(tokens.accessToken, acquisitionSource);
       } catch {
-        // Attribution is best-effort; don't block onboarding on it.
+        // Attribution is best-effort
       }
     }
 
-    await AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, 'true');
+    if (onboardingSuccess) {
+      await AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, 'true');
+    }
+
     try { await refreshProfile(); } catch {}
     setSaving(false);
     onComplete();
-  }, [tokens?.accessToken, sports, favoriteTeams, acquisitionSource, onComplete, refreshProfile]);
+  }, [tokens?.accessToken, sports, favoriteTeams, acquisitionSource, permissionGranted, notificationScope, notificationTypes, onComplete, refreshProfile]);
 
   return (
     <View style={styles.container}>
@@ -125,6 +147,19 @@ export function OnboardingCompleteScreen({
               {favoriteTeams.length} {favoriteTeams.length === 1 ? 'team' : 'teams'} selected
             </Text>
           </View>
+          {notificationScope && (
+            <>
+              <View style={styles.summaryDivider} />
+              <View style={styles.summaryRow}>
+                <Ionicons name="notifications" size={20} color={colors.primary} />
+                <Text style={styles.summaryText}>
+                  {notificationScope === 'my_teams'
+                    ? t('onboardingComplete.notifMyTeams', 'Notifications: My Teams')
+                    : t('onboardingComplete.notifAllGames', 'Notifications: All Games')}
+                </Text>
+              </View>
+            </>
+          )}
         </View>
 
         {/* Sport pills */}

@@ -926,5 +926,41 @@
     "rugby": "Rugby",
     "volleyball": "Volleyball",
     "mma": "MMA"
+  },
+  "notificationSetup": {
+    "step": "ÉTAPE 3 SUR 4",
+    "title": "Restez dans le jeu",
+    "subtitle": "Choisissez les notifications que vous souhaitez recevoir. Vous pouvez modifier cela à tout moment dans les Paramètres.",
+    "enableNotifications": "Activer les Notifications",
+    "enableSubtitle": "Appuyez pour autoriser Kinetic à vous envoyer des mises à jour",
+    "notificationsEnabled": "Notifications Activées",
+    "enabledSubtitle": "Vous recevrez des mises à jour pour les options ci-dessous",
+    "notifyAbout": "Me notifier pour",
+    "myTeams": "Mes Équipes et Ligues",
+    "myTeamsDesc": "Uniquement les matchs de vos équipes sélectionnées",
+    "recommended": "Recommandé",
+    "allGames": "Tous les Matchs",
+    "allGamesDesc": "Tous les matchs de vos sports favoris (volume élevé)",
+    "notificationTypes": "Types de notification",
+    "gameKickoff": "Coup d'Envoi",
+    "gameKickoffDesc": "Quand un match que vous suivez commence",
+    "liveScores": "Scores en Direct",
+    "liveScoresDesc": "Buts, points et changements de score",
+    "finalResults": "Résultats Finaux",
+    "finalResultsDesc": "Quand un match que vous suivez se termine",
+    "predictionResults": "Résultats des Prédictions",
+    "predictionResultsDesc": "Quand vos pronostics sont résolus",
+    "continue": "CONTINUER",
+    "alertTitle": "Notifications Désactivées",
+    "alertMessage": "Pour recevoir les mises à jour, activez les notifications dans les paramètres de votre appareil.",
+    "alertCancel": "Annuler",
+    "alertOpenSettings": "Ouvrir les Paramètres"
+  },
+  "onboardingComplete": {
+    "title": "Vous êtes prêt !",
+    "subtitle": "Votre fil personnalisé est prêt",
+    "letsGo": "C'est parti",
+    "notifMyTeams": "Notifications: Mes Équipes",
+    "notifAllGames": "Notifications: Tous les Matchs"
   }
 }

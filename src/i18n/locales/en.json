@@ -926,5 +926,41 @@
     "rugby": "Rugby",
     "volleyball": "Volleyball",
     "mma": "MMA"
+  },
+  "notificationSetup": {
+    "step": "STEP 3 OF 4",
+    "title": "Stay in the game",
+    "subtitle": "Choose what notifications you want to receive. You can change this anytime in Settings.",
+    "enableNotifications": "Enable Notifications",
+    "enableSubtitle": "Tap to allow Kinetic to send you game updates",
+    "notificationsEnabled": "Notifications Enabled",
+    "enabledSubtitle": "You'll receive updates for the options below",
+    "notifyAbout": "Notify me about",
+    "myTeams": "My Teams & Leagues",
+    "myTeamsDesc": "Only games involving teams you selected",
+    "recommended": "Recommended",
+    "allGames": "All Games",
+    "allGamesDesc": "Every game in your favorite sports (high volume)",
+    "notificationTypes": "Notification types",
+    "gameKickoff": "Game Kickoff",
+    "gameKickoffDesc": "When a game you follow starts",
+    "liveScores": "Live Score Updates",
+    "liveScoresDesc": "Goals, points, and score changes",
+    "finalResults": "Final Results",
+    "finalResultsDesc": "When a game you follow ends",
+    "predictionResults": "Prediction Results",
+    "predictionResultsDesc": "When your picks are resolved",
+    "continue": "CONTINUE",
+    "alertTitle": "Notifications Disabled",
+    "alertMessage": "To receive game updates, enable notifications in your device settings.",
+    "alertCancel": "Cancel",
+    "alertOpenSettings": "Open Settings"
+  },
+  "onboardingComplete": {
+    "title": "You're all set!",
+    "subtitle": "Your personalized feed is ready",
+    "letsGo": "Let's Go",
+    "notifMyTeams": "Notifications: My Teams",
+    "notifAllGames": "Notifications: All Games"
   }
 }

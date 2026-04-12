@@ -289,7 +289,7 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
             </TouchableOpacity>
           )}
           <View style={{ flex: 1 }}>
-            <Text style={styles.stepLabel}>{t('teamSelection.step', 'STEP 2 OF 3')}</Text>
+            <Text style={styles.stepLabel}>{t('teamSelection.step', 'STEP 2 OF 4')}</Text>
             <Text style={styles.title}>{t('teamSelection.title', 'Pick your favorites')}</Text>
           </View>
         </View>
