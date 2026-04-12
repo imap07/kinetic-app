@@ -7,6 +7,8 @@ interface RequestOptions {
   body?: unknown;
   headers?: Record<string, string>;
   token?: string | null;
+  /** AbortSignal for request cancellation (e.g. when switching sport tabs). */
+  signal?: AbortSignal;
   /** Internal flag — do NOT set from callers. Prevents infinite retry loop. */
   _isRetry?: boolean;
 }
@@ -71,7 +73,7 @@ async function request<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const { body, headers = {}, token, _isRetry } = options;
+  const { body, headers = {}, token, signal, _isRetry } = options;
 
   const reqHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -96,6 +98,7 @@ async function request<T>(
     method,
     headers: reqHeaders,
     body: body ? JSON.stringify(body) : undefined,
+    signal,
   });
 
   const data = res.headers.get('content-type')?.includes('application/json')

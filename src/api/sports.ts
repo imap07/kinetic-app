@@ -167,8 +167,8 @@ export const sportsApi = {
     return apiClient.get<SportMeta[]>('/sports', { token });
   },
 
-  getDashboard(token: string, sport: SportKey) {
-    return apiClient.get<SportDashboard>(`/sports/${sport}/dashboard`, { token });
+  getDashboard(token: string, sport: SportKey, signal?: AbortSignal) {
+    return apiClient.get<SportDashboard>(`/sports/${sport}/dashboard`, { token, signal });
   },
 
   getLeagueDetail(token: string, sport: SportKey, leagueApiId: number) {

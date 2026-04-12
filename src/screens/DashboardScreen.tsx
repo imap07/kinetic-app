@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -132,22 +132,37 @@ export function DashboardScreen({ navigation }: Props) {
   const [statsLoading, setStatsLoading] = useState(true);
   const [pickedGameIds, setPickedGameIds] = useState<Set<number>>(new Set());
 
-  const fetchDashboard = useCallback(async () => {
+  // AbortController ref — aborts in-flight dashboard requests when the
+  // sport changes so stale responses can't overwrite fresh data or fire
+  // error toasts for a tab the user already left.
+  const abortRef = useRef<AbortController | null>(null);
+
+  const fetchDashboard = useCallback(async (signal?: AbortSignal) => {
     if (!tokens?.accessToken) return;
     try {
-      const result = await sportsApi.getDashboard(tokens.accessToken, activeSport);
-      setData(result);
-    } catch (err) {
+      const result = await sportsApi.getDashboard(tokens.accessToken, activeSport, signal);
+      if (!signal?.aborted) setData(result);
+    } catch (err: any) {
+      if (err?.name === 'AbortError' || signal?.aborted) return; // user switched tabs — ignore
       Toast.show({ type: 'error', text1: t('dashboard.errorLoading'), text2: t('dashboard.pullToRetry') });
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [tokens?.accessToken, activeSport]);
 
   useEffect(() => {
+    // Abort previous in-flight request before starting a new one
+    abortRef.current?.abort();
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+
     setLoading(true);
-    fetchDashboard();
+    fetchDashboard(ctrl.signal);
+
+    return () => ctrl.abort();
   }, [fetchDashboard]);
 
   const fetchUserStats = useCallback(async () => {
@@ -205,7 +220,9 @@ export function DashboardScreen({ navigation }: Props) {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchDashboard();
+    // Use the current abort controller's signal so pull-to-refresh is also
+    // cancelled if the user switches sport mid-refresh.
+    fetchDashboard(abortRef.current?.signal);
     fetchUserStats();
     fetchPickedIds();
   }, [fetchDashboard, fetchUserStats, fetchPickedIds]);

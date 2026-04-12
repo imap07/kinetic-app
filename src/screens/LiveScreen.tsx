@@ -170,27 +170,42 @@ export function LiveScreen() {
     }
   }, [sseLiveGames, sseConnected]);
 
-  const fetchData = useCallback(async () => {
+  // AbortController ref — aborts in-flight requests when the sport
+  // changes so stale responses can't fire error toasts for old tabs.
+  const abortRef = useRef<AbortController | null>(null);
+
+  const fetchData = useCallback(async (signal?: AbortSignal) => {
     if (!tokens?.accessToken) return;
     try {
-      const result = await sportsApi.getDashboard(tokens.accessToken, activeSport);
-      setData(result);
-    } catch (err) {
+      const result = await sportsApi.getDashboard(tokens.accessToken, activeSport, signal);
+      if (!signal?.aborted) setData(result);
+    } catch (err: any) {
+      if (err?.name === 'AbortError' || signal?.aborted) return; // user switched tabs
       Toast.show({ type: 'error', text1: t('dashboard.errorLoading'), text2: t('dashboard.pullToRetry') });
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [tokens?.accessToken, activeSport]);
 
   useEffect(() => {
+    // Abort previous in-flight request
+    abortRef.current?.abort();
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+
     setLoading(true);
-    fetchData();
+    fetchData(ctrl.signal);
+
+    // Polling fallback (only when SSE is disconnected)
     const pollInterval = sseConnected ? 0 : POLLING_FALLBACK_INTERVAL;
     if (pollInterval > 0) {
-      intervalRef.current = setInterval(fetchData, pollInterval);
+      intervalRef.current = setInterval(() => fetchData(ctrl.signal), pollInterval);
     }
     return () => {
+      ctrl.abort();
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [fetchData, sseConnected]);
@@ -208,7 +223,7 @@ export function LiveScreen() {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchData();
+    fetchData(abortRef.current?.signal);
     fetchPickedIds();
   }, [fetchData, fetchPickedIds]);
 
