@@ -16,6 +16,10 @@ import {
   Inter_600SemiBold,
   Inter_700Bold,
 } from '@expo-google-fonts/inter';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { PurchasesProvider } from './src/contexts/PurchasesContext';
@@ -141,6 +145,10 @@ export default function App() {
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    ...MaterialCommunityIcons.font,
+    ...Ionicons.font,
+    ...FontAwesome5.font,
+    ...MaterialIcons.font,
   });
 
   if (!fontsLoaded) {

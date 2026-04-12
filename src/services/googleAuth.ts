@@ -2,11 +2,12 @@ import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-si
 import { Platform } from 'react-native';
 
 const WEB_CLIENT_ID =
-  '942851412014-8f1gm6sr5luif1f7rtscj60pvpd3ic9n.apps.googleusercontent.com';
+  process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '';
 const IOS_CLIENT_ID =
-  '942851412014-0v2iuf4dj6ji0sm4hqnblqvme0g2qsle.apps.googleusercontent.com';
+  process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? '';
 
 let configured = false;
+let isSigningIn = false;
 
 function ensureConfigured() {
   if (configured) return;
@@ -26,24 +27,33 @@ export interface GoogleSignInResult {
 }
 
 export async function signInWithGoogle(): Promise<GoogleSignInResult> {
-  ensureConfigured();
-
-  if (Platform.OS === 'android') {
-    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+  if (isSigningIn) {
+    throw new Error('SIGN_IN_IN_PROGRESS');
   }
+  isSigningIn = true;
 
-  const response = await GoogleSignin.signIn();
+  try {
+    ensureConfigured();
 
-  if (!response.data?.idToken) {
-    throw new Error('Google Sign-In failed: no idToken returned');
+    if (Platform.OS === 'android') {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    }
+
+    const response = await GoogleSignin.signIn();
+
+    if (!response.data?.idToken) {
+      throw new Error('Google Sign-In failed: no idToken returned');
+    }
+
+    return {
+      idToken: response.data.idToken,
+      email: response.data.user.email,
+      displayName: response.data.user.name ?? response.data.user.email,
+      avatar: response.data.user.photo ?? undefined,
+    };
+  } finally {
+    isSigningIn = false;
   }
-
-  return {
-    idToken: response.data.idToken,
-    email: response.data.user.email,
-    displayName: response.data.user.name ?? response.data.user.email,
-    avatar: response.data.user.photo ?? undefined,
-  };
 }
 
 export async function signOutFromGoogle(): Promise<void> {

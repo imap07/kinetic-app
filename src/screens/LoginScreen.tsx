@@ -202,6 +202,7 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
   };
 
   const handleGoogleLogin = async () => {
+    if (socialLoading) return; // prevent double-tap
     setSocialLoading('google');
     try {
       const result = await signInWithGoogle();
@@ -211,8 +212,9 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
         displayName: result.displayName,
         avatar: result.avatar,
       });
-    } catch (err) {
+    } catch (err: any) {
       if (isGoogleSignInCancelled(err)) return;
+      if (err?.message === 'SIGN_IN_IN_PROGRESS') return;
       const message =
         err instanceof ApiError
           ? err.message

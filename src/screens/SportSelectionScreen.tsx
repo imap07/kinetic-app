@@ -17,9 +17,10 @@ import { authApi } from '../api';
 import type { SportKey } from '../api/sports';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_GAP = 10;
-const CARD_PADDING = 16;
-const CARD_WIDTH = (SCREEN_WIDTH - CARD_PADDING * 2 - CARD_GAP * 2) / 3;
+const NUM_COLUMNS = 2;
+const CARD_GAP = 12;
+const CARD_PADDING = 20;
+const CARD_WIDTH = (SCREEN_WIDTH - CARD_PADDING * 2 - CARD_GAP * (NUM_COLUMNS - 1)) / NUM_COLUMNS;
 
 interface SportOption {
   key: SportKey;
@@ -91,8 +92,9 @@ export function SportSelectionScreen({ onComplete }: Props) {
         <Text style={styles.subtitle}>{t('sportSelection.subtitle')}</Text>
       </View>
 
-      {/* Sport grid — 3 columns */}
+      {/* Sport grid */}
       <ScrollView
+        style={styles.scrollView}
         contentContainerStyle={styles.grid}
         showsVerticalScrollIndicator={false}
       >
@@ -208,23 +210,28 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  // Grid — 3 columns
+  // ScrollView
+  scrollView: {
+    flex: 1,
+  },
+  // Grid — 2 columns
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     paddingHorizontal: CARD_PADDING,
     gap: CARD_GAP,
+    paddingBottom: 16,
   },
   sportCard: {
     width: CARD_WIDTH,
     backgroundColor: colors.surfaceContainer,
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 8,
+    borderRadius: 16,
+    paddingVertical: 18,
+    paddingHorizontal: 10,
     borderWidth: 1.5,
     borderColor: 'transparent',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   checkBadge: {
     position: 'absolute',
