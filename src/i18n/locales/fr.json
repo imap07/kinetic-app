@@ -956,6 +956,9 @@
     "alertCancel": "Annuler",
     "alertOpenSettings": "Ouvrir les Paramètres"
   },
+  "offline": {
+    "noConnection": "Aucune connexion internet"
+  },
   "onboardingComplete": {
     "title": "Vous êtes prêt !",
     "subtitle": "Votre fil personnalisé est prêt",

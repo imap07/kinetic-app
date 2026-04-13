@@ -956,6 +956,9 @@
     "alertCancel": "Cancel",
     "alertOpenSettings": "Open Settings"
   },
+  "offline": {
+    "noConnection": "No internet connection"
+  },
   "onboardingComplete": {
     "title": "You're all set!",
     "subtitle": "Your personalized feed is ready",

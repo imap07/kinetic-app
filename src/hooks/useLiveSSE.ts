@@ -40,6 +40,13 @@ export function useLiveSSE({ sport, token, enabled = true }: UseLiveSSEOptions) 
     }
 
     try {
+      // SECURITY NOTE: Token is passed as a query parameter because the
+      // EventSource API does not support custom headers. This is a known
+      // limitation. Mitigations in place:
+      //   1. Only the short-lived ACCESS token is used (never the refresh token).
+      //   2. Backend applies ThrottlerGuard on the SSE endpoint.
+      //   3. The backend should avoid logging full query strings.
+      // A future improvement would be a short-lived ticket exchange endpoint.
       const url = `${API_BASE_URL}/sports/live/stream?sport=${sport}&token=${token}`;
       const es = new EventSource(url);
 

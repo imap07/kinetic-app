@@ -956,6 +956,9 @@
     "alertCancel": "Cancelar",
     "alertOpenSettings": "Abrir Ajustes"
   },
+  "offline": {
+    "noConnection": "Sin conexión a internet"
+  },
   "onboardingComplete": {
     "title": "¡Todo listo!",
     "subtitle": "Tu feed personalizado está listo",

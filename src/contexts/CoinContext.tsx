@@ -4,6 +4,7 @@ import React, {
   useState,
   useEffect,
   useCallback,
+  useRef,
 } from 'react';
 import { useAuth } from './AuthContext';
 import { coinsApi } from '../api/coins';
@@ -54,12 +55,26 @@ export function CoinProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, tokens?.accessToken, refreshBalance]);
 
+  const purchaseTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
   const refreshBalanceAfterPurchase = useCallback(() => {
+    // Clear any pending timers from a previous purchase call
+    purchaseTimersRef.current.forEach(clearTimeout);
+    purchaseTimersRef.current = [];
+
     const delays = [2000, 5000, 10000];
     delays.forEach((ms) => {
-      setTimeout(() => refreshBalance(), ms);
+      const id = setTimeout(() => refreshBalance(), ms);
+      purchaseTimersRef.current.push(id);
     });
   }, [refreshBalance]);
+
+  // Cleanup purchase timers on unmount
+  useEffect(() => {
+    return () => {
+      purchaseTimersRef.current.forEach(clearTimeout);
+    };
+  }, []);
 
   const value: CoinContextValue = {
     ...wallet,

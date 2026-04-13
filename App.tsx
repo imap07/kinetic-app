@@ -29,8 +29,10 @@ import { AchievementProvider } from './src/contexts/AchievementContext';
 import { AdProvider } from './src/contexts/AdContext';
 import { RewardsProvider } from './src/contexts/RewardsContext';
 import { RewardTierCelebration } from './src/components/RewardTierCelebration';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { toastConfig } from './src/components/ToastConfig';
+import { OfflineBanner } from './src/components/OfflineBanner';
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -160,26 +162,29 @@ export default function App() {
   }
 
   return (
-    <AppErrorBoundary>
-      <AuthProvider>
-        <PurchasesProvider>
-          <AdProvider>
-          <CoinProvider>
-            <LiveGamesProvider>
-              <AchievementProvider>
-                <RewardsProvider>
-                  <StatusBar style="light" />
-                  <AppNavigator />
-                  <RewardTierCelebration />
-                  <Toast config={toastConfig} topOffset={60} />
-                </RewardsProvider>
-              </AchievementProvider>
-            </LiveGamesProvider>
-          </CoinProvider>
-          </AdProvider>
-        </PurchasesProvider>
-      </AuthProvider>
-    </AppErrorBoundary>
+    <SafeAreaProvider>
+      <AppErrorBoundary>
+        <AuthProvider>
+          <PurchasesProvider>
+            <AdProvider>
+            <CoinProvider>
+              <LiveGamesProvider>
+                <AchievementProvider>
+                  <RewardsProvider>
+                    <StatusBar style="light" />
+                    <AppNavigator />
+                    <OfflineBanner />
+                    <RewardTierCelebration />
+                    <Toast config={toastConfig} topOffset={60} />
+                  </RewardsProvider>
+                </AchievementProvider>
+              </LiveGamesProvider>
+            </CoinProvider>
+            </AdProvider>
+          </PurchasesProvider>
+        </AuthProvider>
+      </AppErrorBoundary>
+    </SafeAreaProvider>
   );
 }
 
