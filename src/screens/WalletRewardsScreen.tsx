@@ -40,6 +40,8 @@ export function WalletRewardsScreen() {
     available,
     totalEarned,
     totalSpent,
+    earnedCoins,
+    purchasedCoins,
     isLoading: balanceLoading,
     refreshBalance,
   } = useCoins();
@@ -144,6 +146,20 @@ export function WalletRewardsScreen() {
               <Ionicons name="trending-down" size={12} color={colors.error} />
               <Text style={styles.balanceStatText}>
                 {totalSpent.toLocaleString()} {t('wallet.spent')}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.balanceRow}>
+            <View style={styles.balanceStat}>
+              <Ionicons name="star" size={12} color={colors.primary} />
+              <Text style={styles.balanceStatText}>
+                {earnedCoins.toLocaleString()} {t('coins.earned')} ({t('coins.redeemable').toLowerCase()})
+              </Text>
+            </View>
+            <View style={styles.balanceStat}>
+              <Ionicons name="cart" size={12} color={colors.info} />
+              <Text style={styles.balanceStatText}>
+                {purchasedCoins.toLocaleString()} {t('coins.purchased')}
               </Text>
             </View>
           </View>

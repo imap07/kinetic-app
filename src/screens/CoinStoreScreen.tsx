@@ -35,7 +35,7 @@ export function CoinStoreScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { t } = useTranslation();
-  const { balance, available, isLoading: balanceLoading, refreshBalanceAfterPurchase } = useCoins();
+  const { balance, available, earnedCoins, purchasedCoins, isLoading: balanceLoading, refreshBalanceAfterPurchase } = useCoins();
   const { currentOffering, purchasePackage, isProMember } = usePurchases();
   const [purchasing, setPurchasing] = useState<string | null>(null);
 
@@ -123,7 +123,30 @@ export function CoinStoreScreen() {
           <Text style={styles.balanceSubtext}>
             {t('coinStore.availableToSpend', { count: available.toLocaleString() })}
           </Text>
+          <View style={styles.balanceBreakdown}>
+            <View style={styles.breakdownItem}>
+              <Ionicons name="star" size={12} color={colors.primary} />
+              <Text style={styles.breakdownText}>
+                {earnedCoins.toLocaleString()} {t('coins.earned')} ({t('coins.redeemable').toLowerCase()})
+              </Text>
+            </View>
+            <View style={styles.breakdownItem}>
+              <Ionicons name="cart" size={12} color={colors.info} />
+              <Text style={styles.breakdownText}>
+                {purchasedCoins.toLocaleString()} {t('coins.purchased')}
+              </Text>
+            </View>
+          </View>
         </LinearGradient>
+
+        {/* Coin type info */}
+        <View style={styles.coinTypeNote}>
+          <Feather name="info" size={14} color={colors.onSurfaceDim} />
+          <View style={styles.coinTypeNoteContent}>
+            <Text style={styles.coinTypeNoteText}>{t('coins.purchasedNote')}</Text>
+            <Text style={styles.coinTypeNoteText}>{t('coins.earnedOnly')}</Text>
+          </View>
+        </View>
 
         {/* Buy Coins */}
         <Text style={[styles.sectionTitle, { marginTop: spacing['3xl'] }]}>{t('coinStore.buyCoins')}</Text>
@@ -412,6 +435,44 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.onSurfaceVariant,
     marginTop: spacing.xs,
+  },
+  balanceBreakdown: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.lg,
+    marginTop: spacing.md,
+  },
+  breakdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  breakdownText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 12,
+    color: colors.onSurfaceVariant,
+  },
+  coinTypeNote: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    padding: spacing.lg,
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+  },
+  coinTypeNoteContent: {
+    flex: 1,
+    gap: 4,
+  },
+  coinTypeNoteText: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 12,
+    color: colors.onSurfaceDim,
+    lineHeight: 17,
   },
 
   sectionTitle: {

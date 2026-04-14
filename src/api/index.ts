@@ -54,3 +54,7 @@ export { achievementsApi } from './achievements';
 export type { Achievement } from './achievements';
 export { rewardsApi } from './rewards';
 export type { RewardStatus } from './rewards';
+export { streaksApi } from './streaks';
+export type { StreakInfo, UseShieldResponse } from './streaks';
+export { challengesApi } from './challenges';
+export type { DailyChallenge, ChallengeType, ChallengeStatus, SubmitChallengeResponse, ChallengeHistoryEntry } from './challenges';

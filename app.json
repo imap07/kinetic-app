@@ -1,9 +1,13 @@
 {
+  "react-native-google-mobile-ads": {
+    "android_app_id": "ca-app-pub-9821496555610524~8593987728",
+    "ios_app_id": "ca-app-pub-9821496555610524~9907069395"
+  },
   "expo": {
     "name": "Kinetic",
     "slug": "kinetic-app",
     "scheme": "kinetic",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -14,7 +18,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "buildNumber": "50",
+      "buildNumber": "62",
       "bundleIdentifier": "io.kinetic.app",
       "googleServicesFile": "./GoogleService-Info.plist",
       "usesAppleSignIn": true,
@@ -43,7 +47,7 @@
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE"
       ],
-      "versionCode": 50
+      "versionCode": 62
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -85,7 +89,13 @@
           "iosAppId": "ca-app-pub-9821496555610524~9907069395"
         }
       ],
-      "expo-build-properties"
+      "expo-build-properties",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Kinetic uses the camera to scan QR codes for joining leagues."
+        }
+      ]
     ],
     "extra": {
       "eas": {

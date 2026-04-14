@@ -32,10 +32,9 @@ export function GiftcardRedeemScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { tokens } = useAuth();
-  // We only need `available` (= balance - locked) for redemption gating and
-  // display. `balance` would include coins that are locked in active leagues
-  // and would let the user think they can spend more than they actually can.
-  const { available, refreshBalance } = useCoins();
+  // For gift card redemption, only earned coins can be used. We still track
+  // `available` for general display but gate redemption on `earnedCoins`.
+  const { available, earnedCoins, refreshBalance } = useCoins();
   const { t } = useTranslation();
 
   const [tab, setTab] = useState<TabFilter>('catalog');
@@ -71,10 +70,11 @@ export function GiftcardRedeemScreen() {
   }, [fetchData, refreshBalance]);
 
   const handleRedeem = (card: GiftcardCatalogItem, denomination: { coins: number; dollarValue: number }) => {
-    if (available < denomination.coins) {
+    if (earnedCoins < denomination.coins) {
+      const deficit = denomination.coins - earnedCoins;
       Alert.alert(
         t('giftcard.insufficientCoins'),
-        t('giftcard.insufficientCoinsDesc', { needed: denomination.coins, available }),
+        `${t('coins.availableForRedemption')}: ${earnedCoins.toLocaleString()}\n\n${t('coins.needMore', { amount: deficit.toLocaleString() })}`,
       );
       return;
     }
@@ -129,8 +129,13 @@ export function GiftcardRedeemScreen() {
 
       <View style={styles.balancePill}>
         <MaterialCommunityIcons name="circle-multiple" size={16} color={colors.primary} />
-        <Text style={styles.balancePillText}>{t('giftcard.coinsAvailable', { count: available.toLocaleString() })}</Text>
+        <Text style={styles.balancePillText}>
+          {t('coins.availableForRedemption')}: {earnedCoins.toLocaleString()} {t('coins.earned').toLowerCase()}
+        </Text>
       </View>
+      <Text style={styles.earnedOnlyNote}>
+        {t('coins.earnedOnly')}
+      </Text>
 
       <View style={styles.tabs}>
         {(['catalog', 'history'] as const).map((tabKey) => (
@@ -178,7 +183,7 @@ export function GiftcardRedeemScreen() {
 
                 <View style={styles.denomGrid}>
                   {card.denominations.map((denom) => {
-                    const canAfford = available >= denom.coins;
+                    const canAfford = earnedCoins >= denom.coins;
                     const isRedeeming = redeeming === `${card.type}-${denom.coins}`;
                     return (
                       <TouchableOpacity
@@ -302,6 +307,14 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_600SemiBold',
     fontSize: 13,
     color: colors.primary,
+  },
+  earnedOnlyNote: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 11,
+    color: colors.onSurfaceDim,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+    paddingHorizontal: spacing['2xl'],
   },
 
   tabs: {

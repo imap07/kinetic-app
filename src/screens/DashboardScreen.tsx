@@ -29,6 +29,10 @@ import { sportsApi, SPORT_TABS, RECENT_GAMES_LIMIT } from '../api/sports';
 import type { SportKey, SportDashboard, SportGame } from '../api/sports';
 import { predictionsApi, fetchPickedGameIds } from '../api/predictions';
 import type { DailyStatusResponse, MyStatsResponse } from '../api/predictions';
+import { streaksApi } from '../api/streaks';
+import type { StreakInfo } from '../api/streaks';
+import { challengesApi } from '../api/challenges';
+import type { DailyChallenge } from '../api/challenges';
 import Toast from 'react-native-toast-message';
 import { useLiveGames } from '../contexts/LiveGamesContext';
 import { useStatsSSE, AchievementSSEData } from '../hooks/useStatsSSE';
@@ -134,6 +138,10 @@ export function DashboardScreen({ navigation }: Props) {
   const [userStats, setUserStats] = useState<MyStatsResponse | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
   const [pickedGameIds, setPickedGameIds] = useState<Set<number>>(new Set());
+  const [streakInfo, setStreakInfo] = useState<StreakInfo | null>(null);
+  const [showStreakModal, setShowStreakModal] = useState(false);
+  const [todayChallenge, setTodayChallenge] = useState<DailyChallenge | null>(null);
+  const [challengeSubmitting, setChallengeSubmitting] = useState(false);
 
   // ── In-memory stale-while-revalidate cache per sport ──
   // On tab switch: show cached data instantly, fetch fresh in background.
@@ -238,12 +246,58 @@ export function DashboardScreen({ navigation }: Props) {
 
   useEffect(() => { fetchPickedIds(); }, [fetchPickedIds]);
 
+  const fetchStreakInfo = useCallback(async () => {
+    if (!tokens?.accessToken) return;
+    try {
+      const info = await streaksApi.getStreakInfo(tokens.accessToken);
+      setStreakInfo(info);
+    } catch (_) { /* silent */ }
+  }, [tokens?.accessToken]);
+
+  useEffect(() => { fetchStreakInfo(); }, [fetchStreakInfo]);
+
+  const fetchTodayChallenge = useCallback(async () => {
+    if (!tokens?.accessToken) return;
+    try {
+      const challenge = await challengesApi.getTodayChallenge(tokens.accessToken);
+      setTodayChallenge(challenge);
+    } catch (_) { /* silent */ }
+  }, [tokens?.accessToken]);
+
+  useEffect(() => { fetchTodayChallenge(); }, [fetchTodayChallenge]);
+
+  const handleChallengeSubmit = useCallback(async (answer: string) => {
+    if (!tokens?.accessToken || !todayChallenge || challengeSubmitting) return;
+    setChallengeSubmitting(true);
+    try {
+      const result = await challengesApi.submitChallenge(
+        tokens.accessToken,
+        todayChallenge._id,
+        answer,
+      );
+      setTodayChallenge((prev) =>
+        prev ? { ...prev, status: result.status, userAnswer: answer } : prev,
+      );
+      Toast.show({
+        type: 'success',
+        text1: t('challenge.submitted'),
+        text2: t('challenge.waitingResult'),
+      });
+    } catch (err: any) {
+      Toast.show({ type: 'error', text1: 'Error', text2: err.message || 'Failed to submit' });
+    } finally {
+      setChallengeSubmitting(false);
+    }
+  }, [tokens?.accessToken, todayChallenge, challengeSubmitting, t]);
+
   // Re-fetch stats every time the dashboard gains focus (e.g. after submitting a prediction)
   useFocusEffect(
     useCallback(() => {
       fetchUserStats();
       fetchPickedIds();
-    }, [fetchUserStats, fetchPickedIds])
+      fetchStreakInfo();
+      fetchTodayChallenge();
+    }, [fetchUserStats, fetchPickedIds, fetchStreakInfo, fetchTodayChallenge])
   );
 
   // Real-time stats via SSE — updates instantly when predictions are created/deleted/resolved
@@ -267,7 +321,9 @@ export function DashboardScreen({ navigation }: Props) {
     fetchDashboard(abortRef.current?.signal);
     fetchUserStats();
     fetchPickedIds();
-  }, [fetchDashboard, fetchUserStats, fetchPickedIds]);
+    fetchStreakInfo();
+    fetchTodayChallenge();
+  }, [fetchDashboard, fetchUserStats, fetchPickedIds, fetchStreakInfo, fetchTodayChallenge]);
 
   const handleSportChange = useCallback((sport: SportKey) => {
     if (sport === activeSport) return;
@@ -917,7 +973,7 @@ export function DashboardScreen({ navigation }: Props) {
             activeOpacity={0.8}
             onPress={() => rootNav.navigate('Main', { screen: 'MyPicks' } as any)}
           >
-            {/* Top row: title + daily picks ring */}
+            {/* Top row: title + streak badge + daily picks ring */}
             <View style={styles.statsTopRow}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.predictorTitle}>{t('dashboard.yourStats')}</Text>
@@ -925,6 +981,31 @@ export function DashboardScreen({ navigation }: Props) {
                   <Text style={styles.predictorPts}>{userStats.totalPoints.toLocaleString()} PTS</Text>
                 </Text>
               </View>
+
+              {/* Streak badge */}
+              {streakInfo && (
+                <TouchableOpacity
+                  style={[
+                    styles.streakBadge,
+                    streakInfo.currentStreak > 0 && styles.streakBadgeActive,
+                  ]}
+                  onPress={() => setShowStreakModal(true)}
+                  activeOpacity={0.7}
+                  hitSlop={8}
+                >
+                  <Text style={styles.streakBadgeEmoji}>
+                    {streakInfo.currentStreak > 0 ? '\uD83D\uDD25' : '\uD83D\uDD25'}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.streakBadgeNumber,
+                      streakInfo.currentStreak > 0 && styles.streakBadgeNumberActive,
+                    ]}
+                  >
+                    {streakInfo.currentStreak}
+                  </Text>
+                </TouchableOpacity>
+              )}
 
               {/* Today's picks counter (informational only — there is no daily limit) */}
               <View style={styles.dailyRing}>
@@ -990,6 +1071,93 @@ export function DashboardScreen({ navigation }: Props) {
             </View>
           </TouchableOpacity>
         ) : null}
+
+        {/* Daily Challenge Card — from /api/challenges/today */}
+        {todayChallenge && (
+          <View style={styles.dailyChallengeCard}>
+            <LinearGradient
+              colors={['rgba(255,183,77,0.12)', 'rgba(255,183,77,0.02)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.dailyChallengeTitleRow}>
+              <Text style={styles.dailyChallengeEmoji}>{'\uD83C\uDFAF'}</Text>
+              <Text style={styles.dailyChallengeHeading}>{t('challenge.daily')}</Text>
+              {todayChallenge.status === 'won' && (
+                <View style={[styles.dailyChallengeResultBadge, styles.dailyChallengeWonBadge]}>
+                  <Text style={styles.dailyChallengeResultText}>+{todayChallenge.coinsReward}</Text>
+                </View>
+              )}
+              {todayChallenge.status === 'lost' && (
+                <View style={[styles.dailyChallengeResultBadge, styles.dailyChallengeLostBadge]}>
+                  <Ionicons name="close" size={10} color={colors.error} />
+                </View>
+              )}
+            </View>
+
+            {/* Match info */}
+            <Text style={styles.dailyChallengeMatch}>
+              {todayChallenge.homeTeamName} vs {todayChallenge.awayTeamName}
+            </Text>
+
+            {/* Question */}
+            <Text style={styles.dailyChallengeQuestion}>
+              {todayChallenge.type === 'over_under'
+                ? t('challenge.overUnder', { threshold: todayChallenge.threshold ?? 2.5 })
+                : todayChallenge.type === 'btts'
+                  ? t('challenge.btts')
+                  : t('challenge.win')}
+            </Text>
+
+            {/* Action area */}
+            {todayChallenge.status === 'active' ? (
+              <View style={styles.dailyChallengeActions}>
+                {todayChallenge.options.map((option) => (
+                  <TouchableOpacity
+                    key={option}
+                    style={styles.dailyChallengeBtn}
+                    activeOpacity={0.7}
+                    onPress={() => handleChallengeSubmit(option)}
+                    disabled={challengeSubmitting}
+                  >
+                    <LinearGradient
+                      colors={[colors.primaryContainer, colors.primary]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.dailyChallengeBtnGradient}
+                    >
+                      {challengeSubmitting ? (
+                        <ActivityIndicator size="small" color="#3A4A00" />
+                      ) : (
+                        <Text style={styles.dailyChallengeBtnText}>{option}</Text>
+                      )}
+                    </LinearGradient>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : todayChallenge.status === 'submitted' ? (
+              <View style={styles.dailyChallengeSubmitted}>
+                <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
+                <Text style={styles.dailyChallengeSubmittedText}>
+                  {t('challenge.submitted')} — {t('challenge.waitingResult')}
+                </Text>
+              </View>
+            ) : todayChallenge.status === 'won' ? (
+              <View style={styles.dailyChallengeSubmitted}>
+                <Text style={styles.dailyChallengeWonText}>
+                  {'\uD83C\uDFC6'} {t('challenge.won')} +{todayChallenge.coinsReward} KC
+                </Text>
+              </View>
+            ) : todayChallenge.status === 'lost' ? (
+              <View style={styles.dailyChallengeSubmitted}>
+                <Text style={styles.dailyChallengeLostText}>
+                  {'\u274C'} {t('challenge.lost')}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        )}
 
         {/* Challenge of the Day — connected to real quest data */}
         {dailyStatus?.quests && (
@@ -1428,6 +1596,59 @@ export function DashboardScreen({ navigation }: Props) {
               <View style={{ height: 40 }} />
             </ScrollView>
           </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Streak Detail Modal */}
+      <Modal
+        visible={showStreakModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowStreakModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.streakModalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowStreakModal(false)}
+        >
+          <View style={styles.streakModalContent}>
+            <Text style={styles.streakModalEmoji}>{'\uD83D\uDD25'}</Text>
+            <Text style={styles.streakModalTitle}>{t('streak.title')}</Text>
+
+            <View style={styles.streakModalGrid}>
+              <View style={styles.streakModalItem}>
+                <Text style={styles.streakModalValue}>{streakInfo?.currentStreak ?? 0}</Text>
+                <Text style={styles.streakModalLabel}>{t('streak.current')}</Text>
+              </View>
+              <View style={styles.streakModalDivider} />
+              <View style={styles.streakModalItem}>
+                <Text style={styles.streakModalValue}>{streakInfo?.longestStreak ?? 0}</Text>
+                <Text style={styles.streakModalLabel}>{t('streak.longest')}</Text>
+              </View>
+            </View>
+
+            <View style={styles.streakModalInfoRow}>
+              <Ionicons name="flag" size={14} color={colors.primary} />
+              <Text style={styles.streakModalInfoText}>
+                {t('streak.nextMilestone')}: {streakInfo?.nextMilestone ?? 0} {t('dashboard.days', { defaultValue: 'days' })}
+              </Text>
+            </View>
+
+            <View style={styles.streakModalInfoRow}>
+              <Ionicons name="shield-checkmark" size={14} color={colors.info} />
+              <Text style={styles.streakModalInfoText}>
+                {t('streak.shieldsAvailable')}: {streakInfo?.shieldsAvailable ?? 0}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.streakModalDismiss}
+              onPress={() => setShowStreakModal(false)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.streakModalDismissText}>OK</Text>
+            </TouchableOpacity>
+          </View>
         </TouchableOpacity>
       </Modal>
     </View>
@@ -2432,5 +2653,215 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 60,
     right: 24,
+  },
+
+  // ── Streak Badge ──
+  streakBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginRight: 10,
+  },
+  streakBadgeActive: {
+    backgroundColor: 'rgba(202,253,0,0.1)',
+  },
+  streakBadgeEmoji: {
+    fontSize: 14,
+  },
+  streakBadgeNumber: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 14,
+    color: colors.onSurfaceDim,
+  },
+  streakBadgeNumberActive: {
+    color: colors.primary,
+  },
+
+  // ── Streak Modal ──
+  streakModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  streakModalContent: {
+    width: '80%',
+    backgroundColor: colors.surfaceContainerHigh,
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    gap: 16,
+  },
+  streakModalEmoji: {
+    fontSize: 48,
+  },
+  streakModalTitle: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 22,
+    color: colors.onSurface,
+    letterSpacing: -0.5,
+  },
+  streakModalGrid: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    backgroundColor: colors.surfaceContainer,
+    borderRadius: 12,
+    paddingVertical: 16,
+  },
+  streakModalItem: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 4,
+  },
+  streakModalDivider: {
+    width: StyleSheet.hairlineWidth,
+    height: 32,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  streakModalValue: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 28,
+    color: colors.primary,
+  },
+  streakModalLabel: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 11,
+    color: colors.onSurfaceDim,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  streakModalInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    width: '100%',
+    paddingHorizontal: 8,
+  },
+  streakModalInfoText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 13,
+    color: colors.onSurfaceVariant,
+  },
+  streakModalDismiss: {
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    marginTop: 4,
+  },
+  streakModalDismissText: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 15,
+    color: colors.onPrimary,
+    letterSpacing: 0.5,
+  },
+
+  // ── Daily Challenge Card ──
+  dailyChallengeCard: {
+    marginHorizontal: 16,
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,183,77,0.2)',
+    padding: 20,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  dailyChallengeTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  dailyChallengeEmoji: {
+    fontSize: 16,
+  },
+  dailyChallengeHeading: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 15,
+    lineHeight: 20,
+    color: '#FFB74D',
+    letterSpacing: 0.5,
+    flex: 1,
+  },
+  dailyChallengeResultBadge: {
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  dailyChallengeWonBadge: {
+    backgroundColor: 'rgba(202,253,0,0.15)',
+  },
+  dailyChallengeLostBadge: {
+    backgroundColor: 'rgba(255,68,68,0.15)',
+  },
+  dailyChallengeResultText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 11,
+    color: colors.primary,
+  },
+  dailyChallengeMatch: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.onSurface,
+    marginBottom: 6,
+  },
+  dailyChallengeQuestion: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.onSurfaceVariant,
+    marginBottom: 16,
+  },
+  dailyChallengeActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  dailyChallengeBtn: {
+    flex: 1,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  dailyChallengeBtnGradient: {
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+  },
+  dailyChallengeBtnText: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 14,
+    color: '#3A4A00',
+    letterSpacing: 0.5,
+  },
+  dailyChallengeSubmitted: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+  },
+  dailyChallengeSubmittedText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 13,
+    color: colors.primary,
+  },
+  dailyChallengeWonText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 14,
+    color: colors.primary,
+  },
+  dailyChallengeLostText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 14,
+    color: colors.onSurfaceVariant,
   },
 });

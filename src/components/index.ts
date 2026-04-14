@@ -9,3 +9,4 @@ export { ModalCloseButton } from './ModalCloseButton';
 export { FootballPitch } from './FootballPitch';
 export { F1StartingGrid } from './F1StartingGrid';
 export { ScreenErrorBoundary } from './ScreenErrorBoundary';
+export { LeagueQRModal } from './LeagueQRModal';

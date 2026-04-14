@@ -17,9 +17,11 @@ import { useTranslation } from 'react-i18next';
 import { useRoute } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, borderRadius } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import { footballApi, sportsApi, predictionsApi } from '../api';
+import { streaksApi } from '../api/streaks';
 import type { Fixture, FixtureEvent, FixtureStatistic, SportGame, PredictionData } from '../api';
 import Toast from 'react-native-toast-message';
 import { logPickAttempted, logPickCompleted } from '../services/analytics';
@@ -30,8 +32,171 @@ import { Feather } from '@expo/vector-icons';
 
 type Props = { navigation: any };
 
-type PredictionType = 'result' | 'exact_score';
+type PredictionType = 'result' | 'exact_score' | 'over_under' | 'btts' | 'fastest_lap' | 'podium_finish' | 'method_of_victory' | 'goes_the_distance';
 type OutcomeChoice = 'home' | 'draw' | 'away';
+type MethodOfVictoryChoice = 'ko_tko' | 'submission' | 'decision';
+type YesNoChoice = 'yes' | 'no';
+
+const OVER_UNDER_THRESHOLDS: Record<string, number[]> = {
+  football: [0.5, 1.5, 2.5, 3.5, 4.5],
+  basketball: [180.5, 190.5, 200.5, 210.5, 220.5, 230.5],
+  hockey: [4.5, 5.5, 6.5],
+  'american-football': [40.5, 45.5, 50.5, 55.5],
+  baseball: [6.5, 7.5, 8.5, 9.5],
+  handball: [40.5, 45.5, 50.5, 55.5],
+  rugby: [30.5, 35.5, 40.5, 45.5, 50.5],
+  volleyball: [150.5, 160.5, 170.5, 180.5],
+  afl: [140.5, 150.5, 160.5, 170.5, 180.5],
+  'formula-1': [15.5, 16.5, 17.5, 18.5],
+  mma: [1.5, 2.5],
+};
+
+const BTTS_SPORTS = [
+  'football', 'hockey', 'handball', 'rugby',
+];
+
+// Sport-specific prediction config: which tabs, labels, units
+type SportPredictionConfig = {
+  types: { key: PredictionType; labelKey: string }[];
+  overUnderTitleKey: string;
+  overUnderHintKey: string;
+  hasExactScore: boolean;
+  hasDraw: boolean;
+};
+
+const SPORT_PREDICTION_CONFIG: Record<string, SportPredictionConfig> = {
+  football: {
+    types: [
+      { key: 'result', labelKey: 'prediction.tabWinner' },
+      { key: 'exact_score', labelKey: 'prediction.tabScore' },
+      { key: 'over_under', labelKey: 'prediction.tabTotalGoals' },
+      { key: 'btts', labelKey: 'prediction.tabBothScore' },
+    ],
+    overUnderTitleKey: 'prediction.totalGoalsTitle',
+    overUnderHintKey: 'prediction.totalGoalsHint',
+    hasExactScore: true,
+    hasDraw: true,
+  },
+  basketball: {
+    types: [
+      { key: 'result', labelKey: 'prediction.tabWinner' },
+      { key: 'over_under', labelKey: 'prediction.tabTotalPoints' },
+    ],
+    overUnderTitleKey: 'prediction.totalPointsTitle',
+    overUnderHintKey: 'prediction.totalPointsHint',
+    hasExactScore: false,
+    hasDraw: false,
+  },
+  hockey: {
+    types: [
+      { key: 'result', labelKey: 'prediction.tabWinner' },
+      { key: 'over_under', labelKey: 'prediction.tabTotalGoals' },
+      { key: 'btts', labelKey: 'prediction.tabBothScore' },
+    ],
+    overUnderTitleKey: 'prediction.totalGoalsTitle',
+    overUnderHintKey: 'prediction.totalGoalsHint',
+    hasExactScore: false,
+    hasDraw: true,
+  },
+  baseball: {
+    types: [
+      { key: 'result', labelKey: 'prediction.tabWinner' },
+      { key: 'over_under', labelKey: 'prediction.tabTotalRuns' },
+    ],
+    overUnderTitleKey: 'prediction.totalRunsTitle',
+    overUnderHintKey: 'prediction.totalRunsHint',
+    hasExactScore: false,
+    hasDraw: false,
+  },
+  'american-football': {
+    types: [
+      { key: 'result', labelKey: 'prediction.tabWinner' },
+      { key: 'over_under', labelKey: 'prediction.tabTotalPoints' },
+    ],
+    overUnderTitleKey: 'prediction.totalPointsTitle',
+    overUnderHintKey: 'prediction.totalPointsHint',
+    hasExactScore: false,
+    hasDraw: false,
+  },
+  handball: {
+    types: [
+      { key: 'result', labelKey: 'prediction.tabWinner' },
+      { key: 'over_under', labelKey: 'prediction.tabTotalGoals' },
+      { key: 'btts', labelKey: 'prediction.tabBothScore' },
+    ],
+    overUnderTitleKey: 'prediction.totalGoalsTitle',
+    overUnderHintKey: 'prediction.totalGoalsHint',
+    hasExactScore: false,
+    hasDraw: true,
+  },
+  volleyball: {
+    types: [
+      { key: 'result', labelKey: 'prediction.tabWinner' },
+      { key: 'over_under', labelKey: 'prediction.tabTotalPoints' },
+    ],
+    overUnderTitleKey: 'prediction.totalPointsTitle',
+    overUnderHintKey: 'prediction.totalPointsHint',
+    hasExactScore: false,
+    hasDraw: false,
+  },
+  rugby: {
+    types: [
+      { key: 'result', labelKey: 'prediction.tabWinner' },
+      { key: 'over_under', labelKey: 'prediction.tabTotalPoints' },
+      { key: 'btts', labelKey: 'prediction.tabBothScore' },
+    ],
+    overUnderTitleKey: 'prediction.totalPointsTitle',
+    overUnderHintKey: 'prediction.totalPointsHint',
+    hasExactScore: false,
+    hasDraw: true,
+  },
+  afl: {
+    types: [
+      { key: 'result', labelKey: 'prediction.tabWinner' },
+      { key: 'over_under', labelKey: 'prediction.tabTotalPoints' },
+    ],
+    overUnderTitleKey: 'prediction.totalPointsTitle',
+    overUnderHintKey: 'prediction.totalPointsHint',
+    hasExactScore: false,
+    hasDraw: false,
+  },
+  'formula-1': {
+    types: [
+      { key: 'result', labelKey: 'prediction.tabWinner' },
+      { key: 'fastest_lap', labelKey: 'prediction.tabFastestLap' },
+      { key: 'podium_finish', labelKey: 'prediction.tabPodium' },
+      { key: 'over_under', labelKey: 'prediction.tabTotalFinishers' },
+    ],
+    overUnderTitleKey: 'prediction.totalFinishersTitle',
+    overUnderHintKey: 'prediction.totalFinishersHint',
+    hasExactScore: false,
+    hasDraw: false,
+  },
+  mma: {
+    types: [
+      { key: 'result', labelKey: 'prediction.tabWinner' },
+      { key: 'method_of_victory', labelKey: 'prediction.tabMethod' },
+      { key: 'goes_the_distance', labelKey: 'prediction.tabDistance' },
+      { key: 'over_under', labelKey: 'prediction.tabTotalRounds' },
+    ],
+    overUnderTitleKey: 'prediction.totalRoundsTitle',
+    overUnderHintKey: 'prediction.totalRoundsHint',
+    hasExactScore: false,
+    hasDraw: false,
+  },
+};
+
+// Default config for unknown sports
+const DEFAULT_PREDICTION_CONFIG: SportPredictionConfig = {
+  types: [
+    { key: 'result', labelKey: 'prediction.tabWinner' },
+    { key: 'over_under', labelKey: 'prediction.tabTotalGoals' },
+  ],
+  overUnderTitleKey: 'prediction.totalGoalsTitle',
+  overUnderHintKey: 'prediction.totalGoalsHint',
+  hasExactScore: false,
+  hasDraw: true,
+};
 
 const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'P', 'BT', 'LIVE', 'Q1', 'Q2', 'Q3', 'Q4', 'OT', 'P1', 'P2', 'P3', 'S1', 'S2', 'S3', 'S4', 'S5', 'R1', 'R2', 'R3', 'R4', 'R5', 'IN1', 'IN2', 'IN3', 'IN4', 'IN5', 'IN6', 'IN7', 'IN8', 'IN9'];
 const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AOT', 'AP', 'POST', 'CANC'];
@@ -330,7 +495,14 @@ export function MatchPredictionScreen({ navigation }: Props) {
   const [predType, setPredType] = useState<PredictionType>('result');
   const [homeScoreInput, setHomeScoreInput] = useState('');
   const [awayScoreInput, setAwayScoreInput] = useState('');
+  const [ouSide, setOuSide] = useState<'over' | 'under' | null>(null);
+  const [ouThreshold, setOuThreshold] = useState<number | null>(null);
+  const [bttsAnswer, setBttsAnswer] = useState<'yes' | 'no' | null>(null);
+  const [methodOfVictory, setMethodOfVictory] = useState<MethodOfVictoryChoice | null>(null);
+  const [podiumAnswer, setPodiumAnswer] = useState<YesNoChoice | null>(null);
+  const [distanceAnswer, setDistanceAnswer] = useState<YesNoChoice | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [milestoneData, setMilestoneData] = useState<{ streak: number; coins: number } | null>(null);
 
   const [h2hFixtures, setH2hFixtures] = useState<Fixture[]>([]);
   const [h2hLoading, setH2hLoading] = useState(false);
@@ -414,9 +586,14 @@ export function MatchPredictionScreen({ navigation }: Props) {
       if (prediction) {
         setExistingPrediction(prediction);
         setSelectedOutcome(prediction.predictedOutcome);
-        setPredType(prediction.predictionType);
+        // Backend uses 'win', frontend uses 'result' for the same type
+        const mappedType = prediction.predictionType === 'win' ? 'result' : prediction.predictionType;
+        setPredType(mappedType as PredictionType);
         if (prediction.predictedHomeScore != null) setHomeScoreInput(String(prediction.predictedHomeScore));
         if (prediction.predictedAwayScore != null) setAwayScoreInput(String(prediction.predictedAwayScore));
+        if (prediction.threshold != null) setOuThreshold(prediction.threshold);
+        if (prediction.side) setOuSide(prediction.side);
+        if (prediction.bttsAnswer) setBttsAnswer(prediction.bttsAnswer);
       }
     } catch (err) {
       Toast.show({ type: 'error', text1: t('matchPrediction.errorLoading'), text2: t('dashboard.pullToRetry') });
@@ -544,7 +721,13 @@ export function MatchPredictionScreen({ navigation }: Props) {
   const statusDisplay = getStatusDisplay(gameStatus, t, statusLong, fixture?.elapsed, fixture?.date || genericGame?.date);
 
   const handleSubmitPrediction = async () => {
-    if (!tokens?.accessToken || !selectedOutcome) return;
+    const needsOutcome = predType === 'result' || predType === 'exact_score' || predType === 'fastest_lap' || predType === 'podium_finish';
+    if (!tokens?.accessToken || (needsOutcome && !selectedOutcome)) return;
+    if (predType === 'over_under' && (ouSide === null || ouThreshold === null)) return;
+    if (predType === 'btts' && bttsAnswer === null) return;
+    if (predType === 'method_of_victory' && methodOfVictory === null) return;
+    if (predType === 'podium_finish' && podiumAnswer === null) return;
+    if (predType === 'goes_the_distance' && distanceAnswer === null) return;
 
     logPickAttempted(sport, leagueApiId ?? 0, leagueName ?? '');
 
@@ -555,7 +738,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
 
     setSubmitting(true);
     try {
-      const payload = {
+      const payload: any = {
         sport,
         gameApiId: fixtureApiId,
         leagueApiId,
@@ -566,18 +749,51 @@ export function MatchPredictionScreen({ navigation }: Props) {
         awayTeamLogo,
         leagueName,
         leagueLogo,
-        predictionType: predType,
-        predictedOutcome: selectedOutcome,
+        predictionType: predType === 'result' ? 'win' : predType,
+        predictedOutcome: needsOutcome ? selectedOutcome : undefined,
         predictedHomeScore: predType === 'exact_score' ? parseInt(homeScoreInput, 10) : null,
         predictedAwayScore: predType === 'exact_score' ? parseInt(awayScoreInput, 10) : null,
       };
+
+      if (predType === 'over_under') {
+        payload.threshold = ouThreshold;
+        payload.side = ouSide;
+      }
+      if (predType === 'btts') {
+        payload.bttsAnswer = bttsAnswer;
+      }
+      if (predType === 'method_of_victory') {
+        payload.methodOfVictory = methodOfVictory;
+      }
+      if (predType === 'podium_finish') {
+        payload.podiumAnswer = podiumAnswer;
+      }
+      if (predType === 'goes_the_distance') {
+        payload.distanceAnswer = distanceAnswer;
+      }
 
       const result = await predictionsApi.create(payload, tokens.accessToken);
       setExistingPrediction(result);
       logPickCompleted(sport, leagueApiId ?? 0, predType);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       trackAction();
-      Alert.alert(t('matchPrediction.predictionSubmitted'), t('matchPrediction.predictionSubmittedDesc'));
+
+      // Check for streak milestone after successful prediction
+      try {
+        const streakInfo = await streaksApi.getStreakInfo(tokens.accessToken);
+        const MILESTONES = [3, 5, 7, 10, 14, 21, 30, 50, 100];
+        if (MILESTONES.includes(streakInfo.currentStreak) && streakInfo.nextMilestoneReward > 0) {
+          setMilestoneData({
+            streak: streakInfo.currentStreak,
+            coins: streakInfo.nextMilestoneReward,
+          });
+        } else {
+          Alert.alert(t('matchPrediction.predictionSubmitted'), t('matchPrediction.predictionSubmittedDesc'));
+        }
+      } catch (_) {
+        // Streak check failed silently, show normal alert
+        Alert.alert(t('matchPrediction.predictionSubmitted'), t('matchPrediction.predictionSubmittedDesc'));
+      }
     } catch (err: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Error', err.message || 'Failed to submit prediction');
@@ -604,6 +820,9 @@ export function MatchPredictionScreen({ navigation }: Props) {
               setPredType('result');
               setHomeScoreInput('');
               setAwayScoreInput('');
+              setOuSide(null);
+              setOuThreshold(null);
+              setBttsAnswer(null);
               Toast.show({ type: 'success', text1: t('matchPrediction.predictionCancelled'), text2: t('matchPrediction.pickSlotRefunded') });
             } catch (err: any) {
               Alert.alert('Error', err.message || 'Failed to cancel prediction');
@@ -1036,7 +1255,19 @@ export function MatchPredictionScreen({ navigation }: Props) {
                 </Text>
               ) : (
                 <Text style={styles.resolvedDetail}>
-                  {t('matchPrediction.youPredicted', { outcome: existingPrediction.predictedOutcome.toUpperCase() })}
+                  {existingPrediction.predictionType === 'over_under'
+                    ? `${t('matchPrediction.overUnder')}: ${existingPrediction.side === 'over' ? t('matchPrediction.over') : t('matchPrediction.under')} ${existingPrediction.threshold}`
+                    : existingPrediction.predictionType === 'btts'
+                      ? `${t('matchPrediction.btts')}: ${existingPrediction.bttsAnswer === 'yes' ? t('matchPrediction.bttsYes') : t('matchPrediction.bttsNo')}`
+                      : existingPrediction.predictionType === 'method_of_victory'
+                        ? `${t('prediction.methodTitle')}: ${existingPrediction.methodOfVictory === 'ko_tko' ? t('prediction.methodKO') : existingPrediction.methodOfVictory === 'submission' ? t('prediction.methodSubmission') : t('prediction.methodDecision')}`
+                        : existingPrediction.predictionType === 'goes_the_distance'
+                          ? `${t('prediction.distanceTitle')}: ${existingPrediction.distanceAnswer === 'yes' ? t('matchPrediction.bttsYes') : t('matchPrediction.bttsNo')}`
+                          : existingPrediction.predictionType === 'podium_finish'
+                            ? `${t('prediction.podiumTitle')}: ${existingPrediction.podiumAnswer === 'yes' ? t('matchPrediction.bttsYes') : t('matchPrediction.bttsNo')}`
+                            : existingPrediction.predictionType === 'fastest_lap'
+                              ? `${t('prediction.fastestLapTitle')}: ${existingPrediction.predictedOutcome?.toUpperCase()}`
+                              : t('matchPrediction.youPredicted', { outcome: existingPrediction.predictedOutcome?.toUpperCase() })}
                   {existingPrediction.predictionType === 'exact_score'
                     ? ` (${existingPrediction.predictedHomeScore}-${existingPrediction.predictedAwayScore})`
                     : ''}
@@ -1061,7 +1292,11 @@ export function MatchPredictionScreen({ navigation }: Props) {
                   </Text>
                   {existingPrediction && (
                     <Text style={styles.existingPredText}>
-                      {t('matchPrediction.yourPick', { outcome: existingPrediction.predictedOutcome.toUpperCase() })}
+                      {existingPrediction.predictionType === 'over_under'
+                        ? `${existingPrediction.side === 'over' ? t('matchPrediction.over') : t('matchPrediction.under')} ${existingPrediction.threshold}`
+                        : existingPrediction.predictionType === 'btts'
+                          ? `${t('matchPrediction.btts')}: ${existingPrediction.bttsAnswer === 'yes' ? t('matchPrediction.bttsYes') : t('matchPrediction.bttsNo')}`
+                          : t('matchPrediction.yourPick', { outcome: existingPrediction.predictedOutcome.toUpperCase() })}
                       {existingPrediction.predictionType === 'exact_score'
                         ? ` (${existingPrediction.predictedHomeScore}-${existingPrediction.predictedAwayScore})`
                         : ''} -- {t('matchPrediction.awaitingResult')}
@@ -1075,8 +1310,20 @@ export function MatchPredictionScreen({ navigation }: Props) {
                     <Text style={styles.existingPredBadgeText}>{t('matchPrediction.predictionLocked')}</Text>
                   </View>
                   <Text style={styles.existingPredDetail}>
-                    {existingPrediction.predictedOutcome === 'home' ? homeTeamName + ' ' + t('matchPrediction.win') :
-                     existingPrediction.predictedOutcome === 'away' ? awayTeamName + ' ' + t('matchPrediction.win') : t('matchPrediction.draw')}
+                    {existingPrediction.predictionType === 'over_under'
+                      ? `${existingPrediction.side === 'over' ? t('matchPrediction.over') : t('matchPrediction.under')} ${existingPrediction.threshold}`
+                      : existingPrediction.predictionType === 'btts'
+                        ? `${t('matchPrediction.btts')}: ${existingPrediction.bttsAnswer === 'yes' ? t('matchPrediction.bttsYes') : t('matchPrediction.bttsNo')}`
+                        : existingPrediction.predictionType === 'method_of_victory'
+                          ? `${t('prediction.tabMethod')}: ${existingPrediction.methodOfVictory === 'ko_tko' ? t('prediction.methodKO') : existingPrediction.methodOfVictory === 'submission' ? t('prediction.methodSubmission') : t('prediction.methodDecision')}`
+                          : existingPrediction.predictionType === 'goes_the_distance'
+                            ? `${t('prediction.tabDistance')}: ${existingPrediction.distanceAnswer === 'yes' ? t('matchPrediction.bttsYes') : t('matchPrediction.bttsNo')}`
+                            : existingPrediction.predictionType === 'podium_finish'
+                              ? `${t('prediction.tabPodium')}: ${existingPrediction.podiumAnswer === 'yes' ? t('matchPrediction.bttsYes') : t('matchPrediction.bttsNo')}`
+                              : existingPrediction.predictionType === 'fastest_lap'
+                                ? `${t('prediction.tabFastestLap')}: ${existingPrediction.predictedOutcome === 'home' ? homeTeamName : awayTeamName}`
+                                : existingPrediction.predictedOutcome === 'home' ? homeTeamName + ' ' + t('matchPrediction.win') :
+                                  existingPrediction.predictedOutcome === 'away' ? awayTeamName + ' ' + t('matchPrediction.win') : t('matchPrediction.draw')}
                   </Text>
                   {existingPrediction.predictionType === 'exact_score' && (
                     <Text style={styles.existingPredScore}>
@@ -1093,116 +1340,475 @@ export function MatchPredictionScreen({ navigation }: Props) {
                 </View>
               ) : (
                 <>
-                  {/* Prediction type toggle */}
-                  {!isF1 && (
-                    <View style={styles.typeToggle}>
-                      <TouchableOpacity
-                        style={[styles.typeToggleBtn, predType === 'result' && styles.typeToggleBtnActive]}
-                        onPress={() => setPredType('result')}
-                      >
-                        <Text style={[styles.typeToggleBtnText, predType === 'result' && styles.typeToggleBtnTextActive]}>
-                          {t('matchPrediction.result')}
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.typeToggleBtn, predType === 'exact_score' && styles.typeToggleBtnActive]}
-                        onPress={() => setPredType('exact_score')}
-                      >
-                        <Text style={[styles.typeToggleBtnText, predType === 'exact_score' && styles.typeToggleBtnTextActive]}>
-                          {t('matchPrediction.exactScore')}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
+                  {/* Prediction type tabs */}
+                  <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.predTypeTabsScroll}
+                      style={styles.predTypeTabsContainer}
+                    >
+                      {(() => {
+                        const sportConfig = SPORT_PREDICTION_CONFIG[sport] || DEFAULT_PREDICTION_CONFIG;
+                        return sportConfig.types
+                          .filter((tab) => tab.key !== 'over_under' || !!OVER_UNDER_THRESHOLDS[sport])
+                          .filter((tab) => tab.key !== 'btts' || BTTS_SPORTS.includes(sport));
+                      })()
+                        .map((tab) => {
+                          const isActive = predType === tab.key;
+                          return (
+                            <TouchableOpacity
+                              key={tab.key}
+                              style={[styles.predTypeTab, isActive && styles.predTypeTabActive]}
+                              onPress={() => setPredType(tab.key)}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={[styles.predTypeTabText, isActive && styles.predTypeTabTextActive]}>
+                                {t(tab.labelKey)}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                    </ScrollView>
+
+                  {/* ── Win / Exact Score / Fastest Lap / Podium outcome selection ── */}
+                  {(predType === 'result' || predType === 'exact_score' || predType === 'fastest_lap' || predType === 'podium_finish') && (
+                    <>
+                      <Text style={styles.predictSectionLabel}>
+                        {predType === 'fastest_lap' ? t('prediction.fastestLapTitle')
+                          : predType === 'podium_finish' ? t('prediction.podiumTitle')
+                          : isF1 ? t('matchPrediction.pickTheWinner')
+                          : t('matchPrediction.predictTheResult')}
+                      </Text>
+                      {predType === 'fastest_lap' && (
+                        <Text style={styles.predictSectionHint}>{t('prediction.fastestLapHint')}</Text>
+                      )}
+                      {predType === 'podium_finish' && (
+                        <Text style={styles.predictSectionHint}>{t('prediction.podiumHint')}</Text>
+                      )}
+                      <View style={styles.outcomeRow}>
+                        {outcomeOptions.map((opt) => {
+                          const isSelected = selectedOutcome === opt.key;
+                          const isDraw = opt.key === 'draw';
+                          return (
+                            <TouchableOpacity
+                              key={opt.key}
+                              style={[styles.outcomeBtn, isSelected && styles.outcomeBtnSelected]}
+                              onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                setSelectedOutcome(opt.key);
+                              }}
+                              activeOpacity={0.7}
+                            >
+                              {isDraw ? (
+                                <View style={[styles.outcomeIconWrap, isSelected && styles.outcomeIconWrapSelected]}>
+                                  <MaterialCommunityIcons
+                                    name="equal"
+                                    size={22}
+                                    color={isSelected ? colors.primary : colors.onSurfaceVariant}
+                                  />
+                                </View>
+                              ) : opt.logo ? (
+                                <Image source={{ uri: opt.logo }} style={styles.outcomeLogo} resizeMode="contain" />
+                              ) : (
+                                <View style={[styles.outcomeIconWrap, isSelected && styles.outcomeIconWrapSelected]}>
+                                  <Ionicons name="shirt-outline" size={20} color={isSelected ? colors.primary : colors.onSurfaceVariant} />
+                                </View>
+                              )}
+                              <Text
+                                style={[styles.outcomeBtnLabel, isSelected && styles.outcomeBtnLabelSelected]}
+                                numberOfLines={2}
+                              >
+                                {opt.label}
+                              </Text>
+                              {isSelected && (
+                                <View style={styles.outcomeCheck}>
+                                  <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
+                                </View>
+                              )}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+
+                      {/* Exact score inputs */}
+                      {predType === 'exact_score' && !isF1 && (
+                        <View style={styles.scoreInputContainer}>
+                          <Text style={styles.predictSectionLabel}>{t('matchPrediction.enterExactScore')}</Text>
+                          <View style={styles.scoreInputRow}>
+                            <View style={styles.scoreInputGroup}>
+                              <Text style={styles.scoreInputTeam} numberOfLines={1}>{homeTeamName}</Text>
+                              <TextInput
+                                style={styles.scoreInput}
+                                value={homeScoreInput}
+                                onChangeText={(t) => setHomeScoreInput(t.replace(/[^0-9]/g, ''))}
+                                keyboardType="number-pad"
+                                maxLength={2}
+                                placeholder="0"
+                                placeholderTextColor={colors.onSurfaceDim}
+                              />
+                            </View>
+                            <Text style={styles.scoreInputDivider}>-</Text>
+                            <View style={styles.scoreInputGroup}>
+                              <Text style={styles.scoreInputTeam} numberOfLines={1}>{awayTeamName}</Text>
+                              <TextInput
+                                style={styles.scoreInput}
+                                value={awayScoreInput}
+                                onChangeText={(t) => setAwayScoreInput(t.replace(/[^0-9]/g, ''))}
+                                keyboardType="number-pad"
+                                maxLength={2}
+                                placeholder="0"
+                                placeholderTextColor={colors.onSurfaceDim}
+                              />
+                            </View>
+                          </View>
+                        </View>
+                      )}
+                    </>
                   )}
 
-                  {/* Outcome selection */}
-                  <Text style={styles.predictSectionLabel}>
-                    {isF1 ? t('matchPrediction.pickTheWinner') : t('matchPrediction.predictTheResult')}
-                  </Text>
-                  <View style={styles.outcomeRow}>
-                    {outcomeOptions.map((opt) => {
-                      const isSelected = selectedOutcome === opt.key;
-                      const isDraw = opt.key === 'draw';
-                      return (
+                  {/* ── Over/Under UI ── */}
+                  {predType === 'over_under' && (() => {
+                    const thresholds = OVER_UNDER_THRESHOLDS[sport] || [2.5];
+                    // Default to middle threshold on first render
+                    const activeThreshold = ouThreshold ?? thresholds[Math.floor(thresholds.length / 2)];
+                    if (ouThreshold === null) {
+                      // Set default lazily via a microtask to avoid setState during render
+                      setTimeout(() => setOuThreshold(thresholds[Math.floor(thresholds.length / 2)]), 0);
+                    }
+                    return (
+                      <>
+                        <Text style={styles.predictSectionLabel}>
+                          {t((SPORT_PREDICTION_CONFIG[sport] || DEFAULT_PREDICTION_CONFIG).overUnderTitleKey)}
+                        </Text>
+                        <Text style={styles.predictSectionHint}>
+                          {t((SPORT_PREDICTION_CONFIG[sport] || DEFAULT_PREDICTION_CONFIG).overUnderHintKey)}
+                        </Text>
+                        <ScrollView
+                          horizontal
+                          showsHorizontalScrollIndicator={false}
+                          contentContainerStyle={styles.ouThresholdScroll}
+                        >
+                          {thresholds.map((th) => {
+                            const isActive = activeThreshold === th;
+                            return (
+                              <TouchableOpacity
+                                key={th}
+                                style={[styles.ouThresholdChip, isActive && styles.ouThresholdChipActive]}
+                                onPress={() => {
+                                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                  setOuThreshold(th);
+                                }}
+                                activeOpacity={0.7}
+                              >
+                                <Text style={[styles.ouThresholdText, isActive && styles.ouThresholdTextActive]}>
+                                  {th}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </ScrollView>
+                        <View style={styles.ouSideRow}>
+                          <TouchableOpacity
+                            style={[styles.ouSideBtn, ouSide === 'over' && styles.ouSideBtnActive]}
+                            onPress={() => {
+                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                              setOuSide('over');
+                            }}
+                            activeOpacity={0.7}
+                          >
+                            <Ionicons
+                              name="arrow-up"
+                              size={20}
+                              color={ouSide === 'over' ? colors.onPrimary : colors.onSurfaceVariant}
+                            />
+                            <Text style={[styles.ouSideBtnText, ouSide === 'over' && styles.ouSideBtnTextActive]}>
+                              {t('matchPrediction.over')} {activeThreshold}
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.ouSideBtn, ouSide === 'under' && styles.ouSideBtnActive]}
+                            onPress={() => {
+                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                              setOuSide('under');
+                            }}
+                            activeOpacity={0.7}
+                          >
+                            <Ionicons
+                              name="arrow-down"
+                              size={20}
+                              color={ouSide === 'under' ? colors.onPrimary : colors.onSurfaceVariant}
+                            />
+                            <Text style={[styles.ouSideBtnText, ouSide === 'under' && styles.ouSideBtnTextActive]}>
+                              {t('matchPrediction.under')} {activeThreshold}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </>
+                    );
+                  })()}
+
+                  {/* ── BTTS UI ── */}
+                  {predType === 'btts' && (
+                    <>
+                      <Text style={styles.predictSectionLabel}>
+                        {t('prediction.bothScoreTitle')}
+                      </Text>
+                      <Text style={styles.predictSectionHint}>
+                        {t('prediction.bothScoreHint')}
+                      </Text>
+                      <View style={styles.ouSideRow}>
                         <TouchableOpacity
-                          key={opt.key}
-                          style={[styles.outcomeBtn, isSelected && styles.outcomeBtnSelected]}
+                          style={[styles.ouSideBtn, bttsAnswer === 'yes' && styles.ouSideBtnActive]}
                           onPress={() => {
                             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                            setSelectedOutcome(opt.key);
+                            setBttsAnswer('yes');
                           }}
                           activeOpacity={0.7}
                         >
-                          {isDraw ? (
-                            <View style={[styles.outcomeIconWrap, isSelected && styles.outcomeIconWrapSelected]}>
-                              <MaterialCommunityIcons
-                                name="equal"
-                                size={22}
-                                color={isSelected ? colors.primary : colors.onSurfaceVariant}
-                              />
-                            </View>
-                          ) : opt.logo ? (
-                            <Image source={{ uri: opt.logo }} style={styles.outcomeLogo} resizeMode="contain" />
-                          ) : (
-                            <View style={[styles.outcomeIconWrap, isSelected && styles.outcomeIconWrapSelected]}>
-                              <Ionicons name="shirt-outline" size={20} color={isSelected ? colors.primary : colors.onSurfaceVariant} />
-                            </View>
-                          )}
-                          <Text
-                            style={[styles.outcomeBtnLabel, isSelected && styles.outcomeBtnLabelSelected]}
-                            numberOfLines={2}
-                          >
-                            {opt.label}
+                          <Ionicons
+                            name="checkmark-circle"
+                            size={20}
+                            color={bttsAnswer === 'yes' ? colors.onPrimary : colors.onSurfaceVariant}
+                          />
+                          <Text style={[styles.ouSideBtnText, bttsAnswer === 'yes' && styles.ouSideBtnTextActive]}>
+                            {t('matchPrediction.bttsYes')}
                           </Text>
-                          {isSelected && (
-                            <View style={styles.outcomeCheck}>
-                              <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
-                            </View>
-                          )}
                         </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-
-                  {/* Exact score inputs */}
-                  {predType === 'exact_score' && !isF1 && (
-                    <View style={styles.scoreInputContainer}>
-                      <Text style={styles.predictSectionLabel}>{t('matchPrediction.enterExactScore')}</Text>
-                      <View style={styles.scoreInputRow}>
-                        <View style={styles.scoreInputGroup}>
-                          <Text style={styles.scoreInputTeam} numberOfLines={1}>{homeTeamName}</Text>
-                          <TextInput
-                            style={styles.scoreInput}
-                            value={homeScoreInput}
-                            onChangeText={(t) => setHomeScoreInput(t.replace(/[^0-9]/g, ''))}
-                            keyboardType="number-pad"
-                            maxLength={2}
-                            placeholder="0"
-                            placeholderTextColor={colors.onSurfaceDim}
+                        <TouchableOpacity
+                          style={[styles.ouSideBtn, bttsAnswer === 'no' && styles.ouSideBtnActive]}
+                          onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            setBttsAnswer('no');
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons
+                            name="close-circle"
+                            size={20}
+                            color={bttsAnswer === 'no' ? colors.onPrimary : colors.onSurfaceVariant}
                           />
-                        </View>
-                        <Text style={styles.scoreInputDivider}>-</Text>
-                        <View style={styles.scoreInputGroup}>
-                          <Text style={styles.scoreInputTeam} numberOfLines={1}>{awayTeamName}</Text>
-                          <TextInput
-                            style={styles.scoreInput}
-                            value={awayScoreInput}
-                            onChangeText={(t) => setAwayScoreInput(t.replace(/[^0-9]/g, ''))}
-                            keyboardType="number-pad"
-                            maxLength={2}
-                            placeholder="0"
-                            placeholderTextColor={colors.onSurfaceDim}
-                          />
-                        </View>
+                          <Text style={[styles.ouSideBtnText, bttsAnswer === 'no' && styles.ouSideBtnTextActive]}>
+                            {t('matchPrediction.bttsNo')}
+                          </Text>
+                        </TouchableOpacity>
                       </View>
-                    </View>
+                    </>
+                  )}
+
+                  {/* ── Podium Yes/No (shown after driver selection) ── */}
+                  {predType === 'podium_finish' && selectedOutcome && (
+                    <>
+                      <Text style={styles.predictSectionLabel}>
+                        {t('prediction.podiumTitle')}
+                      </Text>
+                      <View style={styles.ouSideRow}>
+                        <TouchableOpacity
+                          style={[styles.ouSideBtn, podiumAnswer === 'yes' && styles.ouSideBtnActive]}
+                          onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            setPodiumAnswer('yes');
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons
+                            name="checkmark-circle"
+                            size={20}
+                            color={podiumAnswer === 'yes' ? colors.onPrimary : colors.onSurfaceVariant}
+                          />
+                          <Text style={[styles.ouSideBtnText, podiumAnswer === 'yes' && styles.ouSideBtnTextActive]}>
+                            {t('matchPrediction.bttsYes')}
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.ouSideBtn, podiumAnswer === 'no' && styles.ouSideBtnActive]}
+                          onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            setPodiumAnswer('no');
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons
+                            name="close-circle"
+                            size={20}
+                            color={podiumAnswer === 'no' ? colors.onPrimary : colors.onSurfaceVariant}
+                          />
+                          <Text style={[styles.ouSideBtnText, podiumAnswer === 'no' && styles.ouSideBtnTextActive]}>
+                            {t('matchPrediction.bttsNo')}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  )}
+
+                  {/* ── Method of Victory UI (MMA) ── */}
+                  {predType === 'method_of_victory' && (
+                    <>
+                      <Text style={styles.predictSectionLabel}>
+                        {t('prediction.methodTitle')}
+                      </Text>
+                      <Text style={styles.predictSectionHint}>
+                        {t('prediction.methodHint')}
+                      </Text>
+                      <View style={styles.methodCardsRow}>
+                        {([
+                          {
+                            key: 'ko_tko' as MethodOfVictoryChoice,
+                            label: t('prediction.methodKO'),
+                            desc: t('prediction.methodKODesc'),
+                            icon: 'boxing-glove' as const,
+                            iconLib: 'mci' as const,
+                            accentColor: 'rgba(255, 69, 58, 0.12)',
+                            accentBorder: 'rgba(255, 69, 58, 0.25)',
+                            iconColor: '#FF453A',
+                          },
+                          {
+                            key: 'submission' as MethodOfVictoryChoice,
+                            label: t('prediction.methodSubmission'),
+                            desc: t('prediction.methodSubmissionDesc'),
+                            icon: 'arm-flex' as const,
+                            iconLib: 'mci' as const,
+                            accentColor: 'rgba(100, 160, 255, 0.12)',
+                            accentBorder: 'rgba(100, 160, 255, 0.25)',
+                            iconColor: '#64A0FF',
+                          },
+                          {
+                            key: 'decision' as MethodOfVictoryChoice,
+                            label: t('prediction.methodDecision'),
+                            desc: t('prediction.methodDecisionDesc'),
+                            icon: 'scale-balance' as const,
+                            iconLib: 'mci' as const,
+                            accentColor: 'rgba(255, 182, 47, 0.12)',
+                            accentBorder: 'rgba(255, 182, 47, 0.25)',
+                            iconColor: '#FFB62F',
+                          },
+                        ]).map((opt) => {
+                          const isActive = methodOfVictory === opt.key;
+                          return (
+                            <TouchableOpacity
+                              key={opt.key}
+                              style={[
+                                styles.methodCard,
+                                {
+                                  backgroundColor: isActive ? 'rgba(202, 253, 0, 0.08)' : opt.accentColor,
+                                  borderColor: isActive ? '#CAFD00' : opt.accentBorder,
+                                },
+                                isActive && styles.methodCardActive,
+                              ]}
+                              onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                setMethodOfVictory(opt.key);
+                              }}
+                              activeOpacity={0.7}
+                            >
+                              <View style={[
+                                styles.methodIconWrap,
+                                {
+                                  backgroundColor: isActive ? 'rgba(202, 253, 0, 0.15)' : opt.accentColor,
+                                },
+                              ]}>
+                                <MaterialCommunityIcons
+                                  name={opt.icon as any}
+                                  size={28}
+                                  color={isActive ? '#CAFD00' : opt.iconColor}
+                                />
+                              </View>
+                              <Text style={[
+                                styles.methodLabel,
+                                isActive && styles.methodLabelActive,
+                              ]}>
+                                {opt.label}
+                              </Text>
+                              <Text style={[
+                                styles.methodDesc,
+                                isActive && styles.methodDescActive,
+                              ]}>
+                                {opt.desc}
+                              </Text>
+                              {isActive && (
+                                <View style={styles.methodCheckBadge}>
+                                  <Ionicons name="checkmark-circle" size={18} color="#CAFD00" />
+                                </View>
+                              )}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </>
+                  )}
+
+                  {/* ── Goes the Distance UI (MMA) ── */}
+                  {predType === 'goes_the_distance' && (
+                    <>
+                      <Text style={styles.predictSectionLabel}>
+                        {t('prediction.distanceTitle')}
+                      </Text>
+                      <Text style={styles.predictSectionHint}>
+                        {t('prediction.distanceHint')}
+                      </Text>
+                      <View style={styles.ouSideRow}>
+                        <TouchableOpacity
+                          style={[styles.ouSideBtn, distanceAnswer === 'yes' && styles.ouSideBtnActive]}
+                          onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            setDistanceAnswer('yes');
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons
+                            name="checkmark-circle"
+                            size={20}
+                            color={distanceAnswer === 'yes' ? colors.onPrimary : colors.onSurfaceVariant}
+                          />
+                          <Text style={[styles.ouSideBtnText, distanceAnswer === 'yes' && styles.ouSideBtnTextActive]}>
+                            {t('matchPrediction.bttsYes')}
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.ouSideBtn, distanceAnswer === 'no' && styles.ouSideBtnActive]}
+                          onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            setDistanceAnswer('no');
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons
+                            name="close-circle"
+                            size={20}
+                            color={distanceAnswer === 'no' ? colors.onPrimary : colors.onSurfaceVariant}
+                          />
+                          <Text style={[styles.ouSideBtnText, distanceAnswer === 'no' && styles.ouSideBtnTextActive]}>
+                            {t('matchPrediction.bttsNo')}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </>
                   )}
 
                   {/* Submit */}
                   <TouchableOpacity
-                    style={[styles.submitButton, !selectedOutcome && styles.submitButtonDisabled]}
+                    style={[
+                      styles.submitButton,
+                      predType === 'result' && !selectedOutcome && styles.submitButtonDisabled,
+                      predType === 'exact_score' && !selectedOutcome && styles.submitButtonDisabled,
+                      predType === 'fastest_lap' && !selectedOutcome && styles.submitButtonDisabled,
+                      predType === 'podium_finish' && (!selectedOutcome || !podiumAnswer) && styles.submitButtonDisabled,
+                      predType === 'over_under' && !ouSide && styles.submitButtonDisabled,
+                      predType === 'btts' && !bttsAnswer && styles.submitButtonDisabled,
+                      predType === 'method_of_victory' && !methodOfVictory && styles.submitButtonDisabled,
+                      predType === 'goes_the_distance' && !distanceAnswer && styles.submitButtonDisabled,
+                    ]}
                     onPress={handleSubmitPrediction}
-                    disabled={!selectedOutcome || submitting}
+                    disabled={
+                      submitting ||
+                      (predType === 'result' && !selectedOutcome) ||
+                      (predType === 'exact_score' && !selectedOutcome) ||
+                      (predType === 'fastest_lap' && !selectedOutcome) ||
+                      (predType === 'podium_finish' && (!selectedOutcome || !podiumAnswer)) ||
+                      (predType === 'over_under' && !ouSide) ||
+                      (predType === 'btts' && !bttsAnswer) ||
+                      (predType === 'method_of_victory' && !methodOfVictory) ||
+                      (predType === 'goes_the_distance' && !distanceAnswer)
+                    }
                     activeOpacity={0.8}
                   >
                     {submitting ? (
@@ -1929,6 +2535,40 @@ export function MatchPredictionScreen({ navigation }: Props) {
           </TouchableOpacity>
         </Modal>
       )}
+
+      {/* Streak Milestone Celebration Modal */}
+      <Modal
+        visible={milestoneData !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMilestoneData(null)}
+      >
+        <View style={styles.milestoneOverlay}>
+          <View style={styles.milestoneContent}>
+            <Text style={styles.milestoneEmoji}>{'\uD83D\uDD25'}</Text>
+            <Text style={styles.milestoneTitle}>
+              {milestoneData?.streak} {t('streak.milestone')}
+            </Text>
+            <Text style={styles.milestoneCoins}>
+              +{milestoneData?.coins} KineticCoins {t('streak.coinsEarned')}!
+            </Text>
+            <TouchableOpacity
+              style={styles.milestoneDismiss}
+              onPress={() => setMilestoneData(null)}
+              activeOpacity={0.7}
+            >
+              <LinearGradient
+                colors={[colors.primaryContainer, colors.primary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.milestoneDismissGradient}
+              >
+                <Text style={styles.milestoneDismissText}>{t('matchPrediction.predictionSubmitted')}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -2104,6 +2744,10 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_700Bold', fontSize: 10, lineHeight: 15, color: colors.onSurfaceVariant,
     letterSpacing: 1, textTransform: 'uppercase', marginTop: 4,
   },
+  predictSectionHint: {
+    fontFamily: 'Inter_400Regular', fontSize: 12, lineHeight: 16, color: colors.onSurfaceVariant,
+    marginTop: 2, marginBottom: 8, opacity: 0.7,
+  },
   typeToggle: {
     flexDirection: 'row', backgroundColor: colors.surfaceContainerHighest, borderRadius: 8, padding: 3,
   },
@@ -2116,6 +2760,91 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_700Bold', fontSize: 12, color: colors.onSurfaceVariant, letterSpacing: 0.5,
   },
   typeToggleBtnTextActive: { color: colors.onPrimary },
+
+  // ── Prediction type scrollable tabs ──
+  predTypeTabsContainer: {
+    marginBottom: 8,
+  },
+  predTypeTabsScroll: {
+    gap: 8,
+    paddingRight: 4,
+  },
+  predTypeTab: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: colors.surfaceContainerHighest,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  predTypeTabActive: {
+    backgroundColor: 'rgba(198,255,0,0.12)',
+    borderColor: colors.primary,
+  },
+  predTypeTabText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 12,
+    color: colors.onSurfaceVariant,
+    letterSpacing: 0.5,
+  },
+  predTypeTabTextActive: {
+    color: colors.primary,
+  },
+
+  // ── Over/Under styles ──
+  ouThresholdScroll: {
+    gap: 8,
+    paddingBottom: 4,
+  },
+  ouThresholdChip: {
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: colors.surfaceContainerHighest,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  ouThresholdChipActive: {
+    backgroundColor: 'rgba(198,255,0,0.12)',
+    borderColor: colors.primary,
+  },
+  ouThresholdText: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 15,
+    color: colors.onSurfaceVariant,
+  },
+  ouThresholdTextActive: {
+    color: colors.primary,
+  },
+  ouSideRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 8,
+  },
+  ouSideBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 16,
+    borderRadius: 12,
+    backgroundColor: colors.surfaceContainerHighest,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  ouSideBtnActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  ouSideBtnText: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 16,
+    color: colors.onSurfaceVariant,
+  },
+  ouSideBtnTextActive: {
+    color: colors.onPrimary,
+  },
   outcomeRow: {
     flexDirection: 'row', gap: 8,
   },
@@ -2691,5 +3420,116 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.onSurfaceVariant,
     marginTop: 2,
+  },
+
+  // ── Streak Milestone Celebration ──
+  milestoneOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  milestoneContent: {
+    width: '80%',
+    backgroundColor: colors.surfaceContainerHigh,
+    borderRadius: 24,
+    padding: 32,
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(202,253,0,0.15)',
+  },
+  milestoneEmoji: {
+    fontSize: 56,
+  },
+  milestoneTitle: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 24,
+    color: colors.primary,
+    textAlign: 'center',
+    letterSpacing: -0.5,
+  },
+  milestoneCoins: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 16,
+    color: colors.onSurface,
+    textAlign: 'center',
+  },
+  milestoneDismiss: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    marginTop: 8,
+    width: '100%',
+  },
+  milestoneDismissGradient: {
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+  },
+  milestoneDismissText: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 15,
+    color: '#3A4A00',
+    letterSpacing: 0.5,
+  },
+
+  /* ── Method of Victory Cards ── */
+  methodCardsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+  },
+  methodCard: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+    position: 'relative',
+    minHeight: 140,
+    justifyContent: 'flex-start',
+  },
+  methodCardActive: {
+    shadowColor: '#CAFD00',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  methodIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  methodLabel: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 13,
+    color: colors.onSurface,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  methodLabelActive: {
+    color: '#CAFD00',
+  },
+  methodDesc: {
+    fontFamily: 'SpaceGrotesk_400Regular',
+    fontSize: 10,
+    color: colors.onSurfaceDim,
+    textAlign: 'center',
+    lineHeight: 13,
+  },
+  methodDescActive: {
+    color: colors.onSurfaceVariant,
+  },
+  methodCheckBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
   },
 });

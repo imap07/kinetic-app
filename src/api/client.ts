@@ -126,7 +126,12 @@ async function request<T>(
         _isRetry: true,
       });
     } catch (refreshErr) {
-      tokenProvider?.onAuthFailure();
+      // Only signal auth failure if the refresh was explicitly rejected
+      // by the server (401/403). Network errors or server-down should
+      // NOT clear the session — keep tokens and let the user retry.
+      if (refreshErr instanceof ApiError && (refreshErr.status === 401 || refreshErr.status === 403)) {
+        tokenProvider?.onAuthFailure();
+      }
       throw new ApiError(res.status, data);
     }
   }

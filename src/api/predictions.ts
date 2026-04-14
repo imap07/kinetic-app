@@ -13,10 +13,16 @@ export interface PredictionData {
   awayTeamLogo: string;
   leagueName: string;
   leagueLogo: string;
-  predictionType: 'result' | 'exact_score';
+  predictionType: 'win' | 'result' | 'exact_score' | 'over_under' | 'btts' | 'fastest_lap' | 'podium_finish' | 'method_of_victory' | 'goes_the_distance';
   predictedOutcome: 'home' | 'draw' | 'away';
   predictedHomeScore: number | null;
   predictedAwayScore: number | null;
+  threshold?: number | null;
+  side?: 'over' | 'under' | null;
+  bttsAnswer?: 'yes' | 'no' | null;
+  methodOfVictory?: 'ko_tko' | 'submission' | 'decision' | null;
+  podiumAnswer?: 'yes' | 'no' | null;
+  distanceAnswer?: 'yes' | 'no' | null;
   oddsMultiplier: number;
   status: 'pending' | 'won' | 'lost' | 'void';
   actualOutcome: 'home' | 'draw' | 'away' | null;
@@ -39,10 +45,16 @@ export interface CreatePredictionPayload {
   awayTeamLogo?: string;
   leagueName?: string;
   leagueLogo?: string;
-  predictionType: 'result' | 'exact_score';
-  predictedOutcome: 'home' | 'draw' | 'away';
+  predictionType: 'result' | 'exact_score' | 'over_under' | 'btts' | 'fastest_lap' | 'podium_finish' | 'method_of_victory' | 'goes_the_distance';
+  predictedOutcome?: 'home' | 'draw' | 'away';
   predictedHomeScore?: number | null;
   predictedAwayScore?: number | null;
+  threshold?: number;
+  side?: 'over' | 'under';
+  bttsAnswer?: 'yes' | 'no';
+  methodOfVictory?: 'ko_tko' | 'submission' | 'decision';
+  podiumAnswer?: 'yes' | 'no';
+  distanceAnswer?: 'yes' | 'no';
 }
 
 export interface MyPicksResponse {

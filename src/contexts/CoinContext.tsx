@@ -16,6 +16,8 @@ interface CoinContextValue {
   available: number;
   totalEarned: number;
   totalSpent: number;
+  earnedCoins: number;
+  purchasedCoins: number;
   isLoading: boolean;
   refreshBalance: () => Promise<void>;
   refreshBalanceAfterPurchase: () => void;
@@ -31,6 +33,8 @@ export function CoinProvider({ children }: { children: React.ReactNode }) {
     available: 0,
     totalEarned: 0,
     totalSpent: 0,
+    earnedCoins: 0,
+    purchasedCoins: 0,
   });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -51,7 +55,7 @@ export function CoinProvider({ children }: { children: React.ReactNode }) {
     if (isAuthenticated && tokens?.accessToken) {
       refreshBalance();
     } else {
-      setWallet({ balance: 0, lockedBalance: 0, available: 0, totalEarned: 0, totalSpent: 0 });
+      setWallet({ balance: 0, lockedBalance: 0, available: 0, totalEarned: 0, totalSpent: 0, earnedCoins: 0, purchasedCoins: 0 });
     }
   }, [isAuthenticated, tokens?.accessToken, refreshBalance]);
 

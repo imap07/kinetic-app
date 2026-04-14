@@ -27,6 +27,7 @@ import type { PredictionData } from '../api/predictions';
 import type { LeaguesStackParamList } from '../navigation/types';
 import { Image } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
+import { LeagueQRModal } from '../components/LeagueQRModal';
 
 type RouteParams = RouteProp<LeaguesStackParamList, 'CoinLeagueDetail'>;
 
@@ -49,6 +50,7 @@ export function CoinLeagueDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [showQR, setShowQR] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!tokens?.accessToken) return;
@@ -280,10 +282,25 @@ export function CoinLeagueDetailScreen() {
           <Feather name="arrow-left" size={22} color={colors.onSurface} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>{league.name}</Text>
-        <TouchableOpacity onPress={handleInvite} hitSlop={12}>
-          <Feather name="share" size={22} color={colors.primary} />
+        <TouchableOpacity onPress={() => league.inviteCode ? setShowQR(true) : handleInvite()} hitSlop={12}>
+          <Ionicons name="qr-code" size={22} color={colors.primary} />
         </TouchableOpacity>
       </View>
+
+      {/* QR Share Modal */}
+      {league.inviteCode && (
+        <LeagueQRModal
+          visible={showQR}
+          onClose={() => setShowQR(false)}
+          league={{
+            name: league.name,
+            inviteCode: league.inviteCode,
+            entryFee: league.entryFee,
+            sport: sportMeta?.name ?? league.sport,
+            prizePool: league.prizePool,
+          }}
+        />
+      )}
 
       <ScrollView
         style={styles.scroll}

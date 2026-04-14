@@ -6,6 +6,8 @@ export interface WalletBalance {
   available: number;
   totalEarned: number;
   totalSpent: number;
+  earnedCoins: number;
+  purchasedCoins: number;
 }
 
 export interface CoinTransaction {

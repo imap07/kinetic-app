@@ -34,6 +34,7 @@ export type LeaguesStackParamList = {
   LeagueF1RacePrediction: F1RacePredictionParams;
   LeaguePickSummary: undefined;
   Leaderboard: undefined;
+  QRScanner: undefined;
 };
 
 // Profile tab nested stack

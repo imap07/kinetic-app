@@ -54,6 +54,7 @@ import { EditFavoriteSportsScreen } from '../screens/EditFavoriteSportsScreen';
 import { EditFavoriteLeaguesScreen } from '../screens/EditFavoriteLeaguesScreen';
 import { ChangePasswordScreen } from '../screens/ChangePasswordScreen';
 import { QuestsScreen } from '../screens/QuestsScreen';
+import { QRScannerScreen } from '../screens/QRScannerScreen';
 import F1RacePredictionScreen from '../screens/F1RacePredictionScreen';
 // LeagueSelectionScreen removed from onboarding V2 flow
 import { logScreenView } from '../services/analytics';
@@ -123,6 +124,7 @@ function LeaguesNavigator() {
       <LeaguesStack.Screen name="LeagueF1RacePrediction" component={F1RacePredictionScreen} />
       <LeaguesStack.Screen name="LeaguePickSummary" component={PickSummaryScreen} />
       <LeaguesStack.Screen name="Leaderboard" component={LeaderboardScreen} />
+      <LeaguesStack.Screen name="QRScanner" component={QRScannerScreen} />
     </LeaguesStack.Navigator>
   );
 }

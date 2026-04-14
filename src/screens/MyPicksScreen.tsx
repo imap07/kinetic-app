@@ -27,6 +27,14 @@ import { AdBanner } from '../components/AdBanner';
 const TABS = ['active', 'history'] as const;
 
 function getOutcomeLabel(prediction: PredictionData, t: (key: string) => string): string {
+  if (prediction.predictionType === 'over_under') {
+    const sideLabel = prediction.side === 'over' ? t('matchPrediction.over') : t('matchPrediction.under');
+    return `${sideLabel} ${prediction.threshold ?? ''}`;
+  }
+  if (prediction.predictionType === 'btts') {
+    const answer = prediction.bttsAnswer === 'yes' ? t('matchPrediction.bttsYes') : t('matchPrediction.bttsNo');
+    return `${t('matchPrediction.btts')}: ${answer}`;
+  }
   if (prediction.predictedOutcome === 'home') return `${prediction.homeTeamName} ${t('matchPrediction.win')}`;
   if (prediction.predictedOutcome === 'away') return `${prediction.awayTeamName} ${t('matchPrediction.win')}`;
   return t('matchPrediction.draw');

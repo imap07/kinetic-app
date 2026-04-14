@@ -203,19 +203,48 @@ export function CoinLeaguesScreen() {
     }
   };
 
+  /** Accent bar color by entry fee tier */
+  const tierAccentColor = (fee: number): string => {
+    if (fee === 0) return colors.outline;          // Free = subtle gray
+    if (fee <= 5) return '#4FC3F7';                // Blue
+    if (fee <= 15) return '#BB86FC';               // Purple
+    if (fee <= 50) return '#FC5B00';               // Orange
+    return '#FFD700';                              // Gold (100+)
+  };
+
+  /** Sport icon name (Ionicons) */
+  const sportIconName = (sportKey: string): string => {
+    const meta = SPORT_TABS.find((s) => s.key === sportKey);
+    return meta?.icon ?? 'trophy-outline';
+  };
+
+  const handleScanQR = () => {
+    (navigation as any).navigate('QRScanner');
+  };
+
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Text style={styles.headerTitle}>{t('leagues.title')}</Text>
-        <TouchableOpacity onPress={() => setShowCreate(true)} hitSlop={12}>
-          <Feather name="plus" size={22} color={colors.primary} />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.pillRow}>
-        <View style={styles.balancePill}>
-          <MaterialCommunityIcons name="circle-multiple" size={16} color={colors.primary} />
-          <Text style={styles.balancePillText}>{t('leagues.coins', { count: available.toLocaleString() })}</Text>
+        <View style={styles.headerActions}>
+          <View style={styles.balancePill}>
+            <MaterialCommunityIcons name="circle-multiple" size={16} color={colors.primary} />
+            <Text style={styles.balancePillText}>{available.toLocaleString()}</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.headerIconBtn}
+            onPress={handleScanQR}
+            hitSlop={12}
+          >
+            <Ionicons name="qr-code" size={20} color={colors.onSurface} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerCreateBtn}
+            onPress={() => setShowCreate(true)}
+            hitSlop={12}
+          >
+            <Feather name="plus" size={18} color={colors.onPrimary} />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -280,11 +309,18 @@ export function CoinLeaguesScreen() {
             <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: spacing['4xl'] }} />
           ) : (
             <View style={styles.emptyState}>
-              <MaterialCommunityIcons name="trophy-outline" size={40} color={colors.onSurfaceDim} />
-              <Text style={styles.emptyText}>
+              <View style={styles.emptyIconCircle}>
+                <MaterialCommunityIcons name="trophy-variant-outline" size={48} color={colors.primary} />
+              </View>
+              <Text style={styles.emptyTitle}>
                 {tab === 'open'
                   ? t('leagues.noOpenLeagues')
                   : t('leagues.noJoinedLeagues')}
+              </Text>
+              <Text style={styles.emptySubtitle}>
+                {tab === 'open'
+                  ? t('leagues.noOpenLeaguesHint')
+                  : t('leagues.noJoinedLeaguesHint')}
               </Text>
               {tab === 'open' && (
                 <TouchableOpacity
@@ -302,116 +338,188 @@ export function CoinLeaguesScreen() {
           const isMember = isParticipant(league);
           const isActionLoading = actionLoading === league._id;
           const sportMeta = SPORT_TABS.find((s) => s.key === league.sport);
+          const accentColor = tierAccentColor(league.entryFee);
+          const spotsRatio = league.maxParticipants > 0
+            ? league.participants.length / league.maxParticipants
+            : 0;
+          const isFull = league.participants.length >= league.maxParticipants;
+
           return (
             <TouchableOpacity
               style={styles.leagueCard}
               activeOpacity={0.7}
               onPress={() => (navigation as any).navigate('CoinLeagueDetail', { leagueId: league._id })}
             >
-              <View style={styles.leagueHeader}>
-                <View style={styles.leagueNameRow}>
-                  <Text style={styles.leagueName} numberOfLines={1}>{league.name}</Text>
-                  <View style={[styles.statusBadge, { backgroundColor: `${statusColor(league.status)}20` }]}>
+              {/* Accent bar */}
+              <View style={[styles.accentBar, { backgroundColor: accentColor }]} />
+
+              {/* Card body */}
+              <View style={styles.cardBody}>
+                {/* Top row: status + date */}
+                <View style={styles.cardTopRow}>
+                  <View style={[styles.statusBadge, { backgroundColor: `${statusColor(league.status)}18`, borderColor: `${statusColor(league.status)}40` }]}>
+                    <View style={[styles.statusDot, { backgroundColor: statusColor(league.status) }]} />
                     <Text style={[styles.statusText, { color: statusColor(league.status) }]}>
                       {league.status.toUpperCase()}
                     </Text>
                   </View>
-                </View>
-                {sportMeta && (
-                  <Text style={styles.leagueSport}>{sportMeta.name}</Text>
-                )}
-              </View>
-
-              <View style={styles.leagueStats}>
-                <View style={styles.leagueStat}>
-                  <Text style={styles.leagueStatLabel}>{t('leagues.entry')}</Text>
-                  <Text style={styles.leagueStatValue}>{league.entryFee}</Text>
-                  <MaterialCommunityIcons name="circle-multiple" size={10} color={colors.primary} />
-                </View>
-                <View style={styles.leagueStat}>
-                  <Text style={styles.leagueStatLabel}>{t('leagues.players')}</Text>
-                  <Text style={styles.leagueStatValue}>
-                    {league.participants.length}/{league.maxParticipants}
-                  </Text>
-                </View>
-                <View style={styles.leagueStat}>
-                  <Text style={styles.leagueStatLabel}>{t('leagues.prizePool')}</Text>
-                  <Text style={styles.leagueStatValue}>{league.prizePool}</Text>
-                  <MaterialCommunityIcons name="circle-multiple" size={10} color={colors.primary} />
-                </View>
-                <View style={styles.leagueStat}>
-                  <Text style={styles.leagueStatLabel}>{t('leagues.ends')}</Text>
-                  <Text style={styles.leagueStatValue}>
+                  <Text style={styles.dateText}>
                     {new Date(league.endDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                   </Text>
                 </View>
-              </View>
 
-              {league.status === 'open' && (
-                <View style={styles.leagueActions}>
-                  <View style={styles.leagueActionsRow}>
-                    {isMember ? (
-                      <TouchableOpacity
-                        style={[styles.leaveBtn, { flex: 1 }]}
-                        onPress={() => handleLeave(league)}
-                        disabled={!!actionLoading}
-                      >
-                        {isActionLoading ? (
-                          <ActivityIndicator size="small" color={colors.error} />
-                        ) : (
-                          <Text style={styles.leaveBtnText}>
-                            {String(league.creatorId) === user?.id && !league.isSystemLeague
-                              ? t('leagues.delete')
-                              : t('leagues.leave')}
-                          </Text>
-                        )}
-                      </TouchableOpacity>
-                    ) : (
-                      <TouchableOpacity
-                        style={[styles.joinBtn, { flex: 1 }]}
-                        onPress={() => handleJoin(league)}
-                        disabled={!!actionLoading}
-                      >
-                        {isActionLoading ? (
-                          <ActivityIndicator size="small" color={colors.onPrimary} />
-                        ) : (
-                          <Text style={styles.joinBtnText}>
-                            {league.entryFee === 0 ? t('leagues.join') : t('leagues.joinLeague')}
-                          </Text>
-                        )}
-                      </TouchableOpacity>
-                    )}
-                    {league.inviteCode && (
-                      <TouchableOpacity
-                        style={styles.shareBtn}
-                        onPress={() => handleShare(league)}
-                        hitSlop={8}
-                      >
-                        <Ionicons name="share-outline" size={18} color={colors.primary} />
-                      </TouchableOpacity>
-                    )}
+                {/* League name */}
+                <Text style={styles.leagueName} numberOfLines={1}>{league.name}</Text>
+
+                {/* Sport row */}
+                {sportMeta && (
+                  <View style={styles.sportRow}>
+                    <Ionicons
+                      name={sportIconName(league.sport) as any}
+                      size={14}
+                      color={colors.onSurfaceDim}
+                    />
+                    <Text style={styles.leagueSport}>{sportMeta.name}</Text>
+                  </View>
+                )}
+
+                {/* Stats grid */}
+                <View style={styles.statsGrid}>
+                  {/* Entry Fee */}
+                  <View style={styles.statBox}>
+                    <Text style={styles.statBoxLabel}>{t('leagues.entry')}</Text>
+                    <View style={styles.statBoxValueRow}>
+                      {league.entryFee === 0 ? (
+                        <Text style={[styles.statBoxValue, { color: colors.secondary }]}>{t('leagues.tierFree')}</Text>
+                      ) : (
+                        <>
+                          <MaterialCommunityIcons name="circle-multiple" size={12} color={accentColor} />
+                          <Text style={styles.statBoxValue}>{league.entryFee}</Text>
+                        </>
+                      )}
+                    </View>
+                  </View>
+
+                  {/* Prize Pool */}
+                  <View style={[styles.statBox, styles.statBoxHighlight]}>
+                    <Text style={styles.statBoxLabel}>{t('leagues.prizePool')}</Text>
+                    <View style={styles.statBoxValueRow}>
+                      <Ionicons name="trophy" size={12} color="#FFD700" />
+                      <Text style={[styles.statBoxValue, { color: '#FFD700' }]}>{league.prizePool}</Text>
+                    </View>
                   </View>
                 </View>
-              )}
 
-              {league.status === 'completed' && league.winners?.length > 0 && (
-                <View style={styles.winnerRow}>
-                  <Ionicons name="trophy" size={14} color="#FFD700" />
-                  <Text style={styles.winnerText}>
-                    {league.winners.find((w) => String(w.userId) === user?.id)
-                      ? t('leagues.youPlaced', { position: league.winners.find((w) => String(w.userId) === user?.id)?.position, coins: league.winners.find((w) => String(w.userId) === user?.id)?.coinsWon })
-                      : t('leagues.winnersCount', { count: league.winners.length })}
-                  </Text>
+                {/* Players progress bar */}
+                <View style={styles.progressSection}>
+                  <View style={styles.progressLabelRow}>
+                    <Text style={styles.progressLabel}>
+                      {t('leagues.players')}
+                    </Text>
+                    <Text style={styles.progressCount}>
+                      {league.participants.length}
+                      <Text style={styles.progressCountDim}>/{league.maxParticipants}</Text>
+                    </Text>
+                  </View>
+                  <View style={styles.progressBarBg}>
+                    <View
+                      style={[
+                        styles.progressBarFill,
+                        {
+                          width: `${Math.min(spotsRatio * 100, 100)}%`,
+                          backgroundColor: isFull ? colors.error : accentColor,
+                        },
+                      ]}
+                    />
+                  </View>
+                  {isFull && (
+                    <Text style={styles.progressFullText}>{t('leagues.spotsFull')}</Text>
+                  )}
                 </View>
-              )}
-              {league.status === 'completed' && (!league.winners || league.winners.length === 0) && league.winnerId && (
-                <View style={styles.winnerRow}>
-                  <Ionicons name="trophy" size={14} color="#FFD700" />
-                  <Text style={styles.winnerText}>
-                    {String(league.winnerId) === user?.id ? t('leagues.youWon') : t('leagues.winnerDeclared')}
-                  </Text>
-                </View>
-              )}
+
+                {/* Actions */}
+                {league.status === 'open' && (
+                  <View style={styles.leagueActions}>
+                    {isMember ? (
+                      <View style={styles.leagueActionsRow}>
+                        <TouchableOpacity
+                          style={[styles.leaveBtn, { flex: 1 }]}
+                          onPress={() => handleLeave(league)}
+                          disabled={!!actionLoading}
+                        >
+                          {isActionLoading ? (
+                            <ActivityIndicator size="small" color={colors.error} />
+                          ) : (
+                            <Text style={styles.leaveBtnText}>
+                              {String(league.creatorId) === user?.id && !league.isSystemLeague
+                                ? t('leagues.delete')
+                                : t('leagues.leave')}
+                            </Text>
+                          )}
+                        </TouchableOpacity>
+                        {league.inviteCode && (
+                          <TouchableOpacity
+                            style={styles.shareBtn}
+                            onPress={() => handleShare(league)}
+                            hitSlop={8}
+                          >
+                            <Ionicons name="paper-plane-outline" size={18} color={colors.primary} />
+                            <Text style={styles.shareBtnText}>{t('leagues.share')}</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    ) : (
+                      <View style={styles.leagueActionsRow}>
+                        <TouchableOpacity
+                          style={[styles.joinBtn, { flex: 1 }]}
+                          onPress={() => handleJoin(league)}
+                          disabled={!!actionLoading || isFull}
+                        >
+                          {isActionLoading ? (
+                            <ActivityIndicator size="small" color={colors.onPrimary} />
+                          ) : (
+                            <View style={styles.joinBtnInner}>
+                              <Ionicons name="enter-outline" size={16} color={colors.onPrimary} />
+                              <Text style={styles.joinBtnText}>
+                                {league.entryFee === 0 ? t('leagues.join') : t('leagues.joinLeague')}
+                              </Text>
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                        {league.inviteCode && (
+                          <TouchableOpacity
+                            style={styles.shareBtn}
+                            onPress={() => handleShare(league)}
+                            hitSlop={8}
+                          >
+                            <Ionicons name="paper-plane-outline" size={18} color={colors.primary} />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    )}
+                  </View>
+                )}
+
+                {/* Winner rows */}
+                {league.status === 'completed' && league.winners?.length > 0 && (
+                  <View style={styles.winnerRow}>
+                    <Ionicons name="trophy" size={14} color="#FFD700" />
+                    <Text style={styles.winnerText}>
+                      {league.winners.find((w) => String(w.userId) === user?.id)
+                        ? t('leagues.youPlaced', { position: league.winners.find((w) => String(w.userId) === user?.id)?.position, coins: league.winners.find((w) => String(w.userId) === user?.id)?.coinsWon })
+                        : t('leagues.winnersCount', { count: league.winners.length })}
+                    </Text>
+                  </View>
+                )}
+                {league.status === 'completed' && (!league.winners || league.winners.length === 0) && league.winnerId && (
+                  <View style={styles.winnerRow}>
+                    <Ionicons name="trophy" size={14} color="#FFD700" />
+                    <Text style={styles.winnerText}>
+                      {String(league.winnerId) === user?.id ? t('leagues.youWon') : t('leagues.winnerDeclared')}
+                    </Text>
+                  </View>
+                )}
+              </View>
             </TouchableOpacity>
           );
         }}
@@ -708,6 +816,8 @@ const modalStyles = StyleSheet.create({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+
+  /* ── Header ── */
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -717,40 +827,49 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 22,
+    fontSize: 24,
     color: colors.primary,
     letterSpacing: -0.5,
   },
-
-  pillRow: {
+  headerActions: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    alignItems: 'center',
     gap: spacing.sm,
-    marginBottom: spacing.md,
   },
   balancePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: 'rgba(202,253,0,0.08)',
+    gap: 6,
+    backgroundColor: 'rgba(202,253,0,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(202,253,0,0.20)',
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
+    paddingVertical: 6,
     borderRadius: borderRadius.full,
   },
-  limitPill: {
-    backgroundColor: 'rgba(202,253,0,0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(202,253,0,0.12)',
-  },
   balancePillText: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 13,
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 14,
     color: colors.primary,
   },
-  upgradeBtn: {
-    backgroundColor: '#6C3AED',
+  headerIconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.surfaceContainerHigh,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerCreateBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
+  /* ── Tabs ── */
   tabs: {
     flexDirection: 'row',
     marginHorizontal: spacing.lg,
@@ -777,6 +896,7 @@ const styles = StyleSheet.create({
     color: colors.onSurface,
   },
 
+  /* ── Sport Filter ── */
   sportFilterRow: { maxHeight: 44, marginBottom: 4 },
   sportFilterContent: { paddingHorizontal: 16, gap: 6, alignItems: 'center' as const },
   sportFilterChip: {
@@ -796,17 +916,36 @@ const styles = StyleSheet.create({
 
   scroll: { flex: 1 },
 
+  /* ── Empty State ── */
   emptyState: {
     alignItems: 'center',
-    paddingVertical: spacing['5xl'],
+    paddingVertical: spacing['6xl'],
     gap: spacing.md,
   },
-  emptyText: {
+  emptyIconCircle: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: 'rgba(202,253,0,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(202,253,0,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
+  },
+  emptyTitle: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 17,
+    color: colors.onSurface,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
     fontFamily: 'Inter_400Regular',
     fontSize: 14,
     color: colors.onSurfaceDim,
     textAlign: 'center',
     paddingHorizontal: spacing['4xl'],
+    lineHeight: 20,
   },
   createBtn: {
     flexDirection: 'row',
@@ -816,7 +955,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing['2xl'],
     paddingVertical: spacing.md,
     borderRadius: borderRadius.full,
-    marginTop: spacing.md,
+    marginTop: spacing.lg,
   },
   createBtnText: {
     fontFamily: 'SpaceGrotesk_700Bold',
@@ -824,70 +963,161 @@ const styles = StyleSheet.create({
     color: colors.onPrimary,
   },
 
+  /* ── League Card ── */
   leagueCard: {
     marginHorizontal: spacing.lg,
     marginBottom: spacing.md,
     backgroundColor: colors.surfaceContainerLow,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: colors.outlineVariant,
+    overflow: 'hidden',
+  },
+  accentBar: {
+    height: 3,
+    width: '100%',
+  },
+  cardBody: {
     padding: spacing.lg,
   },
-  leagueHeader: { marginBottom: spacing.md },
-  leagueNameRow: {
+
+  /* Card top row (status + date) */
+  cardTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: spacing.sm,
-  },
-  leagueName: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 15,
-    color: colors.onSurface,
-    flex: 1,
+    marginBottom: spacing.sm,
   },
   statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: borderRadius.full,
+    borderWidth: 1,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   statusText: {
     fontFamily: 'Inter_600SemiBold',
     fontSize: 10,
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
-  leagueSport: {
+  dateText: {
     fontFamily: 'Inter_400Regular',
     fontSize: 12,
     color: colors.onSurfaceDim,
-    marginTop: 2,
   },
 
-  leagueStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.outlineVariant,
+  /* League name */
+  leagueName: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 18,
+    color: colors.onSurface,
+    marginBottom: 2,
   },
-  leagueStat: {
+
+  /* Sport row */
+  sportRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    flexDirection: 'row',
-    gap: 2,
+    gap: 5,
+    marginBottom: spacing.md,
   },
-  leagueStatLabel: {
+  leagueSport: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 12,
+    color: colors.onSurfaceDim,
+  },
+
+  /* Stats grid */
+  statsGrid: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  statBox: {
+    flex: 1,
+    backgroundColor: colors.surfaceContainerHigh,
+    borderRadius: borderRadius.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    alignItems: 'center',
+  },
+  statBoxHighlight: {
+    backgroundColor: 'rgba(255,215,0,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,215,0,0.15)',
+  },
+  statBoxLabel: {
     fontFamily: 'Inter_400Regular',
     fontSize: 10,
     color: colors.onSurfaceDim,
     letterSpacing: 0.5,
-    marginRight: 4,
+    textTransform: 'uppercase',
+    marginBottom: 3,
   },
-  leagueStatValue: {
+  statBoxValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  statBoxValue: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 16,
+    color: colors.onSurface,
+  },
+
+  /* Progress bar */
+  progressSection: {
+    marginBottom: spacing.sm,
+  },
+  progressLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 5,
+  },
+  progressLabel: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 11,
+    color: colors.onSurfaceDim,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  progressCount: {
     fontFamily: 'SpaceGrotesk_700Bold',
     fontSize: 13,
     color: colors.onSurface,
   },
+  progressCountDim: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 12,
+    color: colors.onSurfaceDim,
+  },
+  progressBarBg: {
+    height: 5,
+    backgroundColor: colors.surfaceContainerHigh,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  progressFullText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 10,
+    color: colors.error,
+    marginTop: 3,
+    textAlign: 'right',
+  },
 
+  /* Actions */
   leagueActions: {
     marginTop: spacing.sm,
     borderTopWidth: 1,
@@ -900,18 +1130,37 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   shareBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(202,253,0,0.1)',
+    height: 42,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    borderColor: 'rgba(202,253,0,0.25)',
+    backgroundColor: 'rgba(202,253,0,0.08)',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 5,
+  },
+  shareBtnText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12,
+    color: colors.primary,
   },
   joinBtn: {
     backgroundColor: colors.primary,
     borderRadius: borderRadius.full,
     paddingVertical: spacing.md,
     alignItems: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  joinBtnInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   joinBtnText: {
     fontFamily: 'SpaceGrotesk_700Bold',
@@ -931,6 +1180,7 @@ const styles = StyleSheet.create({
     color: colors.error,
   },
 
+  /* Winner row */
   winnerRow: {
     flexDirection: 'row',
     alignItems: 'center',

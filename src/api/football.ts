@@ -120,6 +120,9 @@ export interface DashboardData {
 }
 
 export interface StandingEntry {
+  /** Group label from API (e.g. "Premier League", "Group A"). Used to section
+   * multi-group tournaments (World Cup has 12 groups, Champions League 8). */
+  group?: string;
   rank: number;
   teamApiId: number;
   teamName: string;

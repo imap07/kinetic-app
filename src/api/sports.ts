@@ -97,6 +97,9 @@ export interface SportDashboard {
 }
 
 export interface SportStandingEntry {
+  /** Group label from API (e.g. "Premier League", "Group A"). Used to section
+   * multi-group tournaments like FIFA World Cup (12 groups) and Champions League. */
+  group?: string;
   rank: number;
   teamApiId?: number;
   teamName: string;
@@ -110,6 +113,9 @@ export interface SportStandingEntry {
   percentage?: string;
   form?: string;
   description?: string;
+  goalsFor?: number;
+  goalsAgainst?: number;
+  goalDifference?: number;
   // F1 specific
   driverApiId?: number;
   driverName?: string;

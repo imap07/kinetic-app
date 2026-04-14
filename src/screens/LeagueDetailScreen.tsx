@@ -501,8 +501,19 @@ function StandingsTab({ standings, sport }: { standings: SportStandingEntry[] | 
 
   const hasDrawn = standings.some((e) => e.drawn !== undefined && e.drawn !== null);
 
-  return (
-    <View style={styles.standingsWrap}>
+  // Group by `group` label for multi-group tournaments (e.g. FIFA World Cup has
+  // 12 groups A–L). If there's only one group (or no group info), render flat.
+  const groups = new Map<string, SportStandingEntry[]>();
+  for (const entry of standings) {
+    const key = entry.group || '__single__';
+    const existing = groups.get(key);
+    if (existing) existing.push(entry);
+    else groups.set(key, [entry]);
+  }
+  const isMultiGroup = groups.size > 1;
+
+  const renderTable = (rows: SportStandingEntry[], keyPrefix: string) => (
+    <>
       <View style={styles.standingsHeaderRow}>
         <Text style={[styles.standingsHeaderCell, { width: 32 }]}>#</Text>
         <Text style={[styles.standingsHeaderCell, { flex: 1 }]}>Team</Text>
@@ -514,13 +525,16 @@ function StandingsTab({ standings, sport }: { standings: SportStandingEntry[] | 
           Pts
         </Text>
       </View>
-      {standings.map((entry) => (
+      {rows.map((entry) => (
         <View
-          key={entry.rank}
+          key={`${keyPrefix}-${entry.rank}-${entry.teamApiId ?? entry.teamName}`}
           style={[
             styles.standingsRow,
-            entry.rank <= 4 && styles.standingsRowCL,
-            entry.rank >= standings.length - 2 && styles.standingsRowRel,
+            // In single-table mode: top-4 = CL spots, bottom-3 = relegation.
+            // In multi-group mode: top-2 of each group advance (WC = 12 groups).
+            !isMultiGroup && entry.rank <= 4 && styles.standingsRowCL,
+            !isMultiGroup && entry.rank >= rows.length - 2 && styles.standingsRowRel,
+            isMultiGroup && entry.rank <= 2 && styles.standingsRowCL,
           ]}
         >
           <Text style={[styles.standingsCell, { width: 32, fontFamily: 'Inter_700Bold' }]}>
@@ -545,6 +559,22 @@ function StandingsTab({ standings, sport }: { standings: SportStandingEntry[] | 
           >
             {entry.points ?? '-'}
           </Text>
+        </View>
+      ))}
+    </>
+  );
+
+  if (!isMultiGroup) {
+    const flat = standings;
+    return <View style={styles.standingsWrap}>{renderTable(flat, 'g')}</View>;
+  }
+
+  return (
+    <View style={styles.standingsWrap}>
+      {Array.from(groups.entries()).map(([groupName, rows]) => (
+        <View key={groupName} style={styles.standingsGroupBlock}>
+          <Text style={styles.standingsGroupTitle}>{groupName}</Text>
+          {renderTable(rows, groupName)}
         </View>
       ))}
     </View>
@@ -772,6 +802,16 @@ const styles = StyleSheet.create({
 
   // Standings
   standingsWrap: { paddingHorizontal: 16 },
+  standingsGroupBlock: { marginBottom: 20 },
+  standingsGroupTitle: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 14,
+    color: colors.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginTop: 12,
+    marginBottom: 4,
+  },
   standingsHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
