@@ -234,7 +234,50 @@ export const sportsApi = {
       { token },
     );
   },
+
+  getHockeyLeagueStages(token: string, leagueId: number) {
+    return apiClient.get<HockeyStagesResponse>(
+      `/sports/hockey/leagues/${leagueId}/stages`,
+      { token },
+    );
+  },
+
+  getHockeyLeagueGroups(token: string, leagueId: number) {
+    return apiClient.get<HockeyGroupsResponse>(
+      `/sports/hockey/leagues/${leagueId}/groups`,
+      { token },
+    );
+  },
+
+  getOddsBets(token: string, sport: SportKey) {
+    return apiClient.get<OddsReferenceItem[]>(
+      `/sports/${sport}/odds/bets`,
+      { token },
+    );
+  },
+
+  getOddsBookmakers(token: string, sport: SportKey) {
+    return apiClient.get<OddsReferenceItem[]>(
+      `/sports/${sport}/odds/bookmakers`,
+      { token },
+    );
+  },
 };
+
+export interface HockeyStagesResponse {
+  stages: string[];
+  fetchedAt: string;
+}
+
+export interface HockeyGroupsResponse {
+  groups: string[];
+  fetchedAt: string;
+}
+
+export interface OddsReferenceItem {
+  apiId: number;
+  name: string;
+}
 
 export interface F1Driver {
   apiId: number;
