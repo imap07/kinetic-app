@@ -478,6 +478,140 @@ function GenericH2HTab({ games, homeTeamId, homeTeamName, awayTeamName }: { game
   );
 }
 
+// ─── Shared Score Breakdown Row ──────────────────────────────────────────────
+type BreakdownColumn = { label: string; home: number | string | null | undefined; away: number | string | null | undefined; highlight?: boolean };
+function ScoreBreakdownRow({ columns, title }: { columns: BreakdownColumn[]; title?: string }) {
+  const visible = columns.filter(c => c.home != null || c.away != null);
+  if (visible.length === 0) return null;
+  return (
+    <View style={styles.periodScoreContainer}>
+      {!!title && <Text style={styles.periodScoreTitle}>{title}</Text>}
+      <View style={styles.periodScoreRow}>
+        {visible.map((c, i) => (
+          <View key={`${c.label}-${i}`} style={styles.periodScoreCell}>
+            <Text style={[styles.periodScoreLabel, c.highlight && { color: colors.primary }]}>{c.label}</Text>
+            <Text style={[styles.periodScoreHome, c.highlight && { color: colors.primary }]}>{c.home ?? '-'}</Text>
+            <Text style={styles.periodScoreDash}>:</Text>
+            <Text style={[styles.periodScoreAway, c.highlight && { color: colors.primary }]}>{c.away ?? '-'}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+// ─── Baseball Inning Table ───────────────────────────────────────────────────
+function BaseballInningTable({ homeScore, awayScore, homeTeamName, awayTeamName, t }: { homeScore: any; awayScore: any; homeTeamName: string; awayTeamName: string; t: (k: string) => string }) {
+  const hInn = homeScore?.innings || {};
+  const aInn = awayScore?.innings || {};
+  const inningNums = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  const hasExtra = hInn.extra != null || aInn.extra != null;
+  const cell = (v: any) => (v == null ? '' : String(v));
+  return (
+    <View style={styles.periodScoreContainer}>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <Text style={[styles.periodScoreLabel, { width: 80 }]}> </Text>
+        {inningNums.map(n => (
+          <Text key={`h-${n}`} style={[styles.periodScoreLabel, { width: 22, textAlign: 'center' }]}>{String(n)}</Text>
+        ))}
+        {hasExtra && <Text style={[styles.periodScoreLabel, { width: 22, textAlign: 'center' }]}>{t('sports.baseball.extra')}</Text>}
+        <Text style={[styles.periodScoreLabel, { width: 26, textAlign: 'center', color: colors.primary }]}>{t('sports.baseball.runs')}</Text>
+        <Text style={[styles.periodScoreLabel, { width: 24, textAlign: 'center' }]}>{t('sports.baseball.hits')}</Text>
+        <Text style={[styles.periodScoreLabel, { width: 24, textAlign: 'center' }]}>{t('sports.baseball.errors')}</Text>
+      </View>
+      {[{ name: homeTeamName, inn: hInn, score: homeScore }, { name: awayTeamName, inn: aInn, score: awayScore }].map((row, idx) => (
+        <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+          <Text style={[styles.periodScoreHome, { width: 80, fontSize: 11 }]} numberOfLines={1}>{row.name}</Text>
+          {inningNums.map(n => (
+            <Text key={`v-${idx}-${n}`} style={[styles.periodScoreHome, { width: 22, textAlign: 'center', fontSize: 13 }]}>{cell(row.inn?.[n])}</Text>
+          ))}
+          {hasExtra && <Text style={[styles.periodScoreHome, { width: 22, textAlign: 'center', fontSize: 13 }]}>{cell(row.inn?.extra)}</Text>}
+          <Text style={[styles.periodScoreHome, { width: 26, textAlign: 'center', fontSize: 14, color: colors.primary }]}>{cell(row.score?.total)}</Text>
+          <Text style={[styles.periodScoreHome, { width: 24, textAlign: 'center', fontSize: 13 }]}>{cell(row.score?.hits)}</Text>
+          <Text style={[styles.periodScoreHome, { width: 24, textAlign: 'center', fontSize: 13 }]}>{cell(row.score?.errors)}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+// ─── Hockey Goals Timeline ───────────────────────────────────────────────────
+function HockeyGoalsTimeline({ events, t }: { events: any[]; t: (k: string, opts?: any) => string }) {
+  if (!events || events.length === 0) {
+    return <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 13, color: colors.onSurfaceVariant, textAlign: 'center' }}>{t('sports.hockey.noGoals')}</Text>;
+  }
+  const periodLabel = (p: string) => {
+    switch ((p || '').toUpperCase()) {
+      case 'P1': return t('sports.hockey.firstPeriod');
+      case 'P2': return t('sports.hockey.secondPeriod');
+      case 'P3': return t('sports.hockey.thirdPeriod');
+      case 'OT': return t('sports.hockey.overtime');
+      case 'SO': return t('sports.hockey.shootout');
+      default: return p || '';
+    }
+  };
+  const order = ['P1', 'P2', 'P3', 'OT', 'SO'];
+  const grouped = new Map<string, any[]>();
+  events.forEach(evt => {
+    const key = (evt.period || '').toUpperCase() || 'GAME';
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key)!.push(evt);
+  });
+  const sortedKeys = [...grouped.keys()].sort((a, b) => {
+    const ai = order.indexOf(a); const bi = order.indexOf(b);
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  });
+  return (
+    <View style={{ gap: 16 }}>
+      {sortedKeys.map(period => (
+        <View key={period}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <View style={{ flex: 1, height: 1, backgroundColor: 'rgba(69,72,76,0.3)' }} />
+            <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 10, color: colors.onSurfaceDim, letterSpacing: 1.2, textTransform: 'uppercase' }}>{periodLabel(period)}</Text>
+            <View style={{ flex: 1, height: 1, backgroundColor: 'rgba(69,72,76,0.3)' }} />
+          </View>
+          {grouped.get(period)!.map((evt, idx) => {
+            const scorer = Array.isArray(evt.players) && evt.players.length > 0 ? evt.players[0] : '';
+            const assists = Array.isArray(evt.assists) ? evt.assists.filter(Boolean) : [];
+            const isPP = evt.comment === 'Power-play';
+            const isSH = evt.comment === 'Shorthanded';
+            return (
+              <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 }}>
+                {evt.teamLogo ? (
+                  <Image source={{ uri: evt.teamLogo }} style={{ width: 22, height: 22 }} resizeMode="contain" />
+                ) : (
+                  <View style={{ width: 22, height: 22 }} />
+                )}
+                <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 12, color: colors.onSurfaceVariant, width: 36 }}>
+                  {evt.minute ? `${evt.minute}'` : ''}
+                </Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 13, color: colors.onSurface }} numberOfLines={1}>{scorer || evt.teamName || ''}</Text>
+                  {assists.length > 0 && (
+                    <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 11, color: colors.onSurfaceVariant }} numberOfLines={1}>
+                      {t('sports.hockey.assist')}: {assists.join(', ')}
+                    </Text>
+                  )}
+                </View>
+                {isPP && (
+                  <View style={{ backgroundColor: 'rgba(250,204,21,0.18)', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
+                    <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 10, color: '#FACC15' }}>{t('sports.hockey.powerPlay')}</Text>
+                  </View>
+                )}
+                {isSH && (
+                  <View style={{ backgroundColor: 'rgba(249,115,22,0.18)', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
+                    <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 10, color: '#F97316' }}>{t('sports.hockey.shorthanded')}</Text>
+                  </View>
+                )}
+              </View>
+            );
+          })}
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export function MatchPredictionScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const route = useRoute<any>();
@@ -628,9 +762,15 @@ export function MatchPredictionScreen({ navigation }: Props) {
     setGenericEventsLoading(true);
     try {
       const data = await sportsApi.getGameEvents(tokens.accessToken, sport as any, fixtureApiId);
-      setGenericEvents(Array.isArray(data) ? data : (data?.events || data?.response || []));
+      const list = Array.isArray(data) ? data : (data?.events || data?.response || []);
+      if ((!list || list.length === 0) && Array.isArray((genericGame as any)?.events)) {
+        setGenericEvents((genericGame as any).events);
+      } else {
+        setGenericEvents(list);
+      }
     } catch {
-      setGenericEvents([]);
+      const fallback = Array.isArray((genericGame as any)?.events) ? (genericGame as any).events : [];
+      setGenericEvents(fallback);
     } finally {
       setGenericEventsLoading(false);
       setGenericEventsLoaded(true);
@@ -1096,11 +1236,44 @@ export function MatchPredictionScreen({ navigation }: Props) {
                 <Text style={styles.vsLabel}>VS</Text>
               ) : (
                 <>
-                  <View style={styles.scoreRow}>
-                    <Text style={styles.scoreNum}>{homeScore ?? '-'}</Text>
-                    <Text style={styles.scoreDivider}>:</Text>
-                    <Text style={styles.scoreNum}>{awayScore ?? '-'}</Text>
-                  </View>
+                  {sport === 'afl' && genericGame ? (() => {
+                    const hs = genericGame.homeScore || {};
+                    const as_ = genericGame.awayScore || {};
+                    const hGoals = hs.goals ?? null;
+                    const hBehinds = hs.behinds ?? null;
+                    const aGoals = as_.goals ?? null;
+                    const aBehinds = as_.behinds ?? null;
+                    const hTotal = hs.total ?? genericGame.homeTotal ?? 0;
+                    const aTotal = as_.total ?? genericGame.awayTotal ?? 0;
+                    if (hGoals != null && hBehinds != null && aGoals != null && aBehinds != null) {
+                      return (
+                        <View style={styles.scoreRow}>
+                          <View style={{ alignItems: 'center' }}>
+                            <Text style={styles.scoreNum}>{hTotal}</Text>
+                            <Text style={styles.halftimeText}>{hGoals}.{hBehinds}</Text>
+                          </View>
+                          <Text style={styles.scoreDivider}>:</Text>
+                          <View style={{ alignItems: 'center' }}>
+                            <Text style={styles.scoreNum}>{aTotal}</Text>
+                            <Text style={styles.halftimeText}>{aGoals}.{aBehinds}</Text>
+                          </View>
+                        </View>
+                      );
+                    }
+                    return (
+                      <View style={styles.scoreRow}>
+                        <Text style={styles.scoreNum}>{hTotal}</Text>
+                        <Text style={styles.scoreDivider}>:</Text>
+                        <Text style={styles.scoreNum}>{aTotal}</Text>
+                      </View>
+                    );
+                  })() : (
+                    <View style={styles.scoreRow}>
+                      <Text style={styles.scoreNum}>{homeScore ?? '-'}</Text>
+                      <Text style={styles.scoreDivider}>:</Text>
+                      <Text style={styles.scoreNum}>{awayScore ?? '-'}</Text>
+                    </View>
+                  )}
                   {fixture?.goalsHalftime?.home !== null && fixture?.goalsHalftime?.home !== undefined && (
                     <Text style={styles.halftimeText}>
                       HT: {fixture.goalsHalftime.home} - {fixture.goalsHalftime.away}
@@ -1125,65 +1298,155 @@ export function MatchPredictionScreen({ navigation }: Props) {
             </Text>
           </View>
 
-          {/* Period/Quarter/Set score breakdown for non-football sports */}
-          {!isFootball && !statusDisplay.isUpcoming && genericGame && (() => {
-            const hs = genericGame.homeScore;
-            const as_ = genericGame.awayScore;
-            if (!hs && !as_) return null;
-
-            type PeriodDef = { label: string; hKey: string; aKey: string };
-            let periods: PeriodDef[] = [];
-            if (sport === 'hockey') {
-              periods = [
-                { label: t('matchPrediction.period1'), hKey: 'period_1', aKey: 'period_1' },
-                { label: t('matchPrediction.period2'), hKey: 'period_2', aKey: 'period_2' },
-                { label: t('matchPrediction.period3'), hKey: 'period_3', aKey: 'period_3' },
-                { label: t('matchPrediction.overtime'), hKey: 'overtime', aKey: 'overtime' },
-              ];
-            } else if (sport === 'basketball') {
-              periods = [
-                { label: t('matchPrediction.quarter1'), hKey: 'quarter_1', aKey: 'quarter_1' },
-                { label: t('matchPrediction.quarter2'), hKey: 'quarter_2', aKey: 'quarter_2' },
-                { label: t('matchPrediction.quarter3'), hKey: 'quarter_3', aKey: 'quarter_3' },
-                { label: t('matchPrediction.quarter4'), hKey: 'quarter_4', aKey: 'quarter_4' },
-                { label: t('matchPrediction.overtime'), hKey: 'over_time', aKey: 'over_time' },
-              ];
-            } else if (sport === 'american-football') {
-              periods = [
-                { label: t('matchPrediction.quarter1'), hKey: 'quarter_1', aKey: 'quarter_1' },
-                { label: t('matchPrediction.quarter2'), hKey: 'quarter_2', aKey: 'quarter_2' },
-                { label: t('matchPrediction.quarter3'), hKey: 'quarter_3', aKey: 'quarter_3' },
-                { label: t('matchPrediction.quarter4'), hKey: 'quarter_4', aKey: 'quarter_4' },
-                { label: t('matchPrediction.overtime'), hKey: 'overtime', aKey: 'overtime' },
-              ];
-            } else if (sport === 'volleyball') {
-              periods = [
-                { label: t('matchPrediction.set1'), hKey: 'set_1', aKey: 'set_1' },
-                { label: t('matchPrediction.set2'), hKey: 'set_2', aKey: 'set_2' },
-                { label: t('matchPrediction.set3'), hKey: 'set_3', aKey: 'set_3' },
-                { label: t('matchPrediction.set4'), hKey: 'set_4', aKey: 'set_4' },
-                { label: t('matchPrediction.set5'), hKey: 'set_5', aKey: 'set_5' },
-              ];
-            }
-
-            const visiblePeriods = periods.filter(p => hs?.[p.hKey] != null || as_?.[p.aKey] != null);
-            if (visiblePeriods.length === 0) return null;
-
+          {/* MMA header polish: slug + main event + category */}
+          {sport === 'mma' && genericGame && (() => {
+            const g: any = genericGame;
+            const slug = g.slug;
+            const isMain = g.isMain === true;
+            const category = g.category;
+            if (!slug && !isMain && !category) return null;
             return (
-              <View style={styles.periodScoreContainer}>
-                <Text style={styles.periodScoreTitle}>{t('matchPrediction.scoreBreakdown')}</Text>
-                <View style={styles.periodScoreRow}>
-                  {visiblePeriods.map((p) => (
-                    <View key={p.label} style={styles.periodScoreCell}>
-                      <Text style={styles.periodScoreLabel}>{p.label}</Text>
-                      <Text style={styles.periodScoreHome}>{hs?.[p.hKey] ?? '-'}</Text>
-                      <Text style={styles.periodScoreDash}>:</Text>
-                      <Text style={styles.periodScoreAway}>{as_?.[p.aKey] ?? '-'}</Text>
+              <View style={{ alignItems: 'center', gap: 6, marginTop: 8 }}>
+                {!!slug && (
+                  <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 10, color: colors.onSurfaceDim, letterSpacing: 1.2, textTransform: 'uppercase', textAlign: 'center' }} numberOfLines={2}>{slug}</Text>
+                )}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  {isMain && (
+                    <View style={{ backgroundColor: 'rgba(220,38,38,0.18)', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 3 }}>
+                      <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 10, color: '#DC2626', letterSpacing: 1 }}>{t('sports.mma.mainEvent')}</Text>
                     </View>
-                  ))}
+                  )}
+                  {!!category && (
+                    <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 12, color: colors.onSurfaceVariant }}>{category}</Text>
+                  )}
                 </View>
               </View>
             );
+          })()}
+
+          {/* AFL meta badges: round / venue / attendance */}
+          {sport === 'afl' && genericGame && (() => {
+            const g: any = genericGame;
+            const round = g.round;
+            const venue = g.venue;
+            const attendance = g.attendance;
+            if (!round && !venue && !attendance) return null;
+            return (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6, marginTop: 8 }}>
+                {!!round && (
+                  <View style={{ backgroundColor: 'rgba(34,38,43,0.5)', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 }}>
+                    <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 10, color: colors.onSurfaceVariant, letterSpacing: 0.8 }}>{t('sports.afl.round', { round })}</Text>
+                  </View>
+                )}
+                {!!venue && (
+                  <View style={{ backgroundColor: 'rgba(34,38,43,0.5)', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 }}>
+                    <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 10, color: colors.onSurfaceVariant }}>{venue}</Text>
+                  </View>
+                )}
+                {typeof attendance === 'number' && attendance > 0 && (
+                  <View style={{ backgroundColor: 'rgba(34,38,43,0.5)', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 }}>
+                    <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 10, color: colors.onSurfaceVariant }}>{t('sports.afl.attendance', { count: attendance.toLocaleString() })}</Text>
+                  </View>
+                )}
+              </View>
+            );
+          })()}
+
+          {/* Basketball venue */}
+          {sport === 'basketball' && genericGame && (genericGame as any).venue && (
+            <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 8 }}>
+              <View style={{ backgroundColor: 'rgba(34,38,43,0.5)', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 }}>
+                <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 10, color: colors.onSurfaceVariant }}>{(genericGame as any).venue}</Text>
+              </View>
+            </View>
+          )}
+
+          {/* Per-sport score breakdown (non-football sports) */}
+          {!isFootball && !statusDisplay.isUpcoming && genericGame && (() => {
+            const hs: any = genericGame.homeScore || {};
+            const as_: any = genericGame.awayScore || {};
+            const hTotal = hs.total ?? genericGame.homeTotal;
+            const aTotal = as_.total ?? genericGame.awayTotal;
+            const num = (v: any) => (typeof v === 'number' ? v : (v != null && !isNaN(Number(v))) ? Number(v) : null);
+
+            // Baseball has its own inning table
+            if (sport === 'baseball') {
+              if (!hs.innings && !as_.innings) return null;
+              return <BaseballInningTable homeScore={hs} awayScore={as_} homeTeamName={homeTeamName} awayTeamName={awayTeamName} t={t} />;
+            }
+
+            let columns: BreakdownColumn[] = [];
+
+            if (sport === 'hockey') {
+              columns = [
+                { label: t('matchPrediction.period1'), home: hs.period_1, away: as_.period_1 },
+                { label: t('matchPrediction.period2'), home: hs.period_2, away: as_.period_2 },
+                { label: t('matchPrediction.period3'), home: hs.period_3, away: as_.period_3 },
+                { label: t('matchPrediction.overtime'), home: hs.overtime, away: as_.overtime },
+                { label: t('sports.hockey.shootout'), home: hs.penalties, away: as_.penalties },
+              ];
+            } else if (sport === 'basketball') {
+              columns = [
+                { label: t('sports.basketball.quarter1'), home: hs.quarter_1, away: as_.quarter_1 },
+                { label: t('sports.basketball.quarter2'), home: hs.quarter_2, away: as_.quarter_2 },
+                { label: t('sports.basketball.quarter3'), home: hs.quarter_3, away: as_.quarter_3 },
+                { label: t('sports.basketball.quarter4'), home: hs.quarter_4, away: as_.quarter_4 },
+              ];
+              const hOT = num(hs.over_time); const aOT = num(as_.over_time);
+              if ((hOT != null && hOT > 0) || (aOT != null && aOT > 0)) {
+                columns.push({ label: t('sports.basketball.overtime'), home: hs.over_time, away: as_.over_time });
+              }
+              columns.push({ label: t('sports.basketball.total'), home: hTotal, away: aTotal, highlight: true });
+            } else if (sport === 'american-football') {
+              columns = [
+                { label: t('matchPrediction.quarter1'), home: hs.quarter_1, away: as_.quarter_1 },
+                { label: t('matchPrediction.quarter2'), home: hs.quarter_2, away: as_.quarter_2 },
+                { label: t('matchPrediction.quarter3'), home: hs.quarter_3, away: as_.quarter_3 },
+                { label: t('matchPrediction.quarter4'), home: hs.quarter_4, away: as_.quarter_4 },
+                { label: t('matchPrediction.overtime'), home: hs.overtime, away: as_.overtime },
+              ];
+            } else if (sport === 'volleyball') {
+              const per = (genericGame as any).periods || {};
+              const setHome = (i: number) => per?.[['first','second','third','fourth','fifth'][i-1]]?.home ?? hs[`set_${i}`];
+              const setAway = (i: number) => per?.[['first','second','third','fourth','fifth'][i-1]]?.away ?? as_[`set_${i}`];
+              for (let i = 1; i <= 5; i++) {
+                const h = setHome(i); const a = setAway(i);
+                if (h == null && a == null) continue;
+                const hN = num(h); const aN = num(a);
+                const highlight = hN != null && aN != null && hN !== aN;
+                columns.push({ label: `${t('sports.volleyball.set')} ${i}`, home: h, away: a, highlight: highlight && (hN > aN || aN > hN) });
+              }
+              columns.push({ label: t('sports.basketball.total'), home: hTotal, away: aTotal, highlight: true });
+            } else if (sport === 'rugby') {
+              const per = (genericGame as any).periods || {};
+              columns = [
+                { label: t('sports.rugby.half1'), home: per?.first?.home ?? null, away: per?.first?.away ?? null },
+                { label: t('sports.rugby.half2'), home: per?.second?.home ?? null, away: per?.second?.away ?? null },
+              ];
+              const ot = per?.overtime; const ot2 = per?.second_overtime;
+              if (ot && (num(ot.home) || num(ot.away))) columns.push({ label: t('sports.rugby.extraTime'), home: ot.home, away: ot.away });
+              if (ot2 && (num(ot2.home) || num(ot2.away))) columns.push({ label: t('sports.rugby.secondExtraTime'), home: ot2.home, away: ot2.away });
+              columns.push({ label: t('sports.rugby.total'), home: hTotal, away: aTotal, highlight: true });
+            } else if (sport === 'handball') {
+              const per = (genericGame as any).periods || {};
+              columns = [
+                { label: t('sports.handball.half1'), home: per?.first?.home ?? null, away: per?.first?.away ?? null },
+                { label: t('sports.handball.half2'), home: per?.second?.home ?? null, away: per?.second?.away ?? null },
+              ];
+              const hOT = num(hs.overtime); const aOT = num(as_.overtime);
+              if ((hOT != null && hOT > 0) || (aOT != null && aOT > 0)) {
+                columns.push({ label: t('sports.handball.extraTime'), home: hs.overtime, away: as_.overtime });
+              }
+              const hPen = num(hs.penalties); const aPen = num(as_.penalties);
+              if ((hPen != null && hPen > 0) || (aPen != null && aPen > 0)) {
+                columns.push({ label: t('sports.handball.penalties'), home: hs.penalties, away: as_.penalties });
+              }
+              columns.push({ label: t('sports.handball.total'), home: hTotal, away: aTotal, highlight: true });
+            } else {
+              return null;
+            }
+
+            return <ScoreBreakdownRow columns={columns} title={t('matchPrediction.scoreBreakdown')} />;
           })()}
         </View>
 
@@ -1863,6 +2126,8 @@ export function MatchPredictionScreen({ navigation }: Props) {
                 <View style={styles.card}>
                   {genericEventsLoading ? (
                     <ActivityIndicator size="small" color={colors.primary} />
+                  ) : sport === 'hockey' ? (
+                    <HockeyGoalsTimeline events={genericEvents} t={t} />
                   ) : genericEvents.length === 0 ? (
                     <Text style={styles.h2hEmpty}>{t('matchPrediction.noEventsYet')}</Text>
                   ) : (

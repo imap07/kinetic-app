@@ -26,7 +26,7 @@ import {
 } from '../api/predictions';
 import { sportsApi } from '../api/sports';
 
-type TabKey = 'winner' | 'podium' | 'h2h' | 'fastest' | 'points';
+type TabKey = 'winner' | 'podium' | 'h2h' | 'fastest' | 'points' | 'pitstops';
 
 const TABS: { key: TabKey; label: string; icon: string; points: string }[] = [
   { key: 'winner', label: 'Race Winner', icon: 'trophy', points: '30 pts' },
@@ -34,7 +34,30 @@ const TABS: { key: TabKey; label: string; icon: string; points: string }[] = [
   { key: 'h2h', label: 'Head-to-Head', icon: 'people', points: '10 pts' },
   { key: 'fastest', label: 'Fastest Lap', icon: 'speedometer', points: '20 pts' },
   { key: 'points', label: 'Points Finish', icon: 'flag', points: '8 pts' },
+  { key: 'pitstops', label: 'Pit Stops', icon: 'build', points: '' },
 ];
+
+interface F1Pitstop {
+  driverApiId?: number;
+  driverName?: string;
+  teamApiId?: number;
+  teamName?: string;
+  stops?: number;
+  lap?: number;
+  time?: string;
+  totalTime?: string;
+}
+
+interface F1RaceDetail {
+  weather?: string | null;
+  timezone?: string;
+  lapsCurrent?: number | null;
+  lapsTotal?: number | null;
+  laps?: number | null;
+  isLive?: boolean;
+  status?: string;
+  pitstops?: F1Pitstop[];
+}
 
 export default function F1RacePredictionScreen() {
   const navigation = useNavigation();
@@ -52,6 +75,7 @@ export default function F1RacePredictionScreen() {
   const [drivers, setDrivers] = useState<F1DriverOption[]>([]);
   const [matchups, setMatchups] = useState<F1Matchup[]>([]);
   const [existingPicks, setExistingPicks] = useState<F1PredictionData[]>([]);
+  const [raceDetail, setRaceDetail] = useState<F1RaceDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -69,14 +93,16 @@ export default function F1RacePredictionScreen() {
   const fetchData = useCallback(async () => {
     if (!token) return;
     try {
-      const [driversRes, matchupsRes, picksRes] = await Promise.all([
+      const [driversRes, matchupsRes, picksRes, raceRes] = await Promise.all([
         f1PredictionsApi.getDrivers(raceApiId, token),
         f1PredictionsApi.getMatchups(raceApiId, token),
         f1PredictionsApi.getForRace(raceApiId, token),
+        sportsApi.getGameDetail(token, 'formula-1', raceApiId).catch(() => null),
       ]);
       setDrivers(driversRes || []);
       setMatchups(matchupsRes || []);
       setExistingPicks(picksRes || []);
+      setRaceDetail((raceRes as unknown as F1RaceDetail) || null);
     } catch (e) {
       console.warn('Failed to load F1 prediction data', e);
     } finally {
@@ -174,15 +200,63 @@ export default function F1RacePredictionScreen() {
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle} numberOfLines={1}>{competitionName || 'Race Predictions'}</Text>
           {circuitName ? <Text style={styles.headerSubtitle} numberOfLines={1}>{circuitName}</Text> : null}
+          {(raceDetail?.weather || raceDetail?.timezone) ? (
+            <View style={styles.headerMetaRow}>
+              {raceDetail?.weather ? (
+                <View style={styles.weatherBadge}>
+                  <Ionicons name="partly-sunny" size={10} color={colors.primary} />
+                  <Text style={styles.weatherBadgeText} numberOfLines={1}>{raceDetail.weather}</Text>
+                </View>
+              ) : null}
+              {raceDetail?.timezone ? (
+                <Text style={styles.timezoneText} numberOfLines={1}>{raceDetail.timezone}</Text>
+              ) : null}
+            </View>
+          ) : null}
         </View>
         <View style={{ width: 24 }} />
       </View>
+
+      {/* Live race strip */}
+      {raceDetail?.isLive ? (
+        <View style={styles.liveStrip}>
+          <View style={styles.livePill}>
+            <View style={styles.liveDot} />
+            <Text style={styles.livePillText}>{t('f1.live')}</Text>
+          </View>
+          {raceDetail.lapsCurrent != null && raceDetail.lapsTotal != null && raceDetail.lapsTotal > 0 ? (
+            <View style={styles.lapProgressWrap}>
+              <Text style={styles.lapProgressText}>
+                {t('f1.lapProgress', { current: raceDetail.lapsCurrent, total: raceDetail.lapsTotal })}
+              </Text>
+              <View style={styles.lapProgressBar}>
+                <View
+                  style={[
+                    styles.lapProgressFill,
+                    { width: `${Math.min(100, Math.max(0, (raceDetail.lapsCurrent / raceDetail.lapsTotal) * 100))}%` },
+                  ]}
+                />
+              </View>
+            </View>
+          ) : null}
+          {raceDetail.weather ? (
+            <View style={styles.liveWeather}>
+              <Ionicons name="partly-sunny" size={14} color={colors.onSurface} />
+              <Text style={styles.liveWeatherText} numberOfLines={1}>{raceDetail.weather}</Text>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
 
       {/* Prediction type tabs */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabScroll} contentContainerStyle={styles.tabContainer}>
         {TABS.map((tab) => {
           const isActive = activeTab === tab.key;
-          const picked = hasPick(tab.key === 'h2h' ? 'head_to_head' : tab.key === 'fastest' ? 'fastest_lap' : tab.key === 'points' ? 'points_finish' : tab.key === 'winner' ? 'race_winner' : 'podium');
+          const picked =
+            tab.key === 'pitstops'
+              ? false
+              : hasPick(tab.key === 'h2h' ? 'head_to_head' : tab.key === 'fastest' ? 'fastest_lap' : tab.key === 'points' ? 'points_finish' : tab.key === 'winner' ? 'race_winner' : 'podium');
+          const label = tab.key === 'pitstops' ? t('f1.pitstops') : tab.label;
           return (
             <TouchableOpacity
               key={tab.key}
@@ -191,8 +265,8 @@ export default function F1RacePredictionScreen() {
               activeOpacity={0.7}
             >
               <Ionicons name={tab.icon as any} size={16} color={isActive ? colors.background : picked ? colors.primary : colors.onSurfaceVariant} />
-              <Text style={[styles.tabText, isActive && styles.tabTextActive]} numberOfLines={1}>{tab.label}</Text>
-              <Text style={[styles.tabPoints, isActive && styles.tabPointsActive]}>{tab.points}</Text>
+              <Text style={[styles.tabText, isActive && styles.tabTextActive]} numberOfLines={1}>{label}</Text>
+              {tab.points ? <Text style={[styles.tabPoints, isActive && styles.tabPointsActive]}>{tab.points}</Text> : null}
               {picked && <View style={styles.tabCheckmark}><Ionicons name="checkmark-circle" size={12} color={colors.primary} /></View>}
             </TouchableOpacity>
           );
@@ -229,6 +303,7 @@ export default function F1RacePredictionScreen() {
         {activeTab === 'h2h' && renderH2H()}
         {activeTab === 'fastest' && renderDriverPicker('fastest_lap', selectedFastest, setSelectedFastest)}
         {activeTab === 'points' && renderPointsFinish()}
+        {activeTab === 'pitstops' && renderPitstops()}
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -487,6 +562,60 @@ export default function F1RacePredictionScreen() {
             </View>
           );
         })}
+      </View>
+    );
+  }
+
+  function renderPitstops() {
+    const pitstops = raceDetail?.pitstops || [];
+    if (pitstops.length === 0) {
+      return (
+        <View style={styles.sectionWrap}>
+          <Text style={styles.sectionTitle}>{t('f1.pitstops')}</Text>
+          <View style={styles.pitstopsEmpty}>
+            <Ionicons name="build-outline" size={28} color={colors.onSurfaceDim} />
+            <Text style={styles.emptyHint}>{t('f1.pitstopsEmpty')}</Text>
+          </View>
+        </View>
+      );
+    }
+
+    // Group by lap
+    const sorted = [...pitstops].sort((a, b) => (a.lap ?? 0) - (b.lap ?? 0));
+    const grouped = new Map<number, F1Pitstop[]>();
+    sorted.forEach((ps) => {
+      const lap = ps.lap ?? 0;
+      if (!grouped.has(lap)) grouped.set(lap, []);
+      grouped.get(lap)!.push(ps);
+    });
+
+    return (
+      <View style={styles.sectionWrap}>
+        <Text style={styles.sectionTitle}>{t('f1.pitstops')}</Text>
+        <View style={styles.pitstopsHeader}>
+          <Text style={[styles.pitstopsHeaderCell, { width: 44 }]}>{t('f1.lap')}</Text>
+          <Text style={[styles.pitstopsHeaderCell, { flex: 2 }]}>{t('f1.driver')}</Text>
+          <Text style={[styles.pitstopsHeaderCell, { flex: 2 }]}>{t('f1.team')}</Text>
+          <Text style={[styles.pitstopsHeaderCell, { width: 44, textAlign: 'center' }]}>{t('f1.stopNumber')}</Text>
+          <Text style={[styles.pitstopsHeaderCell, { width: 72, textAlign: 'right' }]}>{t('f1.totalTime')}</Text>
+        </View>
+        {Array.from(grouped.entries()).map(([lap, stops]) => (
+          <View key={lap} style={styles.pitstopsLapGroup}>
+            {stops.map((ps, i) => (
+              <View key={`${lap}-${i}`} style={styles.pitstopsRow}>
+                <Text style={[styles.pitstopsCell, { width: 44, color: colors.primary, fontFamily: 'SpaceGrotesk_700Bold' }]}>
+                  {lap || '—'}
+                </Text>
+                <Text style={[styles.pitstopsCell, { flex: 2 }]} numberOfLines={1}>{ps.driverName || '—'}</Text>
+                <Text style={[styles.pitstopsCell, { flex: 2, color: colors.onSurfaceDim }]} numberOfLines={1}>{ps.teamName || '—'}</Text>
+                <Text style={[styles.pitstopsCell, { width: 44, textAlign: 'center' }]}>{ps.stops ?? '—'}</Text>
+                <Text style={[styles.pitstopsCell, { width: 72, textAlign: 'right', fontFamily: 'SpaceGrotesk_700Bold' }]}>
+                  {ps.totalTime || ps.time || '—'}
+                </Text>
+              </View>
+            ))}
+          </View>
+        ))}
       </View>
     );
   }
@@ -784,4 +913,91 @@ const styles = StyleSheet.create({
   submitBtnText: { fontFamily: 'SpaceGrotesk_700Bold', fontSize: 15, color: colors.background, letterSpacing: -0.3 },
 
   emptyHint: { fontFamily: 'Inter_400Regular', fontSize: 13, color: colors.onSurfaceDim, marginTop: 8 },
+
+  // Header meta (weather / timezone)
+  headerMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
+  weatherBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    backgroundColor: 'rgba(202,253,0,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(202,253,0,0.2)',
+  },
+  weatherBadgeText: { fontFamily: 'Inter_600SemiBold', fontSize: 10, color: colors.primary },
+  timezoneText: { fontFamily: 'Inter_400Regular', fontSize: 10, color: colors.onSurfaceDim },
+
+  // Live strip
+  liveStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(239,68,68,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.3)',
+  },
+  livePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: '#ef4444',
+  },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' },
+  livePillText: { fontFamily: 'SpaceGrotesk_700Bold', fontSize: 10, color: '#fff', letterSpacing: 0.5 },
+  lapProgressWrap: { flex: 1, gap: 4 },
+  lapProgressText: { fontFamily: 'Inter_600SemiBold', fontSize: 11, color: colors.onSurface },
+  lapProgressBar: {
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    overflow: 'hidden',
+  },
+  lapProgressFill: { height: '100%', backgroundColor: colors.primary, borderRadius: 3 },
+  liveWeather: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  liveWeatherText: { fontFamily: 'Inter_600SemiBold', fontSize: 12, color: colors.onSurface },
+
+  // Pitstops
+  pitstopsEmpty: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    gap: 8,
+  },
+  pitstopsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
+    marginBottom: 4,
+  },
+  pitstopsHeaderCell: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 10,
+    color: colors.onSurfaceDim,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  pitstopsLapGroup: { },
+  pitstopsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.03)',
+  },
+  pitstopsCell: { fontFamily: 'Inter_500Medium', fontSize: 12, color: colors.onSurface },
 });

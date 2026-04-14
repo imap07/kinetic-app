@@ -856,7 +856,65 @@
     "bttsYes": "Oui",
     "bttsNo": "Non",
     "selectThreshold": "Choisir le total",
-    "score": "Score"
+    "score": "Score",
+    "venue": "Stade",
+    "attendance": "{{count}} spectateurs",
+    "total": "TOTAL"
+  },
+  "sports": {
+    "afl": {
+      "round": "Journée {{round}}",
+      "venue": "Stade",
+      "attendance": "{{count}} spectateurs"
+    },
+    "hockey": {
+      "firstPeriod": "1re Période",
+      "secondPeriod": "2e Période",
+      "thirdPeriod": "3e Période",
+      "overtime": "Prolongation",
+      "shootout": "Tirs de barrage",
+      "powerPlay": "AN",
+      "shorthanded": "IN",
+      "assist": "A",
+      "noGoals": "Aucun but",
+      "goals": "BUTS"
+    },
+    "mma": {
+      "mainEvent": "COMBAT PRINCIPAL",
+      "category": "Catégorie"
+    },
+    "rugby": {
+      "half1": "MT1",
+      "half2": "MT2",
+      "extraTime": "PR",
+      "secondExtraTime": "2PR",
+      "total": "TOTAL"
+    },
+    "baseball": {
+      "inning": "Manche",
+      "runs": "P",
+      "hits": "C",
+      "errors": "E",
+      "extra": "X"
+    },
+    "volleyball": {
+      "set": "Set"
+    },
+    "handball": {
+      "half1": "MT1",
+      "half2": "MT2",
+      "extraTime": "PR",
+      "penalties": "PEN",
+      "total": "TOTAL"
+    },
+    "basketball": {
+      "quarter1": "Q1",
+      "quarter2": "Q2",
+      "quarter3": "Q3",
+      "quarter4": "Q4",
+      "overtime": "PR",
+      "total": "TOTAL"
+    }
   },
   "prediction": {
     "tabWinner": "Gagnant",
@@ -1079,5 +1137,17 @@
     "overUnder": "Y aura-t-il plus de {{threshold}} buts ?",
     "btts": "Les deux équipes marqueront-elles ?",
     "win": "Qui gagnera ?"
+  },
+  "f1": {
+    "live": "EN DIRECT",
+    "lapProgress": "Tour {{current}} sur {{total}}",
+    "weather": "Météo",
+    "pitstops": "Arrêts",
+    "pitstopsEmpty": "Aucune donnée d'arrêt",
+    "lap": "Tour",
+    "driver": "Pilote",
+    "team": "Équipe",
+    "stopNumber": "Arrêt #",
+    "totalTime": "Temps Total"
   }
 }
