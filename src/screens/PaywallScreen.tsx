@@ -21,10 +21,10 @@ import type { RootStackParamList, PaywallTrigger } from '../navigation/types';
 type Props = NativeStackScreenProps<RootStackParamList, 'Paywall'>;
 
 const FEATURE_KEYS = [
-  { icon: 'eye-off-outline' as const, text: 'Ad-free experience — no more banners or interruptions' },
-  { icon: 'cash-outline' as const, text: '100 bonus coins every month' },
-  { icon: 'heart-outline' as const, text: 'Support Kinetic development — help us grow' },
-  { icon: 'ribbon-outline' as const, text: 'Pro badge on your profile — show off your support' },
+  'paywall.adFree',
+  'paywall.bonusCoins',
+  'paywall.supportDev',
+  'paywall.proBadge',
 ];
 
 function getContextCard(trigger: PaywallTrigger, t: (key: string, opts?: Record<string, unknown>) => string) {
@@ -32,15 +32,15 @@ function getContextCard(trigger: PaywallTrigger, t: (key: string, opts?: Record<
     case 'remove_ads':
       return {
         icon: 'eye-off-outline' as const,
-        title: 'Tired of ads?',
-        subtitle: 'Go Pro and enjoy Kinetic completely ad-free.',
+        title: t('paywall.tiredOfAds'),
+        subtitle: t('paywall.tiredOfAdsDesc'),
       };
     case 'general':
     default:
       return {
         icon: 'flash-outline' as const,
-        title: 'Enhance your experience',
-        subtitle: 'Remove ads, earn monthly coins, and support Kinetic.',
+        title: t('paywall.enhanceExperience'),
+        subtitle: t('paywall.enhanceExperienceDesc'),
       };
   }
 }
@@ -128,7 +128,7 @@ export function PaywallScreen({ navigation, route }: Props) {
             <Ionicons name="flash" size={32} color={colors.primary} />
           </View>
           <Text style={styles.brandLabel}>KINETIC PRO</Text>
-          <Text style={styles.headline}>Enjoy Kinetic, Ad-Free</Text>
+          <Text style={styles.headline}>{t('paywall.headlineAdFree')}</Text>
         </View>
 
         {/* Context Card */}
@@ -146,12 +146,12 @@ export function PaywallScreen({ navigation, route }: Props) {
 
         {/* Features */}
         <View style={styles.featuresSection}>
-          {FEATURE_KEYS.map((f, i) => (
-            <View key={i} style={styles.featureRow}>
+          {FEATURE_KEYS.map((key, i) => (
+            <View key={key} style={styles.featureRow}>
               <View style={styles.featureCheck}>
                 <Ionicons name="checkmark" size={14} color={colors.background} />
               </View>
-              <Text style={styles.featureText}>{f.text}</Text>
+              <Text style={styles.featureText}>{t(key)}</Text>
             </View>
           ))}
         </View>
@@ -160,7 +160,7 @@ export function PaywallScreen({ navigation, route }: Props) {
         <View style={styles.socialProof}>
           <MaterialCommunityIcons name="account-group" size={16} color={colors.primary} />
           <Text style={styles.socialProofText}>
-            Enjoy Kinetic without interruptions
+            {t('paywall.socialProof')}
           </Text>
         </View>
 
@@ -172,7 +172,7 @@ export function PaywallScreen({ navigation, route }: Props) {
             activeOpacity={0.8}
           >
             <View style={styles.saveBadge}>
-              <Text style={styles.saveBadgeText}>SAVE 48%</Text>
+              <Text style={styles.saveBadgeText}>{t('paywall.save48')}</Text>
             </View>
             <Text style={styles.pricingLabel}>{t('paywall.annual')}</Text>
             <Text style={styles.pricingAmount}>{t('paywall.perYear', { price: annualPrice })}</Text>

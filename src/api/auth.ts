@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { apiClient, refreshTokensOnce } from './client';
 import { API_BASE_URL } from './config';
 
 export interface AuthTokens {
@@ -198,21 +198,37 @@ export const authApi = {
     fileName: string,
     mimeType: string,
   ): Promise<ProfileResponse> {
-    const formData = new FormData();
-    formData.append('avatar', {
-      uri: fileUri,
-      name: fileName,
-      type: mimeType,
-    } as any);
+    const doUpload = async (authToken: string) => {
+      const formData = new FormData();
+      formData.append('avatar', {
+        uri: fileUri,
+        name: fileName,
+        type: mimeType,
+      } as any);
 
-    const res = await fetch(`${API_BASE_URL}/auth/avatar`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        // Let fetch set Content-Type with boundary for multipart
-      },
-      body: formData,
-    });
+      const res = await fetch(`${API_BASE_URL}/auth/avatar`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          // Let fetch set Content-Type with boundary for multipart
+        },
+        body: formData,
+      });
+
+      return res;
+    };
+
+    let res = await doUpload(token);
+
+    // Manual 401 retry: refresh tokens and replay the upload once
+    if (res.status === 401) {
+      try {
+        const newTokens = await refreshTokensOnce();
+        res = await doUpload(newTokens.accessToken);
+      } catch {
+        // Refresh failed — fall through to the error below
+      }
+    }
 
     const data = await res.json();
     if (!res.ok) {

@@ -40,8 +40,8 @@ export function CoinProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
       const data = await coinsApi.getBalance(tokens.accessToken);
       setWallet(data);
-    } catch {
-      // Balance fetch failed silently
+    } catch (err) {
+      console.warn('[CoinContext] Failed to fetch balance:', err);
     } finally {
       setIsLoading(false);
     }

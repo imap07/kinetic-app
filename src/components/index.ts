@@ -8,3 +8,4 @@ export { SportTabs } from './SportTabs';
 export { ModalCloseButton } from './ModalCloseButton';
 export { FootballPitch } from './FootballPitch';
 export { F1StartingGrid } from './F1StartingGrid';
+export { ScreenErrorBoundary } from './ScreenErrorBoundary';

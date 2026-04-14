@@ -394,7 +394,18 @@
     "restoredDesc": "Tu suscripción Pro ha sido restaurada.",
     "nothingToRestore": "Nada que Restaurar",
     "nothingToRestoreDesc": "No se encontró suscripción activa para esta cuenta.",
-    "legalNotice": "El pago se carga a tu cuenta del App Store. La suscripción se renueva automáticamente a menos que se cancele al menos 24 horas antes del final del período actual."
+    "legalNotice": "El pago se carga a tu cuenta del App Store. La suscripción se renueva automáticamente a menos que se cancele al menos 24 horas antes del final del período actual.",
+    "adFree": "Sin anuncios — sin banners ni interrupciones",
+    "bonusCoins": "100 monedas bonus cada mes",
+    "supportDev": "Apoya el desarrollo de Kinetic — ayúdanos a crecer",
+    "proBadge": "Insignia Pro en tu perfil — muestra tu apoyo",
+    "tiredOfAds": "¿Cansado de los anuncios?",
+    "tiredOfAdsDesc": "Hazte Pro y disfruta Kinetic completamente sin anuncios.",
+    "enhanceExperience": "Mejora tu experiencia",
+    "enhanceExperienceDesc": "Elimina anuncios, gana monedas mensuales y apoya a Kinetic.",
+    "headlineAdFree": "Disfruta Kinetic, Sin Anuncios",
+    "socialProof": "Disfruta Kinetic sin interrupciones",
+    "save48": "AHORRA 48%"
   },
   "quests": {
     "title": "Retos Diarios",
@@ -840,6 +851,11 @@
     "comingSoon": "Próximamente",
     "somethingWrong": "Algo salió mal. Intenta de nuevo."
   },
+  "error": {
+    "title": "Algo salió mal",
+    "message": "Ocurrió un error inesperado. Intenta de nuevo.",
+    "tryAgain": "REINTENTAR"
+  },
   "ads": {
     "watchAd": "Ver anuncio — Gana monedas",
     "remaining": "{{count}} restantes hoy",
@@ -965,5 +981,10 @@
     "letsGo": "¡Vamos!",
     "notifMyTeams": "Notificaciones: Mis Equipos",
     "notifAllGames": "Notificaciones: Todos los Partidos"
+  },
+  "errorBoundary": {
+    "title": "Algo salió mal",
+    "message": "Ocurrió un error inesperado. Toca reintentar para recargar esta pantalla.",
+    "retry": "Reintentar"
   }
 }

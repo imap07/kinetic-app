@@ -20,6 +20,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  FlatList,
   TouchableOpacity,
   ActivityIndicator,
   Alert,
@@ -81,8 +82,9 @@ export function CoinLeaguesScreen() {
       ]);
       setLeagues(openRes.leagues);
       setMyLeagues(myRes);
-    } catch {
-      // Fetch failed silently
+    } catch (err) {
+      console.warn('[CoinLeaguesScreen] Failed to fetch leagues:', err);
+      setLeagues([]);
     }
   }, [tokens?.accessToken, activeSport]);
 
@@ -264,155 +266,156 @@ export function CoinLeaguesScreen() {
       <AdBanner placement="leagues" />
       <RewardedAdButton />
 
-      <ScrollView
+      <FlatList<CoinLeague>
+        data={loading ? [] : displayLeagues}
+        keyExtractor={(item) => item._id}
         style={styles.scroll}
         contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
-      >
-        {loading ? (
-          <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: spacing['4xl'] }} />
-        ) : displayLeagues.length === 0 ? (
-          <View style={styles.emptyState}>
-            <MaterialCommunityIcons name="trophy-outline" size={40} color={colors.onSurfaceDim} />
-            <Text style={styles.emptyText}>
-              {tab === 'open'
-                ? t('leagues.noOpenLeagues')
-                : t('leagues.noJoinedLeagues')}
-            </Text>
-            {tab === 'open' && (
-              <TouchableOpacity
-                style={styles.createBtn}
-                onPress={() => setShowCreate(true)}
-              >
-                <Feather name="plus" size={16} color={colors.onPrimary} />
-                <Text style={styles.createBtnText}>{t('leagues.createLeague')}</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        ) : (
-          displayLeagues.map((league) => {
-            const isMember = isParticipant(league);
-            const isActionLoading = actionLoading === league._id;
-            const sportMeta = SPORT_TABS.find((s) => s.key === league.sport);
-            return (
-              <TouchableOpacity
-                key={league._id}
-                style={styles.leagueCard}
-                activeOpacity={0.7}
-                onPress={() => (navigation as any).navigate('CoinLeagueDetail', { leagueId: league._id })}
-              >
-                <View style={styles.leagueHeader}>
-                  <View style={styles.leagueNameRow}>
-                    <Text style={styles.leagueName} numberOfLines={1}>{league.name}</Text>
-                    <View style={[styles.statusBadge, { backgroundColor: `${statusColor(league.status)}20` }]}>
-                      <Text style={[styles.statusText, { color: statusColor(league.status) }]}>
-                        {league.status.toUpperCase()}
-                      </Text>
-                    </View>
-                  </View>
-                  {sportMeta && (
-                    <Text style={styles.leagueSport}>{sportMeta.name}</Text>
-                  )}
-                </View>
-
-                <View style={styles.leagueStats}>
-                  <View style={styles.leagueStat}>
-                    <Text style={styles.leagueStatLabel}>{t('leagues.entry')}</Text>
-                    <Text style={styles.leagueStatValue}>{league.entryFee}</Text>
-                    <MaterialCommunityIcons name="circle-multiple" size={10} color={colors.primary} />
-                  </View>
-                  <View style={styles.leagueStat}>
-                    <Text style={styles.leagueStatLabel}>{t('leagues.players')}</Text>
-                    <Text style={styles.leagueStatValue}>
-                      {league.participants.length}/{league.maxParticipants}
-                    </Text>
-                  </View>
-                  <View style={styles.leagueStat}>
-                    <Text style={styles.leagueStatLabel}>{t('leagues.prizePool')}</Text>
-                    <Text style={styles.leagueStatValue}>{league.prizePool}</Text>
-                    <MaterialCommunityIcons name="circle-multiple" size={10} color={colors.primary} />
-                  </View>
-                  <View style={styles.leagueStat}>
-                    <Text style={styles.leagueStatLabel}>{t('leagues.ends')}</Text>
-                    <Text style={styles.leagueStatValue}>
-                      {new Date(league.endDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+        ListEmptyComponent={
+          loading ? (
+            <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: spacing['4xl'] }} />
+          ) : (
+            <View style={styles.emptyState}>
+              <MaterialCommunityIcons name="trophy-outline" size={40} color={colors.onSurfaceDim} />
+              <Text style={styles.emptyText}>
+                {tab === 'open'
+                  ? t('leagues.noOpenLeagues')
+                  : t('leagues.noJoinedLeagues')}
+              </Text>
+              {tab === 'open' && (
+                <TouchableOpacity
+                  style={styles.createBtn}
+                  onPress={() => setShowCreate(true)}
+                >
+                  <Feather name="plus" size={16} color={colors.onPrimary} />
+                  <Text style={styles.createBtnText}>{t('leagues.createLeague')}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )
+        }
+        renderItem={({ item: league }) => {
+          const isMember = isParticipant(league);
+          const isActionLoading = actionLoading === league._id;
+          const sportMeta = SPORT_TABS.find((s) => s.key === league.sport);
+          return (
+            <TouchableOpacity
+              style={styles.leagueCard}
+              activeOpacity={0.7}
+              onPress={() => (navigation as any).navigate('CoinLeagueDetail', { leagueId: league._id })}
+            >
+              <View style={styles.leagueHeader}>
+                <View style={styles.leagueNameRow}>
+                  <Text style={styles.leagueName} numberOfLines={1}>{league.name}</Text>
+                  <View style={[styles.statusBadge, { backgroundColor: `${statusColor(league.status)}20` }]}>
+                    <Text style={[styles.statusText, { color: statusColor(league.status) }]}>
+                      {league.status.toUpperCase()}
                     </Text>
                   </View>
                 </View>
+                {sportMeta && (
+                  <Text style={styles.leagueSport}>{sportMeta.name}</Text>
+                )}
+              </View>
 
-                {league.status === 'open' && (
-                  <View style={styles.leagueActions}>
-                    <View style={styles.leagueActionsRow}>
-                      {isMember ? (
-                        <TouchableOpacity
-                          style={[styles.leaveBtn, { flex: 1 }]}
-                          onPress={() => handleLeave(league)}
-                          disabled={!!actionLoading}
-                        >
-                          {isActionLoading ? (
-                            <ActivityIndicator size="small" color={colors.error} />
-                          ) : (
-                            <Text style={styles.leaveBtnText}>
-                              {String(league.creatorId) === user?.id && !league.isSystemLeague
-                                ? t('leagues.delete')
-                                : t('leagues.leave')}
-                            </Text>
-                          )}
-                        </TouchableOpacity>
-                      ) : (
-                        <TouchableOpacity
-                          style={[styles.joinBtn, { flex: 1 }]}
-                          onPress={() => handleJoin(league)}
-                          disabled={!!actionLoading}
-                        >
-                          {isActionLoading ? (
-                            <ActivityIndicator size="small" color={colors.onPrimary} />
-                          ) : (
-                            <Text style={styles.joinBtnText}>
-                              {league.entryFee === 0 ? t('leagues.join') : t('leagues.joinLeague')}
-                            </Text>
-                          )}
-                        </TouchableOpacity>
-                      )}
-                      {league.inviteCode && (
-                        <TouchableOpacity
-                          style={styles.shareBtn}
-                          onPress={() => handleShare(league)}
-                          hitSlop={8}
-                        >
-                          <Ionicons name="share-outline" size={18} color={colors.primary} />
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  </View>
-                )}
+              <View style={styles.leagueStats}>
+                <View style={styles.leagueStat}>
+                  <Text style={styles.leagueStatLabel}>{t('leagues.entry')}</Text>
+                  <Text style={styles.leagueStatValue}>{league.entryFee}</Text>
+                  <MaterialCommunityIcons name="circle-multiple" size={10} color={colors.primary} />
+                </View>
+                <View style={styles.leagueStat}>
+                  <Text style={styles.leagueStatLabel}>{t('leagues.players')}</Text>
+                  <Text style={styles.leagueStatValue}>
+                    {league.participants.length}/{league.maxParticipants}
+                  </Text>
+                </View>
+                <View style={styles.leagueStat}>
+                  <Text style={styles.leagueStatLabel}>{t('leagues.prizePool')}</Text>
+                  <Text style={styles.leagueStatValue}>{league.prizePool}</Text>
+                  <MaterialCommunityIcons name="circle-multiple" size={10} color={colors.primary} />
+                </View>
+                <View style={styles.leagueStat}>
+                  <Text style={styles.leagueStatLabel}>{t('leagues.ends')}</Text>
+                  <Text style={styles.leagueStatValue}>
+                    {new Date(league.endDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                  </Text>
+                </View>
+              </View>
 
-                {league.status === 'completed' && league.winners?.length > 0 && (
-                  <View style={styles.winnerRow}>
-                    <Ionicons name="trophy" size={14} color="#FFD700" />
-                    <Text style={styles.winnerText}>
-                      {league.winners.find((w) => String(w.userId) === user?.id)
-                        ? t('leagues.youPlaced', { position: league.winners.find((w) => String(w.userId) === user?.id)?.position, coins: league.winners.find((w) => String(w.userId) === user?.id)?.coinsWon })
-                        : t('leagues.winnersCount', { count: league.winners.length })}
-                    </Text>
+              {league.status === 'open' && (
+                <View style={styles.leagueActions}>
+                  <View style={styles.leagueActionsRow}>
+                    {isMember ? (
+                      <TouchableOpacity
+                        style={[styles.leaveBtn, { flex: 1 }]}
+                        onPress={() => handleLeave(league)}
+                        disabled={!!actionLoading}
+                      >
+                        {isActionLoading ? (
+                          <ActivityIndicator size="small" color={colors.error} />
+                        ) : (
+                          <Text style={styles.leaveBtnText}>
+                            {String(league.creatorId) === user?.id && !league.isSystemLeague
+                              ? t('leagues.delete')
+                              : t('leagues.leave')}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        style={[styles.joinBtn, { flex: 1 }]}
+                        onPress={() => handleJoin(league)}
+                        disabled={!!actionLoading}
+                      >
+                        {isActionLoading ? (
+                          <ActivityIndicator size="small" color={colors.onPrimary} />
+                        ) : (
+                          <Text style={styles.joinBtnText}>
+                            {league.entryFee === 0 ? t('leagues.join') : t('leagues.joinLeague')}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    )}
+                    {league.inviteCode && (
+                      <TouchableOpacity
+                        style={styles.shareBtn}
+                        onPress={() => handleShare(league)}
+                        hitSlop={8}
+                      >
+                        <Ionicons name="share-outline" size={18} color={colors.primary} />
+                      </TouchableOpacity>
+                    )}
                   </View>
-                )}
-                {league.status === 'completed' && (!league.winners || league.winners.length === 0) && league.winnerId && (
-                  <View style={styles.winnerRow}>
-                    <Ionicons name="trophy" size={14} color="#FFD700" />
-                    <Text style={styles.winnerText}>
-                      {String(league.winnerId) === user?.id ? t('leagues.youWon') : t('leagues.winnerDeclared')}
-                    </Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            );
-          })
-        )}
-      </ScrollView>
+                </View>
+              )}
+
+              {league.status === 'completed' && league.winners?.length > 0 && (
+                <View style={styles.winnerRow}>
+                  <Ionicons name="trophy" size={14} color="#FFD700" />
+                  <Text style={styles.winnerText}>
+                    {league.winners.find((w) => String(w.userId) === user?.id)
+                      ? t('leagues.youPlaced', { position: league.winners.find((w) => String(w.userId) === user?.id)?.position, coins: league.winners.find((w) => String(w.userId) === user?.id)?.coinsWon })
+                      : t('leagues.winnersCount', { count: league.winners.length })}
+                  </Text>
+                </View>
+              )}
+              {league.status === 'completed' && (!league.winners || league.winners.length === 0) && league.winnerId && (
+                <View style={styles.winnerRow}>
+                  <Ionicons name="trophy" size={14} color="#FFD700" />
+                  <Text style={styles.winnerText}>
+                    {String(league.winnerId) === user?.id ? t('leagues.youWon') : t('leagues.winnerDeclared')}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          );
+        }}
+      />
 
       <CreateLeagueModal
         visible={showCreate}

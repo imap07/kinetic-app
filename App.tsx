@@ -1,4 +1,5 @@
 import './src/i18n';
+import i18n from './src/i18n';
 import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { Platform } from 'react-native';
@@ -61,16 +62,16 @@ class AppErrorBoundary extends React.Component<
       return (
         <View style={errorStyles.container}>
           <Text style={errorStyles.icon}>!</Text>
-          <Text style={errorStyles.title}>Something went wrong</Text>
+          <Text style={errorStyles.title}>{i18n.t('error.title')}</Text>
           <Text style={errorStyles.message}>
-            An unexpected error occurred. Please try again.
+            {i18n.t('error.message')}
           </Text>
           <TouchableOpacity
             style={errorStyles.button}
             onPress={this.handleRestart}
             activeOpacity={0.8}
           >
-            <Text style={errorStyles.buttonText}>TRY AGAIN</Text>
+            <Text style={errorStyles.buttonText}>{i18n.t('error.tryAgain')}</Text>
           </TouchableOpacity>
         </View>
       );

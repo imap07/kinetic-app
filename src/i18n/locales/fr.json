@@ -394,7 +394,18 @@
     "restoredDesc": "Ton abonnement Pro a été restauré.",
     "nothingToRestore": "Rien à Restaurer",
     "nothingToRestoreDesc": "Aucun abonnement actif trouvé pour ce compte.",
-    "legalNotice": "Le paiement sera débité de ton compte App Store. L'abonnement se renouvelle automatiquement sauf annulation au moins 24 heures avant la fin de la période."
+    "legalNotice": "Le paiement sera débité de ton compte App Store. L'abonnement se renouvelle automatiquement sauf annulation au moins 24 heures avant la fin de la période.",
+    "adFree": "Sans publicités — plus de bannières ni d'interruptions",
+    "bonusCoins": "100 pièces bonus chaque mois",
+    "supportDev": "Soutiens le développement de Kinetic — aide-nous à grandir",
+    "proBadge": "Badge Pro sur ton profil — montre ton soutien",
+    "tiredOfAds": "Marre des pubs ?",
+    "tiredOfAdsDesc": "Passe Pro et profite de Kinetic sans aucune pub.",
+    "enhanceExperience": "Améliore ton expérience",
+    "enhanceExperienceDesc": "Supprime les pubs, gagne des pièces mensuelles et soutiens Kinetic.",
+    "headlineAdFree": "Profite de Kinetic, Sans Pub",
+    "socialProof": "Profite de Kinetic sans interruptions",
+    "save48": "ÉCONOMISE 48%"
   },
   "quests": {
     "title": "Défis Quotidiens",
@@ -840,6 +851,11 @@
     "comingSoon": "Bientôt disponible",
     "somethingWrong": "Une erreur est survenue. Réessaie."
   },
+  "error": {
+    "title": "Un problème est survenu",
+    "message": "Une erreur inattendue s'est produite. Réessaie.",
+    "tryAgain": "RÉESSAYER"
+  },
   "ads": {
     "watchAd": "Regarder une pub — Gagner des pièces",
     "remaining": "{{count}} restantes aujourd'hui",
@@ -965,5 +981,10 @@
     "letsGo": "C'est parti",
     "notifMyTeams": "Notifications: Mes Équipes",
     "notifAllGames": "Notifications: Tous les Matchs"
+  },
+  "errorBoundary": {
+    "title": "Une erreur est survenue",
+    "message": "Une erreur inattendue s'est produite. Appuyez sur réessayer pour recharger cet écran.",
+    "retry": "Réessayer"
   }
 }

@@ -394,7 +394,18 @@
     "restoredDesc": "Your Pro subscription has been restored.",
     "nothingToRestore": "Nothing to Restore",
     "nothingToRestoreDesc": "No active subscription found for this account.",
-    "legalNotice": "Payment will be charged to your App Store account. Subscription automatically renews unless cancelled at least 24 hours before the end of the current period."
+    "legalNotice": "Payment will be charged to your App Store account. Subscription automatically renews unless cancelled at least 24 hours before the end of the current period.",
+    "adFree": "Ad-free experience — no more banners or interruptions",
+    "bonusCoins": "100 bonus coins every month",
+    "supportDev": "Support Kinetic development — help us grow",
+    "proBadge": "Pro badge on your profile — show off your support",
+    "tiredOfAds": "Tired of ads?",
+    "tiredOfAdsDesc": "Go Pro and enjoy Kinetic completely ad-free.",
+    "enhanceExperience": "Enhance your experience",
+    "enhanceExperienceDesc": "Remove ads, earn monthly coins, and support Kinetic.",
+    "headlineAdFree": "Enjoy Kinetic, Ad-Free",
+    "socialProof": "Enjoy Kinetic without interruptions",
+    "save48": "SAVE 48%"
   },
   "quests": {
     "title": "Daily Quests",
@@ -840,6 +851,11 @@
     "comingSoon": "Coming Soon",
     "somethingWrong": "Something went wrong. Please try again."
   },
+  "error": {
+    "title": "Something went wrong",
+    "message": "An unexpected error occurred. Please try again.",
+    "tryAgain": "TRY AGAIN"
+  },
   "ads": {
     "watchAd": "Watch ad — Earn coins",
     "remaining": "{{count}} remaining today",
@@ -965,5 +981,10 @@
     "letsGo": "Let's Go",
     "notifMyTeams": "Notifications: My Teams",
     "notifAllGames": "Notifications: All Games"
+  },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "message": "An unexpected error occurred. Tap retry to reload this screen.",
+    "retry": "Retry"
   }
 }

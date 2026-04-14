@@ -57,6 +57,8 @@ import { QuestsScreen } from '../screens/QuestsScreen';
 import F1RacePredictionScreen from '../screens/F1RacePredictionScreen';
 // LeagueSelectionScreen removed from onboarding V2 flow
 import { logScreenView } from '../services/analytics';
+import { navigationRef } from './navigationRef';
+import { ScreenErrorBoundary } from '../components/ScreenErrorBoundary';
 
 const darkScreenOptions = {
   headerShown: false as const,
@@ -147,6 +149,23 @@ function ProfileNavigator() {
   );
 }
 
+// ─── Error-boundary-wrapped navigators for main tabs ────
+function HomeWithBoundary() {
+  return <ScreenErrorBoundary><HomeNavigator /></ScreenErrorBoundary>;
+}
+function LiveWithBoundary() {
+  return <ScreenErrorBoundary><LiveNavigator /></ScreenErrorBoundary>;
+}
+function LeaguesWithBoundary() {
+  return <ScreenErrorBoundary><LeaguesNavigator /></ScreenErrorBoundary>;
+}
+function MyPicksWithBoundary() {
+  return <ScreenErrorBoundary><MyPicksScreen /></ScreenErrorBoundary>;
+}
+function ProfileWithBoundary() {
+  return <ScreenErrorBoundary><ProfileNavigator /></ScreenErrorBoundary>;
+}
+
 // ─── Bottom Tab Navigator ────────────────────────────────
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -161,11 +180,11 @@ function MainTabNavigator() {
         headerShown: false,
       }}
     >
-      <Tab.Screen name="Home" component={HomeNavigator} />
-      <Tab.Screen name="Live" component={LiveNavigator} />
-      <Tab.Screen name="Leagues" component={LeaguesNavigator} />
-      <Tab.Screen name="MyPicks" component={MyPicksScreen} />
-      <Tab.Screen name="Profile" component={ProfileNavigator} />
+      <Tab.Screen name="Home" component={HomeWithBoundary} />
+      <Tab.Screen name="Live" component={LiveWithBoundary} />
+      <Tab.Screen name="Leagues" component={LeaguesWithBoundary} />
+      <Tab.Screen name="MyPicks" component={MyPicksWithBoundary} />
+      <Tab.Screen name="Profile" component={ProfileWithBoundary} />
     </Tab.Navigator>
   );
 }
@@ -363,7 +382,7 @@ export function AppNavigator() {
   }
 
   return (
-    <NavigationContainer linking={linking} onStateChange={onNavigationStateChange}>
+    <NavigationContainer ref={navigationRef} linking={linking} onStateChange={onNavigationStateChange}>
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         {isAuthenticated ? (
           onboardingDone ? (

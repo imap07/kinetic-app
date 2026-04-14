@@ -33,8 +33,8 @@ export function RewardsProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await rewardsApi.getRewardStatus(tokens.accessToken);
       setRewardStatus(res.status);
-    } catch {
-      // silent
+    } catch (err) {
+      console.warn('[RewardsContext] Failed to fetch reward status:', err);
     }
   }, [tokens?.accessToken]);
 
@@ -52,8 +52,8 @@ export function RewardsProvider({ children }: { children: React.ReactNode }) {
         // Refresh status
         await fetchRewardStatus();
       }
-    } catch {
-      // silent
+    } catch (err) {
+      console.warn('[RewardsContext] Failed to check for new rewards:', err);
     }
   }, [tokens?.accessToken, fetchRewardStatus]);
 
@@ -64,8 +64,8 @@ export function RewardsProvider({ children }: { children: React.ReactNode }) {
       setShowCelebration(false);
       setCelebrationTier(null);
       await fetchRewardStatus();
-    } catch {
-      // silent
+    } catch (err) {
+      console.warn('[RewardsContext] Failed to claim tier:', err);
     }
   }, [tokens?.accessToken, fetchRewardStatus]);
 

@@ -4,6 +4,7 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { authApi } from '../api/auth';
+import { navigate } from '../navigation/navigationRef';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -99,6 +100,33 @@ export function usePushNotifications(authToken: string | null | undefined) {
     responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data;
       devLog('Notification tapped:', data);
+
+      if (data && typeof data === 'object') {
+        const { type } = data as Record<string, unknown>;
+        switch (type) {
+          case 'league':
+            if (data.leagueId) {
+              navigate('Main', {
+                screen: 'Leagues',
+                params: { screen: 'CoinLeagueDetail', params: { leagueId: String(data.leagueId) } },
+              } as any);
+            }
+            break;
+          case 'prediction':
+            navigate('Main', { screen: 'MyPicks' } as any);
+            break;
+          case 'match':
+            if (data.fixtureApiId) {
+              navigate('Main', {
+                screen: 'Home',
+                params: { screen: 'MatchPrediction', params: { fixtureApiId: Number(data.fixtureApiId), sport: data.sport as string | undefined } },
+              } as any);
+            }
+            break;
+          default:
+            break;
+        }
+      }
     });
 
     return () => {

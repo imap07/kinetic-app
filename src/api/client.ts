@@ -156,3 +156,9 @@ export const apiClient = {
 };
 
 export { ApiError };
+
+/**
+ * Exposed so callers that bypass `apiClient` (e.g. multipart uploads via
+ * raw `fetch`) can still auto-refresh on 401.
+ */
+export { refreshTokensOnce };
