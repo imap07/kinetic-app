@@ -524,7 +524,15 @@ export function CoinLeagueDetailScreen() {
 
               return filtered.slice(0, 15).map((game) => {
                 const gameDate = new Date(game.date);
-                const isPast = !game.isLive && gameDate <= new Date();
+                // A game only shows a score once it's actually kicked off.
+                // Using `gameDate <= now` alone is wrong because games whose
+                // kickoff time has passed but still carry a pre-match status
+                // (NS, TBD, PST, SUSP, CANC) would render a fake "0 - 0".
+                // That's how this screen looked for volleyball when the live
+                // sync cron was stalled — scheduled games silently turned into
+                // zero-scores the moment their start time came around.
+                const PRE_MATCH_STATUSES = ['NS', 'TBD', 'PST', 'SUSP', 'CANC', 'ABD', 'AWD', 'WO'];
+                const isPast = !game.isLive && !!game.status && !PRE_MATCH_STATUSES.includes(game.status);
                 const existingPred = predictions.get(game.apiId);
                 const isPredicting = predictingGame === game.apiId;
 

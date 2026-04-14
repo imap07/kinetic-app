@@ -13,6 +13,7 @@ import {
   LiveStackParamList,
   LeaguesStackParamList,
   ProfileStackParamList,
+  OnboardingFavoriteTeam,
 } from './types';
 import { useAuth } from '../contexts/AuthContext';
 import { usePushNotifications } from '../hooks/usePushNotifications';
@@ -205,7 +206,7 @@ function TeamSelectionWrapper({ navigation, route }: any) {
   const selectedSports: string[] = route?.params?.selectedSports || ['football'];
 
   // After picking teams we route to notification setup before the attribution step.
-  const handleComplete = useCallback((data: { sports: string[]; favoriteTeams: { apiId: number; sport: string }[]; favoriteDrivers?: any[] }) => {
+  const handleComplete = useCallback((data: { sports: string[]; favoriteTeams: OnboardingFavoriteTeam[]; favoriteDrivers?: any[] }) => {
     navigation.replace('NotificationSetup', {
       sports: data.sports,
       favoriteTeams: data.favoriteTeams,
@@ -226,7 +227,7 @@ function TeamSelectionWrapper({ navigation, route }: any) {
 // ─── Notification Setup Wrapper ──────────────────────────
 function NotificationSetupWrapper({ navigation, route }: any) {
   const sports: string[] = route?.params?.sports || [];
-  const favoriteTeams: { apiId: number; sport: string }[] = route?.params?.favoriteTeams || [];
+  const favoriteTeams: OnboardingFavoriteTeam[] = route?.params?.favoriteTeams || [];
 
   const handleComplete = useCallback(
     (result: NotificationSetupResult) => {
@@ -262,7 +263,7 @@ function NotificationSetupWrapper({ navigation, route }: any) {
 // OnboardingCompleteScreen, which issues the actual API call.
 function AcquisitionSourceWrapper({ navigation, route }: any) {
   const sports: string[] = route?.params?.sports || [];
-  const favoriteTeams: { apiId: number; sport: string }[] = route?.params?.favoriteTeams || [];
+  const favoriteTeams: OnboardingFavoriteTeam[] = route?.params?.favoriteTeams || [];
   const permissionGranted = route?.params?.permissionGranted;
   const notificationScope = route?.params?.notificationScope;
   const notificationTypes = route?.params?.notificationTypes;

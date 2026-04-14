@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Image,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,11 +19,9 @@ import type { SportKey } from '../api/sports';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ONBOARDING_COMPLETE_KEY } from './OnboardingScreen';
 import type { AcquisitionSourceKey } from './AcquisitionSourceScreen';
+import type { OnboardingFavoriteTeam } from '../navigation/types';
 
-interface FavoriteTeam {
-  apiId: number;
-  sport: SportKey;
-}
+type FavoriteTeam = OnboardingFavoriteTeam;
 
 interface Props {
   sports: SportKey[];
@@ -74,14 +73,23 @@ export function OnboardingCompleteScreen({
     setSaving(true);
 
     let onboardingSuccess = false;
+    let onboardingError: unknown = null;
     try {
       await authApi.completeOnboarding(tokens.accessToken, {
         sports,
-        favoriteTeams: favoriteTeams.map((ft) => ({ apiId: ft.apiId, sport: ft.sport })),
+        favoriteTeams: favoriteTeams.map((ft) => ({
+          teamApiId: ft.teamApiId,
+          sport: ft.sport,
+          teamName: ft.teamName,
+          teamLogo: ft.teamLogo,
+          leagueApiId: ft.leagueApiId,
+          leagueName: ft.leagueName,
+        })),
         ...(acquisitionSource ? { acquisitionSource } : {}),
       });
       onboardingSuccess = true;
     } catch (err) {
+      onboardingError = err;
       console.warn('[Onboarding] completeOnboarding failed:', err);
     }
 
@@ -113,6 +121,27 @@ export function OnboardingCompleteScreen({
 
     try { await refreshProfile(); } catch {}
     setSaving(false);
+
+    // If the onboarding POST failed the user's preferences never persisted.
+    // Previously this error was swallowed and the user landed inside the
+    // app with `onboardingCompleted: false` and empty favoriteTeams — the
+    // exact condition that left existing users with broken notifications.
+    // Surface it so they know to retry instead of silently shipping them on.
+    if (!onboardingSuccess) {
+      const message =
+        (onboardingError as any)?.message ||
+        'We couldn\'t save your picks. Please try again.';
+      Alert.alert(
+        'Setup incomplete',
+        message,
+        [
+          { text: 'Try again', onPress: () => {} },
+        ],
+        { cancelable: true },
+      );
+      return;
+    }
+
     onComplete();
   }, [tokens?.accessToken, sports, favoriteTeams, acquisitionSource, permissionGranted, notificationScope, notificationTypes, onComplete, refreshProfile]);
 

@@ -86,6 +86,21 @@ export type AcquisitionSourceKey =
   | 'twitter'
   | 'other';
 
+// Full shape of a favorite-team selection carried through the onboarding
+// flow. The backend DTO (complete-onboarding.dto.ts) requires teamApiId,
+// teamName, leagueApiId — so we must collect and forward them all the way
+// from TeamSelectionScreen. Storing only { apiId, sport } silently loses
+// the other fields and the final POST /auth/onboarding 400s.
+export type OnboardingFavoriteTeam = {
+  teamApiId: number;
+  sport: string;
+  teamName: string;
+  teamLogo?: string;
+  // Optional: F1 constructors have no league in the API-Football model.
+  leagueApiId?: number;
+  leagueName?: string;
+};
+
 // Root navigator that switches between Auth, Onboarding, and Main
 export type RootStackParamList = {
   Auth: NavigatorScreenParams<AuthStackParamList>;
@@ -94,11 +109,11 @@ export type RootStackParamList = {
   TeamSelection: { selectedSports: string[] };
   NotificationSetup: {
     sports: string[];
-    favoriteTeams: { apiId: number; sport: string }[];
+    favoriteTeams: OnboardingFavoriteTeam[];
   };
   AcquisitionSource: {
     sports: string[];
-    favoriteTeams: { apiId: number; sport: string }[];
+    favoriteTeams: OnboardingFavoriteTeam[];
     permissionGranted?: boolean;
     notificationScope?: 'my_teams' | 'all_games';
     notificationTypes?: {
@@ -110,7 +125,7 @@ export type RootStackParamList = {
   };
   OnboardingComplete: {
     sports: string[];
-    favoriteTeams: { apiId: number; sport: string }[];
+    favoriteTeams: OnboardingFavoriteTeam[];
     acquisitionSource?: AcquisitionSourceKey | null;
     permissionGranted?: boolean;
     notificationScope?: 'my_teams' | 'all_games';

@@ -21,6 +21,7 @@ import { colors } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import { sportsApi } from '../api/sports';
 import type { SportKey, LeagueFilter } from '../api/sports';
+import type { OnboardingFavoriteTeam } from '../navigation/types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_GAP = 10;
@@ -92,15 +93,31 @@ const defaultState = (): SportState => ({
 
 interface Props {
   selectedSports: SportKey[];
-  onComplete: (data: { sports: SportKey[]; favoriteTeams: { apiId: number; sport: SportKey }[]; favoriteDrivers?: { apiId: number; name: string; image: string; sport: 'formula-1' }[] }) => void;
+  onComplete: (data: {
+    sports: SportKey[];
+    favoriteTeams: OnboardingFavoriteTeam[];
+    favoriteDrivers?: { apiId: number; name: string; image: string; sport: 'formula-1' }[];
+  }) => void;
   onBack?: () => void;
 }
+
+// Full info for each selected team. We carry name + logo + leagueApiId
+// alongside the apiId so OnboardingCompleteScreen can submit the shape
+// the backend DTO requires. Previously we stored only `sport` keyed by
+// apiId, which dropped name/league/logo and made the onboarding POST 400.
+type SelectedTeamInfo = {
+  sport: SportKey;
+  teamName: string;
+  teamLogo: string;
+  leagueApiId?: number;
+  leagueName?: string;
+};
 
 export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Props) {
   const { tokens } = useAuth();
   const { t } = useTranslation();
   const [activeSport, setActiveSport] = useState<SportKey>(selectedSports[0]);
-  const [selectedTeams, setSelectedTeams] = useState<Map<number, SportKey>>(new Map());
+  const [selectedTeams, setSelectedTeams] = useState<Map<number, SelectedTeamInfo>>(new Map());
   const [sportStates, setSportStates] = useState<Record<string, SportState>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -212,8 +229,20 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
   const toggleTeam = useCallback((team: PopularTeam) => {
     setSelectedTeams(prev => {
       const next = new Map(prev);
-      if (next.has(team.apiId)) next.delete(team.apiId);
-      else next.set(team.apiId, team.sport);
+      if (next.has(team.apiId)) {
+        next.delete(team.apiId);
+      } else {
+        next.set(team.apiId, {
+          sport: team.sport,
+          teamName: team.name,
+          teamLogo: team.logo || '',
+          // leagueApiId is optional on the backend (e.g. F1 constructors
+          // have no league). Preserve undefined instead of forcing 0,
+          // which would fail the DTO's @Min(1).
+          leagueApiId: team.leagueApiId,
+          leagueName: team.leagueName,
+        });
+      }
       return next;
     });
   }, []);
@@ -407,7 +436,7 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
               return (
                 <TouchableOpacity
                   style={[styles.teamCard, styles.f1Card, isSelected && { borderColor: sportColor }]}
-                  onPress={() => toggleTeam({ apiId: item.apiId, name: item.name, logo: item.logo || '', sport: 'formula-1' as any, leagueApiId: 0 })}
+                  onPress={() => toggleTeam({ apiId: item.apiId, name: item.name, logo: item.logo || '', sport: 'formula-1' as any })}
                   activeOpacity={0.7}
                 >
                   {isSelected && (
@@ -718,7 +747,14 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
         </View>
         <TouchableOpacity
           activeOpacity={0.85} onPress={() => {
-            const favoriteTeams = Array.from(selectedTeams.entries()).map(([apiId, sport]) => ({ apiId, sport }));
+            const favoriteTeams: OnboardingFavoriteTeam[] = Array.from(selectedTeams.entries()).map(([apiId, info]) => ({
+              teamApiId: apiId,
+              sport: info.sport,
+              teamName: info.teamName,
+              teamLogo: info.teamLogo,
+              leagueApiId: info.leagueApiId,
+              leagueName: info.leagueName,
+            }));
             const favoriteDrivers = selectedDriverId ? [{ apiId: selectedDriverId, name: selectedDriverName || '', image: selectedDriverImage || '', sport: 'formula-1' as const }] : [];
             onComplete({ sports: selectedSports, favoriteTeams, favoriteDrivers });
           }}

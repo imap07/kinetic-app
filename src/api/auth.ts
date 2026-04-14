@@ -264,7 +264,19 @@ export const authApi = {
     token: string,
     data: {
       sports: string[];
-      favoriteTeams: { apiId: number; sport: string }[];
+      // Must mirror OnboardingFavoriteTeamDto on the backend exactly —
+      // teamApiId/teamName/leagueApiId are required. Sending `apiId`
+      // instead (as the previous client did) is silently dropped by the
+      // validation pipe's whitelist and the POST 400s.
+      favoriteTeams: {
+        teamApiId: number;
+        sport: string;
+        teamName: string;
+        teamLogo?: string;
+        // Optional — F1 constructors have no leagueApiId.
+        leagueApiId?: number;
+        leagueName?: string;
+      }[];
       // Self-reported attribution collected during onboarding. Optional
       // because users can skip the question, and older clients that don't
       // know about the field shouldn't break the endpoint.
