@@ -214,6 +214,20 @@ export const sportsApi = {
     return apiClient.get<any>(`/sports/${sport}/h2h?team1=${team1}&team2=${team2}`, { token });
   },
 
+  getTeamSeasonStats(token: string, sport: SportKey, teamApiId: number) {
+    return apiClient.get<TeamSeasonStatsResponse>(
+      `/sports/${sport}/teams/${teamApiId}/stats`,
+      { token },
+    );
+  },
+
+  getFighterRecords(token: string, fighterApiId: number) {
+    return apiClient.get<FighterRecordsResponse>(
+      `/sports/mma/fighters/${fighterApiId}/records`,
+      { token },
+    );
+  },
+
   search(token: string, query: string) {
     return apiClient.get<SearchResults>(
       `/sports/search?q=${encodeURIComponent(query)}`,
@@ -275,6 +289,29 @@ export interface SearchMatchResult {
   leagueLogo?: string;
   homeTeam: { apiId: number; name: string; logo?: string };
   awayTeam: { apiId: number; name: string; logo?: string };
+}
+
+export interface TeamSeasonStatsResponse {
+  teamApiId: number;
+  leagueApiId: number | null;
+  season: string | number | null;
+  fetchedAt: string | null;
+  stats: any | null;
+}
+
+export interface FighterRecordEntry {
+  type?: string; // 'KO/TKO' | 'Submission' | 'Decision' | etc.
+  wins?: number;
+  losses?: number;
+  draws?: number;
+  total?: number;
+  [key: string]: any;
+}
+
+export interface FighterRecordsResponse {
+  fighterApiId: number;
+  fetchedAt: string | null;
+  records: FighterRecordEntry[];
 }
 
 export interface SearchResults {

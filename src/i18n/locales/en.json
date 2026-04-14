@@ -859,7 +859,18 @@
     "score": "Score",
     "venue": "Venue",
     "attendance": "{{count}} fans",
-    "total": "TOTAL"
+    "total": "TOTAL",
+    "seasonForm": "SEASON FORM",
+    "seasonFormEmpty": "Season stats not available yet",
+    "seasonPlayed": "Played",
+    "seasonWins": "Wins",
+    "seasonDraws": "Draws",
+    "seasonLosses": "Losses",
+    "seasonFor": "For",
+    "seasonAgainst": "Against",
+    "fighterRecord": "FIGHTER RECORD",
+    "fighterRecordEmpty": "Record not available yet",
+    "recordWLD": "W-L-D"
   },
   "sports": {
     "afl": {

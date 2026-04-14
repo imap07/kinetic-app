@@ -328,19 +328,26 @@ function GenericEventsTab({ events, sport, homeTeamName, awayTeamName }: { event
             const isPenalty = evtType.includes('penalty') || evtType.includes('penalt');
             const iconColor = isTD || isGoal ? colors.primary : isPenalty ? '#FACC15' : colors.onSurfaceVariant;
             const iconName = isTD ? 'american-football' : isGoal ? 'football' : isFG ? 'flag' : 'ellipse';
-            const player = evt.player?.name || evt.player || evt.scorer || evt.description || '';
-            const team = evt.team?.name || evt.team || '';
+            const player = evt.player?.name || evt.player || evt.scorer || evt.playerName || evt.description || '';
+            const team = evt.team?.name || evt.team || evt.teamName || '';
             const minute = evt.minute || evt.time || '';
+            const detail = evt.detail || '';
+            const scoreHome = evt.scoreHome;
+            const scoreAway = evt.scoreAway;
+            const hasScore = scoreHome != null && scoreAway != null;
             return (
               <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 }}>
                 <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(34,38,43,0.5)', alignItems: 'center', justifyContent: 'center' }}>
                   <Ionicons name={iconName as any} size={14} color={iconColor} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 13, color: colors.onSurface }}>{evt.type || evt.play || 'Event'}</Text>
+                  <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 13, color: colors.onSurface }}>{evt.type || evt.play || 'Event'}{detail ? ` · ${detail}` : ''}</Text>
                   {!!player && <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 11, color: colors.onSurfaceVariant }}>{player}</Text>}
                   {!!team && <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 11, color: colors.onSurfaceDim }}>{team}</Text>}
                 </View>
+                {hasScore && (
+                  <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 12, color: colors.primary }}>{scoreHome}-{scoreAway}</Text>
+                )}
                 {!!minute && (
                   <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 12, color: colors.onSurfaceVariant }}>{minute}'</Text>
                 )}
@@ -353,9 +360,36 @@ function GenericEventsTab({ events, sport, homeTeamName, awayTeamName }: { event
   );
 }
 
-// ─── Generic Stats Tab (NFL team stats) ─────────────────────────────────────
+// ─── Generic Stats Tab (NFL + Basketball team stats) ────────────────────────
+// Basketball persisted labels (from BbTeamGameStats schema) → friendly labels
+const BASKETBALL_STAT_LABELS: Record<string, string> = {
+  field_goals_percentage: 'FG%',
+  threepoint_percentage: '3P%',
+  freethrows_percentage: 'FT%',
+  rebounds_total: 'Rebounds',
+  rebounds_offence: 'Off. Rebounds',
+  rebounds_defense: 'Def. Rebounds',
+  assists: 'Assists',
+  steals: 'Steals',
+  blocks: 'Blocks',
+  turnovers: 'Turnovers',
+  personal_fouls: 'Fouls',
+};
+const BASKETBALL_STAT_ORDER = [
+  'field_goals_percentage',
+  'threepoint_percentage',
+  'freethrows_percentage',
+  'rebounds_total',
+  'assists',
+  'steals',
+  'blocks',
+  'turnovers',
+  'personal_fouls',
+];
+
 function GenericStatsTab({ stats, homeTeamName, awayTeamName }: { stats: any; homeTeamName: string; awayTeamName: string }) {
-  // stats may be array of team stat objects from API
+  // stats may be array of team stat objects from API (NFL upstream shape)
+  // or our persisted basketball teamStats[] with `side: 'home' | 'away'`.
   const teams: any[] = Array.isArray(stats) ? stats : [];
   if (teams.length < 2) return (
     <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 14, color: colors.onSurfaceVariant, textAlign: 'center' }}>
@@ -363,10 +397,13 @@ function GenericStatsTab({ stats, homeTeamName, awayTeamName }: { stats: any; ho
     </Text>
   );
 
-  const homeStats = teams[0];
-  const awayStats = teams[1];
+  // Detect shape: our persisted stats have a `side` field. Put home first.
+  const sideTeam = (side: 'home' | 'away') => teams.find(x => x?.side === side);
+  const isSided = !!sideTeam('home') || !!sideTeam('away');
+  const homeStats = isSided ? (sideTeam('home') || teams[0]) : teams[0];
+  const awayStats = isSided ? (sideTeam('away') || teams[1]) : teams[1];
 
-  // Flatten statistics array if nested
+  // Flatten statistics array if nested (NFL upstream shape)
   const getStatMap = (t: any): Record<string, any> => {
     if (t?.statistics && Array.isArray(t.statistics)) {
       const m: Record<string, any> = {};
@@ -378,7 +415,14 @@ function GenericStatsTab({ stats, homeTeamName, awayTeamName }: { stats: any; ho
   const hMap = getStatMap(homeStats);
   const aMap = getStatMap(awayStats);
 
-  const allKeys = [...new Set([...Object.keys(hMap), ...Object.keys(aMap)])].filter(k => !['team', 'game', 'id'].includes(k.toLowerCase()));
+  // Detect basketball schema by presence of signature keys.
+  const isBasketball = 'field_goals_percentage' in hMap || 'threepoint_percentage' in hMap;
+
+  const keys = isBasketball
+    ? BASKETBALL_STAT_ORDER.filter(k => hMap[k] != null || aMap[k] != null)
+    : [...new Set([...Object.keys(hMap), ...Object.keys(aMap)])].filter(k => !['team', 'game', 'id', 'teamapiid', 'side'].includes(k.toLowerCase()));
+
+  const allKeys = keys;
 
   return (
     <View style={{ gap: 12 }}>
@@ -391,13 +435,17 @@ function GenericStatsTab({ stats, homeTeamName, awayTeamName }: { stats: any; ho
         const aVal = aMap[key];
         const hNum = parseFloat(String(hVal ?? 0)) || 0;
         const aNum = parseFloat(String(aVal ?? 0)) || 0;
-        const total = hNum + aNum || 1;
+        const isPct = key.endsWith('percentage') || key.endsWith('_percentage');
+        const label = isBasketball
+          ? (BASKETBALL_STAT_LABELS[key] || key.replace(/_/g, ' '))
+          : key;
+        const fmt = (v: any) => v == null ? '—' : (isPct ? `${v}%` : String(v));
         return (
           <View key={key} style={{ gap: 4 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, color: hNum >= aNum ? colors.onSurface : colors.onSurfaceVariant, width: 48 }}>{String(hVal ?? '—')}</Text>
-              <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 10, color: colors.onSurfaceVariant, letterSpacing: 0.8, textTransform: 'uppercase', flex: 1, textAlign: 'center' }}>{key}</Text>
-              <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, color: aNum > hNum ? colors.onSurface : colors.onSurfaceVariant, width: 48, textAlign: 'right' }}>{String(aVal ?? '—')}</Text>
+              <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, color: hNum >= aNum ? colors.onSurface : colors.onSurfaceVariant, width: 56 }}>{fmt(hVal)}</Text>
+              <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 10, color: colors.onSurfaceVariant, letterSpacing: 0.8, textTransform: 'uppercase', flex: 1, textAlign: 'center' }}>{label}</Text>
+              <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, color: aNum > hNum ? colors.onSurface : colors.onSurfaceVariant, width: 56, textAlign: 'right' }}>{fmt(aVal)}</Text>
             </View>
             <View style={{ flexDirection: 'row', height: 5, gap: 2 }}>
               <View style={{ flex: hNum || 0.1, backgroundColor: colors.primary, borderRadius: 4 }} />
@@ -536,6 +584,147 @@ function BaseballInningTable({ homeScore, awayScore, homeTeamName, awayTeamName,
 }
 
 // ─── Hockey Goals Timeline ───────────────────────────────────────────────────
+// ─── Season Form Card (Sprint 3 team season stats) ─────────────────────────
+function extractSeasonFormSummary(stats: any): { played: number | null; wins: number | null; losses: number | null; draws: number | null; goalsFor: number | null; goalsAgainst: number | null } {
+  if (!stats) return { played: null, wins: null, losses: null, draws: null, goalsFor: null, goalsAgainst: null };
+  // API-Sports team stats commonly live under stats.games.played.all.total, stats.games.wins.all.total, etc.
+  const pickNum = (...paths: any[]): number | null => {
+    for (const v of paths) {
+      if (v == null) continue;
+      const n = typeof v === 'number' ? v : parseInt(String(v), 10);
+      if (!Number.isNaN(n)) return n;
+    }
+    return null;
+  };
+  const g = stats.games || stats.fixtures || {};
+  const goals = stats.goals || stats.points || {};
+  return {
+    played: pickNum(g.played?.all?.total, g.played?.total, g.played?.all, stats.played?.all?.total, stats.played),
+    wins: pickNum(g.wins?.all?.total, g.wins?.total, stats.wins?.all?.total, stats.wins?.total, stats.wins),
+    losses: pickNum(g.loses?.all?.total, g.loses?.total, g.losses?.all?.total, g.losses?.total, stats.losses?.all?.total, stats.losses),
+    draws: pickNum(g.draws?.all?.total, g.draws?.total, stats.draws?.all?.total, stats.draws),
+    goalsFor: pickNum(goals.for?.total?.all, goals.for?.total, goals.for, stats.scored?.all?.total, stats.points_for),
+    goalsAgainst: pickNum(goals.against?.total?.all, goals.against?.total, goals.against, stats.received?.all?.total, stats.points_against),
+  };
+}
+
+function SeasonFormCard({ home, away, homeName, awayName, loading, t }: { home: any; away: any; homeName: string; awayName: string; loading: boolean; t: (k: string, opts?: any) => string }) {
+  if (loading) {
+    return (
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>{t('matchPrediction.seasonForm')}</Text>
+        <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 12 }} />
+      </View>
+    );
+  }
+  if (!home && !away) {
+    return (
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>{t('matchPrediction.seasonForm')}</Text>
+        <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 12, color: colors.onSurfaceVariant, marginTop: 8, textAlign: 'center' }}>
+          {t('matchPrediction.seasonFormEmpty')}
+        </Text>
+      </View>
+    );
+  }
+  const h = extractSeasonFormSummary(home);
+  const a = extractSeasonFormSummary(away);
+  const rows: { label: string; h: number | null; a: number | null }[] = [
+    { label: t('matchPrediction.seasonPlayed'), h: h.played, a: a.played },
+    { label: t('matchPrediction.seasonWins'), h: h.wins, a: a.wins },
+    { label: t('matchPrediction.seasonDraws'), h: h.draws, a: a.draws },
+    { label: t('matchPrediction.seasonLosses'), h: h.losses, a: a.losses },
+    { label: t('matchPrediction.seasonFor'), h: h.goalsFor, a: a.goalsFor },
+    { label: t('matchPrediction.seasonAgainst'), h: h.goalsAgainst, a: a.goalsAgainst },
+  ].filter(r => r.h != null || r.a != null);
+  return (
+    <View style={styles.card}>
+      <Text style={styles.cardTitle}>{t('matchPrediction.seasonForm')}</Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12, marginBottom: 6 }}>
+        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 12, color: colors.primary, flex: 1 }} numberOfLines={1}>{homeName}</Text>
+        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 12, color: colors.onSurfaceVariant, flex: 1, textAlign: 'right' }} numberOfLines={1}>{awayName}</Text>
+      </View>
+      <View style={{ gap: 6 }}>
+        {rows.length === 0 ? (
+          <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 12, color: colors.onSurfaceVariant, textAlign: 'center', paddingVertical: 8 }}>
+            {t('matchPrediction.seasonFormEmpty')}
+          </Text>
+        ) : rows.map(r => (
+          <View key={r.label} style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, color: colors.onSurface, width: 48 }}>{r.h ?? '—'}</Text>
+            <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 10, color: colors.onSurfaceVariant, letterSpacing: 0.8, textTransform: 'uppercase', flex: 1, textAlign: 'center' }}>{r.label}</Text>
+            <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, color: colors.onSurface, width: 48, textAlign: 'right' }}>{r.a ?? '—'}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+// ─── MMA Fighter Records Card (Sprint 3) ────────────────────────────────────
+function summarizeFighterRecord(records: any[] | null): { ko: number; sub: number; dec: number; wins: number; losses: number; draws: number } {
+  const out = { ko: 0, sub: 0, dec: 0, wins: 0, losses: 0, draws: 0 };
+  if (!records || !records.length) return out;
+  for (const r of records) {
+    const type = String(r?.type || r?.method || '').toLowerCase();
+    const w = Number(r?.wins ?? 0) || 0;
+    const l = Number(r?.losses ?? 0) || 0;
+    const d = Number(r?.draws ?? 0) || 0;
+    out.wins += w; out.losses += l; out.draws += d;
+    if (type.includes('ko') || type.includes('tko') || type.includes('knockout')) out.ko += w;
+    else if (type.includes('sub')) out.sub += w;
+    else if (type.includes('dec')) out.dec += w;
+  }
+  return out;
+}
+
+function MmaRecordCard({ home, away, homeName, awayName, loading, t }: { home: any[] | null; away: any[] | null; homeName: string; awayName: string; loading: boolean; t: (k: string, opts?: any) => string }) {
+  if (loading) {
+    return (
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>{t('matchPrediction.fighterRecord')}</Text>
+        <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 12 }} />
+      </View>
+    );
+  }
+  if ((!home || !home.length) && (!away || !away.length)) {
+    return (
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>{t('matchPrediction.fighterRecord')}</Text>
+        <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 12, color: colors.onSurfaceVariant, marginTop: 8, textAlign: 'center' }}>
+          {t('matchPrediction.fighterRecordEmpty')}
+        </Text>
+      </View>
+    );
+  }
+  const h = summarizeFighterRecord(home);
+  const a = summarizeFighterRecord(away);
+  const rows = [
+    { label: `${t('matchPrediction.recordWLD')}`, h: `${h.wins}-${h.losses}-${h.draws}`, a: `${a.wins}-${a.losses}-${a.draws}` },
+    { label: t('prediction.methodKO'), h: h.ko, a: a.ko },
+    { label: t('prediction.methodSubmission'), h: h.sub, a: a.sub },
+    { label: t('prediction.methodDecision'), h: h.dec, a: a.dec },
+  ];
+  return (
+    <View style={styles.card}>
+      <Text style={styles.cardTitle}>{t('matchPrediction.fighterRecord')}</Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12, marginBottom: 6 }}>
+        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 12, color: colors.primary, flex: 1 }} numberOfLines={1}>{homeName}</Text>
+        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 12, color: colors.onSurfaceVariant, flex: 1, textAlign: 'right' }} numberOfLines={1}>{awayName}</Text>
+      </View>
+      <View style={{ gap: 6 }}>
+        {rows.map(r => (
+          <View key={r.label} style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, color: colors.onSurface, width: 64 }}>{r.h}</Text>
+            <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 10, color: colors.onSurfaceVariant, letterSpacing: 0.8, textTransform: 'uppercase', flex: 1, textAlign: 'center' }}>{r.label}</Text>
+            <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, color: colors.onSurface, width: 64, textAlign: 'right' }}>{r.a}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 function HockeyGoalsTimeline({ events, t }: { events: any[]; t: (k: string, opts?: any) => string }) {
   if (!events || events.length === 0) {
     return <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 13, color: colors.onSurfaceVariant, textAlign: 'center' }}>{t('sports.hockey.noGoals')}</Text>;
@@ -653,6 +842,18 @@ export function MatchPredictionScreen({ navigation }: Props) {
   const [genericH2H, setGenericH2H] = useState<any[]>([]);
   const [genericH2HLoading, setGenericH2HLoading] = useState(false);
   const [genericH2HLoaded, setGenericH2HLoaded] = useState(false);
+
+  // Season form (Sprint 3) — handball / hockey / rugby / volleyball / baseball
+  const [homeSeasonStats, setHomeSeasonStats] = useState<any | null>(null);
+  const [awaySeasonStats, setAwaySeasonStats] = useState<any | null>(null);
+  const [seasonStatsLoading, setSeasonStatsLoading] = useState(false);
+  const [seasonStatsLoaded, setSeasonStatsLoaded] = useState(false);
+
+  // MMA fighter records (Sprint 3)
+  const [homeFighterRecords, setHomeFighterRecords] = useState<any[] | null>(null);
+  const [awayFighterRecords, setAwayFighterRecords] = useState<any[] | null>(null);
+  const [fighterRecordsLoading, setFighterRecordsLoading] = useState(false);
+  const [fighterRecordsLoaded, setFighterRecordsLoaded] = useState(false);
 
   // F1 circuit fullscreen
   const [f1CircuitFullscreen, setF1CircuitFullscreen] = useState(false);
@@ -782,9 +983,18 @@ export function MatchPredictionScreen({ navigation }: Props) {
     setGenericStatsLoading(true);
     try {
       const data = await sportsApi.getGameTeamStats(tokens.accessToken, sport as any, fixtureApiId);
-      setGenericStats(Array.isArray(data) ? data : (data?.statistics || data?.response || data));
+      const parsed = Array.isArray(data) ? data : (data?.statistics || data?.response || data);
+      if (parsed && (Array.isArray(parsed) ? parsed.length : Object.keys(parsed).length)) {
+        setGenericStats(parsed);
+      } else {
+        // Fallback to embedded teamStats on the game document (basketball, NFL).
+        const embedded = Array.isArray((genericGame as any)?.teamStats) ? (genericGame as any).teamStats : null;
+        setGenericStats(embedded && embedded.length ? embedded : null);
+      }
     } catch {
-      setGenericStats(null);
+      // On error, still try embedded teamStats as a fallback.
+      const embedded = Array.isArray((genericGame as any)?.teamStats) ? (genericGame as any).teamStats : null;
+      setGenericStats(embedded && embedded.length ? embedded : null);
     } finally {
       setGenericStatsLoading(false);
       setGenericStatsLoaded(true);
@@ -813,6 +1023,55 @@ export function MatchPredictionScreen({ navigation }: Props) {
       if (genericActiveTab === 'h2h' && !genericH2HLoaded) fetchGenericH2H();
     }
   }, [genericActiveTab, genericGame, isFootball, genericEventsLoaded, genericStatsLoaded, genericH2HLoaded, fetchGenericEvents, fetchGenericStats, fetchGenericH2H]);
+
+  // Sprint 3: season team stats for 5 team sports
+  const SEASON_STATS_SPORTS = ['handball', 'hockey', 'rugby', 'volleyball', 'baseball'];
+  useEffect(() => {
+    if (!tokens?.accessToken || !genericGame || seasonStatsLoaded) return;
+    if (!SEASON_STATS_SPORTS.includes(sport)) return;
+    const homeId = genericGame.homeTeam?.apiId;
+    const awayId = genericGame.awayTeam?.apiId;
+    if (!homeId || !awayId) return;
+    let cancelled = false;
+    setSeasonStatsLoading(true);
+    Promise.all([
+      sportsApi.getTeamSeasonStats(tokens.accessToken, sport as any, homeId).catch(() => null),
+      sportsApi.getTeamSeasonStats(tokens.accessToken, sport as any, awayId).catch(() => null),
+    ]).then(([h, a]) => {
+      if (cancelled) return;
+      setHomeSeasonStats(h?.stats ?? null);
+      setAwaySeasonStats(a?.stats ?? null);
+    }).finally(() => {
+      if (cancelled) return;
+      setSeasonStatsLoading(false);
+      setSeasonStatsLoaded(true);
+    });
+    return () => { cancelled = true; };
+  }, [tokens?.accessToken, genericGame, sport, seasonStatsLoaded]);
+
+  // Sprint 3: MMA fighter records
+  useEffect(() => {
+    if (!tokens?.accessToken || !genericGame || fighterRecordsLoaded) return;
+    if (sport !== 'mma') return;
+    const homeId = genericGame.homeTeam?.apiId;
+    const awayId = genericGame.awayTeam?.apiId;
+    if (!homeId || !awayId) return;
+    let cancelled = false;
+    setFighterRecordsLoading(true);
+    Promise.all([
+      sportsApi.getFighterRecords(tokens.accessToken, homeId).catch(() => null),
+      sportsApi.getFighterRecords(tokens.accessToken, awayId).catch(() => null),
+    ]).then(([h, a]) => {
+      if (cancelled) return;
+      setHomeFighterRecords(h?.records ?? null);
+      setAwayFighterRecords(a?.records ?? null);
+    }).finally(() => {
+      if (cancelled) return;
+      setFighterRecordsLoading(false);
+      setFighterRecordsLoaded(true);
+    });
+    return () => { cancelled = true; };
+  }, [tokens?.accessToken, genericGame, sport, fighterRecordsLoaded]);
 
   useEffect(() => { fetchGame(); }, [fetchGame]);
 
@@ -1477,6 +1736,30 @@ export function MatchPredictionScreen({ navigation }: Props) {
           </TouchableOpacity>
         )}
 
+        {/* SEASON FORM (Sprint 3): handball / hockey / rugby / volleyball / baseball */}
+        {!isF1 && !isFootball && genericGame && ['handball','hockey','rugby','volleyball','baseball'].includes(sport) && (
+          <SeasonFormCard
+            home={homeSeasonStats}
+            away={awaySeasonStats}
+            homeName={homeTeamName}
+            awayName={awayTeamName}
+            loading={seasonStatsLoading}
+            t={t}
+          />
+        )}
+
+        {/* MMA FIGHTER RECORDS (Sprint 3) */}
+        {sport === 'mma' && genericGame && (
+          <MmaRecordCard
+            home={homeFighterRecords}
+            away={awayFighterRecords}
+            homeName={homeTeamName}
+            awayName={awayTeamName}
+            loading={fighterRecordsLoading}
+            t={t}
+          />
+        )}
+
         {/* PREDICTION CARD (non-F1 sports) */}
         {!isF1 && <View style={styles.predictCard}>
           <View style={styles.predictHeader}>
@@ -2093,7 +2376,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
         {!isFootball && !isF1 && genericGame && (() => {
           // Determine which tabs to show for this sport
           const supportsEvents = ['hockey', 'american-football'].includes(sport);
-          const supportsStats = ['american-football'].includes(sport);
+          const supportsStats = ['american-football', 'basketball'].includes(sport);
           const supportsH2H = ['hockey', 'basketball', 'baseball', 'american-football', 'rugby', 'volleyball', 'handball', 'afl'].includes(sport);
 
           const tabs = [

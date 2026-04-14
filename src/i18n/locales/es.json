@@ -859,7 +859,18 @@
     "score": "Marcador",
     "venue": "Estadio",
     "attendance": "{{count}} aficionados",
-    "total": "TOTAL"
+    "total": "TOTAL",
+    "seasonForm": "FORMA DE TEMPORADA",
+    "seasonFormEmpty": "Estadísticas de temporada aún no disponibles",
+    "seasonPlayed": "Jugados",
+    "seasonWins": "Victorias",
+    "seasonDraws": "Empates",
+    "seasonLosses": "Derrotas",
+    "seasonFor": "A favor",
+    "seasonAgainst": "En contra",
+    "fighterRecord": "RÉCORD DEL LUCHADOR",
+    "fighterRecordEmpty": "Récord aún no disponible",
+    "recordWLD": "V-D-E"
   },
   "sports": {
     "afl": {

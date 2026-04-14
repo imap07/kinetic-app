@@ -859,7 +859,18 @@
     "score": "Score",
     "venue": "Stade",
     "attendance": "{{count}} spectateurs",
-    "total": "TOTAL"
+    "total": "TOTAL",
+    "seasonForm": "FORME DE LA SAISON",
+    "seasonFormEmpty": "Statistiques de saison non disponibles",
+    "seasonPlayed": "Joués",
+    "seasonWins": "Victoires",
+    "seasonDraws": "Nuls",
+    "seasonLosses": "Défaites",
+    "seasonFor": "Pour",
+    "seasonAgainst": "Contre",
+    "fighterRecord": "PALMARÈS DU COMBATTANT",
+    "fighterRecordEmpty": "Palmarès non disponible",
+    "recordWLD": "V-D-N"
   },
   "sports": {
     "afl": {
