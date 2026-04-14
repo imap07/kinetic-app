@@ -125,6 +125,9 @@ function groupByLeague(games: SportGame[]): LeagueGroup[] {
   return groups;
 }
 
+// Module-level cache — survives component re-mounts (tab switches)
+const liveScreenCache = new Map<string, { data: SportDashboard; ts: number }>();
+
 export function LiveScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<LiveStackParamList>>();
@@ -174,14 +177,19 @@ export function LiveScreen() {
   // changes so stale responses can't fire error toasts for old tabs.
   const abortRef = useRef<AbortController | null>(null);
 
-  const fetchData = useCallback(async (signal?: AbortSignal) => {
+  const fetchData = useCallback(async (signal?: AbortSignal, isBackground = false) => {
     if (!tokens?.accessToken) return;
     try {
       const result = await sportsApi.getDashboard(tokens.accessToken, activeSport, signal);
-      if (!signal?.aborted) setData(result);
+      if (!signal?.aborted) {
+        setData(result);
+        liveScreenCache.set(activeSport, { data: result, ts: Date.now() });
+      }
     } catch (err: any) {
-      if (err?.name === 'AbortError' || signal?.aborted) return; // user switched tabs
-      Toast.show({ type: 'error', text1: t('dashboard.errorLoading'), text2: t('dashboard.pullToRetry') });
+      if (err?.name === 'AbortError' || signal?.aborted) return;
+      if (!signal?.aborted && !isBackground) {
+        Toast.show({ type: 'error', text1: t('dashboard.errorLoading'), text2: t('dashboard.pullToRetry') });
+      }
     } finally {
       if (!signal?.aborted) {
         setLoading(false);
@@ -196,7 +204,19 @@ export function LiveScreen() {
     const ctrl = new AbortController();
     abortRef.current = ctrl;
 
-    setLoading(true);
+    // Show cached data instantly while fetching fresh
+    const cached = liveScreenCache.get(activeSport);
+    const CACHE_TTL = 5 * 60 * 1000;
+    if (cached) {
+      setData(cached.data);
+      if (Date.now() - cached.ts < CACHE_TTL) {
+        setLoading(false);
+        fetchData(ctrl.signal, true);
+        return () => { ctrl.abort(); if (intervalRef.current) clearInterval(intervalRef.current); };
+      }
+    }
+
+    if (!cached) setLoading(true);
     fetchData(ctrl.signal);
 
     // Polling fallback (only when SSE is disconnected)

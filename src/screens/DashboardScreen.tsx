@@ -115,6 +115,9 @@ const pickedBadgeStyles = StyleSheet.create({
   },
 });
 
+// Module-level cache — survives component re-mounts (tab switches)
+const dashboardCache = new Map<string, { data: SportDashboard; ts: number }>();
+
 export function DashboardScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const { tokens, user } = useAuth();
@@ -132,19 +135,31 @@ export function DashboardScreen({ navigation }: Props) {
   const [statsLoading, setStatsLoading] = useState(true);
   const [pickedGameIds, setPickedGameIds] = useState<Set<number>>(new Set());
 
+  // ── In-memory stale-while-revalidate cache per sport ──
+  // On tab switch: show cached data instantly, fetch fresh in background.
+  // Cache lives outside the component so it survives re-mounts (tab switches).
+  const cacheRef = useRef(dashboardCache);
+
   // AbortController ref — aborts in-flight dashboard requests when the
   // sport changes so stale responses can't overwrite fresh data or fire
   // error toasts for a tab the user already left.
   const abortRef = useRef<AbortController | null>(null);
 
-  const fetchDashboard = useCallback(async (signal?: AbortSignal) => {
+  const fetchDashboard = useCallback(async (signal?: AbortSignal, isBackground = false) => {
     if (!tokens?.accessToken) return;
     try {
       const result = await sportsApi.getDashboard(tokens.accessToken, activeSport, signal);
-      if (!signal?.aborted) setData(result);
+      if (!signal?.aborted) {
+        setData(result);
+        // Update cache
+        cacheRef.current.set(activeSport, { data: result, ts: Date.now() });
+      }
     } catch (err: any) {
-      if (err?.name === 'AbortError' || signal?.aborted) return; // user switched tabs — ignore
-      Toast.show({ type: 'error', text1: t('dashboard.errorLoading'), text2: t('dashboard.pullToRetry') });
+      if (err?.name === 'AbortError' || signal?.aborted) return;
+      // Only show toast if this wasn't a background revalidation and we have no cached data
+      if (!signal?.aborted && !isBackground) {
+        Toast.show({ type: 'error', text1: t('dashboard.errorLoading'), text2: t('dashboard.pullToRetry') });
+      }
     } finally {
       if (!signal?.aborted) {
         setLoading(false);
@@ -159,13 +174,30 @@ export function DashboardScreen({ navigation }: Props) {
     const ctrl = new AbortController();
     abortRef.current = ctrl;
 
-    setLoading(true);
+    // Check cache first — show stale data instantly
+    const cached = cacheRef.current.get(activeSport);
+    const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+    if (cached) {
+      setData(cached.data);
+      // If cache is fresh enough, skip loading state (background revalidate)
+      if (Date.now() - cached.ts < CACHE_TTL) {
+        setLoading(false);
+        // Still revalidate in background
+        fetchDashboard(ctrl.signal, true);
+        return () => ctrl.abort();
+      }
+    }
+
+    // No cache or stale — show loading
+    if (!cached) setLoading(true);
     fetchDashboard(ctrl.signal);
 
     return () => ctrl.abort();
   }, [fetchDashboard]);
 
-  const fetchUserStats = useCallback(async () => {
+  const statsAbortRef = useRef<AbortController | null>(null);
+
+  const fetchUserStats = useCallback(async (signal?: AbortSignal) => {
     if (!tokens?.accessToken) return;
     setStatsLoading(true);
     try {
@@ -173,17 +205,27 @@ export function DashboardScreen({ navigation }: Props) {
         predictionsApi.getDailyStatus(tokens.accessToken),
         predictionsApi.getMyStats(tokens.accessToken),
       ]);
-      setDailyStatus(daily);
-      setUserStats(stats);
-    } catch (err) {
-      Toast.show({ type: 'error', text1: t('dashboard.errorLoading'), text2: t('dashboard.pullToRetry') });
+      if (!signal?.aborted) {
+        setDailyStatus(daily);
+        setUserStats(stats);
+      }
+    } catch (err: any) {
+      if (err?.name === 'AbortError' || signal?.aborted) return;
+      // Only show error toast if the component is still focused on this sport
+      if (!signal?.aborted) {
+        console.warn('[DashboardScreen] fetchUserStats error:', err);
+      }
     } finally {
-      setStatsLoading(false);
+      if (!signal?.aborted) setStatsLoading(false);
     }
   }, [tokens?.accessToken]);
 
   useEffect(() => {
-    fetchUserStats();
+    statsAbortRef.current?.abort();
+    const ctrl = new AbortController();
+    statsAbortRef.current = ctrl;
+    fetchUserStats(ctrl.signal);
+    return () => ctrl.abort();
   }, [fetchUserStats]);
 
   const fetchPickedIds = useCallback(async () => {
@@ -278,8 +320,9 @@ export function DashboardScreen({ navigation }: Props) {
     const cupTypes = ['Cup'];
     const internationalKeywords = ['Friendlies', 'World Cup', 'Euro', 'Copa America', 'Nations League', 'Olympics', 'Qualification'];
     for (const l of featuredLeagues) {
-      const isInternational = internationalKeywords.some((kw) => l.name.includes(kw));
-      const isCup = !isInternational && (cupTypes.includes(l.type ?? '') || l.name.includes('Cup') || l.name.includes('Copa') || l.name.includes('Coupe') || l.name.includes('Pokal') || l.name.includes('Champions') || l.name.includes('Europa') || l.name.includes('Conference') || l.name.includes('Libertadores') || l.name.includes('Sudamericana') || l.name.includes('CONCACAF'));
+      const name = l.name ?? '';
+      const isInternational = internationalKeywords.some((kw) => name.includes(kw));
+      const isCup = !isInternational && (cupTypes.includes(l.type ?? '') || name.includes('Cup') || name.includes('Copa') || name.includes('Coupe') || name.includes('Pokal') || name.includes('Champions') || name.includes('Europa') || name.includes('Conference') || name.includes('Libertadores') || name.includes('Sudamericana') || name.includes('CONCACAF'));
       if (isInternational) international.push(l);
       else if (isCup) cups.push(l);
       else domestic.push(l);
@@ -291,7 +334,7 @@ export function DashboardScreen({ navigation }: Props) {
   const filteredSheetLeagues = useMemo(() => {
     const q = leagueSearch.toLowerCase().trim();
     const filterGroup = (leagues: any[]) =>
-      q ? leagues.filter((l: any) => l.name.toLowerCase().includes(q) || l.countryName?.toLowerCase().includes(q)) : leagues;
+      q ? leagues.filter((l: any) => (l.name ?? '').toLowerCase().includes(q) || l.countryName?.toLowerCase().includes(q)) : leagues;
     return {
       domestic: filterGroup(groupedLeagues.domestic),
       cups: filterGroup(groupedLeagues.cups),
