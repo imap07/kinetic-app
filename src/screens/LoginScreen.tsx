@@ -22,7 +22,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { KineticLogo, PrimaryButton, SocialButton, ModalCloseButton } from '../components';
 import { colors, typography, spacing } from '../theme';
 import { AuthStackParamList } from '../navigation/types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../contexts/AuthContext';
+import { SESSION_EXPIRED_FLAG_KEY } from '../contexts/AuthContext';
 import { ApiError } from '../api';
 import type { SocialProvider } from '../api';
 import { signInWithGoogle, isGoogleSignInCancelled } from '../services/googleAuth';
@@ -127,6 +129,24 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
   const [biometricLabel, setBiometricLabel] = useState('Face ID');
   const [biometricLoading, setBiometricLoading] = useState(false);
   const biometricAttempted = useRef(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
+
+  // Surface a one-shot "session expired" banner when the boot flow had
+  // to clear tokens because the server explicitly rejected the refresh
+  // token. The flag is cleared immediately so it only appears once.
+  useEffect(() => {
+    (async () => {
+      try {
+        const flag = await AsyncStorage.getItem(SESSION_EXPIRED_FLAG_KEY);
+        if (flag) {
+          setSessionExpired(true);
+          await AsyncStorage.removeItem(SESSION_EXPIRED_FLAG_KEY);
+        }
+      } catch {
+        // Ignore — the banner is a nice-to-have, not critical flow.
+      }
+    })();
+  }, []);
 
   // Entrance animations
   const logoAnim = useRef(new Animated.Value(0)).current;
@@ -326,6 +346,25 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
           <Text style={styles.subheadline}>{t('login.subtitle')}</Text>
         </Animated.View>
 
+        {sessionExpired && (
+          <View style={styles.sessionExpiredBanner}>
+            <Ionicons
+              name="information-circle-outline"
+              size={18}
+              color={colors.primary}
+              style={{ marginRight: 8 }}
+            />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.sessionExpiredTitle}>
+                {t('login.sessionExpired')}
+              </Text>
+              <Text style={styles.sessionExpiredMessage}>
+                {t('login.sessionExpiredMessage')}
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* Action Buttons Section */}
         <Animated.View style={[styles.actionsSection, makeAnimStyle(buttonsAnim)]}>
           <SocialButton
@@ -490,6 +529,32 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: colors.onSurfaceVariant,
     textAlign: 'center',
+  },
+
+  // Session-expired banner
+  sessionExpiredBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    backgroundColor: 'rgba(252,91,0,0.08)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(252,91,0,0.4)',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 20,
+  },
+  sessionExpiredTitle: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 13,
+    color: colors.onSurface,
+    marginBottom: 2,
+  },
+  sessionExpiredMessage: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 12,
+    lineHeight: 16,
+    color: colors.onSurfaceVariant,
   },
 
   // Actions

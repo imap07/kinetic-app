@@ -104,6 +104,11 @@ export const authApi = {
       email,
       password,
       displayName,
+      // Belt-and-suspenders: the `x-device-type` header on every request
+      // is the primary signal, but we include it in the body too so
+      // older server builds that only read the DTO still tag the session
+      // correctly.
+      deviceType: 'mobile',
     });
   },
 
@@ -112,6 +117,7 @@ export const authApi = {
       email,
       password,
       ...deviceInfo,
+      deviceType: 'mobile',
     });
   },
 
@@ -124,6 +130,7 @@ export const authApi = {
       provider,
       accessToken,
       ...extra,
+      deviceType: 'mobile',
     });
   },
 
@@ -149,8 +156,19 @@ export const authApi = {
     );
   },
 
-  logout(token: string) {
-    return apiClient.post<MessageResponse>('/auth/logout', undefined, { token });
+  /**
+   * Single-device logout. MUST include the refresh token in the body —
+   * without it, older backends would fall through to a mass-logout of
+   * every device for this user (the bug this file helped fix). The
+   * current backend treats a missing token as a no-op, but we keep
+   * sending it so the server can actually drop the correct row.
+   */
+  logout(token: string, refreshToken?: string) {
+    return apiClient.post<MessageResponse>(
+      '/auth/logout',
+      refreshToken ? { refreshToken } : undefined,
+      { token },
+    );
   },
 
   forgotPassword(email: string) {
@@ -300,10 +318,17 @@ export const authApi = {
     );
   },
 
-  changePassword(token: string, currentPassword: string, newPassword: string) {
+  changePassword(
+    token: string,
+    currentPassword: string,
+    newPassword: string,
+    currentRefreshToken?: string,
+  ) {
     return apiClient.patch<{ message: string }>(
       '/auth/change-password',
-      { currentPassword, newPassword },
+      // Pass the current refresh token so the backend can preserve
+      // this device's session instead of evicting the caller.
+      { currentPassword, newPassword, currentRefreshToken },
       { token },
     );
   },

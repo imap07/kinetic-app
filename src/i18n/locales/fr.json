@@ -19,7 +19,9 @@
     "and": "et",
     "privacyLink": "Politique de confidentialité",
     "authFailed": "Échec d'authentification",
-    "biometricFailed": "Échec biométrique. Essaie une autre méthode."
+    "biometricFailed": "Échec biométrique. Essaie une autre méthode.",
+    "sessionExpired": "Session expirée",
+    "sessionExpiredMessage": "Votre session a expiré. Veuillez vous reconnecter."
   },
   "emailAuth": {
     "signIn": "Connexion",

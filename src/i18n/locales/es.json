@@ -19,7 +19,9 @@
     "and": "y",
     "privacyLink": "Política de Privacidad",
     "authFailed": "Error de Autenticación",
-    "biometricFailed": "Error biométrico. Intenta otro método."
+    "biometricFailed": "Error biométrico. Intenta otro método.",
+    "sessionExpired": "Sesión expirada",
+    "sessionExpiredMessage": "Tu sesión ha expirado. Por favor inicia sesión de nuevo."
   },
   "emailAuth": {
     "signIn": "Iniciar Sesión",

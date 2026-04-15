@@ -62,7 +62,16 @@ export function ChangePasswordScreen() {
 
     setSaving(true);
     try {
-      await authApi.changePassword(tokens.accessToken, currentPassword, newPassword);
+      // Pass the refresh token so the backend preserves THIS device's
+      // session. Without it the server falls back to evicting all
+      // sessions, which would immediately log the user out of the app
+      // right after they successfully changed their password.
+      await authApi.changePassword(
+        tokens.accessToken,
+        currentPassword,
+        newPassword,
+        tokens.refreshToken,
+      );
       Alert.alert(
         t('changePassword.successTitle'),
         t('changePassword.successDesc'),

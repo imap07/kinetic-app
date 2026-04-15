@@ -19,7 +19,9 @@
     "and": "and",
     "privacyLink": "Privacy Policy",
     "authFailed": "Authentication Failed",
-    "biometricFailed": "Biometric login failed. Please try another method."
+    "biometricFailed": "Biometric login failed. Please try another method.",
+    "sessionExpired": "Session expired",
+    "sessionExpiredMessage": "Your session has expired. Please sign in again."
   },
   "emailAuth": {
     "signIn": "Sign In",

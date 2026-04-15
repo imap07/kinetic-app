@@ -94,6 +94,12 @@ async function request<T>(
     reqHeaders['x-device-fingerprint'] = fingerprint;
   }
 
+  // Tell the backend this is the React Native app, so session rows get
+  // tagged `deviceType: 'mobile'` and any web-admin bulk-revoke flows
+  // leave them alone. See the mass-logout incident notes in
+  // `session.schema.ts`.
+  reqHeaders['x-device-type'] = 'mobile';
+
   const res = await fetch(`${API_BASE_URL}${path}`, {
     method,
     headers: reqHeaders,

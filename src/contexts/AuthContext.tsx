@@ -13,6 +13,22 @@ import { getOrCreateDeviceFingerprint } from '../services/deviceFingerprint';
 const ACCESS_TOKEN_KEY = 'kinetic_access_token';
 const REFRESH_TOKEN_KEY = 'kinetic_refresh_token';
 
+/**
+ * One-shot flag set whenever the server explicitly invalidates the
+ * user's refresh token (401/403 from `/auth/refresh`). The LoginScreen
+ * reads and clears it on mount so the user sees a "your session
+ * expired" message instead of a silent boot straight into the login UI.
+ */
+export const SESSION_EXPIRED_FLAG_KEY = 'kinetic_session_expired_flag';
+
+async function markSessionExpired() {
+  try {
+    await AsyncStorage.setItem(SESSION_EXPIRED_FLAG_KEY, '1');
+  } catch {
+    // Storage errors here are not worth crashing the logout path for.
+  }
+}
+
 interface AuthState {
   user: User | null;
   tokens: AuthTokens | null;
@@ -95,6 +111,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return newTokens;
       },
       onAuthFailure: () => {
+        // The server has explicitly revoked this refresh token. Surface
+        // a "session expired" notice on the login screen so the user
+        // doesn't think the app just lost them for no reason.
+        markSessionExpired().catch(() => {});
         clearTokens().catch(() => {});
         clearAuth();
       },
@@ -143,6 +163,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 refreshErr instanceof ApiError &&
                 (refreshErr.status === 401 || refreshErr.status === 403)
               ) {
+                // Server explicitly killed this session — tell the
+                // user on the next screen instead of silently bouncing.
+                await markSessionExpired();
                 await clearTokens();
                 clearAuth();
               } else {
@@ -158,6 +181,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           } else if (err instanceof ApiError && (err.status === 403)) {
             // Server explicitly says forbidden — clear session
+            await markSessionExpired();
             await clearTokens();
             clearAuth();
           } else {
@@ -260,8 +284,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     try {
       const token = tokensRef.current?.accessToken;
+      const refreshToken = tokensRef.current?.refreshToken;
       if (token) {
-        await authApi.logout(token);
+        // Pass refresh token so the backend drops ONLY this device's
+        // session. Without it, the server treats the call as a no-op
+        // (the pre-fix behaviour of mass-logout is gone).
+        await authApi.logout(token, refreshToken ?? undefined);
       }
     } catch {
       // Logout locally even if API call fails
