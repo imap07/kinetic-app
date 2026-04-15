@@ -13,7 +13,7 @@ export interface PredictionData {
   awayTeamLogo: string;
   leagueName: string;
   leagueLogo: string;
-  predictionType: 'win' | 'result' | 'exact_score' | 'over_under' | 'btts' | 'fastest_lap' | 'podium_finish' | 'method_of_victory' | 'goes_the_distance';
+  predictionType: 'result' | 'exact_score' | 'over_under' | 'btts' | 'fastest_lap' | 'podium_finish' | 'method_of_victory' | 'goes_the_distance';
   predictedOutcome: 'home' | 'draw' | 'away';
   predictedHomeScore: number | null;
   predictedAwayScore: number | null;

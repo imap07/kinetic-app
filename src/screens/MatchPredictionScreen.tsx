@@ -921,9 +921,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
       if (prediction) {
         setExistingPrediction(prediction);
         setSelectedOutcome(prediction.predictedOutcome);
-        // Backend uses 'win', frontend uses 'result' for the same type
-        const mappedType = prediction.predictionType === 'win' ? 'result' : prediction.predictionType;
-        setPredType(mappedType as PredictionType);
+        setPredType(prediction.predictionType as PredictionType);
         if (prediction.predictedHomeScore != null) setHomeScoreInput(String(prediction.predictedHomeScore));
         if (prediction.predictedAwayScore != null) setAwayScoreInput(String(prediction.predictedAwayScore));
         if (prediction.threshold != null) setOuThreshold(prediction.threshold);
@@ -1148,7 +1146,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
         awayTeamLogo,
         leagueName,
         leagueLogo,
-        predictionType: predType === 'result' ? 'win' : predType,
+        predictionType: predType,
         predictedOutcome: needsOutcome ? selectedOutcome : undefined,
         predictedHomeScore: predType === 'exact_score' ? parseInt(homeScoreInput, 10) : null,
         predictedAwayScore: predType === 'exact_score' ? parseInt(awayScoreInput, 10) : null,
