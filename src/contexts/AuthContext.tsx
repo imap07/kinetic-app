@@ -142,57 +142,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         try {
           const { user } = await authApi.getProfile(stored.accessToken);
-          setAuth(user, stored);
+          // The apiClient interceptor may have silently refreshed the
+          // token pair on a 401 during this call, updating tokensRef
+          // via the registered tokenProvider. Always use the latest
+          // ref — falling back to `stored` only if nothing changed.
+          setAuth(user, tokensRef.current ?? stored);
           identifyUser(user);
         } catch (err) {
           if (err instanceof ApiError && err.status === 401) {
-            // Access token expired — try to refresh
+            // The interceptor already attempted a refresh and failed.
+            // One more manual try in case the failure was transient
+            // (network blip during the interceptor's refresh call).
             try {
               const { tokens: newTokens } = await authApi.refreshTokens(
                 stored.refreshToken,
               );
+              // Update the ref BEFORE any further API call so the
+              // interceptor (and tokenProvider) see the rotated pair.
+              tokensRef.current = newTokens;
               await persistTokens(newTokens);
               const { user } = await authApi.getProfile(newTokens.accessToken);
               setAuth(user, newTokens);
               identifyUser(user);
             } catch (refreshErr) {
-              // Only clear tokens if the server explicitly rejected the
-              // refresh token (401/403). Network errors, timeouts, or
-              // server-down (5xx) should NOT wipe the session — the user
-              // should stay "authenticated" with stale tokens; the
-              // apiClient auto-refresh interceptor will retry later.
               if (
                 refreshErr instanceof ApiError &&
                 (refreshErr.status === 401 || refreshErr.status === 403)
               ) {
-                // Server explicitly killed this session — tell the
-                // user on the next screen instead of silently bouncing.
                 await markSessionExpired();
                 await clearTokens();
                 clearAuth();
               } else {
-                // Keep tokens, show as authenticated with stale data.
-                // The interceptor will retry refresh on the next API call.
                 setState((s) => ({
                   ...s,
-                  tokens: stored,
+                  tokens: tokensRef.current ?? stored,
                   isAuthenticated: true,
                   isLoading: false,
                 }));
               }
             }
           } else if (err instanceof ApiError && (err.status === 403)) {
-            // Server explicitly says forbidden — clear session
             await markSessionExpired();
             await clearTokens();
             clearAuth();
           } else {
-            // Network error, timeout, server down (5xx), or any non-auth
-            // error — keep tokens alive. The user should remain "logged in"
-            // and the app will retry API calls when connectivity returns.
             setState((s) => ({
               ...s,
-              tokens: stored,
+              tokens: tokensRef.current ?? stored,
               isAuthenticated: true,
               isLoading: false,
             }));

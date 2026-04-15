@@ -117,7 +117,11 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
   const { tokens } = useAuth();
   const { t } = useTranslation();
   const [activeSport, setActiveSport] = useState<SportKey>(selectedSports[0]);
-  const [selectedTeams, setSelectedTeams] = useState<Map<number, SelectedTeamInfo>>(new Map());
+  // Keyed by `${sport}-${apiId}` to avoid collisions between sports
+  // (e.g. a handball team and an MMA fighter that both have apiId=5).
+  // The numeric apiId alone is not unique across sports.
+  const [selectedTeams, setSelectedTeams] = useState<Map<string, SelectedTeamInfo & { apiId: number }>>(new Map());
+  const selectionKey = (sport: SportKey, apiId: number) => `${sport}-${apiId}`;
   const [sportStates, setSportStates] = useState<Record<string, SportState>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -164,7 +168,14 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
     return () => { if (searchTimer.current) clearTimeout(searchTimer.current); };
   }, [searchQuery]);
 
-  useEffect(() => { resetAndReload(activeSport); }, [activeSport, debouncedSearch]);
+  useEffect(() => {
+    // F1 and MMA have their own dedicated fetch branches (f1Teams / mmaFighters);
+    // the generic sportStates pipeline doesn't apply to them. Skip to avoid
+    // hitting /sports/{formula-1|mma}/popular-teams (which returns an
+    // empty / differently-shaped envelope) and polluting sportStates.
+    if (activeSport === 'formula-1' || activeSport === 'mma') return;
+    resetAndReload(activeSport);
+  }, [activeSport, debouncedSearch]);
 
   const [f1DebouncedSearch, setF1DebouncedSearch] = useState('');
   const f1SearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -237,6 +248,9 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
   }, [tokens?.accessToken, sportStates, debouncedSearch, updateState]);
 
   useEffect(() => {
+    // See comment on the resetAndReload effect above: F1 and MMA use their
+    // own branches, so skip the generic popular-teams fetch for them.
+    if (activeSport === 'formula-1' || activeSport === 'mma') return;
     const state = getState(activeSport);
     if (state.page === 0 && state.hasMore && !state.loading) fetchPage(activeSport);
   }, [activeSport, sportStates, debouncedSearch]);
@@ -249,10 +263,12 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
   const toggleTeam = useCallback((team: PopularTeam) => {
     setSelectedTeams(prev => {
       const next = new Map(prev);
-      if (next.has(team.apiId)) {
-        next.delete(team.apiId);
+      const key = selectionKey(team.sport, team.apiId);
+      if (next.has(key)) {
+        next.delete(key);
       } else {
-        next.set(team.apiId, {
+        next.set(key, {
+          apiId: team.apiId,
           sport: team.sport,
           teamName: team.name,
           teamLogo: team.logo || '',
@@ -297,7 +313,7 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
   );
 
   const renderTeamCard = useCallback(({ item }: { item: PopularTeam }) => {
-    const isSelected = selectedTeams.has(item.apiId);
+    const isSelected = selectedTeams.has(selectionKey(item.sport, item.apiId));
     const color = SPORT_COLORS[item.sport] || colors.primary;
     return (
       <TouchableOpacity
@@ -465,7 +481,7 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
             data={f1Teams}
             keyExtractor={(item) => `f1-${item.apiId}`}
             renderItem={({ item }) => {
-              const isSelected = selectedTeams.has(item.apiId);
+              const isSelected = selectedTeams.has(selectionKey('formula-1', item.apiId));
               return (
                 <TouchableOpacity
                   style={[styles.teamCard, styles.f1Card, isSelected && { borderColor: sportColor }]}
@@ -534,7 +550,7 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
             data={mmaFighters}
             keyExtractor={(item) => `mma-${item.apiId}`}
             renderItem={({ item }) => {
-              const isSelected = selectedTeams.has(item.apiId);
+              const isSelected = selectedTeams.has(selectionKey('mma', item.apiId));
               return (
                 <TouchableOpacity
                   style={[styles.teamCard, isSelected && { borderColor: sportColor }]}
@@ -837,8 +853,8 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
         </View>
         <TouchableOpacity
           activeOpacity={0.85} onPress={() => {
-            const favoriteTeams: OnboardingFavoriteTeam[] = Array.from(selectedTeams.entries()).map(([apiId, info]) => ({
-              teamApiId: apiId,
+            const favoriteTeams: OnboardingFavoriteTeam[] = Array.from(selectedTeams.values()).map(info => ({
+              teamApiId: info.apiId,
               sport: info.sport,
               teamName: info.teamName,
               teamLogo: info.teamLogo,
