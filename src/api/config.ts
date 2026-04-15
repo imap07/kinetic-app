@@ -32,7 +32,7 @@ function resolveApiBaseUrl(): string {
     return fromEnv;
   }
   if (__DEV__) {
-    return `http://${DEV_HOST}:3000/api`;
+    return `http://${DEV_HOST}:3001/api`;
   }
   throw new Error(
     'EXPO_PUBLIC_API_URL is required for production builds. ' +
