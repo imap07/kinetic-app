@@ -30,6 +30,14 @@
           }
         },
         {
+          "client_id": "942851412014-91rdkcibsa0476m9lpvbhdlbtdphem6k.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "io.kinetic.app",
+            "certificate_hash": "02baff797bb8a60ce0395b13ce64de425a83e755"
+          }
+        },
+        {
           "client_id": "942851412014-e78hs3qkhq8492sap9g47qd0ch5ba2kt.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
