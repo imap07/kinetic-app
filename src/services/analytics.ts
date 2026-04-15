@@ -1,4 +1,5 @@
 import analytics from '@react-native-firebase/analytics';
+import type { User } from '../api/auth';
 
 /**
  * Centralized analytics service for Kinetic.
@@ -104,6 +105,17 @@ export async function logSubscriptionCancel() {
 }
 
 // ─── User identity ─────────────────────────────────────────
+//
+// Setting the Firebase Analytics User-ID stitches pre-auth anonymous
+// sessions to the authenticated user across devices — this is what
+// reconciles the gap between "GA users" (client instances) and the
+// registered-users count in our DB.
+//
+// User properties go alongside so we can segment in GA: paid vs free,
+// auth provider, onboarding state, tier. Firebase limits:
+//   - property name <= 24 chars, snake_case
+//   - property value <= 36 chars (strings only)
+//   - max 25 user properties per project
 export async function setAnalyticsUser(userId: string, properties?: Record<string, string>) {
   try {
     await analytics().setUserId(userId);
@@ -113,6 +125,22 @@ export async function setAnalyticsUser(userId: string, properties?: Record<strin
       }
     }
   } catch (_) {}
+}
+
+/**
+ * Identify the authenticated user to Firebase Analytics.
+ * Call this on every path that produces a User: login (email/google/apple/
+ * biometric), signup, AND session restore on app boot.
+ */
+export async function identifyUser(user: Pick<User, 'id' | 'tier' | 'isPremium' | 'providers' | 'onboardingCompleted'>) {
+  if (!user?.id) return;
+  const props: Record<string, string> = {
+    tier: String(user.tier ?? 'free').slice(0, 36),
+    is_premium: user.isPremium ? 'true' : 'false',
+    auth_provider: (user.providers?.[0] ?? 'email').slice(0, 36),
+    onboarding_completed: user.onboardingCompleted ? 'true' : 'false',
+  };
+  await setAnalyticsUser(user.id, props);
 }
 
 export async function clearAnalyticsUser() {

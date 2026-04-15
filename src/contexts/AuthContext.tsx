@@ -6,7 +6,7 @@ import { registerTokenProvider } from '../api/client';
 import type { AuthTokens, User, SocialProvider, UpdateProfileData, UpdatePreferencesData } from '../api';
 import { signOutFromGoogle } from '../services/googleAuth';
 import { ONBOARDING_COMPLETE_KEY } from '../screens/OnboardingScreen';
-import { logLogin, logSignUp, logLogout, setAnalyticsUser, clearAnalyticsUser } from '../services/analytics';
+import { logLogin, logSignUp, logLogout, identifyUser, clearAnalyticsUser } from '../services/analytics';
 import { attemptBiometricLogin, isBiometricLoginEnabled, enableBiometricLogin, disableBiometricLogin } from '../services/biometricAuth';
 import { getOrCreateDeviceFingerprint } from '../services/deviceFingerprint';
 
@@ -143,6 +143,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           const { user } = await authApi.getProfile(stored.accessToken);
           setAuth(user, stored);
+          identifyUser(user);
         } catch (err) {
           if (err instanceof ApiError && err.status === 401) {
             // Access token expired — try to refresh
@@ -153,6 +154,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               await persistTokens(newTokens);
               const { user } = await authApi.getProfile(newTokens.accessToken);
               setAuth(user, newTokens);
+              identifyUser(user);
             } catch (refreshErr) {
               // Only clear tokens if the server explicitly rejected the
               // refresh token (401/403). Network errors, timeouts, or
@@ -208,7 +210,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await persistTokens(tokens);
       setAuth(user, tokens);
       logLogin('email');
-      setAnalyticsUser(user.id ?? '');
+      identifyUser(user);
     },
     [setAuth],
   );
@@ -219,7 +221,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await persistTokens(tokens);
       setAuth(user, tokens);
       logSignUp('email');
-      setAnalyticsUser(user.id ?? '');
+      identifyUser(user);
     },
     [setAuth],
   );
@@ -234,7 +236,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await persistTokens(tokens);
       setAuth(user, tokens);
       logLogin(provider as 'google' | 'apple');
-      setAnalyticsUser(user.id ?? '');
+      identifyUser(user);
     },
     [setAuth],
   );
@@ -253,7 +255,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Update stored biometric token with the fresh one
       await enableBiometricLogin(result.email!, newTokens.refreshToken);
       logLogin('biometric');
-      setAnalyticsUser(user.id ?? '');
+      identifyUser(user);
       return true;
     } catch {
       // Biometric token expired — disable biometric login
@@ -277,6 +279,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { user, tokens } = await authApi.resetPassword(email, code, newPassword);
       await persistTokens(tokens);
       setAuth(user, tokens);
+      identifyUser(user);
     },
     [setAuth],
   );
