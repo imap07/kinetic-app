@@ -157,6 +157,27 @@ export interface PopularTeamsResponse {
   leagues?: LeagueFilter[];
 }
 
+export interface MmaFighter {
+  apiId: number;
+  name: string;
+  nickname?: string;
+  photo?: string;
+  nationality?: string;
+  category?: string;
+  wins?: number;
+  losses?: number;
+  draws?: number;
+}
+
+export interface PopularFightersResponse {
+  fighters: MmaFighter[];
+  total: number;
+  page: number;
+  pages: number;
+  hasMore: boolean;
+  weightClasses?: string[];
+}
+
 export const sportsApi = {
   getPopularTeams(token: string, sport: SportKey, opts: { page?: number; limit?: number; countries?: string[]; leagueIds?: number[]; search?: string } = {}) {
     const params = new URLSearchParams();
@@ -200,6 +221,16 @@ export const sportsApi = {
   getF1Teams(token: string, search?: string): Promise<F1TeamsResponse> {
     const qs = search ? `?search=${encodeURIComponent(search)}` : '';
     return apiClient.get<F1TeamsResponse>(`/sports/formula-1/popular-teams${qs}`, { token });
+  },
+
+  getPopularMmaFighters(token: string, opts: { page?: number; limit?: number; category?: string; search?: string } = {}): Promise<PopularFightersResponse> {
+    const params = new URLSearchParams();
+    if (opts.page) params.set('page', String(opts.page));
+    if (opts.limit) params.set('limit', String(opts.limit));
+    if (opts.category) params.set('category', opts.category);
+    if (opts.search) params.set('search', opts.search);
+    const qs = params.toString();
+    return apiClient.get<PopularFightersResponse>(`/sports/mma/popular-fighters${qs ? `?${qs}` : ''}`, { token });
   },
 
   getGameEvents(token: string, sport: SportKey, gameApiId: number) {

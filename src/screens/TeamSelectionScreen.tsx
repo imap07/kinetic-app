@@ -129,6 +129,9 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
   const [f1Teams, setF1Teams] = useState<import('../api/sports').F1Team[]>([]);
   const [f1Loading, setF1Loading] = useState(false);
   const [f1Search, setF1Search] = useState('');
+  const [mmaFighters, setMmaFighters] = useState<import('../api/sports').MmaFighter[]>([]);
+  const [mmaLoading, setMmaLoading] = useState(false);
+  const [mmaSearch, setMmaSearch] = useState('');
   const [f1DriverSheet, setF1DriverSheet] = useState(false);
   const [selectedDriverId, setSelectedDriverId] = useState<number | null>(null);
   const [selectedDriverName, setSelectedDriverName] = useState<string | null>(null);
@@ -179,6 +182,23 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
       .catch(e => { console.error('[F1] error:', e?.message || e); setF1Teams([]); })
       .finally(() => setF1Loading(false));
   }, [activeSport, tokens?.accessToken, f1DebouncedSearch]);
+
+  const [mmaDebouncedSearch, setMmaDebouncedSearch] = useState('');
+  const mmaSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (mmaSearchTimer.current) clearTimeout(mmaSearchTimer.current);
+    mmaSearchTimer.current = setTimeout(() => setMmaDebouncedSearch(mmaSearch), 350);
+    return () => { if (mmaSearchTimer.current) clearTimeout(mmaSearchTimer.current); };
+  }, [mmaSearch]);
+
+  useEffect(() => {
+    if (activeSport !== 'mma' || !tokens?.accessToken) return;
+    setMmaLoading(true);
+    sportsApi.getPopularMmaFighters(tokens.accessToken, { limit: 50, search: mmaDebouncedSearch.trim() || undefined })
+      .then(data => setMmaFighters(data.fighters || []))
+      .catch(() => setMmaFighters([]))
+      .finally(() => setMmaLoading(false));
+  }, [activeSport, tokens?.accessToken, mmaDebouncedSearch]);
 
   // Fetch page
   const fetchPage = useCallback(async (sport: SportKey) => {
@@ -353,21 +373,34 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
           <Ionicons name="search" size={16} color={colors.onSurfaceDim} />
           <TextInput
             style={styles.searchInput}
-            placeholder={activeSport === 'formula-1' ? 'Search constructors...' : 'Search teams...'}
+            placeholder={
+              activeSport === 'formula-1'
+                ? 'Search constructors...'
+                : activeSport === 'mma'
+                  ? t('teamSelection.searchFighters', 'Search fighters...')
+                  : 'Search teams...'
+            }
             placeholderTextColor={colors.onSurfaceDim}
-            value={activeSport === 'formula-1' ? f1Search : searchQuery}
-            onChangeText={activeSport === 'formula-1' ? setF1Search : setSearchQuery}
+            value={activeSport === 'formula-1' ? f1Search : activeSport === 'mma' ? mmaSearch : searchQuery}
+            onChangeText={activeSport === 'formula-1' ? setF1Search : activeSport === 'mma' ? setMmaSearch : setSearchQuery}
             autoCapitalize="none"
             autoCorrect={false}
           />
-          {(activeSport === 'formula-1' ? f1Search : searchQuery).length > 0 && (
-            <TouchableOpacity onPress={() => activeSport === 'formula-1' ? setF1Search('') : setSearchQuery('')} hitSlop={8}>
+          {(activeSport === 'formula-1' ? f1Search : activeSport === 'mma' ? mmaSearch : searchQuery).length > 0 && (
+            <TouchableOpacity
+              onPress={() => {
+                if (activeSport === 'formula-1') setF1Search('');
+                else if (activeSport === 'mma') setMmaSearch('');
+                else setSearchQuery('');
+              }}
+              hitSlop={8}
+            >
               <Ionicons name="close-circle" size={16} color={colors.onSurfaceDim} />
             </TouchableOpacity>
           )}
         </View>
 
-        {activeSport !== 'formula-1' && (
+        {activeSport !== 'formula-1' && activeSport !== 'mma' && (
           <TouchableOpacity
             style={[styles.filterBtn, hasActiveFilters && styles.filterBtnActive]}
             onPress={() => { setFilterTab('country'); setFilterSearch(''); setDraftFilters(state.filters); setShowFilterSheet(true); }}
@@ -485,6 +518,63 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>No constructors found</Text>
+              </View>
+            }
+            ListFooterComponent={<View style={{ height: 120 }} />}
+          />
+        )
+      ) : activeSport === 'mma' ? (
+        /* ── MMA: Fighter grid ── */
+        mmaLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={sportColor} />
+          </View>
+        ) : (
+          <FlatList
+            data={mmaFighters}
+            keyExtractor={(item) => `mma-${item.apiId}`}
+            renderItem={({ item }) => {
+              const isSelected = selectedTeams.has(item.apiId);
+              return (
+                <TouchableOpacity
+                  style={[styles.teamCard, isSelected && { borderColor: sportColor }]}
+                  onPress={() => toggleTeam({ apiId: item.apiId, name: item.name, logo: item.photo || '', sport: 'mma' as any })}
+                  activeOpacity={0.7}
+                >
+                  {isSelected && (
+                    <View style={[styles.teamCheck, { backgroundColor: sportColor }]}>
+                      <Ionicons name="checkmark" size={10} color="#0B0E11" />
+                    </View>
+                  )}
+                  {item.photo ? (
+                    <ExpoImage
+                      source={{ uri: item.photo }}
+                      style={styles.teamLogo}
+                      contentFit="cover"
+                      cachePolicy="memory-disk"
+                    />
+                  ) : (
+                    <View style={[styles.teamLogo, { alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceContainer }]}>
+                      <Ionicons name="person" size={24} color={colors.onSurfaceDim} />
+                    </View>
+                  )}
+                  <Text style={styles.teamName} numberOfLines={1}>{item.name}</Text>
+                  {item.category ? (
+                    <Text style={styles.teamLeague} numberOfLines={1}>{item.category}</Text>
+                  ) : item.nationality ? (
+                    <Text style={styles.teamLeague} numberOfLines={1}>{item.nationality}</Text>
+                  ) : null}
+                </TouchableOpacity>
+              );
+            }}
+            numColumns={2}
+            columnWrapperStyle={styles.teamRow}
+            contentContainerStyle={styles.teamsGrid}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Ionicons name="search-outline" size={36} color={colors.onSurfaceDim} />
+                <Text style={styles.emptyText}>{t('teamSelection.noFighters', 'No fighters found')}</Text>
               </View>
             }
             ListFooterComponent={<View style={{ height: 120 }} />}

@@ -618,7 +618,9 @@
   "teamSelection": {
     "step": "Paso 2 de 3",
     "title": "Elige tus favoritos",
-    "subtitle": "Sigue tus equipos y recibe picks personalizados."
+    "subtitle": "Sigue tus equipos y recibe picks personalizados.",
+    "searchFighters": "Buscar peleadores...",
+    "noFighters": "No se encontraron peleadores"
   },
   "acquisitionSource": {
     "step": "Paso 3 de 3",

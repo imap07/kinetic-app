@@ -618,7 +618,9 @@
   "teamSelection": {
     "step": "Step 2 of 3",
     "title": "Pick your favorites",
-    "subtitle": "Follow your teams and get personalized picks."
+    "subtitle": "Follow your teams and get personalized picks.",
+    "searchFighters": "Search fighters...",
+    "noFighters": "No fighters found"
   },
   "acquisitionSource": {
     "step": "Step 3 of 3",
