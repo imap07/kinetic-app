@@ -53,14 +53,14 @@ interface Props {
 export function SportSelectionScreen({ onComplete }: Props) {
   const { tokens } = useAuth();
   const { t } = useTranslation();
-  const [selected, setSelected] = useState<Set<SportKey>>(new Set(['football', 'basketball']));
+  const [selected, setSelected] = useState<Set<SportKey>>(new Set());
   const [saving, setSaving] = useState(false);
 
   const toggleSport = useCallback((key: SportKey) => {
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(key)) {
-        if (next.size > MIN_SPORTS) next.delete(key);
+        next.delete(key);
       } else {
         next.add(key);
       }

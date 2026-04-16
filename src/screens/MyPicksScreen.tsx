@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -283,22 +283,57 @@ export function MyPicksScreen() {
       });
   }, [stats]);
 
-  const fetchData = useCallback(async () => {
+  // Cache timestamps per (tab, filter) combination — avoids re-fetching
+  // picks on every tab or filter switch when data is still fresh.
+  // Stats are fetched separately with their own TTL (they don't change per tab).
+  const PICKS_TTL_MS = 60_000;   // 60 s
+  const STATS_TTL_MS = 120_000;  // 2 min
+  const picksFetchedAt = useRef<Record<string, number>>({});
+  const statsFetchedAt = useRef<number>(0);
+
+  const fetchData = useCallback(async (force = false) => {
     if (!tokens?.accessToken) return;
+    const now = Date.now();
+    const status = activeTab === 0 ? 'pending' : 'resolved';
+    const cacheKey = `${status}|${sportFilter ?? ''}`;
+
+    const picksStale = force || now - (picksFetchedAt.current[cacheKey] ?? 0) >= PICKS_TTL_MS;
+    const statsStale = force || now - statsFetchedAt.current >= STATS_TTL_MS;
+
+    if (!picksStale && !statsStale) {
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     try {
-      const status = activeTab === 0 ? 'pending' : 'resolved';
-      const pickParams: { status: 'pending' | 'resolved'; sport?: string } = { status };
-      if (sportFilter) pickParams.sport = sportFilter;
-      const promises: Promise<any>[] = [
-        predictionsApi.getMyPicks(tokens.accessToken, pickParams),
-        predictionsApi.getMyStats(tokens.accessToken),
-      ];
-      promises.push(predictionsApi.getDetailedStats(tokens.accessToken).catch(() => null));
+      const promises: Promise<any>[] = [];
+
+      if (picksStale) {
+        const pickParams: { status: 'pending' | 'resolved'; sport?: string } = { status };
+        if (sportFilter) pickParams.sport = sportFilter;
+        promises.push(predictionsApi.getMyPicks(tokens.accessToken, pickParams));
+      } else {
+        promises.push(Promise.resolve(null));
+      }
+
+      if (statsStale) {
+        promises.push(predictionsApi.getMyStats(tokens.accessToken));
+        promises.push(predictionsApi.getDetailedStats(tokens.accessToken).catch(() => null));
+      } else {
+        promises.push(Promise.resolve(null), Promise.resolve(null));
+      }
+
       const results = await Promise.all(promises);
-      setPredictions(results[0].predictions);
-      setStats(results[1]);
-      if (results[2]) {
-        setDetailedStats(results[2]);
+
+      if (results[0]) {
+        setPredictions(results[0].predictions);
+        picksFetchedAt.current[cacheKey] = Date.now();
+      }
+      if (results[1]) {
+        setStats(results[1]);
+        if (results[2]) setDetailedStats(results[2]);
+        statsFetchedAt.current = Date.now();
       }
     } catch (err) {
       Toast.show({ type: 'error', text1: t('picks.errorLoading'), text2: t('dashboard.pullToRetry') });
@@ -315,7 +350,7 @@ export function MyPicksScreen() {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchData();
+    fetchData(true); // force=true bypasses TTL on manual pull-to-refresh
   }, [fetchData]);
 
   const listHeader = (

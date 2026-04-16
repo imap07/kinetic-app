@@ -19,13 +19,14 @@ import type { SportKey } from '../api/sports';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ONBOARDING_COMPLETE_KEY } from './OnboardingScreen';
 import type { AcquisitionSourceKey } from './AcquisitionSourceScreen';
-import type { OnboardingFavoriteTeam } from '../navigation/types';
+import type { OnboardingFavoriteTeam, OnboardingFavoriteLeague } from '../navigation/types';
 
 type FavoriteTeam = OnboardingFavoriteTeam;
 
 interface Props {
   sports: SportKey[];
   favoriteTeams: FavoriteTeam[];
+  favoriteLeagues?: OnboardingFavoriteLeague[];
   // Null when the user skipped the "How did you hear about us?" step.
   acquisitionSource?: AcquisitionSourceKey | null;
   // Whether the user granted push notification permission during onboarding
@@ -58,6 +59,7 @@ const SPORT_LABELS: Record<string, string> = {
 export function OnboardingCompleteScreen({
   sports,
   favoriteTeams,
+  favoriteLeagues,
   acquisitionSource,
   permissionGranted,
   notificationScope,
@@ -85,6 +87,19 @@ export function OnboardingCompleteScreen({
           leagueApiId: ft.leagueApiId,
           leagueName: ft.leagueName,
         })),
+        // Only send favoriteLeagues when the user actually picked some —
+        // avoids sending an empty array to old backends that might not
+        // whitelist the field yet (the DTO accepts it, but `undefined`
+        // keeps the payload minimal).
+        ...(favoriteLeagues && favoriteLeagues.length > 0
+          ? {
+              favoriteLeagues: favoriteLeagues.map((fl) => ({
+                leagueApiId: fl.leagueApiId,
+                sport: fl.sport,
+                leagueName: fl.leagueName,
+              })),
+            }
+          : {}),
         ...(acquisitionSource ? { acquisitionSource } : {}),
       });
       onboardingSuccess = true;
@@ -143,7 +158,7 @@ export function OnboardingCompleteScreen({
     }
 
     onComplete();
-  }, [tokens?.accessToken, sports, favoriteTeams, acquisitionSource, permissionGranted, notificationScope, notificationTypes, onComplete, refreshProfile]);
+  }, [tokens?.accessToken, sports, favoriteTeams, favoriteLeagues, acquisitionSource, permissionGranted, notificationScope, notificationTypes, onComplete, refreshProfile]);
 
   return (
     <View style={styles.container}>
@@ -176,6 +191,17 @@ export function OnboardingCompleteScreen({
               {favoriteTeams.length} {favoriteTeams.length === 1 ? 'team' : 'teams'} selected
             </Text>
           </View>
+          {favoriteLeagues && favoriteLeagues.length > 0 && (
+            <>
+              <View style={styles.summaryDivider} />
+              <View style={styles.summaryRow}>
+                <Ionicons name="trophy" size={20} color={colors.primary} />
+                <Text style={styles.summaryText}>
+                  {favoriteLeagues.length} {favoriteLeagues.length === 1 ? 'league' : 'leagues'} selected
+                </Text>
+              </View>
+            </>
+          )}
           {notificationScope && (
             <>
               <View style={styles.summaryDivider} />

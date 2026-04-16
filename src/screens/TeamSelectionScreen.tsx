@@ -20,8 +20,8 @@ import { useTranslation } from 'react-i18next';
 import { colors } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import { sportsApi } from '../api/sports';
-import type { SportKey, LeagueFilter } from '../api/sports';
-import type { OnboardingFavoriteTeam } from '../navigation/types';
+import type { SportKey, LeagueFilter, SportLeague } from '../api/sports';
+import type { OnboardingFavoriteTeam, OnboardingFavoriteLeague } from '../navigation/types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_GAP = 10;
@@ -96,6 +96,9 @@ interface Props {
   onComplete: (data: {
     sports: SportKey[];
     favoriteTeams: OnboardingFavoriteTeam[];
+    // Leagues the user picked explicitly from the Leagues tab. Forwarded
+    // to /auth/onboarding so the backend can plant them on favoriteLeagues.
+    favoriteLeagues?: OnboardingFavoriteLeague[];
     favoriteDrivers?: { apiId: number; name: string; image: string; sport: 'formula-1' }[];
   }) => void;
   onBack?: () => void;
@@ -113,6 +116,12 @@ type SelectedTeamInfo = {
   leagueName?: string;
 };
 
+type SelectedLeagueInfo = {
+  sport: SportKey;
+  leagueName: string;
+  leagueLogo?: string;
+};
+
 export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Props) {
   const { tokens } = useAuth();
   const { t } = useTranslation();
@@ -121,7 +130,23 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
   // (e.g. a handball team and an MMA fighter that both have apiId=5).
   // The numeric apiId alone is not unique across sports.
   const [selectedTeams, setSelectedTeams] = useState<Map<string, SelectedTeamInfo & { apiId: number }>>(new Map());
+  // Keyed the same way as selectedTeams but points at a league apiId. A
+  // user can follow both "Real Madrid" and "La Liga" at the same time
+  // without conflict — they live on different Maps and both flow into
+  // the onboarding payload independently.
+  const [selectedLeagues, setSelectedLeagues] = useState<Map<string, SelectedLeagueInfo & { apiId: number }>>(new Map());
   const selectionKey = (sport: SportKey, apiId: number) => `${sport}-${apiId}`;
+  // Teams (current grid) vs Leagues (pick an entire competition). F1 has
+  // no "leagues" — only the championship — so we hide the toggle there
+  // and stay locked to 'teams'.
+  const [mode, setMode] = useState<'teams' | 'leagues'>('teams');
+  // Leagues data per sport, lazily loaded when the user flips to the
+  // Leagues tab. Featured-only — the backend returns the same curated
+  // list the dashboard uses for "show me something when the user hasn't
+  // picked anything", so the surface is consistent across onboarding and
+  // in-app discovery.
+  const [leaguesBySport, setLeaguesBySport] = useState<Record<string, SportLeague[]>>({});
+  const [leaguesLoadingBySport, setLeaguesLoadingBySport] = useState<Record<string, boolean>>({});
   const [sportStates, setSportStates] = useState<Record<string, SportState>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -168,14 +193,25 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
     return () => { if (searchTimer.current) clearTimeout(searchTimer.current); };
   }, [searchQuery]);
 
+  // When the search query changes, reset + reload the current sport.
+  // Do NOT reset on sport tab switch — cached data is preserved so
+  // switching back to a previously-loaded sport never re-fetches.
+  const prevSearchRef = useRef('');
   useEffect(() => {
-    // F1 and MMA have their own dedicated fetch branches (f1Teams / mmaFighters);
-    // the generic sportStates pipeline doesn't apply to them. Skip to avoid
-    // hitting /sports/{formula-1|mma}/popular-teams (which returns an
-    // empty / differently-shaped envelope) and polluting sportStates.
     if (activeSport === 'formula-1' || activeSport === 'mma') return;
-    resetAndReload(activeSport);
-  }, [activeSport, debouncedSearch]);
+    if (debouncedSearch === prevSearchRef.current) return; // no change
+    prevSearchRef.current = debouncedSearch;
+    resetAndReload(activeSport, undefined);
+  }, [debouncedSearch, activeSport]);
+
+  // When switching sport tabs, clear the shared search so the next sport
+  // doesn't inherit the previous sport's query.
+  const prevSportRef = useRef(activeSport);
+  useEffect(() => {
+    if (prevSportRef.current === activeSport) return;
+    prevSportRef.current = activeSport;
+    setSearchQuery('');
+  }, [activeSport]);
 
   const [f1DebouncedSearch, setF1DebouncedSearch] = useState('');
   const f1SearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -260,6 +296,60 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
     if (!state.loadingMore && state.hasMore && !state.loading) fetchPage(activeSport);
   }, [activeSport, sportStates, fetchPage]);
 
+  // ── Leagues mode ──────────────────────────────────────
+  // Reset mode back to 'teams' when switching sport tabs. F1 doesn't
+  // have a Leagues tab, so forcing it back here prevents a stale
+  // "leagues" state from the previous sport showing an empty grid.
+  useEffect(() => {
+    if (activeSport === 'formula-1') setMode('teams');
+  }, [activeSport]);
+
+  // Lazy-load featured leagues for the active sport when the user flips
+  // to the Leagues tab. Cached per sport so flipping tabs doesn't refetch.
+  useEffect(() => {
+    if (mode !== 'leagues') return;
+    if (activeSport === 'formula-1') return;
+    if (!tokens?.accessToken) return;
+    if (leaguesBySport[activeSport]) return; // already loaded
+    if (leaguesLoadingBySport[activeSport]) return;
+    setLeaguesLoadingBySport((prev) => ({ ...prev, [activeSport]: true }));
+    sportsApi
+      .getLeagues(tokens.accessToken, activeSport)
+      .then((data) => {
+        // Endpoint returns featured leagues only (sports.controller.getLeagues
+        // hits getFeaturedLeagues under the hood). Good enough for
+        // onboarding — we don't want to drown the user in 400 leagues.
+        setLeaguesBySport((prev) => ({ ...prev, [activeSport]: data || [] }));
+      })
+      .catch(() => {
+        setLeaguesBySport((prev) => ({ ...prev, [activeSport]: [] }));
+      })
+      .finally(() => {
+        setLeaguesLoadingBySport((prev) => ({ ...prev, [activeSport]: false }));
+      });
+  }, [mode, activeSport, tokens?.accessToken, leaguesBySport, leaguesLoadingBySport]);
+
+  const toggleLeague = useCallback(
+    (league: SportLeague, sport: SportKey) => {
+      setSelectedLeagues((prev) => {
+        const next = new Map(prev);
+        const key = selectionKey(sport, league.apiId);
+        if (next.has(key)) {
+          next.delete(key);
+        } else {
+          next.set(key, {
+            apiId: league.apiId,
+            sport,
+            leagueName: league.name,
+            leagueLogo: league.logo || '',
+          });
+        }
+        return next;
+      });
+    },
+    [],
+  );
+
   const toggleTeam = useCallback((team: PopularTeam) => {
     setSelectedTeams(prev => {
       const next = new Map(prev);
@@ -296,8 +386,13 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
 
   const state = getState(activeSport);
   const sportColor = SPORT_COLORS[activeSport] || colors.primary;
-  const totalSelected = selectedTeams.size;
-  const canContinue = totalSelected >= 1;
+  const teamsSelected = selectedTeams.size;
+  const leaguesSelected = selectedLeagues.size;
+  const totalSelected = teamsSelected + leaguesSelected;
+  // Skip is allowed — the backend layer-3 onboarding fallback plants
+  // top-N featured leagues per sport so the dashboard is never empty.
+  // We surface a "recommended" hint but never block the flow.
+  const canContinue = true;
   const hasActiveFilters = state.filters.countries.length > 0 || state.filters.leagueIds.length > 0;
 
   // Filter countries/leagues in sheet by search query
@@ -356,6 +451,12 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
           <View style={{ flex: 1 }}>
             <Text style={styles.stepLabel}>{t('teamSelection.step', 'STEP 2 OF 4')}</Text>
             <Text style={styles.title}>{t('teamSelection.title', 'Pick your favorites')}</Text>
+            <Text style={styles.recommendation}>
+              {t(
+                'teamSelection.recommendation',
+                'Recommended: follow at least one team per sport to get match alerts. You can skip and set this up later.',
+              )}
+            </Text>
           </View>
         </View>
       </View>
@@ -383,7 +484,64 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
         })}
       </ScrollView>
 
-      {/* Search + Filter row */}
+      {/* Mode tabs: Teams / Leagues. Hidden for F1 since F1 has no
+          league concept (single championship). Segmented style with
+          underline indicator for a cleaner, more native look. */}
+      {activeSport !== 'formula-1' && (
+        <View style={styles.modeTabs}>
+          <TouchableOpacity
+            style={styles.modeTab}
+            onPress={() => setMode('teams')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.modeTabInner}>
+              <Ionicons
+                name="people"
+                size={16}
+                color={mode === 'teams' ? sportColor : colors.onSurfaceVariant}
+              />
+              <Text style={[styles.modeTabText, mode === 'teams' && { color: sportColor }]}>
+                {activeSport === 'mma'
+                  ? t('teamSelection.modeFighters', 'Fighters')
+                  : t('teamSelection.modeTeams', 'Teams')}
+              </Text>
+            </View>
+            <View
+              style={[
+                styles.modeTabIndicator,
+                { backgroundColor: mode === 'teams' ? sportColor : 'transparent' },
+              ]}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.modeTab}
+            onPress={() => setMode('leagues')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.modeTabInner}>
+              <Ionicons
+                name="trophy"
+                size={16}
+                color={mode === 'leagues' ? sportColor : colors.onSurfaceVariant}
+              />
+              <Text style={[styles.modeTabText, mode === 'leagues' && { color: sportColor }]}>
+                {t('teamSelection.modeLeagues', 'Leagues')}
+              </Text>
+            </View>
+            <View
+              style={[
+                styles.modeTabIndicator,
+                { backgroundColor: mode === 'leagues' ? sportColor : 'transparent' },
+              ]}
+            />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Search + Filter row — only visible in Teams mode. Leagues mode
+          shows a short curated list, so search would be overkill. */}
+      {mode === 'teams' && (
+      <>
       <View style={styles.filterRow}>
         <View style={styles.searchContainer}>
           <Ionicons name="search" size={16} color={colors.onSurfaceDim} />
@@ -468,9 +626,68 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
           </TouchableOpacity>
         </ScrollView>
       )}
+      </>
+      )}
 
-      {/* Teams grid */}
-      {activeSport === 'formula-1' ? (
+      {/* Grid: Leagues mode shows featured leagues, Teams mode delegates
+          to the F1 / MMA / generic branches below. */}
+      {mode === 'leagues' && activeSport !== 'formula-1' ? (
+        leaguesLoadingBySport[activeSport] ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={sportColor} />
+          </View>
+        ) : (
+          <FlatList
+            data={leaguesBySport[activeSport] || []}
+            keyExtractor={(item) => `lg-${activeSport}-${item.apiId}`}
+            renderItem={({ item }) => {
+              const isSelected = selectedLeagues.has(selectionKey(activeSport, item.apiId));
+              return (
+                <TouchableOpacity
+                  style={[styles.teamCard, isSelected && { borderColor: sportColor }]}
+                  onPress={() => toggleLeague(item, activeSport)}
+                  activeOpacity={0.7}
+                >
+                  {isSelected && (
+                    <View style={[styles.teamCheck, { backgroundColor: sportColor }]}>
+                      <Ionicons name="checkmark" size={10} color="#0B0E11" />
+                    </View>
+                  )}
+                  {item.logo ? (
+                    <ExpoImage
+                      source={{ uri: item.logo }}
+                      style={styles.teamLogo}
+                      contentFit="contain"
+                      cachePolicy="memory-disk"
+                    />
+                  ) : (
+                    <View style={[styles.teamLogo, { alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceContainer }]}>
+                      <Ionicons name="trophy" size={22} color={colors.onSurfaceDim} />
+                    </View>
+                  )}
+                  <Text style={styles.teamName} numberOfLines={1}>{item.name}</Text>
+                  {item.countryName ? (
+                    <Text style={styles.teamLeague} numberOfLines={1}>{item.countryName}</Text>
+                  ) : null}
+                </TouchableOpacity>
+              );
+            }}
+            numColumns={2}
+            columnWrapperStyle={styles.teamRow}
+            contentContainerStyle={styles.teamsGrid}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Ionicons name="trophy-outline" size={36} color={colors.onSurfaceDim} />
+                <Text style={styles.emptyText}>
+                  {t('teamSelection.noLeagues', 'No leagues available yet')}
+                </Text>
+              </View>
+            }
+            ListFooterComponent={<View style={{ height: 120 }} />}
+          />
+        )
+      ) : activeSport === 'formula-1' ? (
         /* ── F1: Constructor grid ── */
         f1Loading ? (
           <View style={styles.loadingContainer}>
@@ -847,8 +1064,22 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
         <View style={styles.ctaSummary}>
           <Text style={styles.ctaSummaryText}>
             {totalSelected === 0
-              ? 'Select at least 1 team to continue'
-              : `${totalSelected} team${totalSelected !== 1 ? 's' : ''} selected`}
+              ? t(
+                  'teamSelection.skipHint',
+                  "Nothing picked — we'll set up featured leagues for you",
+                )
+              : leaguesSelected === 0
+                ? teamsSelected === 1
+                  ? t('teamSelection.teamsSelectedOne', '1 team selected')
+                  : t('teamSelection.teamsSelectedMany', '{{count}} teams selected', { count: teamsSelected })
+                : teamsSelected === 0
+                  ? leaguesSelected === 1
+                    ? t('teamSelection.leaguesSelectedOne', '1 league selected')
+                    : t('teamSelection.leaguesSelectedMany', '{{count}} leagues selected', { count: leaguesSelected })
+                  : t('teamSelection.mixedSelected', '{{teams}} teams · {{leagues}} leagues', {
+                      teams: teamsSelected,
+                      leagues: leaguesSelected,
+                    })}
           </Text>
         </View>
         <TouchableOpacity
@@ -861,18 +1092,26 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
               leagueApiId: info.leagueApiId,
               leagueName: info.leagueName,
             }));
+            const favoriteLeagues: OnboardingFavoriteLeague[] = Array.from(selectedLeagues.values()).map(info => ({
+              leagueApiId: info.apiId,
+              sport: info.sport,
+              leagueName: info.leagueName,
+              leagueLogo: info.leagueLogo,
+            }));
             const favoriteDrivers = selectedDriverId ? [{ apiId: selectedDriverId, name: selectedDriverName || '', image: selectedDriverImage || '', sport: 'formula-1' as const }] : [];
-            onComplete({ sports: selectedSports, favoriteTeams, favoriteDrivers });
+            onComplete({ sports: selectedSports, favoriteTeams, favoriteLeagues, favoriteDrivers });
           }}
-          disabled={!canContinue} style={styles.ctaWrap}
+          style={styles.ctaWrap}
         >
           <LinearGradient
-            colors={canContinue ? ['#E8FF8A', '#CAFD00'] : ['rgba(202,253,0,0.08)', 'rgba(202,253,0,0.04)']}
+            colors={['#E8FF8A', '#CAFD00']}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
             style={styles.ctaBtn}
           >
-            <Text style={[styles.ctaText, canContinue && styles.ctaTextActive]}>
-              {t('sportSelection.next', 'NEXT')} →
+            <Text style={[styles.ctaText, styles.ctaTextActive]}>
+              {totalSelected === 0
+                ? `${t('teamSelection.skipCta', 'SKIP')} →`
+                : `${t('sportSelection.next', 'NEXT')} →`}
             </Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -900,6 +1139,10 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceGrotesk_700Bold', fontSize: 24,
     color: colors.onSurface, letterSpacing: -0.5,
   },
+  recommendation: {
+    fontFamily: 'Inter_400Regular', fontSize: 12, lineHeight: 17,
+    color: colors.onSurfaceVariant, marginTop: 6,
+  },
 
   tabsScroll: { flexGrow: 0, flexShrink: 0 },
   tabsContainer: { paddingHorizontal: 20, paddingVertical: 8, gap: 8, alignItems: 'center' },
@@ -910,6 +1153,37 @@ const styles = StyleSheet.create({
     marginRight: 4, alignSelf: 'flex-start',
   },
   tabText: { fontFamily: 'Inter_500Medium', fontSize: 13, color: colors.onSurfaceVariant },
+
+  modeTabs: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginTop: 4,
+    marginBottom: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.outline,
+  },
+  modeTab: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  modeTabInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+  },
+  modeTabText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 14,
+    color: colors.onSurfaceVariant,
+    letterSpacing: 0.3,
+  },
+  modeTabIndicator: {
+    height: 2,
+    width: '60%',
+    borderRadius: 2,
+    marginTop: -1,
+  },
 
   filterRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginBottom: 6, gap: 8 },
   searchContainer: {

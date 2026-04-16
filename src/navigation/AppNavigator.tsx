@@ -14,6 +14,7 @@ import {
   LeaguesStackParamList,
   ProfileStackParamList,
   OnboardingFavoriteTeam,
+  OnboardingFavoriteLeague,
 } from './types';
 import { useAuth } from '../contexts/AuthContext';
 import { usePushNotifications } from '../hooks/usePushNotifications';
@@ -53,6 +54,7 @@ import { CoinLeagueDetailScreen } from '../screens/CoinLeagueDetailScreen';
 import { GiftcardRedeemScreen } from '../screens/GiftcardRedeemScreen';
 import { EditFavoriteSportsScreen } from '../screens/EditFavoriteSportsScreen';
 import { EditFavoriteLeaguesScreen } from '../screens/EditFavoriteLeaguesScreen';
+import { EditFavoriteTeamsScreen } from '../screens/EditFavoriteTeamsScreen';
 import { ChangePasswordScreen } from '../screens/ChangePasswordScreen';
 import { QuestsScreen } from '../screens/QuestsScreen';
 import { QRScannerScreen } from '../screens/QRScannerScreen';
@@ -140,6 +142,7 @@ function ProfileNavigator() {
       <ProfileStack.Screen name="EditProfile" component={EditProfileScreen} />
       <ProfileStack.Screen name="EditFavoriteSports" component={EditFavoriteSportsScreen} />
       <ProfileStack.Screen name="EditFavoriteLeagues" component={EditFavoriteLeaguesScreen} />
+      <ProfileStack.Screen name="EditFavoriteTeams" component={EditFavoriteTeamsScreen} />
       <ProfileStack.Screen name="ChangePassword" component={ChangePasswordScreen} />
       <ProfileStack.Screen name="Notifications" component={NotificationsScreen} />
       <ProfileStack.Screen name="NotificationPreferences" component={NotificationPreferencesScreen} />
@@ -206,10 +209,11 @@ function TeamSelectionWrapper({ navigation, route }: any) {
   const selectedSports: string[] = route?.params?.selectedSports || ['football'];
 
   // After picking teams we route to notification setup before the attribution step.
-  const handleComplete = useCallback((data: { sports: string[]; favoriteTeams: OnboardingFavoriteTeam[]; favoriteDrivers?: any[] }) => {
+  const handleComplete = useCallback((data: { sports: string[]; favoriteTeams: OnboardingFavoriteTeam[]; favoriteLeagues?: OnboardingFavoriteLeague[]; favoriteDrivers?: any[] }) => {
     navigation.replace('NotificationSetup', {
       sports: data.sports,
       favoriteTeams: data.favoriteTeams,
+      favoriteLeagues: data.favoriteLeagues,
     });
   }, [navigation]);
 
@@ -228,12 +232,14 @@ function TeamSelectionWrapper({ navigation, route }: any) {
 function NotificationSetupWrapper({ navigation, route }: any) {
   const sports: string[] = route?.params?.sports || [];
   const favoriteTeams: OnboardingFavoriteTeam[] = route?.params?.favoriteTeams || [];
+  const favoriteLeagues: OnboardingFavoriteLeague[] | undefined = route?.params?.favoriteLeagues;
 
   const handleComplete = useCallback(
     (result: NotificationSetupResult) => {
       navigation.replace('AcquisitionSource', {
         sports,
         favoriteTeams,
+        favoriteLeagues,
         permissionGranted: result.permissionGranted,
         notificationScope: result.scope,
         notificationTypes: {
@@ -244,7 +250,7 @@ function NotificationSetupWrapper({ navigation, route }: any) {
         },
       });
     },
-    [navigation, sports, favoriteTeams],
+    [navigation, sports, favoriteTeams, favoriteLeagues],
   );
 
   const handleBack = useCallback(() => {
@@ -255,7 +261,15 @@ function NotificationSetupWrapper({ navigation, route }: any) {
     }
   }, [navigation, sports]);
 
-  return <NotificationSetupScreen onComplete={handleComplete} onBack={handleBack} />;
+  const hasFavorites = favoriteTeams.length > 0 || (favoriteLeagues?.length ?? 0) > 0;
+
+  return (
+    <NotificationSetupScreen
+      onComplete={handleComplete}
+      onBack={handleBack}
+      hasFavorites={hasFavorites}
+    />
+  );
 }
 
 // ─── Acquisition Source Wrapper ──────────────────────────
@@ -264,6 +278,7 @@ function NotificationSetupWrapper({ navigation, route }: any) {
 function AcquisitionSourceWrapper({ navigation, route }: any) {
   const sports: string[] = route?.params?.sports || [];
   const favoriteTeams: OnboardingFavoriteTeam[] = route?.params?.favoriteTeams || [];
+  const favoriteLeagues: OnboardingFavoriteLeague[] | undefined = route?.params?.favoriteLeagues;
   const permissionGranted = route?.params?.permissionGranted;
   const notificationScope = route?.params?.notificationScope;
   const notificationTypes = route?.params?.notificationTypes;
@@ -273,13 +288,14 @@ function AcquisitionSourceWrapper({ navigation, route }: any) {
       navigation.replace('OnboardingComplete', {
         sports,
         favoriteTeams,
+        favoriteLeagues,
         acquisitionSource: source,
         permissionGranted,
         notificationScope,
         notificationTypes,
       });
     },
-    [navigation, sports, favoriteTeams, permissionGranted, notificationScope, notificationTypes],
+    [navigation, sports, favoriteTeams, favoriteLeagues, permissionGranted, notificationScope, notificationTypes],
   );
 
   const handleBack = useCallback(() => {
@@ -295,6 +311,7 @@ function AcquisitionSourceWrapper({ navigation, route }: any) {
 function OnboardingCompleteWrapper({ navigation, route }: any) {
   const sports = route?.params?.sports || [];
   const favoriteTeams = route?.params?.favoriteTeams || [];
+  const favoriteLeagues: OnboardingFavoriteLeague[] | undefined = route?.params?.favoriteLeagues;
   const acquisitionSource: AcquisitionSourceKey | null = route?.params?.acquisitionSource ?? null;
   const permissionGranted = route?.params?.permissionGranted;
   const notificationScope = route?.params?.notificationScope;
@@ -308,6 +325,7 @@ function OnboardingCompleteWrapper({ navigation, route }: any) {
     <OnboardingCompleteScreen
       sports={sports}
       favoriteTeams={favoriteTeams}
+      favoriteLeagues={favoriteLeagues}
       acquisitionSource={acquisitionSource}
       permissionGranted={permissionGranted}
       notificationScope={notificationScope}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,9 @@ import {
   Share,
   ActivityIndicator,
   Image,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -47,6 +50,13 @@ const ACHIEVEMENT_ICON_MAP: Record<string, keyof typeof Ionicons.glyphMap> = {
   trophy: 'trophy',
   medal: 'medal',
 };
+
+// LayoutAnimation on Android needs an opt-in. Safe to call multiple
+// times — guards internally. Keeps the "Show more locked" expand/
+// collapse feeling fluid instead of snappy.
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 function formatOutcome(p: PredictionData, tFn: (key: string) => string): string {
   if (p.predictionType === 'exact_score' && p.predictedHomeScore != null && p.predictedAwayScore != null) {
@@ -105,6 +115,75 @@ function AchievementIcon({ item }: { item: Achievement }) {
   );
 }
 
+// ── Achievement Full Card ──
+// Extracted from the inline render in ProfileScreen so both the
+// "Almost there" and "Locked (expanded)" buckets can reuse the same
+// card treatment without duplicating JSX.
+function AchievementFullCard({
+  a,
+  t,
+}: {
+  a: Achievement;
+  t: (key: string, opts?: Record<string, unknown>) => string;
+}) {
+  const progressPct =
+    a.progress && a.progress.target > 0
+      ? Math.min((a.progress.current / a.progress.target) * 100, 100)
+      : a.unlocked
+        ? 100
+        : 0;
+
+  return (
+    <View
+      style={[
+        styles.achieveCard,
+        a.unlocked && styles.achieveCardUnlocked,
+      ]}
+    >
+      <AchievementIcon item={a} />
+      <View style={{ flex: 1 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text
+            style={[
+              styles.achieveTitle,
+              !a.unlocked && { color: 'rgba(248,249,254,0.5)' },
+            ]}
+          >
+            {t(`achievements.${a.key}.title`, { defaultValue: a.title })}
+          </Text>
+          {a.unlocked && (
+            <View style={styles.achieveUnlockedBadge}>
+              <Ionicons name="checkmark" size={11} color="#E3FFE4" />
+            </View>
+          )}
+        </View>
+        <Text style={styles.achieveDesc}>
+          {t(`achievements.${a.key}.description`, { defaultValue: a.description })}
+        </Text>
+
+        {!a.unlocked && a.progress && a.progress.target > 0 && (
+          <View style={styles.achieveProgressRow}>
+            <View style={styles.achieveProgressTrack}>
+              <View
+                style={[styles.achieveProgressFill, { width: `${progressPct}%` }]}
+              />
+            </View>
+            <Text style={styles.achieveProgressText}>
+              {a.progress.current}/{a.progress.target}
+            </Text>
+          </View>
+        )}
+
+        <Text style={styles.achievePoints}>
+          {a.unlocked
+            ? t('profile.ptsEarnedBadge', { count: a.points })
+            : t('profile.pts', { count: a.points })}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 // ── Main Screen ──
 
 export function ProfileScreen() {
@@ -118,6 +197,41 @@ export function ProfileScreen() {
   const [historyLoading, setHistoryLoading] = useState(true);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [achievementsLoading, setAchievementsLoading] = useState(true);
+  // Keep the long tail of locked achievements hidden behind a tap.
+  // Default to collapsed so the Profile scroll stays short — the user
+  // can peek at the full list with a single press.
+  const [lockedExpanded, setLockedExpanded] = useState(false);
+
+  // Bucket achievements for the UX rework: the screen used to render
+  // one vertical card per achievement (18+ rows when the user had only
+  // unlocked a handful). We now split into three buckets with distinct
+  // affordances:
+  //   • unlocked  → horizontal "trophy case" carousel (proud moment)
+  //   • inProgress → up to 3 "Almost there" cards sorted by % complete
+  //   • locked    → collapsible tail so it doesn't dominate the scroll
+  const { unlocked, inProgress, locked } = useMemo(() => {
+    const u: Achievement[] = [];
+    const p: Achievement[] = [];
+    const l: Achievement[] = [];
+    for (const a of achievements) {
+      if (a.unlocked) u.push(a);
+      else if (a.progress && a.progress.target > 0 && a.progress.current > 0) p.push(a);
+      else l.push(a);
+    }
+    // Sort in-progress by how close the user is to unlocking (desc),
+    // so "Almost there" actually surfaces the closest wins first.
+    p.sort((a, b) => {
+      const ra = a.progress.current / Math.max(1, a.progress.target);
+      const rb = b.progress.current / Math.max(1, b.progress.target);
+      return rb - ra;
+    });
+    return { unlocked: u, inProgress: p, locked: l };
+  }, [achievements]);
+
+  const toggleLockedExpanded = useCallback(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setLockedExpanded((v) => !v);
+  }, []);
 
   const tierKey = user?.tier ?? 'rookie';
   const tierInfo = TIER_CONFIG[tierKey] ?? TIER_CONFIG.rookie;
@@ -392,65 +506,116 @@ export function ProfileScreen() {
             <Text style={styles.achieveDesc}>{t('profile.noAchievements')}</Text>
           </View>
         ) : (
-          achievements.map((a) => {
-            const progressPct =
-              a.progress && a.progress.target > 0
-                ? Math.min((a.progress.current / a.progress.target) * 100, 100)
-                : a.unlocked
-                  ? 100
-                  : 0;
-
-            return (
-              <View
-                key={a.key}
-                style={[
-                  styles.achieveCard,
-                  a.unlocked && styles.achieveCardUnlocked,
-                ]}
-              >
-                <AchievementIcon item={a} />
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Text
-                      style={[
-                        styles.achieveTitle,
-                        !a.unlocked && { color: 'rgba(248,249,254,0.5)' },
-                      ]}
-                    >
-                      {t(`achievements.${a.key}.title`, { defaultValue: a.title })}
-                    </Text>
-                    {a.unlocked && (
-                      <View style={styles.achieveUnlockedBadge}>
-                        <Ionicons name="checkmark" size={11} color="#E3FFE4" />
-                      </View>
-                    )}
-                  </View>
-                  <Text style={styles.achieveDesc}>{t(`achievements.${a.key}.description`, { defaultValue: a.description })}</Text>
-
-                  {/* Progress bar */}
-                  {!a.unlocked && a.progress && a.progress.target > 0 && (
-                    <View style={styles.achieveProgressRow}>
-                      <View style={styles.achieveProgressTrack}>
-                        <View
-                          style={[
-                            styles.achieveProgressFill,
-                            { width: `${progressPct}%` },
-                          ]}
-                        />
-                      </View>
-                      <Text style={styles.achieveProgressText}>
-                        {a.progress.current}/{a.progress.target}
-                      </Text>
-                    </View>
-                  )}
-
-                  <Text style={styles.achievePoints}>
-                    {a.unlocked ? t('profile.ptsEarnedBadge', { count: a.points }) : t('profile.pts', { count: a.points })}
+          <>
+            {/* ── Trophy case (unlocked) ──
+                Horizontal swipe of earned medallions. Compact gradient
+                circles + title let the user see everything they've won
+                at a glance, without eating vertical space. */}
+            {unlocked.length > 0 && (
+              <>
+                <View style={styles.subGroupHeader}>
+                  <Ionicons name="trophy" size={13} color={colors.primary} />
+                  <Text style={styles.subGroupTitle}>
+                    {t('profile.trophyCase', 'Trophy case')}
                   </Text>
                 </View>
-              </View>
-            );
-          })
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.trophyRow}
+                >
+                  {unlocked.map((a) => {
+                    const iconName = ACHIEVEMENT_ICON_MAP[a.icon] ?? 'ribbon';
+                    return (
+                      <View key={a.key} style={styles.trophyChip}>
+                        {/* Icon + overlaid checkmark sit inside a
+                            relative wrapper so the badge pins to the
+                            icon (not the whole chip) and stays aligned
+                            even if the title wraps to two lines. */}
+                        <View style={styles.trophyChipIconContainer}>
+                          <LinearGradient
+                            colors={['#F3FFCA', '#CAFD00']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={styles.trophyChipIconWrap}
+                          >
+                            <Ionicons name={iconName} size={26} color="#4A5E00" />
+                          </LinearGradient>
+                          {/* Bigger, higher-contrast checkmark: a
+                              20×20 bright-green disc with a white
+                              border so it reads cleanly against both
+                              the lime icon and the dark page. */}
+                          <View style={styles.trophyChipCheck}>
+                            <Ionicons name="checkmark-sharp" size={13} color="#FFFFFF" />
+                          </View>
+                        </View>
+                        <Text style={styles.trophyChipTitle} numberOfLines={2}>
+                          {t(`achievements.${a.key}.title`, { defaultValue: a.title })}
+                        </Text>
+                        <Text style={styles.trophyChipPoints}>
+                          +{a.points}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </ScrollView>
+              </>
+            )}
+
+            {/* ── Almost there (in-progress, up to 3) ──
+                The actionable bucket. Full card treatment so the user
+                sees exactly what to do next. */}
+            {inProgress.length > 0 && (
+              <>
+                <View style={styles.subGroupHeader}>
+                  <Ionicons name="flame" size={13} color={colors.primary} />
+                  <Text style={styles.subGroupTitle}>
+                    {t('profile.almostThere', 'Almost there')}
+                  </Text>
+                </View>
+                {inProgress.slice(0, 3).map((a) => (
+                  <AchievementFullCard key={a.key} a={a} t={t} />
+                ))}
+              </>
+            )}
+
+            {/* ── Locked (collapsed tail) ──
+                Don't bury the long list entirely — tease it behind a
+                single tap so the user can explore. Uses LayoutAnimation
+                for a fluid expand/collapse. */}
+            {locked.length > 0 && (
+              <>
+                <TouchableOpacity
+                  style={styles.lockedToggle}
+                  onPress={toggleLockedExpanded}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="lock-closed" size={13} color={colors.onSurfaceVariant} />
+                  <Text style={styles.lockedToggleText}>
+                    {lockedExpanded
+                      ? t('profile.hideLocked', 'Hide locked')
+                      : t('profile.moreToUnlock', {
+                          count: locked.length,
+                          defaultValue: '{{count}} more to unlock',
+                        })}
+                  </Text>
+                  <Feather
+                    name={lockedExpanded ? 'chevron-up' : 'chevron-down'}
+                    size={14}
+                    color={colors.onSurfaceVariant}
+                    style={{ marginLeft: 'auto' }}
+                  />
+                </TouchableOpacity>
+                {lockedExpanded && (
+                  <View>
+                    {locked.map((a) => (
+                      <AchievementFullCard key={a.key} a={a} t={t} />
+                    ))}
+                  </View>
+                )}
+              </>
+            )}
+          </>
         )}
 
         {/* ── Prediction History ── */}
@@ -533,6 +698,23 @@ export function ProfileScreen() {
                 {user?.favoriteSports && user.favoriteSports.length > 0 && (
                   <Text style={styles.prefsSubtext}>
                     {t('profile.sportsSelected', { count: user.favoriteSports.length })}
+                  </Text>
+                )}
+              </View>
+            </View>
+            <Feather name="chevron-right" size={16} color={colors.onSurfaceVariant} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.settingsRow}
+            onPress={() => profileNav.navigate('EditFavoriteTeams')}
+          >
+            <View style={styles.settingsRowLeft}>
+              <MaterialCommunityIcons name="shield-outline" size={18} color={colors.onSurface} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.settingsRowText}>{t('profile.favoriteTeams')}</Text>
+                {user?.favoriteTeams && user.favoriteTeams.length > 0 && (
+                  <Text style={styles.prefsSubtext}>
+                    {t('profile.teamsSelected', { count: user.favoriteTeams.length })}
                   </Text>
                 )}
               </View>
@@ -998,6 +1180,102 @@ const styles = StyleSheet.create({
     color: colors.primary,
     minWidth: 80,
     textAlign: 'right',
+  },
+  // ── Achievements sub-groups (Trophy case / Almost there / Locked) ──
+  subGroupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    // Bumped from 14 → 22 so the "Trophy case" / "Almost there" /
+    // locked-toggle headers breathe against the summary progress bar
+    // (and each other) instead of stacking tight.
+    marginTop: 22,
+    marginBottom: 10,
+  },
+  subGroupTitle: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 11,
+    color: colors.onSurfaceVariant,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  // Trophy case — horizontal scroll of earned medallions.
+  trophyRow: {
+    paddingHorizontal: 16,
+    gap: 10,
+    paddingBottom: 4,
+  },
+  trophyChip: {
+    width: 78,
+    alignItems: 'center',
+    gap: 6,
+  },
+  // Positioning wrapper so the checkmark badge pins to the icon
+  // (rather than the whole chip) and stays put when the title
+  // wraps to two lines.
+  trophyChipIconContainer: {
+    width: 58,
+    height: 58,
+    position: 'relative',
+  },
+  trophyChipIconWrap: {
+    width: 58,
+    height: 58,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  trophyChipCheck: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    // Brighter vibrant green (vs the prior #006D37 which fell into the
+    // chip's lime gradient) + white icon + page-colored ring so the
+    // badge actually reads as a separate "earned" marker.
+    backgroundColor: '#15C65A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.background,
+  },
+  trophyChipTitle: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 11,
+    lineHeight: 14,
+    color: colors.onSurface,
+    textAlign: 'center',
+    letterSpacing: -0.1,
+  },
+  trophyChipPoints: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 9,
+    color: colors.primary,
+    letterSpacing: 0.5,
+  },
+  // Locked collapsible row.
+  lockedToggle: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(69,72,76,0.2)',
+    backgroundColor: 'rgba(69,72,76,0.08)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  lockedToggleText: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 12,
+    letterSpacing: 0.5,
+    color: colors.onSurfaceVariant,
+    textTransform: 'uppercase',
   },
   achieveCard: {
     marginHorizontal: 16,

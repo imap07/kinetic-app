@@ -137,6 +137,8 @@ export interface PopularTeam {
   apiId: number;
   name: string;
   logo: string;
+  countryName?: string;
+  leagueApiId?: number;
   leagueName?: string;
 }
 

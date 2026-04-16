@@ -30,6 +30,11 @@ export interface NotificationSetupResult {
 interface Props {
   onComplete: (result: NotificationSetupResult) => void;
   onBack?: () => void;
+  // `my_teams` mode is only meaningful when the user actually picked
+  // teams or leagues earlier. If they skipped both, the option would
+  // silently yield zero notifications, so we dim it, flip the default
+  // scope to `all_games`, and move the "Recommended" badge.
+  hasFavorites?: boolean;
 }
 
 interface NotifToggle {
@@ -76,13 +81,13 @@ const TOGGLES: NotifToggle[] = [
   },
 ];
 
-export function NotificationSetupScreen({ onComplete, onBack }: Props) {
+export function NotificationSetupScreen({ onComplete, onBack, hasFavorites = true }: Props) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [permissionChecked, setPermissionChecked] = useState(false);
   const [requesting, setRequesting] = useState(false);
-  const [scope, setScope] = useState<NotificationScope>('my_teams');
+  const [scope, setScope] = useState<NotificationScope>(hasFavorites ? 'my_teams' : 'all_games');
   const [toggles, setToggles] = useState<Record<string, boolean>>({
     gameStart: true,
     liveScores: false,
@@ -149,6 +154,9 @@ export function NotificationSetupScreen({ onComplete, onBack }: Props) {
         <Text style={styles.subtitle}>
           {t('notificationSetup.subtitle')}
         </Text>
+        <Text style={[styles.subtitle, { marginTop: 8, fontSize: 12 }]}>
+          {t('notificationSetup.scopeHint')}
+        </Text>
       </View>
 
       <ScrollView
@@ -196,26 +204,65 @@ export function NotificationSetupScreen({ onComplete, onBack }: Props) {
           <Text style={styles.sectionTitle}>{t('notificationSetup.notifyAbout')}</Text>
 
           <TouchableOpacity
-            style={[styles.scopeCard, scope === 'my_teams' && styles.scopeCardActive]}
-            onPress={() => setScope('my_teams')}
+            style={[
+              styles.scopeCard,
+              scope === 'my_teams' && styles.scopeCardActive,
+              !hasFavorites && styles.scopeCardDisabled,
+            ]}
+            onPress={() => {
+              if (!hasFavorites) {
+                Alert.alert(
+                  t('notificationSetup.noFavoritesAlertTitle', 'No favorites selected'),
+                  t(
+                    'notificationSetup.noFavoritesAlertMessage',
+                    "You didn't pick any teams or leagues, so \"My Teams\" wouldn't send you anything. Go back to pick some, or choose \"All Games\" to get updates for every game in your favorite sports.",
+                  ),
+                  [
+                    {
+                      text: t('notificationSetup.noFavoritesAlertStay', 'Use All Games'),
+                      onPress: () => setScope('all_games'),
+                    },
+                    ...(onBack
+                      ? [
+                          {
+                            text: t('notificationSetup.noFavoritesAlertBack', 'Go back'),
+                            onPress: onBack,
+                          },
+                        ]
+                      : []),
+                  ],
+                );
+                return;
+              }
+              setScope('my_teams');
+            }}
             activeOpacity={0.8}
             accessibilityRole="radio"
-            accessibilityState={{ checked: scope === 'my_teams' }}
+            accessibilityState={{ checked: scope === 'my_teams', disabled: !hasFavorites }}
           >
-            <View style={styles.scopeRadio}>
+            <View style={[styles.scopeRadio, !hasFavorites && styles.scopeRadioDisabled]}>
               {scope === 'my_teams' && <View style={styles.scopeRadioDot} />}
             </View>
             <View style={styles.scopeTextWrap}>
-              <Text style={styles.scopeLabel}>{t('notificationSetup.myTeams')}</Text>
+              <Text style={[styles.scopeLabel, !hasFavorites && styles.scopeLabelDisabled]}>
+                {t('notificationSetup.myTeams')}
+              </Text>
               <Text style={styles.scopeDesc}>
-                {t('notificationSetup.myTeamsDesc')}
+                {hasFavorites
+                  ? t('notificationSetup.myTeamsDesc')
+                  : t(
+                      'notificationSetup.myTeamsNoneSelected',
+                      'No teams or leagues picked — tap to go back, or use All Games.',
+                    )}
               </Text>
             </View>
-            <View style={[styles.scopeBadge, { backgroundColor: colors.primary + '18' }]}>
-              <Text style={[styles.scopeBadgeText, { color: colors.primary }]}>
-                {t('notificationSetup.recommended')}
-              </Text>
-            </View>
+            {hasFavorites && (
+              <View style={[styles.scopeBadge, { backgroundColor: colors.primary + '18' }]}>
+                <Text style={[styles.scopeBadgeText, { color: colors.primary }]}>
+                  {t('notificationSetup.recommended')}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -234,6 +281,13 @@ export function NotificationSetupScreen({ onComplete, onBack }: Props) {
                 {t('notificationSetup.allGamesDesc')}
               </Text>
             </View>
+            {!hasFavorites && (
+              <View style={[styles.scopeBadge, { backgroundColor: colors.primary + '18' }]}>
+                <Text style={[styles.scopeBadgeText, { color: colors.primary }]}>
+                  {t('notificationSetup.recommended')}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
 
           {/* Toggle types */}
@@ -395,6 +449,12 @@ const styles = StyleSheet.create({
   scopeCardActive: {
     borderColor: colors.primary,
   },
+  scopeCardDisabled: {
+    opacity: 0.55,
+  },
+  scopeLabelDisabled: {
+    color: colors.onSurfaceVariant,
+  },
   scopeRadio: {
     width: 22,
     height: 22,
@@ -403,6 +463,9 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  scopeRadioDisabled: {
+    borderColor: colors.onSurfaceVariant,
   },
   scopeRadioDot: {
     width: 12,

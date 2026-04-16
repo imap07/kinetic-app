@@ -8,15 +8,28 @@ import type { SportKey } from '../api/sports';
 interface SportTabsProps {
   activeSport: SportKey;
   onSportChange: (sport: SportKey) => void;
-  /** If provided, only show these sports (from user.favoriteSports) */
+  /**
+   * List of sport keys the user follows (typically `user.favoriteSports`).
+   *
+   * - `undefined` → "unfiltered" caller (e.g. LiveScreen), show every sport.
+   * - `[]` or a populated array → "filtered" caller that wants to strictly
+   *   respect the user's preferences. In that case we fall back to the
+   *   free sport (`football`) instead of showing every tab, so a user who
+   *   only picked soccer doesn't see basketball/hockey/etc. in the Home
+   *   or Coin Leagues tabs.
+   */
   visibleSports?: string[];
 }
 
 export function SportTabs({ activeSport, onSportChange, visibleSports }: SportTabsProps) {
   const { t } = useTranslation();
   const tabs = useMemo(() => {
-    if (!visibleSports || visibleSports.length === 0) return SPORT_TABS;
-    return SPORT_TABS.filter((t) => visibleSports.includes(t.key));
+    // Unfiltered caller — show everything.
+    if (visibleSports === undefined) return SPORT_TABS;
+    // Filtered caller with no favorites yet — default to the free sport
+    // instead of reverting to the full list. Matches EditFavoriteTeams.
+    const effective = visibleSports.length === 0 ? ['football'] : visibleSports;
+    return SPORT_TABS.filter((t) => effective.includes(t.key));
   }, [visibleSports]);
 
   return (

@@ -345,6 +345,37 @@ export function EditFavoriteLeaguesScreen() {
   const isFootball = activeSport === 'football';
   const isF1 = activeSport === 'formula-1';
 
+  /**
+   * Flat map across every loaded sport so the "Your favorites" strip can
+   * resolve a chip from an id regardless of which sport tab the league
+   * lives in. Football specifically: `leagueCache.football` only holds
+   * featured leagues, so we also merge in `footballByRegion` (all
+   * regions flattened) to catch any user-selected id that isn't in the
+   * featured set.
+   */
+  const allLoadedLeaguesById = useMemo(() => {
+    const map = new Map<number, UnifiedLeague>();
+    for (const leagues of Object.values(leagueCache)) {
+      for (const lg of leagues) if (!map.has(lg.apiId)) map.set(lg.apiId, lg);
+    }
+    for (const leagues of Object.values(footballByRegion)) {
+      for (const lg of leagues) if (!map.has(lg.apiId)) map.set(lg.apiId, lg);
+    }
+    return map;
+  }, [leagueCache, footballByRegion]);
+
+  const selectedChips = useMemo(() => {
+    // Order is stable: follow the user's current `favoriteLeagues` order
+    // so adding/removing doesn't shuffle what the user sees.
+    const base = user?.favoriteLeagues?.map((l) => l.leagueApiId) ?? [];
+    const extras = Array.from(selected).filter((id) => !base.includes(id));
+    const order = [...base.filter((id) => selected.has(id)), ...extras];
+    return order.map((id) => ({
+      apiId: id,
+      meta: allLoadedLeaguesById.get(id),
+    }));
+  }, [selected, user?.favoriteLeagues, allLoadedLeaguesById]);
+
   // F1: check if user is following the full season (any F1 competition selected)
   const f1Following = useMemo(() => {
     if (!isF1) return false;
@@ -485,6 +516,62 @@ export function EditFavoriteLeaguesScreen() {
         onSelect={handleSportChange}
         leagueCounts={leagueCounts}
       />
+
+      {/* "Your favorites" quick-remove strip. Cross-sport visibility so a
+          user who accidentally kept (or had auto-injected) a league on a
+          tab they never open can still see and prune it at a glance. */}
+      {selectedChips.length > 0 && (
+        <View style={styles.favStrip}>
+          <View style={styles.favStripHeader}>
+            <Text style={styles.favStripTitle}>
+              {t('editFavorites.yourFavoritesTitle', 'Your favorites')}
+              {' '}
+              <Text style={styles.favStripCount}>({selectedChips.length})</Text>
+            </Text>
+            <Text style={styles.favStripHint}>
+              {t('editFavorites.tapToRemove', 'Tap × to remove')}
+            </Text>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.favStripScroll}
+          >
+            {selectedChips.map(({ apiId, meta }) => (
+              <TouchableOpacity
+                key={`fav-${apiId}`}
+                style={styles.favChip}
+                activeOpacity={0.7}
+                onPress={() => toggleLeague(apiId)}
+                accessibilityRole="button"
+                accessibilityLabel={t('editFavorites.removeFromFavorites', {
+                  league: meta?.name || `#${apiId}`,
+                  defaultValue: 'Remove {{league}} from favorites',
+                })}
+              >
+                {meta?.logo ? (
+                  <ExpoImage
+                    source={{ uri: meta.logo }}
+                    style={styles.favChipLogo}
+                    contentFit="contain"
+                    cachePolicy="memory-disk"
+                  />
+                ) : (
+                  <MaterialCommunityIcons
+                    name="trophy-outline"
+                    size={14}
+                    color={colors.onSurfaceVariant}
+                  />
+                )}
+                <Text style={styles.favChipText} numberOfLines={1}>
+                  {meta?.name || `#${apiId}`}
+                </Text>
+                <Ionicons name="close" size={14} color={colors.onSurfaceVariant} />
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
 
       {/* Search — hidden for F1 (single toggle, no need to search) */}
       {!isF1 && (
@@ -703,6 +790,65 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.primary,
     letterSpacing: 0.5,
+  },
+
+  // "Your favorites" quick-remove strip
+  favStrip: {
+    paddingTop: 10,
+    paddingBottom: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.04)',
+    marginBottom: 4,
+  },
+  favStripHeader: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    marginBottom: 8,
+  },
+  favStripTitle: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 12,
+    color: colors.onSurface,
+    letterSpacing: 1,
+  },
+  favStripCount: {
+    color: colors.onSurfaceVariant,
+  },
+  favStripHint: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 11,
+    color: colors.onSurfaceVariant,
+  },
+  favStripScroll: {
+    paddingHorizontal: 16,
+    gap: 8,
+    paddingBottom: 6,
+  },
+  favChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingLeft: 8,
+    paddingRight: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: colors.surfaceContainer,
+    borderWidth: 1,
+    borderColor: colors.outline,
+    maxWidth: 180,
+  },
+  favChipLogo: {
+    width: 16,
+    height: 16,
+    borderRadius: 3,
+  },
+  favChipText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12,
+    color: colors.onSurface,
+    maxWidth: 120,
   },
 
   // Sport tabs

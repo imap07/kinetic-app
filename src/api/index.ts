@@ -57,4 +57,6 @@ export type { RewardStatus } from './rewards';
 export { streaksApi } from './streaks';
 export type { StreakInfo, UseShieldResponse } from './streaks';
 export { challengesApi } from './challenges';
+export { favoriteTeamsApi } from './favoriteTeams';
+export type { FavoriteTeam, FavoriteTeamsResponse, BulkAddLeagueTeamsResponse } from './favoriteTeams';
 export type { DailyChallenge, ChallengeType, ChallengeStatus, SubmitChallengeResponse, ChallengeHistoryEntry } from './challenges';

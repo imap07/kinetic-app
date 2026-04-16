@@ -22,6 +22,14 @@ export interface User {
   bestStreak: number;
   favoriteSports: string[];
   favoriteLeagues: { leagueApiId: number; addedAt: string }[];
+  favoriteTeams: {
+    sport: string;
+    teamApiId: number;
+    teamName: string;
+    teamLogo?: string;
+    leagueApiId?: number;
+    leagueName?: string;
+  }[];
   pushNotifications: boolean;
   publicProfile: boolean;
   isPremium: boolean;
@@ -293,6 +301,15 @@ export const authApi = {
         teamLogo?: string;
         // Optional — F1 constructors have no leagueApiId.
         leagueApiId?: number;
+        leagueName?: string;
+      }[];
+      // Leagues the user picked directly in the Leagues tab, independent
+      // of any team pick. Merged into favoriteLeagues on the backend
+      // alongside team-derived leagues. Optional for back-compat with
+      // clients that don't expose the Leagues tab yet.
+      favoriteLeagues?: {
+        leagueApiId: number;
+        sport: string;
         leagueName?: string;
       }[];
       // Self-reported attribution collected during onboarding. Optional

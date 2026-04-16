@@ -290,9 +290,16 @@ export function DashboardScreen({ navigation }: Props) {
     }
   }, [tokens?.accessToken, todayChallenge, challengeSubmitting, t]);
 
-  // Re-fetch stats every time the dashboard gains focus (e.g. after submitting a prediction)
+  // Re-fetch stats when the dashboard gains focus, but only if data is stale
+  // (older than 60 s). SSE keeps stats live while the screen is open — this
+  // guard prevents hammering the API on every back-navigation / tab switch.
+  const lastFocusFetchRef = useRef<number>(0);
+  const FOCUS_TTL_MS = 60_000; // 60 s
   useFocusEffect(
     useCallback(() => {
+      const now = Date.now();
+      if (now - lastFocusFetchRef.current < FOCUS_TTL_MS) return;
+      lastFocusFetchRef.current = now;
       fetchUserStats();
       fetchPickedIds();
       fetchStreakInfo();
@@ -426,13 +433,19 @@ export function DashboardScreen({ navigation }: Props) {
   const isF1 = activeSport === 'formula-1';
   const hasLiveOrUpcoming = liveGames.length > 0 || upcomingGames.length > 0;
 
-  // F1: Fetch championship standings
+  // F1: Fetch championship standings — cached for 5 min so switching
+  // sport tabs back to F1 doesn't re-fetch on every visit.
+  const f1StandingsFetchedAt = useRef<number>(0);
+  const F1_STANDINGS_TTL_MS = 5 * 60_000;
   useEffect(() => {
     if (!isF1 || !tokens?.accessToken) return;
+    const now = Date.now();
+    if (f1Standings.length > 0 && now - f1StandingsFetchedAt.current < F1_STANDINGS_TTL_MS) return;
     sportsApi.getChampionshipStandings(tokens.accessToken, 'formula-1')
       .then((res: any) => {
         setF1Standings(res?.drivers || []);
         setF1Constructors(res?.constructors || []);
+        f1StandingsFetchedAt.current = Date.now();
       })
       .catch(() => {});
   }, [isF1, tokens?.accessToken]);

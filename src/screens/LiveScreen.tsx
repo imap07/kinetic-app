@@ -475,6 +475,42 @@ export function LiveScreen() {
                 ? t('live.pullToRefresh')
                 : t('live.tryDifferentDate')}
             </Text>
+            {/* CTAs to fatten the favorites list when the schedule comes up
+                empty. Both buttons jump across the tab navigator into the
+                Profile stack — the editors already know how to read/write
+                user.favoriteTeams / favoriteLeagues. */}
+            <View style={styles.emptyActionsRow}>
+              <TouchableOpacity
+                style={styles.emptyActionBtn}
+                activeOpacity={0.7}
+                onPress={() =>
+                  rootNav.navigate('Main', {
+                    screen: 'Profile',
+                    params: { screen: 'EditFavoriteTeams' },
+                  } as any)
+                }
+              >
+                <Ionicons name="shield-outline" size={15} color={colors.primary} />
+                <Text style={styles.emptyActionText}>
+                  {t('live.manageTeams')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.emptyActionBtn}
+                activeOpacity={0.7}
+                onPress={() =>
+                  rootNav.navigate('Main', {
+                    screen: 'Profile',
+                    params: { screen: 'EditFavoriteLeagues' },
+                  } as any)
+                }
+              >
+                <Ionicons name="trophy-outline" size={15} color={colors.primary} />
+                <Text style={styles.emptyActionText}>
+                  {t('live.manageLeagues')}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
 
@@ -718,5 +754,32 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.onSurfaceVariant,
     textAlign: 'center',
+  },
+  // Row of CTA pills under the empty-state subtitle. Side-by-side on
+  // wide enough screens; wraps on narrow ones so neither pill gets
+  // squished.
+  emptyActionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 12,
+  },
+  emptyActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: 'transparent',
+  },
+  emptyActionText: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 12,
+    letterSpacing: 0.5,
+    color: colors.primary,
   },
 });

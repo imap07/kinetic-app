@@ -64,11 +64,15 @@ export function CoinLeaguesScreen() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
-  // Sports the user follows (for filter chips)
+  // Sports the user follows (for filter chips). We strictly respect
+  // `user.favoriteSports` — if the user only picked soccer during
+  // onboarding, only the "All" + "Soccer" chips should appear. When
+  // favorites are empty we fall back to the free sport instead of
+  // surfacing every sport, matching the Home (SportTabs) and the Favorite
+  // Teams editor.
   const sportFilters = useMemo(() => {
-    const userSports = user?.favoriteSports?.length
-      ? SPORT_TABS.filter((s) => user.favoriteSports!.includes(s.key))
-      : SPORT_TABS;
+    const favs = user?.favoriteSports?.length ? user.favoriteSports : ['football'];
+    const userSports = SPORT_TABS.filter((s) => favs.includes(s.key));
     return [{ key: 'all', name: t('leagues.allSports') }, ...userSports];
   }, [user?.favoriteSports, t]);
 

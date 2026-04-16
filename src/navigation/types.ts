@@ -43,6 +43,7 @@ export type ProfileStackParamList = {
   EditProfile: undefined;
   EditFavoriteSports: undefined;
   EditFavoriteLeagues: undefined;
+  EditFavoriteTeams: undefined;
   ChangePassword: undefined;
   Notifications: undefined;
   NotificationPreferences: undefined;
@@ -101,6 +102,19 @@ export type OnboardingFavoriteTeam = {
   leagueName?: string;
 };
 
+/**
+ * A league the user picked directly in the Leagues tab (independent of
+ * any team pick). Threaded through the onboarding flow alongside
+ * favoriteTeams and surfaced on the backend as `favoriteLeagues` on the
+ * onboarding DTO.
+ */
+export type OnboardingFavoriteLeague = {
+  leagueApiId: number;
+  sport: string;
+  leagueName?: string;
+  leagueLogo?: string;
+};
+
 // Root navigator that switches between Auth, Onboarding, and Main
 export type RootStackParamList = {
   Auth: NavigatorScreenParams<AuthStackParamList>;
@@ -110,10 +124,12 @@ export type RootStackParamList = {
   NotificationSetup: {
     sports: string[];
     favoriteTeams: OnboardingFavoriteTeam[];
+    favoriteLeagues?: OnboardingFavoriteLeague[];
   };
   AcquisitionSource: {
     sports: string[];
     favoriteTeams: OnboardingFavoriteTeam[];
+    favoriteLeagues?: OnboardingFavoriteLeague[];
     permissionGranted?: boolean;
     notificationScope?: 'my_teams' | 'all_games';
     notificationTypes?: {
@@ -126,6 +142,7 @@ export type RootStackParamList = {
   OnboardingComplete: {
     sports: string[];
     favoriteTeams: OnboardingFavoriteTeam[];
+    favoriteLeagues?: OnboardingFavoriteLeague[];
     acquisitionSource?: AcquisitionSourceKey | null;
     permissionGranted?: boolean;
     notificationScope?: 'my_teams' | 'all_games';

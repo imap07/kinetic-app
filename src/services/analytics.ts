@@ -1,16 +1,26 @@
-import analytics from '@react-native-firebase/analytics';
+import {
+  getAnalytics,
+  logEvent,
+  logLogin as fbLogLogin,
+  logSignUp as fbLogSignUp,
+  setUserId,
+  setUserProperty,
+} from '@react-native-firebase/analytics';
 import type { User } from '../api/auth';
 
 /**
  * Centralized analytics service for Kinetic.
- * All custom event names and params go through here
- * so they're easy to find and consistent.
+ * Uses the Firebase modular API (v22+). All custom event names and
+ * params go through here so they're easy to find and consistent.
  */
+
+// Singleton — getAnalytics() is cheap but we call it a lot
+const ga = () => getAnalytics();
 
 // ─── Screen tracking ───────────────────────────────────────
 export async function logScreenView(screenName: string, screenClass?: string) {
   try {
-    await analytics().logScreenView({
+    await logEvent(ga(), 'screen_view', {
       screen_name: screenName,
       screen_class: screenClass ?? screenName,
     });
@@ -22,32 +32,32 @@ export async function logScreenView(screenName: string, screenClass?: string) {
 // ─── Auth events ───────────────────────────────────────────
 export async function logLogin(method: 'email' | 'google' | 'apple' | 'biometric') {
   try {
-    await analytics().logLogin({ method });
+    await fbLogLogin(ga(), { method });
   } catch (_) {}
 }
 
 export async function logSignUp(method: 'email' | 'google' | 'apple') {
   try {
-    await analytics().logSignUp({ method });
+    await fbLogSignUp(ga(), { method });
   } catch (_) {}
 }
 
 export async function logLogout() {
   try {
-    await analytics().logEvent('logout');
+    await logEvent(ga(), 'logout');
   } catch (_) {}
 }
 
 // ─── Sport / Dashboard events ──────────────────────────────
 export async function logSportTabViewed(sport: string) {
   try {
-    await analytics().logEvent('sport_tab_viewed', { sport });
+    await logEvent(ga(), 'sport_tab_viewed', { sport });
   } catch (_) {}
 }
 
 export async function logLeagueDetailOpened(sport: string, leagueApiId: number, leagueName: string) {
   try {
-    await analytics().logEvent('league_detail_opened', {
+    await logEvent(ga(), 'league_detail_opened', {
       sport,
       league_api_id: leagueApiId,
       league_name: leagueName,
@@ -58,7 +68,7 @@ export async function logLeagueDetailOpened(sport: string, leagueApiId: number, 
 // ─── Prediction / Pick events ──────────────────────────────
 export async function logPickAttempted(sport: string, leagueApiId: number, leagueName: string) {
   try {
-    await analytics().logEvent('pick_attempted', {
+    await logEvent(ga(), 'pick_attempted', {
       sport,
       league_api_id: leagueApiId,
       league_name: leagueName,
@@ -68,7 +78,7 @@ export async function logPickAttempted(sport: string, leagueApiId: number, leagu
 
 export async function logPickCompleted(sport: string, leagueApiId: number, pickType: string) {
   try {
-    await analytics().logEvent('pick_completed', {
+    await logEvent(ga(), 'pick_completed', {
       sport,
       league_api_id: leagueApiId,
       pick_type: pickType,
@@ -78,14 +88,14 @@ export async function logPickCompleted(sport: string, leagueApiId: number, pickT
 
 export async function logPickBlockedNoData(sport: string) {
   try {
-    await analytics().logEvent('pick_blocked_no_data', { sport });
+    await logEvent(ga(), 'pick_blocked_no_data', { sport });
   } catch (_) {}
 }
 
 // ─── Paywall / Subscription events ─────────────────────────
 export async function logPaywallShown(trigger: string, sportName?: string) {
   try {
-    await analytics().logEvent('paywall_shown', {
+    await logEvent(ga(), 'paywall_shown', {
       trigger,
       sport_name: sportName ?? 'unknown',
     });
@@ -94,13 +104,13 @@ export async function logPaywallShown(trigger: string, sportName?: string) {
 
 export async function logSubscriptionStart(plan: string) {
   try {
-    await analytics().logEvent('subscription_start', { plan });
+    await logEvent(ga(), 'subscription_start', { plan });
   } catch (_) {}
 }
 
 export async function logSubscriptionCancel() {
   try {
-    await analytics().logEvent('subscription_cancel');
+    await logEvent(ga(), 'subscription_cancel');
   } catch (_) {}
 }
 
@@ -118,10 +128,11 @@ export async function logSubscriptionCancel() {
 //   - max 25 user properties per project
 export async function setAnalyticsUser(userId: string, properties?: Record<string, string>) {
   try {
-    await analytics().setUserId(userId);
+    const a = ga();
+    await setUserId(a, userId);
     if (properties) {
       for (const [key, value] of Object.entries(properties)) {
-        await analytics().setUserProperty(key, value);
+        await setUserProperty(a, key, value);
       }
     }
   } catch (_) {}
@@ -145,6 +156,6 @@ export async function identifyUser(user: Pick<User, 'id' | 'tier' | 'isPremium' 
 
 export async function clearAnalyticsUser() {
   try {
-    await analytics().setUserId(null);
+    await setUserId(ga(), null);
   } catch (_) {}
 }
