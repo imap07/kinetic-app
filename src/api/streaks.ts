@@ -14,6 +14,21 @@ export interface UseShieldResponse {
   shieldsRemaining: number;
 }
 
+export interface StreakLeaderboardEntry {
+  rank: number;
+  userId: string;
+  displayName: string;
+  avatar: string | null;
+  tier: string;
+  currentStreak: number;
+  bestStreak: number;
+}
+
+export interface StreakLeaderboardResponse {
+  generatedAt: string;
+  board: StreakLeaderboardEntry[];
+}
+
 export const streaksApi = {
   getStreakInfo(token: string) {
     return apiClient.get<StreakInfo>('/streaks/me', { token });
@@ -21,5 +36,11 @@ export const streaksApi = {
 
   useStreakShield(token: string) {
     return apiClient.post<UseShieldResponse>('/streaks/use-shield', undefined, { token });
+  },
+
+  // Public leaderboard — no token required. Users with
+  // publicProfile:false are excluded server-side.
+  getLeaderboard() {
+    return apiClient.get<StreakLeaderboardResponse>('/streaks/leaderboard');
   },
 };

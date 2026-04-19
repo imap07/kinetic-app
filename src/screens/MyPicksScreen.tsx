@@ -23,6 +23,7 @@ import { predictionsApi, SPORT_TABS } from '../api';
 import type { PredictionData, MyStatsResponse, DetailedStatsResponse } from '../api';
 import type { RootStackParamList } from '../navigation/types';
 import { AdBanner } from '../components/AdBanner';
+import { SharePickCard } from '../components/SharePickCard';
 
 const TABS = ['active', 'history'] as const;
 
@@ -284,6 +285,12 @@ function PredictionCard({ prediction }: { prediction: PredictionData }) {
           ) : null}
           {prediction.pointsAwarded > 0 && (
             <Text style={cardStyles.pointsText}>{t('picks.points', { pts: prediction.pointsAwarded })}</Text>
+          )}
+          {/* Share button — only on WON picks. Users share wins, not
+              losses; offering Share on a loss is bad vibes and we'd
+              just be asking them to publicize a bad call. */}
+          {prediction.status === 'won' && (
+            <SharePickCard prediction={prediction} />
           )}
         </View>
       ) : (

@@ -361,7 +361,13 @@ export function ProfileScreen() {
                   <Text style={styles.editBtnText}>{t('profile.editProfile')}</Text>
                 </LinearGradient>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
+              <TouchableOpacity
+                style={styles.shareBtn}
+                onPress={handleShare}
+                accessibilityRole="button"
+                accessibilityLabel="Share profile"
+                hitSlop={8}
+              >
                 <Feather name="share-2" size={18} color={colors.onSurface} />
               </TouchableOpacity>
             </View>
@@ -420,18 +426,34 @@ export function ProfileScreen() {
         </View>
 
         {/* ── Active Streak ── */}
-        <View style={[styles.statCard, styles.streakCard]}>
+        <TouchableOpacity
+          style={[styles.statCard, styles.streakCard]}
+          onPress={() => profileNav.navigate('StreakLeaderboard')}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel={t('profile.viewStreakBoard', {
+            defaultValue: 'View public streak leaderboard',
+          })}
+        >
           <View style={styles.statIconRow}>
             <View style={styles.streakIconBox}>
               <MaterialCommunityIcons name="fire" size={18} color={colors.tertiaryLight} />
             </View>
             <Text style={styles.statMiniLabel}>{t('profile.activeStreak')}</Text>
+            {/* Tiny chevron telegraphs tappability; the whole card
+                navigates to the public leaderboard. */}
+            <Feather
+              name="chevron-right"
+              size={16}
+              color={colors.onSurfaceVariant}
+              style={{ marginLeft: 'auto' }}
+            />
           </View>
           <Text style={styles.streakValue}>
             {activeStreak}{' '}
             <Text style={styles.streakUnit}>{t('profile.matches')}</Text>
           </Text>
-        </View>
+        </TouchableOpacity>
 
         {/* ── Subscription ── */}
         <View style={styles.statCard}>

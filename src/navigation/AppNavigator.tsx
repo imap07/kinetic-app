@@ -52,6 +52,7 @@ import { CoinStoreScreen } from '../screens/CoinStoreScreen';
 import { CoinLeaguesScreen } from '../screens/CoinLeaguesScreen';
 import { CoinLeagueDetailScreen } from '../screens/CoinLeagueDetailScreen';
 import { GiftcardRedeemScreen } from '../screens/GiftcardRedeemScreen';
+import { StreakLeaderboardScreen } from '../screens/StreakLeaderboardScreen';
 import { EditFavoriteSportsScreen } from '../screens/EditFavoriteSportsScreen';
 import { EditFavoriteLeaguesScreen } from '../screens/EditFavoriteLeaguesScreen';
 import { EditFavoriteTeamsScreen } from '../screens/EditFavoriteTeamsScreen';
@@ -151,6 +152,7 @@ function ProfileNavigator() {
       <ProfileStack.Screen name="WalletRewards" component={WalletRewardsScreen} />
       <ProfileStack.Screen name="CoinStore" component={CoinStoreScreen} />
       <ProfileStack.Screen name="GiftcardRedeem" component={GiftcardRedeemScreen} />
+      <ProfileStack.Screen name="StreakLeaderboard" component={StreakLeaderboardScreen} />
     </ProfileStack.Navigator>
   );
 }

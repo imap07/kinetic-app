@@ -40,6 +40,9 @@ import { logSportTabViewed } from '../services/analytics';
 import { AdBanner } from '../components/AdBanner';
 import { RewardedAdButton } from '../components/RewardedAdButton';
 import { useAds } from '../contexts/AdContext';
+import { NextUpHero } from '../components/NextUpHero';
+import { GuidedFirstPickOverlay } from '../components/GuidedFirstPickOverlay';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type Props = {
   navigation: NativeStackNavigationProp<HomeStackParamList, 'DashboardHome'>;
@@ -433,6 +436,66 @@ export function DashboardScreen({ navigation }: Props) {
   const isF1 = activeSport === 'formula-1';
   const hasLiveOrUpcoming = liveGames.length > 0 || upcomingGames.length > 0;
 
+  // ── "Next up for you" hero selection ──────────────────────
+  // Priority 1: an upcoming game involving any favorite team that
+  //             hasn't been picked yet. Strongest pull.
+  // Priority 2: the next upcoming game in the active sport.
+  //
+  // Kept pure + memoized so the hero doesn't flicker across renders.
+  // F1 skips this section — the championship / race-weekend card
+  // already serves the same role and double-surfacing would be noise.
+  const favTeamIds = useMemo(
+    () =>
+      new Set(
+        (user?.favoriteTeams || [])
+          .filter((t) => t.sport === activeSport)
+          .map((t) => t.teamApiId),
+      ),
+    [user?.favoriteTeams, activeSport],
+  );
+
+  const nextUpGame = useMemo(() => {
+    if (isF1) return null;
+    const pool = upcomingGames.filter((g) => !pickedGameIds.has(g.apiId));
+    if (pool.length === 0) return null;
+    // Priority 1: favorite-team match
+    const withFav = pool.find(
+      (g) =>
+        favTeamIds.has(g.homeTeam?.apiId) || favTeamIds.has(g.awayTeam?.apiId),
+    );
+    if (withFav) return { game: withFav, isFavoriteTeam: true };
+    // Priority 2: nearest upcoming
+    return { game: pool[0], isFavoriteTeam: false };
+  }, [isF1, upcomingGames, pickedGameIds, favTeamIds]);
+
+  // Guided first-pick — one-shot overlay after onboarding completion.
+  // AsyncStorage flag stays true forever once the user acknowledges,
+  // so re-logins don't re-trigger. Safe to mount unconditionally;
+  // the overlay self-checks visibility state.
+  const [guidedFirstPickVisible, setGuidedFirstPickVisible] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const seen = await AsyncStorage.getItem('kinetic.guidedFirstPick.seen');
+        if (cancelled) return;
+        // Only show on a user that just finished onboarding (no picks yet).
+        const isNewUser = (user?.totalPredictions ?? 0) === 0;
+        if (!seen && isNewUser) setGuidedFirstPickVisible(true);
+      } catch {
+        /* AsyncStorage unavailable — silently skip */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.totalPredictions]);
+
+  const dismissGuidedFirstPick = useCallback(() => {
+    setGuidedFirstPickVisible(false);
+    AsyncStorage.setItem('kinetic.guidedFirstPick.seen', '1').catch(() => {});
+  }, []);
+
   // F1: Fetch championship standings — cached for 5 min so switching
   // sport tabs back to F1 doesn't re-fetch on every visit.
   const f1StandingsFetchedAt = useRef<number>(0);
@@ -786,6 +849,19 @@ export function DashboardScreen({ navigation }: Props) {
               </TouchableOpacity>
             ))}
           </View>
+        )}
+
+        {/* "Next up for you" hero — surfaces the single most
+            relevant upcoming game (favorite team > nearest upcoming).
+            Renders above the Live/Today sections so the user lands
+            on actionable content immediately. Non-F1 only; F1 has
+            its own race-weekend hero above. */}
+        {!isF1 && nextUpGame && (
+          <NextUpHero
+            game={nextUpGame.game}
+            isFavoriteTeam={nextUpGame.isFavoriteTeam}
+            onPress={() => handleMatchPress(nextUpGame.game)}
+          />
         )}
 
         {/* Non-F1: Live games */}
@@ -1664,6 +1740,13 @@ export function DashboardScreen({ navigation }: Props) {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* One-shot post-onboarding tutorial. Shows once per device
+          (AsyncStorage gate) for users with zero lifetime picks. */}
+      <GuidedFirstPickOverlay
+        visible={guidedFirstPickVisible}
+        onDismiss={dismissGuidedFirstPick}
+      />
     </View>
   );
 }

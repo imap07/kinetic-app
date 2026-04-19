@@ -52,6 +52,7 @@ export type ProfileStackParamList = {
   WalletRewards: undefined;
   CoinStore: undefined;
   GiftcardRedeem: undefined;
+  StreakLeaderboard: undefined;
 };
 
 // Live tab nested stack

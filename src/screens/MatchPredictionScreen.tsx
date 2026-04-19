@@ -1249,7 +1249,13 @@ export function MatchPredictionScreen({ navigation }: Props) {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            hitSlop={8}
+          >
             <Ionicons name="chevron-back" size={22} color={colors.onSurface} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{t('matchPrediction.matchDetails')}</Text>
@@ -1266,7 +1272,13 @@ export function MatchPredictionScreen({ navigation }: Props) {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            hitSlop={8}
+          >
             <Ionicons name="chevron-back" size={22} color={colors.onSurface} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{t('matchPrediction.matchDetails')}</Text>
@@ -2357,6 +2369,9 @@ export function MatchPredictionScreen({ navigation }: Props) {
                       predType === 'goes_the_distance' && !distanceAnswer && styles.submitButtonDisabled,
                     ]}
                     onPress={handleSubmitPrediction}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('matchPrediction.submitPrediction')}
+                    accessibilityState={{ disabled: submitting }}
                     disabled={
                       submitting ||
                       (predType === 'result' && !selectedOutcome) ||
