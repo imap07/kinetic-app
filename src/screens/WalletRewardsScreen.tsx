@@ -27,6 +27,14 @@ import { coinsApi } from '../api/coins';
 import type { CoinTransaction } from '../api/coins';
 import type { ProfileStackParamList } from '../navigation/types';
 
+// Temporary kill-switch for the gift-card redemption feature. The
+// full flow (screen, API, backend cron that fulfills redemptions)
+// stays on disk and in the nav tree — we just hide the entry point
+// from the wallet. Flip to `true` to restore the tile. Paired with
+// a deliberately dormant `GiftcardRedeem` route in AppNavigator so
+// a stale deep link doesn't 404.
+const GIFTCARDS_ENABLED = false;
+
 type Nav = NativeStackNavigationProp<ProfileStackParamList>;
 
 export function WalletRewardsScreen() {
@@ -178,17 +186,19 @@ export function WalletRewardsScreen() {
             <Text style={styles.actionDesc}>{t('wallet.buyCoinsDesc')}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => navigation.navigate('GiftcardRedeem')}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.actionIconWrap, { backgroundColor: 'rgba(252,91,0,0.1)' }]}>
-              <Feather name="gift" size={22} color="#FC5B00" />
-            </View>
-            <Text style={styles.actionTitle}>{t('wallet.giftCardsTitle')}</Text>
-            <Text style={styles.actionDesc}>{t('wallet.giftCardsDesc')}</Text>
-          </TouchableOpacity>
+          {GIFTCARDS_ENABLED && (
+            <TouchableOpacity
+              style={styles.actionCard}
+              onPress={() => navigation.navigate('GiftcardRedeem')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.actionIconWrap, { backgroundColor: 'rgba(252,91,0,0.1)' }]}>
+                <Feather name="gift" size={22} color="#FC5B00" />
+              </View>
+              <Text style={styles.actionTitle}>{t('wallet.giftCardsTitle')}</Text>
+              <Text style={styles.actionDesc}>{t('wallet.giftCardsDesc')}</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <Text style={[styles.sectionLabel, { paddingHorizontal: spacing['2xl'], marginTop: spacing['3xl'] }]}>
