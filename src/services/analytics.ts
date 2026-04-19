@@ -6,16 +6,99 @@ import {
   setUserId,
   setUserProperty,
 } from '@react-native-firebase/analytics';
+import Constants from 'expo-constants';
 import type { User } from '../api/auth';
+import type { AnalyticsProps } from '../shared/analytics-events';
 
 /**
  * Centralized analytics service for Kinetic.
  * Uses the Firebase modular API (v22+). All custom event names and
  * params go through here so they're easy to find and consistent.
+ *
+ * v1.1 addition: `track()` is the new type-safe emission API backed
+ * by the shared AnalyticsProps contract. Existing ad-hoc helpers
+ * (logScreenView, logSportTabViewed, etc.) stay for backwards compat
+ * — new call sites should prefer `track()`.
  */
 
 // Singleton — getAnalytics() is cheap but we call it a lot
 const ga = () => getAnalytics();
+
+// PostHog capture — only if configured via EXPO_PUBLIC env or
+// expoConfig.extra. Firebase stays the primary sink; PostHog is a
+// secondary destination for product-funnel dashboards (cohorts,
+// retention grid, activation funnel) that Firebase can't build well.
+const POSTHOG_API_KEY =
+  process.env.EXPO_PUBLIC_POSTHOG_API_KEY ||
+  (Constants.expoConfig?.extra?.posthogApiKey as string | undefined);
+const POSTHOG_HOST =
+  process.env.EXPO_PUBLIC_POSTHOG_HOST ||
+  (Constants.expoConfig?.extra?.posthogHost as string | undefined) ||
+  'https://app.posthog.com';
+
+function simpleHash(input: string): string {
+  // Not cryptographic — just a stable opaque ID so PostHog can
+  // correlate events per user without storing the raw Mongo _id.
+  let h = 2166136261;
+  for (let i = 0; i < input.length; i++) {
+    h ^= input.charCodeAt(i);
+    h = (h * 16777619) >>> 0;
+  }
+  return h.toString(16).padStart(8, '0');
+}
+
+let currentDistinctId: string | null = null;
+
+/**
+ * Type-safe event emission. Use this for every new analytics call
+ * site — the AnalyticsProps tagged union catches misspelled event
+ * names and malformed payloads at compile time.
+ */
+export async function track(props: AnalyticsProps): Promise<void> {
+  const { event, ...payload } = props;
+
+  try {
+    await logEvent(ga(), event, payload as any);
+  } catch {
+    /* Firebase unavailable in Expo Go */
+  }
+
+  if (!POSTHOG_API_KEY) return;
+  const distinctId = currentDistinctId ?? `anon-${Date.now()}`;
+  try {
+    await fetch(`${POSTHOG_HOST.replace(/\/$/, '')}/capture/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        api_key: POSTHOG_API_KEY,
+        event,
+        distinct_id: distinctId,
+        properties: {
+          ...payload,
+          $lib: 'kinetic-mobile',
+          appVersion: Constants.expoConfig?.version,
+        },
+        timestamp: new Date().toISOString(),
+      }),
+    });
+  } catch (err: any) {
+    if (__DEV__) console.warn('[analytics] posthog', event, err?.message);
+  }
+}
+
+/**
+ * Identify the current user for analytics sinks. Called once after
+ * login success. We hash the userId so dashboards see a stable
+ * opaque ID, never the raw Mongo _id.
+ */
+export async function identifyForAnalytics(userId: string): Promise<void> {
+  currentDistinctId = simpleHash(userId);
+  try {
+    await setUserId(ga(), currentDistinctId);
+  } catch {
+    /* Firebase unavailable */
+  }
+}
 
 // ─── Screen tracking ───────────────────────────────────────
 export async function logScreenView(screenName: string, screenClass?: string) {
