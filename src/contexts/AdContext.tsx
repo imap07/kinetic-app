@@ -133,11 +133,22 @@ export function AdProvider({ children }: { children: React.ReactNode }) {
       // Preload next
       loadInterstitial();
     });
+    // Without an ERROR listener a no-fill on first load would leave
+    // `interstitialLoaded=false` forever and `trackAction` would
+    // silently never show another interstitial for the session. Log
+    // the reason (dev only) so we can diagnose bad fill windows.
+    const unsubError = ad.addAdEventListener(AdEventType.ERROR, (error: any) => {
+      setInterstitialLoaded(false);
+      if (__DEV__) {
+        console.warn('[ads] interstitial ad error', error?.message || error);
+      }
+    });
     ad.load();
     interstitialRef.current = ad;
     return () => {
       unsubLoaded();
       unsubClosed();
+      unsubError();
     };
   }, [adsEnabled]);
 
@@ -145,6 +156,13 @@ export function AdProvider({ children }: { children: React.ReactNode }) {
   const loadRewarded = useCallback(() => {
     if (!adsEnabled) return;
     const ad = RewardedAd.createForAdRequest(AD_UNITS.rewarded);
+    // Tracks whether the currently-showing impression fired
+    // EARNED_REWARD before CLOSED. Without this, a user who skips
+    // / dismisses the ad early leaves the outer Promise hanging
+    // until the 60s timeout fires — the button sits on its loading
+    // spinner the whole time and users report "the video doesn't
+    // open / there's an error".
+    let earnedThisImpression = false;
     const unsubLoaded = ad.addAdEventListener(RewardedAdEventType.LOADED, () => {
       setRewardedLoaded(true);
     });
@@ -153,11 +171,14 @@ export function AdProvider({ children }: { children: React.ReactNode }) {
       // before calling .show(). Without a valid nonce the backend will reject
       // the claim, so even if this path were hit by a tampered client the
       // coins can't be minted.
+      earnedThisImpression = true;
       const nonce = pendingNonceRef.current;
       pendingNonceRef.current = null;
 
       if (!tokens?.accessToken || !nonce) {
-        rewardedResolveRef.current?.({ coins: 0, error: 'network' });
+        const resolve = rewardedResolveRef.current;
+        rewardedResolveRef.current = null;
+        resolve?.({ coins: 0, error: 'network' });
         return;
       }
 
@@ -169,7 +190,9 @@ export function AdProvider({ children }: { children: React.ReactNode }) {
         )
         .then((data) => {
           setRewardedAdsRemaining(data.dailyRemaining ?? 0);
-          rewardedResolveRef.current?.({
+          const resolve = rewardedResolveRef.current;
+          rewardedResolveRef.current = null;
+          resolve?.({
             coins: data.coinsAwarded ?? COINS_PER_REWARDED,
           });
         })
@@ -180,12 +203,57 @@ export function AdProvider({ children }: { children: React.ReactNode }) {
             err instanceof ApiError && err.status === 429
               ? 'daily_limit'
               : 'network';
-          rewardedResolveRef.current?.({ coins: 0, error: reason });
+          const resolve = rewardedResolveRef.current;
+          rewardedResolveRef.current = null;
+          resolve?.({ coins: 0, error: reason });
         });
     });
     const unsubClosed = ad.addAdEventListener(AdEventType.CLOSED, () => {
       setRewardedLoaded(false);
+      // The core "video doesn't open / hangs on loading" fix: if the
+      // ad closed WITHOUT firing EARNED_REWARD (user skipped or
+      // dismissed), resolve the outer Promise immediately with
+      // `aborted` so the RewardedAdButton can drop its spinner.
+      // Previously this was only handled by the 60-second timeout
+      // inside showRewardedAd, which made every dismiss feel like a
+      // broken button.
+      if (!earnedThisImpression && rewardedResolveRef.current) {
+        const resolve = rewardedResolveRef.current;
+        rewardedResolveRef.current = null;
+        pendingNonceRef.current = null;
+        resolve({ coins: 0, error: 'aborted' });
+      }
       loadRewarded();
+    });
+    // Load failure handler. The Google Mobile Ads SDK emits an ERROR
+    // event when no fill, network issue, or ATT-blocked request
+    // prevents the ad from loading. Without this listener the
+    // `rewardedLoaded` state stays false forever and every tap on the
+    // button returns `ad_unavailable` — the user sees the "not ready"
+    // toast repeatedly with no chance to recover. On error we clear
+    // the loaded state (it was already false) and leave the ad slot
+    // open; the next successful load (triggered by the next CLOSED
+    // cycle, or the user re-entering a screen that mounts the
+    // provider) will populate it. We DON'T auto-retry on a tight
+    // loop — hammering the SDK with load requests after a no-fill
+    // tends to keep returning no-fill.
+    const unsubError = ad.addAdEventListener(AdEventType.ERROR, (error: any) => {
+      setRewardedLoaded(false);
+      // If a user was already waiting on this ad (tapped before the
+      // ERROR fired), resolve their Promise now instead of making
+      // them sit through the 60s timeout.
+      if (rewardedResolveRef.current) {
+        const resolve = rewardedResolveRef.current;
+        rewardedResolveRef.current = null;
+        pendingNonceRef.current = null;
+        resolve({ coins: 0, error: 'ad_unavailable' });
+      }
+      if (__DEV__) {
+        // Surfacing this during dev helps diagnose "no video" reports.
+        // Production just silently degrades to the `ad_unavailable`
+        // toast path.
+        console.warn('[ads] rewarded ad error', error?.message || error);
+      }
     });
     ad.load();
     rewardedRef.current = ad;
@@ -193,6 +261,7 @@ export function AdProvider({ children }: { children: React.ReactNode }) {
       unsubLoaded();
       unsubEarned();
       unsubClosed();
+      unsubError();
     };
   }, [adsEnabled, tokens?.accessToken]);
 
