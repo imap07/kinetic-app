@@ -1,3 +1,8 @@
+import { initSentry } from './src/observability/sentry';
+// Init Sentry BEFORE the i18n or any app-side imports that could fail
+// — we want boot-time errors in React/i18n to reach the dashboard too.
+initSentry();
+
 import './src/i18n';
 import i18n from './src/i18n';
 import React, { useEffect } from 'react';

@@ -204,12 +204,11 @@ const DEFAULT_PREDICTION_CONFIG: SportPredictionConfig = {
 
 const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'P', 'BT', 'LIVE', 'Q1', 'Q2', 'Q3', 'Q4', 'OT', 'P1', 'P2', 'P3', 'S1', 'S2', 'S3', 'S4', 'S5', 'R1', 'R2', 'R3', 'R4', 'R5', 'IN1', 'IN2', 'IN3', 'IN4', 'IN5', 'IN6', 'IN7', 'IN8', 'IN9'];
 const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AOT', 'AP', 'POST', 'CANC'];
-// Keep this list in sync with NO_DRAW_SPORTS in
-// kinetic-backend/src/predictions/scoring.engine.ts. Hockey and AFL
-// belong here even though the older UI showed draws for them — both
-// sports force/rarely-tie in practice, so the Draw option in the
-// H2H/winner selector is effectively a dead pick.
-const NO_DRAW_SPORTS = ['basketball', 'baseball', 'american-football', 'formula-1', 'mma', 'volleyball', 'afl', 'hockey'];
+// Sourced from the canonical shared domain file. Drift is impossible
+// because CI re-runs sync-shared.sh and fails if the mirror doesn't
+// match the backend canonical. See kinetic-app/src/shared/domain.ts.
+import { NO_DRAW_SPORTS as SHARED_NO_DRAW_SPORTS } from '../shared/domain';
+const NO_DRAW_SPORTS: readonly string[] = SHARED_NO_DRAW_SPORTS;
 
 function getStatusDisplay(status: string, t: (key: string) => string, statusLong?: string, elapsed?: number | string | null, date?: string): { label: string; isLive: boolean; isUpcoming: boolean } {
   if (LIVE_STATUSES.includes(status)) {

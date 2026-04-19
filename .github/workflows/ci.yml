@@ -1,0 +1,74 @@
+name: CI
+
+# Quality gate for the mobile app. Keep fast (<4 min); if we burn
+# longer, devs will push --no-verify and we lose the net.
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+
+jobs:
+  quality-gate:
+    name: tsc + i18n parity + tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: TypeScript
+        run: npx tsc --noEmit
+
+      - name: i18n parity (en/es/fr must have identical keys)
+        # This check has saved us multiple times — a developer adds
+        # a new string to en.json and forgets es/fr, we ship a
+        # missing-translation placeholder to half our users.
+        run: |
+          node -e "
+            const en = require('./src/i18n/locales/en.json');
+            const es = require('./src/i18n/locales/es.json');
+            const fr = require('./src/i18n/locales/fr.json');
+            function flat(o, p='', a=[]) {
+              for (const k of Object.keys(o)) {
+                const v = o[k];
+                const nk = p ? p + '.' + k : k;
+                if (v && typeof v === 'object' && !Array.isArray(v)) flat(v, nk, a);
+                else a.push(nk);
+              }
+              return a;
+            }
+            const ek = new Set(flat(en));
+            const sk = new Set(flat(es));
+            const frk = new Set(flat(fr));
+            let failed = false;
+            for (const [name, keys] of [['es', sk], ['fr', frk]]) {
+              const missing = [...ek].filter(k => !keys.has(k));
+              const extra = [...keys].filter(k => !ek.has(k));
+              if (missing.length) {
+                console.error('::error::' + name + '.json missing ' + missing.length + ' keys: ' + missing.slice(0,10).join(', '));
+                failed = true;
+              }
+              if (extra.length) {
+                console.error('::error::' + name + '.json has ' + extra.length + ' extra keys: ' + extra.slice(0,10).join(', '));
+                failed = true;
+              }
+            }
+            if (failed) process.exit(1);
+            console.log('✓ i18n parity: en=' + ek.size + ' es=' + sk.size + ' fr=' + frk.size);
+          "
+
+      - name: Tests (if configured)
+        run: |
+          if [ -f jest.config.js ] || grep -q '"jest"' package.json 2>/dev/null; then
+            npm test -- --passWithNoTests
+          else
+            echo "::notice::No jest config yet, skipping"
+          fi

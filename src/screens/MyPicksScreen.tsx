@@ -301,6 +301,140 @@ function PredictionCard({ prediction }: { prediction: PredictionData }) {
   );
 }
 
+// ─── Streak Timeline ──────────────────────────────────────────
+//
+// Compact horizontal "tape" of the last 7 resolved picks. Each cell is
+// a small dot colored by outcome (green=win, red=loss) with the
+// current streak count pulled large on the left for emphasis.
+//
+// Why this exists
+// ---------------
+// Before v1.1 a "4-day streak" was just a number buried in the stats
+// banner. The retention-strategist call-out in the v1.1 audit was
+// that the streak is the single strongest retention hook and it's
+// invisible. The timeline converts abstract → concrete: users see
+// exactly which picks got them here and feel the cost of breaking.
+//
+// Scope
+// -----
+// Fixed 7 slots. If the user has fewer resolved picks, empty slots
+// render as dim outlines (anchor for aspiration). We don't backfill
+// beyond 7 because wider would waste screen real estate and the
+// "week-long streak" is the psychologically meaningful unit.
+function StreakTimeline({
+  currentStreak,
+  bestStreak,
+  recent,
+}: {
+  currentStreak: number;
+  bestStreak: number;
+  recent: PredictionData[];
+}) {
+  const { t } = useTranslation();
+  // Pad to 7 slots so the row width is stable regardless of history size.
+  const slots: (PredictionData | null)[] = Array.from({ length: 7 }, (_, i) => recent[i] ?? null);
+
+  return (
+    <View style={streakTimelineStyles.container}>
+      <View style={streakTimelineStyles.left}>
+        <Text style={streakTimelineStyles.streakNumber}>{currentStreak}</Text>
+        <Text style={streakTimelineStyles.streakLabel}>
+          {t('picks.dayStreak', { defaultValue: 'DAY STREAK' })}
+        </Text>
+      </View>
+      <View style={streakTimelineStyles.divider} />
+      <View style={streakTimelineStyles.right}>
+        <View style={streakTimelineStyles.dotsRow}>
+          {slots.map((p, i) => {
+            const isWin = p?.status === 'won';
+            const isLoss = p?.status === 'lost';
+            return (
+              <View
+                key={i}
+                style={[
+                  streakTimelineStyles.dot,
+                  isWin && streakTimelineStyles.dotWin,
+                  isLoss && streakTimelineStyles.dotLoss,
+                  !p && streakTimelineStyles.dotEmpty,
+                ]}
+              />
+            );
+          })}
+        </View>
+        <Text style={streakTimelineStyles.bestStreakText}>
+          {t('picks.bestStreak', {
+            count: bestStreak,
+            defaultValue: 'Best: {{count}} days',
+          })}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+const streakTimelineStyles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(202,253,0,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(202,253,0,0.12)',
+    borderRadius: 12,
+    marginHorizontal: 16,
+    marginTop: 12,
+    padding: 14,
+    gap: 14,
+  },
+  left: {
+    alignItems: 'center',
+    minWidth: 54,
+  },
+  streakNumber: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 28,
+    lineHeight: 32,
+    color: colors.primary,
+  },
+  streakLabel: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 9,
+    letterSpacing: 0.8,
+    color: colors.onSurfaceVariant,
+    marginTop: 2,
+  },
+  divider: {
+    width: 1,
+    height: 36,
+    backgroundColor: 'rgba(69,72,76,0.2)',
+  },
+  right: { flex: 1, gap: 6 },
+  dotsRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  dot: {
+    flex: 1,
+    height: 10,
+    borderRadius: 5,
+  },
+  dotWin: {
+    backgroundColor: '#16A34A',
+  },
+  dotLoss: {
+    backgroundColor: '#DC2626',
+  },
+  dotEmpty: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'rgba(69,72,76,0.3)',
+  },
+  bestStreakText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 11,
+    color: colors.onSurfaceVariant,
+  },
+});
+
 export function MyPicksScreen() {
   const { t } = useTranslation();
   const { tokens } = useAuth();
@@ -398,8 +532,30 @@ export function MyPicksScreen() {
     fetchData(true); // force=true bypasses TTL on manual pull-to-refresh
   }, [fetchData]);
 
+  // Recent resolved picks (last 7) in reverse-chron order for the
+  // streak timeline dots. Filter out void — voids are "didn't happen"
+  // and don't belong on a streak tape.
+  const recentResolved = useMemo(
+    () =>
+      predictions
+        .filter((p) => p.status === 'won' || p.status === 'lost')
+        .slice(0, 7),
+    [predictions],
+  );
+
   const listHeader = (
     <>
+      {/* Streak Timeline — visual tape of the last 7 resolved picks. Makes
+          the abstract "4-day streak" concrete: users see the actual W/L
+          sequence and feel the weight of keeping it going. */}
+      {stats && (stats.currentStreak > 0 || recentResolved.length > 0) && (
+        <StreakTimeline
+          currentStreak={stats.currentStreak}
+          bestStreak={stats.bestStreak}
+          recent={recentResolved}
+        />
+      )}
+
       {/* Stats Banner */}
       {stats && (
         <View style={styles.statsBanner}>

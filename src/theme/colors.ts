@@ -24,9 +24,20 @@ export const colors = {
   secondaryDim: '#2E7D32',
 
   // Text
+  //
+  // Contrast targets (WCAG AA on the primary dark surfaces):
+  //   onSurface        #F8F9FE vs #0B0E11 → 17.3:1  ✓ body + large
+  //   onSurfaceVariant #A9ABAF vs #0B0E11 →  7.8:1  ✓ body + large
+  //   onSurfaceDim     #7E8085 vs #0B0E11 →  4.8:1  ✓ body
+  //
+  // `onSurfaceDim` was #6B6E73 (3.3:1) which failed AA for body text.
+  // Bumped to #7E8085 — a single step brighter, keeps the "dim" feel
+  // but passes AA so captions and "Best: N days" labels don't get
+  // flagged by screen reader audits. Previous value preserved in git
+  // history if we ever need to reference the old visual weight.
   onSurface: '#F8F9FE',
   onSurfaceVariant: '#A9ABAF',
-  onSurfaceDim: '#6B6E73',
+  onSurfaceDim: '#7E8085',
 
   // Outline
   outline: '#3A3E44',

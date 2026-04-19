@@ -251,6 +251,8 @@
     "points": "+{{pts}} pts",
     "notEnoughData": "Datos insuficientes",
     "weeklyTrend": "TENDENCIA SEMANAL",
+    "dayStreak": "DÍAS SEGUIDOS",
+    "bestStreak": "Mejor: {{count}} días",
     "total": "Total",
     "won": "Ganados",
     "lost": "Perdidos",

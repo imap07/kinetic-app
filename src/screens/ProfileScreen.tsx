@@ -32,33 +32,25 @@ import { achievementsApi } from '../api/achievements';
 import type { Achievement } from '../api/achievements';
 import { RewardsProgressCard } from '../components/RewardsProgressCard';
 
-// Tier thresholds MUST match the backend ladder in
-// kinetic-backend/src/predictions/scoring.engine.ts `updateTier()`,
-// otherwise the progress bar lies to the user. Previously these `max`
-// values were 3–10× higher than the actual promotion thresholds —
-// e.g. a user with 500 pts already sits at Bronze per the backend
-// but the UI showed "500 / 1000 to Bronze", making the bar look
-// stuck for weeks while the real tier was climbing.
-//
-// Current backend thresholds:
-//   rookie  < 300
-//   bronze  >= 300
-//   silver  >= 1000
-//   gold    >= 2000
-//   diamond >= 5000
-//   legend  >= 10000
-//
-// `max` here is the next-tier threshold (i.e. the value the progress
-// bar fills up to). For `legend` we cap at 25000 — a soft ceiling
-// that keeps the bar meaningful past the promotion point.
-const TIER_CONFIG: Record<string, { label: string; next: string; max: number }> = {
-  rookie: { label: 'Rookie', next: 'Bronze', max: 300 },
-  bronze: { label: 'Bronze', next: 'Silver', max: 1000 },
-  silver: { label: 'Silver', next: 'Gold', max: 2000 },
-  gold: { label: 'Gold', next: 'Diamond', max: 5000 },
-  diamond: { label: 'Diamond', next: 'Legend', max: 10000 },
-  legend: { label: 'Legend', next: '', max: 25000 },
-};
+// Derived from the shared TIER_LADDER — keeps this screen in lockstep
+// with backend `updateTier()`. `max` is the NEXT tier's minPoints,
+// i.e. the value the progress bar fills to before promotion. For
+// `legend` (no next) we cap at 2.5× its threshold so the bar keeps
+// visual meaning past the final promotion.
+import { TIER_LADDER } from '../shared/domain';
+const TIER_CONFIG: Record<string, { label: string; next: string; max: number }> = (() => {
+  const out: Record<string, { label: string; next: string; max: number }> = {};
+  for (let i = 0; i < TIER_LADDER.length; i++) {
+    const tier = TIER_LADDER[i];
+    const next = tier.next ? TIER_LADDER.find((t) => t.key === tier.next) : null;
+    out[tier.key] = {
+      label: tier.label,
+      next: next?.label ?? '',
+      max: next ? next.minPoints : tier.minPoints * 2.5,
+    };
+  }
+  return out;
+})();
 
 // Icon mapping for achievement keys from backend
 const ACHIEVEMENT_ICON_MAP: Record<string, keyof typeof Ionicons.glyphMap> = {

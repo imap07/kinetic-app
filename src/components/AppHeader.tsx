@@ -1,11 +1,55 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Image, Animated } from 'react-native';
 import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme';
 import { useCoins } from '../contexts/CoinContext';
 import { useAuth } from '../contexts/AuthContext';
+
+/**
+ * Animated count-up for a numeric value. Instead of a seismic
+ * 999 → 1019 jump whenever the user earns coins, we interpolate the
+ * displayed number over ~600ms. This is the "feel premium" nit the
+ * UX designer called out — a number going up feels earned, a number
+ * teleporting feels like a balance sheet.
+ *
+ * Uses JS-driven animation (not the native driver) because we're
+ * interpolating a Text string, not a transform. 600ms is fast enough
+ * to not annoy, slow enough to be noticed.
+ */
+function useAnimatedCount(target: number, durationMs = 600): number {
+  const [display, setDisplay] = useState(target);
+  const fromRef = useRef(target);
+
+  useEffect(() => {
+    // Skip animation on initial mount or when the delta is tiny —
+    // jumping between 0 and non-zero on login is not worth animating,
+    // and single-digit changes look choppy.
+    const from = fromRef.current;
+    if (from === target) return;
+    if (Math.abs(target - from) < 2) {
+      setDisplay(target);
+      fromRef.current = target;
+      return;
+    }
+
+    const started = Date.now();
+    const raf = () => {
+      const progress = Math.min(1, (Date.now() - started) / durationMs);
+      // Ease-out cubic — fast start, settles softly at target.
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = Math.round(from + (target - from) * eased);
+      setDisplay(current);
+      if (progress < 1) handle = requestAnimationFrame(raf);
+      else fromRef.current = target;
+    };
+    let handle = requestAnimationFrame(raf);
+    return () => cancelAnimationFrame(handle);
+  }, [target, durationMs]);
+
+  return display;
+}
 
 interface AppHeaderProps {
   showSearch?: boolean;
@@ -16,6 +60,7 @@ export function AppHeader({ showSearch = true }: AppHeaderProps) {
   const navigation = useNavigation<any>();
   const { balance, isLoading: balanceLoading } = useCoins();
   const { user } = useAuth();
+  const displayedBalance = useAnimatedCount(balance);
 
   const handleBellPress = () => {
     navigation.navigate('Notifications');
@@ -39,7 +84,12 @@ export function AppHeader({ showSearch = true }: AppHeaderProps) {
   return (
     <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
       <View style={styles.headerLeft}>
-        <TouchableOpacity onPress={handleAvatarPress} activeOpacity={0.7}>
+        <TouchableOpacity
+          onPress={handleAvatarPress}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Open profile"
+        >
           <View style={styles.avatar}>
             {user?.avatar ? (
               <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
@@ -51,18 +101,37 @@ export function AppHeader({ showSearch = true }: AppHeaderProps) {
         <Text style={styles.brandText}>KINETIC</Text>
       </View>
       <View style={styles.headerRight}>
-        <TouchableOpacity style={styles.coinPill} onPress={handleCoinPress} activeOpacity={0.7}>
+        <TouchableOpacity
+          style={styles.coinPill}
+          onPress={handleCoinPress}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={`Coin balance ${balance}. Open wallet`}
+          hitSlop={8}
+        >
           <MaterialCommunityIcons name="circle-multiple" size={14} color={colors.primary} />
           <Text style={styles.coinPillText}>
-            {balanceLoading ? '...' : balance.toLocaleString()}
+            {balanceLoading ? '...' : displayedBalance.toLocaleString()}
           </Text>
         </TouchableOpacity>
         {showSearch && (
-          <TouchableOpacity style={styles.headerIconBtn} onPress={handleSearchPress}>
+          <TouchableOpacity
+            style={styles.headerIconBtn}
+            onPress={handleSearchPress}
+            accessibilityRole="button"
+            accessibilityLabel="Search"
+            hitSlop={8}
+          >
             <Feather name="search" size={18} color={colors.onSurface} />
           </TouchableOpacity>
         )}
-        <TouchableOpacity style={styles.headerIconBtn} onPress={handleBellPress}>
+        <TouchableOpacity
+          style={styles.headerIconBtn}
+          onPress={handleBellPress}
+          accessibilityRole="button"
+          accessibilityLabel="Notifications"
+          hitSlop={8}
+        >
           <Feather name="bell" size={18} color={colors.onSurface} />
         </TouchableOpacity>
       </View>

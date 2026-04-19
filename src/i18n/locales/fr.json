@@ -251,6 +251,8 @@
     "points": "+{{pts}} pts",
     "notEnoughData": "Pas assez de données",
     "weeklyTrend": "TENDANCE HEBDO",
+    "dayStreak": "JOURS DE SUITE",
+    "bestStreak": "Meilleur : {{count}} jours",
     "total": "Total",
     "won": "Gagnés",
     "lost": "Perdus",
