@@ -32,13 +32,32 @@ import { achievementsApi } from '../api/achievements';
 import type { Achievement } from '../api/achievements';
 import { RewardsProgressCard } from '../components/RewardsProgressCard';
 
+// Tier thresholds MUST match the backend ladder in
+// kinetic-backend/src/predictions/scoring.engine.ts `updateTier()`,
+// otherwise the progress bar lies to the user. Previously these `max`
+// values were 3–10× higher than the actual promotion thresholds —
+// e.g. a user with 500 pts already sits at Bronze per the backend
+// but the UI showed "500 / 1000 to Bronze", making the bar look
+// stuck for weeks while the real tier was climbing.
+//
+// Current backend thresholds:
+//   rookie  < 300
+//   bronze  >= 300
+//   silver  >= 1000
+//   gold    >= 2000
+//   diamond >= 5000
+//   legend  >= 10000
+//
+// `max` here is the next-tier threshold (i.e. the value the progress
+// bar fills up to). For `legend` we cap at 25000 — a soft ceiling
+// that keeps the bar meaningful past the promotion point.
 const TIER_CONFIG: Record<string, { label: string; next: string; max: number }> = {
-  rookie: { label: 'Rookie', next: 'Bronze', max: 1000 },
-  bronze: { label: 'Bronze', next: 'Silver', max: 5000 },
-  silver: { label: 'Silver', next: 'Gold', max: 10000 },
-  gold: { label: 'Gold', next: 'Diamond', max: 25000 },
-  diamond: { label: 'Diamond', next: 'Legend', max: 50000 },
-  legend: { label: 'Legend', next: '', max: 100000 },
+  rookie: { label: 'Rookie', next: 'Bronze', max: 300 },
+  bronze: { label: 'Bronze', next: 'Silver', max: 1000 },
+  silver: { label: 'Silver', next: 'Gold', max: 2000 },
+  gold: { label: 'Gold', next: 'Diamond', max: 5000 },
+  diamond: { label: 'Diamond', next: 'Legend', max: 10000 },
+  legend: { label: 'Legend', next: '', max: 25000 },
 };
 
 // Icon mapping for achievement keys from backend
