@@ -468,7 +468,12 @@ function GenericStatsTab({ stats, homeTeamName, awayTeamName }: { stats: any; ho
 }
 
 // ─── Generic H2H Tab ─────────────────────────────────────────────────────────
-function GenericH2HTab({ games, homeTeamId, homeTeamName, awayTeamName }: { games: any[]; homeTeamId: number; homeTeamName: string; awayTeamName: string }) {
+function GenericH2HTab({ games, homeTeamId, homeTeamName, awayTeamName, sport }: { games: any[]; homeTeamId: number; homeTeamName: string; awayTeamName: string; sport?: string }) {
+  // Hide the "Draws" column entirely for sports where draws aren't a
+  // real outcome (basketball, baseball, AF, volleyball, AFL, MMA,
+  // hockey, F1). Before this, those sports always showed "0 Draws"
+  // because the count was tallied from ties that could never happen.
+  const showDraws = !sport || !NO_DRAW_SPORTS.includes(sport);
   let homeWins = 0, draws = 0, awayWins = 0;
   games.forEach(g => {
     const hTotal = g.homeTotal ?? g.scores?.home?.total ?? g.homeGoals ?? 0;
@@ -486,10 +491,12 @@ function GenericH2HTab({ games, homeTeamId, homeTeamName, awayTeamName }: { game
           <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 24, color: colors.primary }}>{homeWins}</Text>
           <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 11, color: colors.onSurfaceVariant }} numberOfLines={1}>{homeTeamName}</Text>
         </View>
-        <View style={{ alignItems: 'center', gap: 4 }}>
-          <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 24, color: colors.onSurfaceVariant }}>{draws}</Text>
-          <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 11, color: colors.onSurfaceVariant }}>Draws</Text>
-        </View>
+        {showDraws && (
+          <View style={{ alignItems: 'center', gap: 4 }}>
+            <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 24, color: colors.onSurfaceVariant }}>{draws}</Text>
+            <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 11, color: colors.onSurfaceVariant }}>Draws</Text>
+          </View>
+        )}
         <View style={{ alignItems: 'center', gap: 4 }}>
           <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 24, color: colors.onSurfaceVariant }}>{awayWins}</Text>
           <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 11, color: colors.onSurfaceVariant }} numberOfLines={1}>{awayTeamName}</Text>
@@ -2452,6 +2459,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
                       homeTeamId={genericGame.homeTeam?.apiId}
                       homeTeamName={homeTeamName}
                       awayTeamName={awayTeamName}
+                      sport={sport}
                     />
                   )}
                 </View>

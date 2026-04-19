@@ -35,6 +35,51 @@ function getOutcomeLabel(prediction: PredictionData, t: (key: string) => string)
     const answer = prediction.bttsAnswer === 'yes' ? t('matchPrediction.bttsYes') : t('matchPrediction.bttsNo');
     return `${t('matchPrediction.btts')}: ${answer}`;
   }
+  // MMA: Method of Victory (KO/TKO, Submission, Decision) — the label
+  // needs both the fighter and the method. Before this branch the row
+  // would silently fall through to the generic "Draw" text below.
+  if (prediction.predictionType === 'method_of_victory') {
+    const fighter =
+      prediction.predictedOutcome === 'home'
+        ? prediction.homeTeamName
+        : prediction.awayTeamName;
+    const methodKey =
+      prediction.methodOfVictory === 'ko_tko'
+        ? 'prediction.methodKO'
+        : prediction.methodOfVictory === 'submission'
+          ? 'prediction.methodSubmission'
+          : 'prediction.methodDecision';
+    return `${fighter} — ${t(methodKey)}`;
+  }
+  // MMA: Goes the Distance (yes/no) — does the fight go to the
+  // scorecards/final round?
+  if (prediction.predictionType === 'goes_the_distance') {
+    const answer =
+      prediction.distanceAnswer === 'yes'
+        ? t('picks.answerYes')
+        : t('picks.answerNo');
+    return `${t('prediction.tabDistance')}: ${answer}`;
+  }
+  // F1: Podium Finish — will predicted driver finish in the top 3?
+  if (prediction.predictionType === 'podium_finish') {
+    const driver =
+      prediction.predictedOutcome === 'home'
+        ? prediction.homeTeamName
+        : prediction.awayTeamName;
+    const answer =
+      prediction.podiumAnswer === 'yes'
+        ? t('picks.answerYes')
+        : t('picks.answerNo');
+    return `${driver} — ${t('prediction.tabPodium')}: ${answer}`;
+  }
+  // F1: Fastest Lap — just the driver; there's no yes/no branch here.
+  if (prediction.predictionType === 'fastest_lap') {
+    const driver =
+      prediction.predictedOutcome === 'home'
+        ? prediction.homeTeamName
+        : prediction.awayTeamName;
+    return `${driver} — ${t('prediction.tabFastestLap')}`;
+  }
   if (prediction.predictedOutcome === 'home') return `${prediction.homeTeamName} ${t('matchPrediction.win')}`;
   if (prediction.predictedOutcome === 'away') return `${prediction.awayTeamName} ${t('matchPrediction.win')}`;
   return t('matchPrediction.draw');

@@ -239,6 +239,8 @@
   "picks": {
     "active": "Activos",
     "history": "Historial",
+    "answerYes": "Sí",
+    "answerNo": "No",
     "yourPick": "TU PICK",
     "multiplier": "MULTIPLICADOR",
     "vs": "VS",
