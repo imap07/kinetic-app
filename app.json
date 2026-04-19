@@ -96,7 +96,8 @@
           "cameraPermission": "Kinetic uses the camera to scan QR codes for joining leagues."
         }
       ],
-      "@sentry/react-native"
+      "@sentry/react-native",
+      "expo-sharing"
     ],
     "extra": {
       "eas": {
