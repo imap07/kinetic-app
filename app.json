@@ -7,7 +7,7 @@
     "name": "Kinetic",
     "slug": "kinetic-app",
     "scheme": "kinetic",
-    "version": "1.2.0",
+    "version": "1.3.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -18,7 +18,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "buildNumber": "74",
+      "buildNumber": "76",
       "bundleIdentifier": "io.kinetic.app",
       "googleServicesFile": "./GoogleService-Info.plist",
       "usesAppleSignIn": true,
@@ -47,7 +47,7 @@
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE"
       ],
-      "versionCode": 74
+      "versionCode": 76
     },
     "web": {
       "favicon": "./assets/favicon.png"

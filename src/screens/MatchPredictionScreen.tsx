@@ -96,7 +96,11 @@ const SPORT_PREDICTION_CONFIG: Record<string, SportPredictionConfig> = {
     overUnderTitleKey: 'prediction.totalGoalsTitle',
     overUnderHintKey: 'prediction.totalGoalsHint',
     hasExactScore: false,
-    hasDraw: true,
+    // Competitive hockey (NHL/KHL/Liiga/IIHF) always forces a winner
+    // via overtime or shootout — the API reports the settled score
+    // with an AOT/AP status. Offering a Draw button just tempted
+    // users (2.5x multiplier) into a pick that can't actually land.
+    hasDraw: false,
   },
   baseball: {
     types: [
@@ -200,7 +204,12 @@ const DEFAULT_PREDICTION_CONFIG: SportPredictionConfig = {
 
 const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'P', 'BT', 'LIVE', 'Q1', 'Q2', 'Q3', 'Q4', 'OT', 'P1', 'P2', 'P3', 'S1', 'S2', 'S3', 'S4', 'S5', 'R1', 'R2', 'R3', 'R4', 'R5', 'IN1', 'IN2', 'IN3', 'IN4', 'IN5', 'IN6', 'IN7', 'IN8', 'IN9'];
 const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AOT', 'AP', 'POST', 'CANC'];
-const NO_DRAW_SPORTS = ['basketball', 'baseball', 'american-football', 'formula-1', 'mma', 'volleyball'];
+// Keep this list in sync with NO_DRAW_SPORTS in
+// kinetic-backend/src/predictions/scoring.engine.ts. Hockey and AFL
+// belong here even though the older UI showed draws for them — both
+// sports force/rarely-tie in practice, so the Draw option in the
+// H2H/winner selector is effectively a dead pick.
+const NO_DRAW_SPORTS = ['basketball', 'baseball', 'american-football', 'formula-1', 'mma', 'volleyball', 'afl', 'hockey'];
 
 function getStatusDisplay(status: string, t: (key: string) => string, statusLong?: string, elapsed?: number | string | null, date?: string): { label: string; isLive: boolean; isUpcoming: boolean } {
   if (LIVE_STATUSES.includes(status)) {
