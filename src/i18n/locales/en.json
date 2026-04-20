@@ -1228,5 +1228,23 @@
   "pickDescribe": {
     "winner": "Winner: {{pick}}",
     "score": "Score: {{home}}-{{away}}"
+  },
+  "referrals": {
+    "title": "Invite friends",
+    "heroTitle": "Give {{coins}} coins, get {{coins}} coins",
+    "heroSubtitle": "When your friend signs up with your code and resolves {{picks}} picks, you both earn coins.",
+    "yourCode": "Your code",
+    "copy": "Copy",
+    "copied": "Copied",
+    "share": "Share",
+    "shareMessage": "Join me on Kinetic and we both get {{coins}} coins: {{url}}",
+    "statPending": "Pending",
+    "statQualified": "Qualified",
+    "statCoinsEarned": "Coins earned",
+    "howTitle": "How it works",
+    "howStep1": "Share your code with a friend.",
+    "howStep2": "They sign up and make {{picks}} predictions that resolve.",
+    "howStep3": "You each get {{coins}} coins — automatically.",
+    "finePrint": "One referral per account. Anti-fraud checks may block referrals from shared devices or networks."
   }
 }

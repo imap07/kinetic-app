@@ -52,6 +52,7 @@ import { CoinStoreScreen } from '../screens/CoinStoreScreen';
 import { CoinLeaguesScreen } from '../screens/CoinLeaguesScreen';
 import { CoinLeagueDetailScreen } from '../screens/CoinLeagueDetailScreen';
 import { LeaguePicksFeedScreen } from '../screens/LeaguePicksFeedScreen';
+import { ReferralsScreen } from '../screens/ReferralsScreen';
 import { GiftcardRedeemScreen } from '../screens/GiftcardRedeemScreen';
 import { StreakLeaderboardScreen } from '../screens/StreakLeaderboardScreen';
 import { EditFavoriteSportsScreen } from '../screens/EditFavoriteSportsScreen';
@@ -155,6 +156,7 @@ function ProfileNavigator() {
       <ProfileStack.Screen name="CoinStore" component={CoinStoreScreen} />
       <ProfileStack.Screen name="GiftcardRedeem" component={GiftcardRedeemScreen} />
       <ProfileStack.Screen name="StreakLeaderboard" component={StreakLeaderboardScreen} />
+      <ProfileStack.Screen name="Referrals" component={ReferralsScreen} />
     </ProfileStack.Navigator>
   );
 }
@@ -360,6 +362,31 @@ export function AppNavigator() {
       logScreenView(currentRouteName);
     }
     routeNameRef.current = currentRouteName;
+  }, []);
+
+  // Deep-link referral capture: kinetic://r/<code> and
+  // https://kineticapp.ca/r/<code>. We stash the code into AsyncStorage
+  // and let the onboarding-complete flow auto-apply after signup.
+  // Signed-in users who tap the link go straight to Referrals.
+  useEffect(() => {
+    const extract = (url: string | null): string | null => {
+      if (!url) return null;
+      const m = url.match(/\/r\/([A-Za-z0-9]+)/);
+      return m ? m[1].toUpperCase() : null;
+    };
+    const handle = async (url: string | null) => {
+      const code = extract(url);
+      if (!code) return;
+      try {
+        const { pendingReferral } = await import('../services/referralPending');
+        await pendingReferral.set(code);
+      } catch {
+        /* noop */
+      }
+    };
+    Linking.getInitialURL().then(handle);
+    const sub = Linking.addEventListener('url', (ev) => handle(ev.url));
+    return () => sub.remove();
   }, []);
 
   useEffect(() => {

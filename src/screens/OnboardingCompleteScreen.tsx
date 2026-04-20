@@ -134,6 +134,26 @@ export function OnboardingCompleteScreen({
       await AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, 'true');
     }
 
+    // Auto-apply pending referral code captured from deep link (best-effort).
+    // Consumes the stash regardless of outcome — invalid/used codes
+    // shouldn't pester the user on every app open.
+    try {
+      const { pendingReferral } = await import('../services/referralPending');
+      const pending = await pendingReferral.get();
+      if (pending) {
+        try {
+          const { referralsApi } = await import('../api/referrals');
+          await referralsApi.apply(tokens.accessToken, pending);
+        } catch (err) {
+          console.warn('[Onboarding] referral apply failed:', err);
+        } finally {
+          await pendingReferral.clear();
+        }
+      }
+    } catch {
+      /* noop */
+    }
+
     try { await refreshProfile(); } catch {}
     setSaving(false);
 

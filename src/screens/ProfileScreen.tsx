@@ -813,6 +813,20 @@ export function ProfileScreen() {
             </View>
             <Feather name="chevron-right" size={16} color={colors.onSurfaceVariant} />
           </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.settingsRow}
+            onPress={() => profileNav.navigate('Referrals')}
+          >
+            <View style={styles.settingsRowLeft}>
+              <MaterialCommunityIcons
+                name="gift-outline"
+                size={18}
+                color={colors.onSurface}
+              />
+              <Text style={styles.settingsRowText}>{t('referrals.title')}</Text>
+            </View>
+            <Feather name="chevron-right" size={16} color={colors.onSurfaceVariant} />
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.logoutBtn}

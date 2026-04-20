@@ -219,3 +219,20 @@ export const PICK_REACTION_GLYPHS: Record<PickReactionKey, string> = {
   crown: '👑',
   target: '🎯',
 };
+
+// ─── Referral program ────────────────────────────────────────────
+// Single source of truth for reward amounts + qualification rule.
+// Qualification = referred user accumulates N resolved picks. Keeps
+// drive-by signups from minting coins — they must demonstrate real
+// engagement first. Both referrer and referee get the same reward
+// (symmetric so copy reads cleanly in the share sheet).
+export const REFERRAL_REWARD_COINS = 50;
+export const REFERRAL_QUALIFY_RESOLVED_PICKS = 3;
+
+// 8-char short code. Alphabet excludes O/0/I/1/L to avoid OCR
+// confusion when users read the code from a screenshot. Mongo index
+// is unique+sparse on users.referralCode (see user.schema.ts).
+export const REFERRAL_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+export const REFERRAL_CODE_LENGTH = 8;
+
+export type ReferralStatus = 'pending' | 'qualified' | 'rewarded' | 'blocked';

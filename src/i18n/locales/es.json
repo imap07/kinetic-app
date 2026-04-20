@@ -1228,5 +1228,23 @@
   "pickDescribe": {
     "winner": "Ganador: {{pick}}",
     "score": "Marcador: {{home}}-{{away}}"
+  },
+  "referrals": {
+    "title": "Invita amigos",
+    "heroTitle": "Regala {{coins}} monedas, gana {{coins}} monedas",
+    "heroSubtitle": "Cuando tu amigo se registre con tu código y resuelva {{picks}} picks, ambos ganan monedas.",
+    "yourCode": "Tu código",
+    "copy": "Copiar",
+    "copied": "Copiado",
+    "share": "Compartir",
+    "shareMessage": "Únete conmigo a Kinetic y ambos ganamos {{coins}} monedas: {{url}}",
+    "statPending": "Pendientes",
+    "statQualified": "Calificados",
+    "statCoinsEarned": "Monedas ganadas",
+    "howTitle": "Cómo funciona",
+    "howStep1": "Comparte tu código con un amigo.",
+    "howStep2": "Se registra y hace {{picks}} predicciones que se resuelven.",
+    "howStep3": "Ambos reciben {{coins}} monedas — automático.",
+    "finePrint": "Una referencia por cuenta. Verificaciones antifraude pueden bloquear referencias desde dispositivos o redes compartidas."
   }
 }

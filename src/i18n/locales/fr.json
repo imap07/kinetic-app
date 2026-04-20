@@ -1228,5 +1228,23 @@
   "pickDescribe": {
     "winner": "Vainqueur: {{pick}}",
     "score": "Score: {{home}}-{{away}}"
+  },
+  "referrals": {
+    "title": "Inviter des amis",
+    "heroTitle": "Donne {{coins}} coins, gagne {{coins}} coins",
+    "heroSubtitle": "Quand ton ami s’inscrit avec ton code et résout {{picks}} picks, vous gagnez tous les deux.",
+    "yourCode": "Ton code",
+    "copy": "Copier",
+    "copied": "Copié",
+    "share": "Partager",
+    "shareMessage": "Rejoins-moi sur Kinetic et on gagne tous les deux {{coins}} coins : {{url}}",
+    "statPending": "En attente",
+    "statQualified": "Qualifiés",
+    "statCoinsEarned": "Coins gagnés",
+    "howTitle": "Comment ça marche",
+    "howStep1": "Partage ton code avec un ami.",
+    "howStep2": "Il s’inscrit et fait {{picks}} prédictions qui se résolvent.",
+    "howStep3": "Vous recevez chacun {{coins}} coins — automatique.",
+    "finePrint": "Un parrainage par compte. Des vérifications anti-fraude peuvent bloquer les parrainages depuis des appareils ou réseaux partagés."
   }
 }
