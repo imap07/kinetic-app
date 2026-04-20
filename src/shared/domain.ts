@@ -199,3 +199,23 @@ export const ANALYTICS_EVENTS = [
 ] as const;
 
 export type AnalyticsEvent = typeof ANALYTICS_EVENTS[number];
+
+// ─── Pick reactions ────────────────────────────────────────────────
+// Four-emoji reaction set shown on other members' picks inside a
+// league detail view. Kept intentionally tiny: emoji-only social is
+// spam-resistant and requires no content moderation (vs. free-text
+// chat which would trigger Apple 1.2 UGC requirements). If you add a
+// 5th reaction, update the Zod validator in reactions.service.ts and
+// the mobile bottom sheet in LeagueDetailScreen.
+export const PICK_REACTIONS = ['fire', 'skull', 'crown', 'target'] as const;
+export type PickReactionKey = typeof PICK_REACTIONS[number];
+
+// Emoji glyph mapping kept here so both ends render the exact same
+// character (iOS/Android emoji fonts differ subtly). Never read the
+// glyph from an i18n bundle — emoji fonts aren't translated.
+export const PICK_REACTION_GLYPHS: Record<PickReactionKey, string> = {
+  fire: '🔥',
+  skull: '💀',
+  crown: '👑',
+  target: '🎯',
+};
