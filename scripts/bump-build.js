@@ -60,6 +60,23 @@ if (!apiUrl.startsWith('https://')) {
 }
 console.log(`🌐 Using API URL: ${apiUrl}`);
 
+// ── Validate RevenueCat keys ─────────────────────────────────────────────────
+const rcIosKey = envProd.EXPO_PUBLIC_REVENUECAT_IOS_KEY ?? process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY;
+const rcAndroidKey = envProd.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY ?? process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY;
+
+if (!rcIosKey || !rcIosKey.startsWith('appl_')) {
+  console.error('\n❌  EXPO_PUBLIC_REVENUECAT_IOS_KEY is missing or invalid (must start with appl_).');
+  console.error('    Fix .env.production before rebuilding.\n');
+  process.exit(1);
+}
+if (!rcAndroidKey || !rcAndroidKey.startsWith('goog_')) {
+  console.error('\n❌  EXPO_PUBLIC_REVENUECAT_ANDROID_KEY is missing or invalid (must start with goog_).');
+  console.error('    Fix .env.production before rebuilding.\n');
+  process.exit(1);
+}
+console.log(`🔑 RevenueCat iOS key: ${rcIosKey.slice(0, 12)}…`);
+console.log(`🔑 RevenueCat Android key: ${rcAndroidKey.slice(0, 12)}…`);
+
 // Current build number
 const current = parseInt(appJson.expo.ios?.buildNumber || '0', 10);
 const next = current + 1;

@@ -17,7 +17,18 @@ import Toast from 'react-native-toast-message';
 import { useAuth } from './AuthContext';
 import { logSubscriptionStart } from '../services/analytics';
 
-const REVENUECAT_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY || '';
+// RevenueCat requires platform-specific public SDK keys.
+// - iOS  → appl_...  (rejected on Android)
+// - Android → goog_... (rejected on iOS)
+// Both keys are public/safe to ship in the bundle. Sandbox vs production is
+// decided by the build itself (TestFlight/Debug → sandbox, App Store release
+// → production), not by the key.
+const REVENUECAT_API_KEY =
+  Platform.OS === 'ios'
+    ? process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY ||
+      process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ||
+      ''
+    : process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY || '';
 
 const ENTITLEMENT_ID = 'Kinetic App Pro';
 

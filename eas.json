@@ -23,6 +23,8 @@
       "env": {
         "APP_ENV": "preview",
         "EXPO_PUBLIC_API_URL": "https://kinectic-app-test.4a7ymmxg576we.ca-central-1.cs.amazonlightsail.com/api",
+        "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "appl_NuqWsvJroXjowjyNTiYQtzWTmuG",
+        "EXPO_PUBLIC_REVENUECAT_ANDROID_KEY": "goog_XScJWCNEFCcDoYrdKtlFMfHwgcH",
         "EXPO_PUBLIC_REVENUECAT_API_KEY": "appl_NuqWsvJroXjowjyNTiYQtzWTmuG"
       }
     },
@@ -31,6 +33,8 @@
       "env": {
         "APP_ENV": "production",
         "EXPO_PUBLIC_API_URL": "https://kinectic-app-test.4a7ymmxg576we.ca-central-1.cs.amazonlightsail.com/api",
+        "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "appl_NuqWsvJroXjowjyNTiYQtzWTmuG",
+        "EXPO_PUBLIC_REVENUECAT_ANDROID_KEY": "goog_XScJWCNEFCcDoYrdKtlFMfHwgcH",
         "EXPO_PUBLIC_REVENUECAT_API_KEY": "appl_NuqWsvJroXjowjyNTiYQtzWTmuG"
       }
     }

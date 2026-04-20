@@ -122,6 +122,25 @@ esac
 echo "🌐 Using API URL: $EXPO_PUBLIC_API_URL"
 echo ""
 
+# ── Validate RevenueCat keys ───────────────────────────────────────────────────
+if [ -z "${EXPO_PUBLIC_REVENUECAT_IOS_KEY:-}" ] || \
+   [ "${EXPO_PUBLIC_REVENUECAT_IOS_KEY:0:5}" != "appl_" ]; then
+  echo "❌  EXPO_PUBLIC_REVENUECAT_IOS_KEY is missing or invalid (must start with appl_)."
+  echo "    Fix .env.production before rebuilding."
+  exit 1
+fi
+
+if [ -z "${EXPO_PUBLIC_REVENUECAT_ANDROID_KEY:-}" ] || \
+   [ "${EXPO_PUBLIC_REVENUECAT_ANDROID_KEY:0:5}" != "goog_" ]; then
+  echo "❌  EXPO_PUBLIC_REVENUECAT_ANDROID_KEY is missing or invalid (must start with goog_)."
+  echo "    Fix .env.production before rebuilding."
+  exit 1
+fi
+
+echo "🔑 RevenueCat iOS key: ${EXPO_PUBLIC_REVENUECAT_IOS_KEY:0:12}…"
+echo "🔑 RevenueCat Android key: ${EXPO_PUBLIC_REVENUECAT_ANDROID_KEY:0:12}…"
+echo ""
+
 # ── Bump version (iOS buildNumber + Android versionCode in lockstep) ──────────
 cd "$PROJECT_DIR"
 if [ -z "$SKIP_BUMP" ]; then
