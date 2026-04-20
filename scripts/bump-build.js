@@ -77,6 +77,15 @@ if (!rcAndroidKey || !rcAndroidKey.startsWith('goog_')) {
 console.log(`🔑 RevenueCat iOS key: ${rcIosKey.slice(0, 12)}…`);
 console.log(`🔑 RevenueCat Android key: ${rcAndroidKey.slice(0, 12)}…`);
 
+// ── Validate Sentry DSN ──────────────────────────────────────────────────────
+const sentryDsn = envProd.EXPO_PUBLIC_SENTRY_DSN ?? process.env.EXPO_PUBLIC_SENTRY_DSN;
+if (!sentryDsn || !sentryDsn.startsWith('https://')) {
+  console.error('\n❌  EXPO_PUBLIC_SENTRY_DSN is missing or invalid (must start with https://).');
+  console.error('    Fix .env.production before rebuilding.\n');
+  process.exit(1);
+}
+console.log(`📡 Sentry DSN: ${sentryDsn.slice(0, 32)}…`);
+
 // Current build number
 const current = parseInt(appJson.expo.ios?.buildNumber || '0', 10);
 const next = current + 1;

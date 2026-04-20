@@ -141,6 +141,16 @@ echo "🔑 RevenueCat iOS key: ${EXPO_PUBLIC_REVENUECAT_IOS_KEY:0:12}…"
 echo "🔑 RevenueCat Android key: ${EXPO_PUBLIC_REVENUECAT_ANDROID_KEY:0:12}…"
 echo ""
 
+# ── Validate Sentry DSN ────────────────────────────────────────────────────────
+if [ -z "${EXPO_PUBLIC_SENTRY_DSN:-}" ] || \
+   [ "${EXPO_PUBLIC_SENTRY_DSN:0:8}" != "https://" ]; then
+  echo "❌  EXPO_PUBLIC_SENTRY_DSN is missing or invalid (must start with https://)."
+  echo "    Fix .env.production before rebuilding."
+  exit 1
+fi
+echo "📡 Sentry DSN: ${EXPO_PUBLIC_SENTRY_DSN:0:32}…"
+echo ""
+
 # ── Bump version (iOS buildNumber + Android versionCode in lockstep) ──────────
 cd "$PROJECT_DIR"
 if [ -z "$SKIP_BUMP" ]; then
