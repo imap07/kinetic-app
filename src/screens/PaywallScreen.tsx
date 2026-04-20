@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import Purchases, { INTRO_ELIGIBILITY_STATUS } from 'react-native-purchases';
 import { colors } from '../theme';
 import { ModalCloseButton } from '../components';
 import { usePurchases } from '../contexts/PurchasesContext';
@@ -73,6 +74,32 @@ export function PaywallScreen({ navigation, route }: Props) {
 
   const monthlyPrice = monthlyPkg?.product?.priceString ?? '$3.99';
   const annualPrice = annualPkg?.product?.priceString ?? '$24.99';
+
+  // Apple grants a free trial only once per Apple ID. If the user has
+  // already consumed it, showing "7-day free trial" on the card would
+  // deceive them into a charge — hide the label in that case.
+  // Also drives which legal disclosure we render (trial vs no-trial).
+  const [trialEligible, setTrialEligible] = useState<boolean | null>(null);
+  useEffect(() => {
+    const productId = annualPkg?.product?.identifier;
+    if (!productId) return;
+    let cancelled = false;
+    Purchases.checkTrialOrIntroductoryPriceEligibility([productId])
+      .then((result) => {
+        if (cancelled) return;
+        const status = result[productId]?.status;
+        // Treat UNKNOWN as eligible — safer to show the label than to
+        // hide a real trial from a new user on a flaky network.
+        setTrialEligible(
+          status === INTRO_ELIGIBILITY_STATUS.INTRO_ELIGIBILITY_STATUS_ELIGIBLE ||
+            status === INTRO_ELIGIBILITY_STATUS.INTRO_ELIGIBILITY_STATUS_UNKNOWN,
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setTrialEligible(true);
+      });
+    return () => { cancelled = true; };
+  }, [annualPkg?.product?.identifier]);
 
   // Debug: log offerings state in dev
   if (__DEV__) {
@@ -176,7 +203,11 @@ export function PaywallScreen({ navigation, route }: Props) {
             </View>
             <Text style={styles.pricingLabel}>{t('paywall.annual')}</Text>
             <Text style={styles.pricingAmount}>{t('paywall.perYear', { price: annualPrice })}</Text>
-            <Text style={styles.pricingDetail}>{t('paywall.freeTrial')}</Text>
+            <Text style={styles.pricingDetail}>
+              {trialEligible === false
+                ? t('paywall.cancelAnytime')
+                : t('paywall.freeTrial')}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -197,7 +228,11 @@ export function PaywallScreen({ navigation, route }: Props) {
 
         {/* Legal */}
         <Text style={styles.legalText}>
-          {t('paywall.legalNotice')}{'\n'}
+          {t(
+            trialEligible === false ? 'paywall.legalNoticeNoTrial' : 'paywall.legalNotice',
+            { annualPrice, monthlyPrice },
+          )}
+          {'\n'}
           <Text
             style={styles.legalLink}
             onPress={() => Linking.openURL('https://kineticapp.ca/terms')}
