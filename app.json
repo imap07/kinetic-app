@@ -1,8 +1,4 @@
 {
-  "react-native-google-mobile-ads": {
-    "android_app_id": "ca-app-pub-9821496555610524~8593987728",
-    "ios_app_id": "ca-app-pub-9821496555610524~9907069395"
-  },
   "expo": {
     "name": "Kinetic",
     "slug": "kinetic-app",
