@@ -1245,6 +1245,11 @@
     "howStep1": "Share your code with a friend.",
     "howStep2": "They sign up and make {{picks}} predictions that resolve.",
     "howStep3": "You each get {{coins}} coins — automatically.",
-    "finePrint": "One referral per account. Anti-fraud checks may block referrals from shared devices or networks."
+    "finePrint": "One referral per account. Anti-fraud checks may block referrals from shared devices or networks.",
+    "onboardingPrompt": "Got a referral code from them?",
+    "onboardingHint": "Enter it now and you both earn {{coins}} coins when you resolve {{picks}} picks.",
+    "onboardingPlaceholder": "ABC12345",
+    "onboardingSaved": "We'll apply it after setup",
+    "onboardingInvalid": "Codes are 4–12 letters and numbers"
   }
 }

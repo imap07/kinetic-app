@@ -5,11 +5,21 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  TextInput,
+  Keyboard,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 import { colors } from '../theme';
+import { pendingReferral } from '../services/referralPending';
+
+// Keep in sync with backend REFERRAL_CODE_ALPHABET + REFERRAL_CODE_LENGTH.
+// Allow 4–12 chars to be forgiving of typos / future length changes without
+// blocking submit here — the server re-validates on apply.
+const REFERRAL_INPUT_RE = /^[A-Z0-9]{4,12}$/;
+const REFERRAL_REWARD_COINS = 50;
+const REFERRAL_QUALIFY_PICKS = 3;
 
 /**
  * Keep this list in sync with the backend enum `AcquisitionSource`
@@ -63,14 +73,38 @@ interface Props {
 export function AcquisitionSourceScreen({ onComplete, onBack }: Props) {
   const { t } = useTranslation();
   const [selected, setSelected] = useState<AcquisitionSourceKey | null>(null);
+  const [referralCode, setReferralCode] = useState('');
+  const [referralSaved, setReferralSaved] = useState(false);
+
+  // Stash the typed code in the same AsyncStorage slot used by the
+  // deep-link path. OnboardingCompleteScreen drains it post-submit and
+  // calls /referrals/apply — one pipeline, whether the code arrived from
+  // a Universal Link or from the user typing it here.
+  const stashIfValid = useCallback(async (raw: string) => {
+    const normalized = raw.trim().toUpperCase();
+    if (REFERRAL_INPUT_RE.test(normalized)) {
+      await pendingReferral.set(normalized);
+      setReferralSaved(true);
+    } else {
+      await pendingReferral.clear();
+      setReferralSaved(false);
+    }
+  }, []);
 
   const handleContinue = useCallback(() => {
+    Keyboard.dismiss();
+    // Fire-and-forget: stash happens before navigation so OnboardingComplete
+    // sees it in AsyncStorage. Invalid codes silently clear the stash.
+    stashIfValid(referralCode);
     onComplete(selected);
-  }, [selected, onComplete]);
+  }, [selected, onComplete, referralCode, stashIfValid]);
 
   const handleSkip = useCallback(() => {
     onComplete(null);
   }, [onComplete]);
+
+  const normalizedCode = referralCode.trim().toUpperCase();
+  const codeInvalid = normalizedCode.length > 0 && !REFERRAL_INPUT_RE.test(normalizedCode);
 
   const canContinue = selected !== null;
 
@@ -146,6 +180,60 @@ export function AcquisitionSourceScreen({ onComplete, onBack }: Props) {
             </TouchableOpacity>
           );
         })}
+        {/* Contextual referral-code capture. Only when the user picks
+            "A friend" — highest signal moment ("my friend told me" →
+            "got a code?"). Invisible otherwise to keep the step focused. */}
+        {selected === 'friend' && (
+          <View style={styles.referralCard}>
+            <Text style={styles.referralPrompt}>
+              {t('referrals.onboardingPrompt', 'Got a referral code from them?')}
+            </Text>
+            <Text style={styles.referralHint}>
+              {t('referrals.onboardingHint', {
+                defaultValue: 'Enter it now and you both earn {{coins}} coins when you resolve {{picks}} picks.',
+                coins: REFERRAL_REWARD_COINS,
+                picks: REFERRAL_QUALIFY_PICKS,
+              })}
+            </Text>
+            <View style={styles.referralInputWrap}>
+              <TextInput
+                value={referralCode}
+                onChangeText={(v) => {
+                  // Uppercase + strip whitespace on the fly; typing lowercase
+                  // should just work. Length-cap prevents absurd paste payloads.
+                  const cleaned = v.replace(/\s+/g, '').slice(0, 12).toUpperCase();
+                  setReferralCode(cleaned);
+                  if (referralSaved) setReferralSaved(false);
+                }}
+                onBlur={() => { stashIfValid(referralCode); }}
+                placeholder={t('referrals.onboardingPlaceholder', 'ABC12345')}
+                placeholderTextColor={colors.onSurfaceVariant}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                autoComplete="off"
+                maxLength={12}
+                style={[
+                  styles.referralInput,
+                  codeInvalid && styles.referralInputError,
+                  referralSaved && styles.referralInputOk,
+                ]}
+              />
+              {referralSaved && (
+                <Ionicons name="checkmark-circle" size={22} color="#5BEF90" />
+              )}
+            </View>
+            {codeInvalid && (
+              <Text style={styles.referralErrorText}>
+                {t('referrals.onboardingInvalid', 'Codes are 4–12 letters and numbers')}
+              </Text>
+            )}
+            {referralSaved && !codeInvalid && (
+              <Text style={styles.referralOkText}>
+                {t('referrals.onboardingSaved', "We'll apply it after setup")}
+              </Text>
+            )}
+          </View>
+        )}
         <View style={{ height: 160 }} />
       </ScrollView>
 
@@ -310,5 +398,61 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.onSurfaceVariant,
     letterSpacing: 0.3,
+  },
+
+  referralCard: {
+    marginTop: 16,
+    backgroundColor: colors.surfaceContainer,
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(202,253,0,0.18)',
+    gap: 8,
+  },
+  referralPrompt: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 15,
+    color: colors.onSurface,
+  },
+  referralHint: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.onSurfaceVariant,
+  },
+  referralInputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 4,
+  },
+  referralInput: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 16,
+    letterSpacing: 2,
+    color: colors.onSurface,
+  },
+  referralInputOk: {
+    borderColor: '#5BEF90',
+  },
+  referralInputError: {
+    borderColor: '#FF7351',
+  },
+  referralErrorText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 12,
+    color: '#FF7351',
+  },
+  referralOkText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 12,
+    color: '#5BEF90',
   },
 });

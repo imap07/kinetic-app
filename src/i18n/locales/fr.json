@@ -1245,6 +1245,11 @@
     "howStep1": "Partage ton code avec un ami.",
     "howStep2": "Il s’inscrit et fait {{picks}} prédictions qui se résolvent.",
     "howStep3": "Vous recevez chacun {{coins}} coins — automatique.",
-    "finePrint": "Un parrainage par compte. Des vérifications anti-fraude peuvent bloquer les parrainages depuis des appareils ou réseaux partagés."
+    "finePrint": "Un parrainage par compte. Des vérifications anti-fraude peuvent bloquer les parrainages depuis des appareils ou réseaux partagés.",
+    "onboardingPrompt": "Tu as un code de parrainage ?",
+    "onboardingHint": "Saisis-le maintenant et vous gagnez {{coins}} coins chacun après {{picks}} prédictions résolues.",
+    "onboardingPlaceholder": "ABC12345",
+    "onboardingSaved": "On l'appliquera après la configuration",
+    "onboardingInvalid": "Les codes font 4 à 12 lettres et chiffres"
   }
 }

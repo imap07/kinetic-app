@@ -1245,6 +1245,11 @@
     "howStep1": "Comparte tu código con un amigo.",
     "howStep2": "Se registra y hace {{picks}} predicciones que se resuelven.",
     "howStep3": "Ambos reciben {{coins}} monedas — automático.",
-    "finePrint": "Una referencia por cuenta. Verificaciones antifraude pueden bloquear referencias desde dispositivos o redes compartidas."
+    "finePrint": "Una referencia por cuenta. Verificaciones antifraude pueden bloquear referencias desde dispositivos o redes compartidas.",
+    "onboardingPrompt": "¿Te dio un código de referencia?",
+    "onboardingHint": "Ingrésalo ahora y ambos ganan {{coins}} monedas cuando resuelvas {{picks}} picks.",
+    "onboardingPlaceholder": "ABC12345",
+    "onboardingSaved": "Lo aplicaremos al terminar",
+    "onboardingInvalid": "Los códigos tienen entre 4 y 12 letras y números"
   }
 }
