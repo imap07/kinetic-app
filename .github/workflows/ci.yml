@@ -11,10 +11,24 @@ on:
 
 jobs:
   quality-gate:
-    name: tsc + i18n parity + tests
+    name: tsc + i18n parity + shared-drift + tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      # Fetches kinetic-backend alongside so we can diff the canonical
+      # `src/shared/domain.ts` against our mirror. The backend owns the
+      # source of truth; if ours differs, the PR introduced drift (or
+      # somebody forgot to run `scripts/sync-shared.sh` in backend).
+      # Without SIBLING_REPO_TOKEN this step skips silently — intended
+      # for forks / contributors who don't have access to the backend.
+      - name: Checkout sibling backend repo (for shared drift check)
+        uses: actions/checkout@v4
+        with:
+          repository: imap07/kinetic-backend
+          path: ../kinetic-backend
+          token: ${{ secrets.SIBLING_REPO_TOKEN }}
+        continue-on-error: true
 
       - uses: actions/setup-node@v4
         with:
@@ -26,6 +40,20 @@ jobs:
 
       - name: TypeScript
         run: npx tsc --noEmit
+
+      - name: Validate shared/domain drift
+        run: |
+          if [ -f ../kinetic-backend/src/shared/domain.ts ]; then
+            if ! diff -q src/shared/domain.ts ../kinetic-backend/src/shared/domain.ts > /dev/null; then
+              echo "::error::src/shared/domain.ts drifted from kinetic-backend canonical."
+              echo "::error::Fix: cd ../kinetic-backend && bash scripts/sync-shared.sh && commit in both repos."
+              diff src/shared/domain.ts ../kinetic-backend/src/shared/domain.ts || true
+              exit 1
+            fi
+            echo "::notice::shared/domain.ts in sync with backend canonical"
+          else
+            echo "::notice::sibling repo not checked out (SIBLING_REPO_TOKEN missing?) — skipping drift check"
+          fi
 
       - name: i18n parity (en/es/fr must have identical keys)
         # This check has saved us multiple times — a developer adds
