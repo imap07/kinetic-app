@@ -151,6 +151,17 @@ fi
 echo "📡 Sentry DSN: ${EXPO_PUBLIC_SENTRY_DSN:0:32}…"
 echo ""
 
+# ── Sentry Auth Token ──────────────────────────────────────────────────────────
+if [ -z "${SENTRY_AUTH_TOKEN:-}" ]; then
+  echo "⚠️   SENTRY_AUTH_TOKEN not set — source maps will NOT be uploaded."
+  echo "    For production: export SENTRY_AUTH_TOKEN=sntrys_... before running."
+  echo ""
+  export SENTRY_DISABLE_AUTO_UPLOAD=true
+else
+  echo "🔐 Sentry auth token: ${SENTRY_AUTH_TOKEN:0:12}…"
+  echo ""
+fi
+
 # ── Bump version (iOS buildNumber + Android versionCode in lockstep) ──────────
 cd "$PROJECT_DIR"
 if [ -z "$SKIP_BUMP" ]; then

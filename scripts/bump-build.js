@@ -86,6 +86,18 @@ if (!sentryDsn || !sentryDsn.startsWith('https://')) {
 }
 console.log(`📡 Sentry DSN: ${sentryDsn.slice(0, 32)}…`);
 
+// ── Sentry Auth Token ────────────────────────────────────────────────────────
+// Required for source map upload during Xcode Archive.
+// Set in shell before running: export SENTRY_AUTH_TOKEN=sntrys_...
+// Not required for dev builds (SENTRY_DISABLE_AUTO_UPLOAD=true in .env).
+const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN;
+if (!sentryAuthToken) {
+  console.warn('\n⚠️   SENTRY_AUTH_TOKEN not set — source maps will NOT be uploaded.');
+  console.warn('    For production Archive: export SENTRY_AUTH_TOKEN=sntrys_... before running.\n');
+} else {
+  console.log(`🔐 Sentry auth token: ${sentryAuthToken.slice(0, 12)}…`);
+}
+
 // Current build number
 const current = parseInt(appJson.expo.ios?.buildNumber || '0', 10);
 const next = current + 1;
@@ -111,7 +123,15 @@ if (!process.argv.includes('--no-prebuild')) {
   execSync('npx expo prebuild --platform ios --clean', {
     cwd: projectDir,
     stdio: 'inherit',
-    env: { ...process.env, LANG: 'en_US.UTF-8', NODE_ENV: 'production' },
+    env: {
+      ...process.env,
+      LANG: 'en_US.UTF-8',
+      NODE_ENV: 'production',
+      // If no auth token, tell sentry-cli to skip upload (avoids build failure)
+      ...(sentryAuthToken
+        ? { SENTRY_AUTH_TOKEN: sentryAuthToken }
+        : { SENTRY_DISABLE_AUTO_UPLOAD: 'true' }),
+    },
   });
   console.log(`\n🚀 iOS build ${next} ready! Open Xcode → Archive → Distribute`);
   console.log(`   (android/ folder untouched — use 'npm run build:android' for that platform)`);
