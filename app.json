@@ -24,7 +24,10 @@
         "NSPhotoLibraryUsageDescription": "Kinetic accesses your photo library to update your profile photo.",
         "NSUserTrackingUsageDescription": "Kinetic uses this to show you relevant ads and improve your experience."
       },
-      "appleTeamId": "QY9J3TC5L3"
+      "appleTeamId": "QY9J3TC5L3",
+      "associatedDomains": [
+        "applinks:kineticapp.ca"
+      ]
     },
     "androidStatusBar": {
       "barStyle": "light-content"
@@ -42,6 +45,23 @@
       "permissions": [
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "kineticapp.ca",
+              "pathPrefix": "/r/"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
       ],
       "versionCode": 76
     },
