@@ -114,7 +114,6 @@
     "noGamesAvailable": "No hay partidos disponibles",
     "tapLeague": "Toca la liga para ver clasificación y detalles",
     "pullToRefresh": "Desliza para actualizar o vuelve más tarde",
-    "selectLeague": "Seleccionar Liga",
     "searchLeagues": "Buscar ligas...",
     "allLeagues": "Todas las Ligas",
     "domesticLeagues": "Ligas Domésticas",
@@ -594,7 +593,8 @@
     "noPredictionsYet": "Sin predicciones aún. ¡Haz tus picks!",
     "correct": "correctas",
     "predictionFailed": "Predicción Fallida",
-    "couldNotPredict": "No se pudo enviar la predicción."
+    "couldNotPredict": "No se pudo enviar la predicción.",
+    "viewPicksFeed": "Ver picks y reacciones"
   },
   "search": {
     "placeholder": "Busca equipos, ligas, partidos...",
@@ -715,7 +715,7 @@
     "deselectAll": "Deseleccionar todo",
     "addAnotherLeague": "Agregar equipos de otra liga",
     "addLeagueTitle": "Agregar una liga",
-    "searchLeague": "Buscar ligas\u2026",
+    "searchLeague": "Buscar ligas…",
     "noMoreLeagues": "No hay más ligas para agregar.",
     "noTeamsForLeague": "Aún no hay equipos disponibles para esta liga.",
     "hideLeagueSection": "Ocultar esta sección de liga",
@@ -784,7 +784,7 @@
     "step4Desc": "Intercambia monedas por tarjetas de regalo reales",
     "disclaimer": "Kinetic es un juego de predicción basado en habilidad con fines de entretenimiento. Las monedas son créditos virtuales sin valor monetario. No es un servicio de apuestas.",
     "welcomeTitle": "Bienvenido a tu Billetera Kinetic",
-    "welcomeBody": "Las monedas son créditos virtuales usados en Kinetic para:\n\n\u2022 Entrar a ligas de predicción (competencias basadas en habilidad)\n\u2022 Canjear recompensas de tarjetas de regalo promocionales\n\nLas monedas no tienen valor monetario real y no pueden transferirse a otros usuarios ni convertirse en dinero.",
+    "welcomeBody": "Las monedas son créditos virtuales usados en Kinetic para:\n\n• Entrar a ligas de predicción (competencias basadas en habilidad)\n• Canjear recompensas de tarjetas de regalo promocionales\n\nLas monedas no tienen valor monetario real y no pueden transferirse a otros usuarios ni convertirse en dinero.",
     "iUnderstand": "Entendido",
     "txPurchase": "Compra de Monedas",
     "txProBonus": "Bonus Pro",
@@ -1043,7 +1043,9 @@
     "retry": "Reintentar",
     "loading": "Cargando...",
     "comingSoon": "Próximamente",
-    "somethingWrong": "Algo salió mal. Intenta de nuevo."
+    "somethingWrong": "Algo salió mal. Intenta de nuevo.",
+    "you": "tú",
+    "errorLoading": "No se pudo cargar. Desliza para reintentar."
   },
   "error": {
     "title": "Algo salió mal",
@@ -1217,5 +1219,14 @@
     "team": "Equipo",
     "stopNumber": "Parada #",
     "totalTime": "Tiempo Total"
+  },
+  "leaguePicksFeed": {
+    "title": "Picks de la liga",
+    "empty": "Aún no hay picks. ¡Sé el primero!",
+    "f1Unsupported": "Las reacciones para ligas de F1 llegarán pronto."
+  },
+  "pickDescribe": {
+    "winner": "Ganador: {{pick}}",
+    "score": "Marcador: {{home}}-{{away}}"
   }
 }

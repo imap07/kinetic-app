@@ -51,6 +51,7 @@ import { SearchScreen } from '../screens/SearchScreen';
 import { CoinStoreScreen } from '../screens/CoinStoreScreen';
 import { CoinLeaguesScreen } from '../screens/CoinLeaguesScreen';
 import { CoinLeagueDetailScreen } from '../screens/CoinLeagueDetailScreen';
+import { LeaguePicksFeedScreen } from '../screens/LeaguePicksFeedScreen';
 import { GiftcardRedeemScreen } from '../screens/GiftcardRedeemScreen';
 import { StreakLeaderboardScreen } from '../screens/StreakLeaderboardScreen';
 import { EditFavoriteSportsScreen } from '../screens/EditFavoriteSportsScreen';
@@ -124,6 +125,7 @@ function LeaguesNavigator() {
     <LeaguesStack.Navigator screenOptions={darkScreenOptions}>
       <LeaguesStack.Screen name="LeaguesHome" component={CoinLeaguesScreen} />
       <LeaguesStack.Screen name="CoinLeagueDetail" component={CoinLeagueDetailScreen} />
+      <LeaguesStack.Screen name="LeaguePicksFeed" component={LeaguePicksFeedScreen} />
       <LeaguesStack.Screen name="LeagueMatchPrediction" component={MatchPredictionScreen} />
       <LeaguesStack.Screen name="LeagueF1RacePrediction" component={F1RacePredictionScreen} />
       <LeaguesStack.Screen name="LeaguePickSummary" component={PickSummaryScreen} />

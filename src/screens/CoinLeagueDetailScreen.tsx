@@ -653,6 +653,24 @@ export function CoinLeagueDetailScreen() {
           </View>
         )}
 
+        {/* Picks Feed entry */}
+        {isParticipant && (
+          <TouchableOpacity
+            style={styles.picksFeedBtn}
+            onPress={() =>
+              (navigation as any).navigate('LeaguePicksFeed', {
+                leagueId: league._id,
+                leagueName: league.name,
+              })
+            }
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons name="message-text-outline" size={20} color={colors.primary} />
+            <Text style={styles.picksFeedBtnText}>{t('leagueDetail.viewPicksFeed')}</Text>
+            <Feather name="chevron-right" size={18} color={colors.onSurfaceVariant} />
+          </TouchableOpacity>
+        )}
+
         {/* Leaderboard */}
         <View style={styles.leaderboardSection}>
           <Text style={styles.sectionTitle}>
@@ -904,6 +922,23 @@ const styles = StyleSheet.create({
 
   leaderboardSection: {
     marginBottom: spacing['2xl'],
+  },
+  picksFeedBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.surfaceContainer,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.primary + '33',
+  },
+  picksFeedBtnText: {
+    flex: 1,
+    color: colors.onSurface,
+    fontSize: 15,
+    fontWeight: '600',
   },
   emptyLb: {
     fontFamily: 'Inter_400Regular',

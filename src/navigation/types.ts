@@ -30,6 +30,7 @@ export type HomeStackParamList = {
 export type LeaguesStackParamList = {
   LeaguesHome: undefined;
   CoinLeagueDetail: { leagueId: string };
+  LeaguePicksFeed: { leagueId: string; leagueName?: string };
   LeagueMatchPrediction: { fixtureApiId: number; sport?: string };
   LeagueF1RacePrediction: F1RacePredictionParams;
   LeaguePickSummary: undefined;

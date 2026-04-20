@@ -114,7 +114,6 @@
     "noGamesAvailable": "Pas de matchs disponibles",
     "tapLeague": "Appuie sur la ligue pour voir le classement et les détails",
     "pullToRefresh": "Glisse pour actualiser ou vérifie plus tard",
-    "selectLeague": "Sélectionner une Ligue",
     "searchLeagues": "Rechercher des ligues...",
     "allLeagues": "Toutes les Ligues",
     "domesticLeagues": "Ligues Nationales",
@@ -594,7 +593,8 @@
     "noPredictionsYet": "Pas encore de prédictions. Fais tes picks !",
     "correct": "correctes",
     "predictionFailed": "Prédiction Échouée",
-    "couldNotPredict": "Impossible de soumettre la prédiction."
+    "couldNotPredict": "Impossible de soumettre la prédiction.",
+    "viewPicksFeed": "Voir picks et réactions"
   },
   "search": {
     "placeholder": "Cherche équipes, ligues, matchs...",
@@ -715,7 +715,7 @@
     "deselectAll": "Tout désélectionner",
     "addAnotherLeague": "Ajouter des équipes d'une autre ligue",
     "addLeagueTitle": "Ajouter une ligue",
-    "searchLeague": "Rechercher des ligues\u2026",
+    "searchLeague": "Rechercher des ligues…",
     "noMoreLeagues": "Aucune autre ligue à ajouter.",
     "noTeamsForLeague": "Aucune équipe disponible pour cette ligue pour l'instant.",
     "hideLeagueSection": "Masquer cette section de ligue",
@@ -784,7 +784,7 @@
     "step4Desc": "Échange des pièces contre de vraies cartes cadeaux",
     "disclaimer": "Kinetic est un jeu de prédiction basé sur les compétences à des fins de divertissement. Les pièces sont des crédits virtuels sans valeur monétaire. Ce n'est pas un service de jeux d'argent.",
     "welcomeTitle": "Bienvenue dans ton Portefeuille Kinetic",
-    "welcomeBody": "Les pièces sont des crédits virtuels utilisés dans Kinetic pour :\n\n\u2022 Rejoindre des ligues de prédiction (compétitions basées sur les compétences)\n\u2022 Échanger des récompenses en cartes cadeaux promotionnelles\n\nLes pièces n'ont aucune valeur monétaire réelle et ne peuvent pas être transférées à d'autres utilisateurs ni converties en devises.",
+    "welcomeBody": "Les pièces sont des crédits virtuels utilisés dans Kinetic pour :\n\n• Rejoindre des ligues de prédiction (compétitions basées sur les compétences)\n• Échanger des récompenses en cartes cadeaux promotionnelles\n\nLes pièces n'ont aucune valeur monétaire réelle et ne peuvent pas être transférées à d'autres utilisateurs ni converties en devises.",
     "iUnderstand": "J'ai compris",
     "txPurchase": "Achat de Pièces",
     "txProBonus": "Bonus Pro",
@@ -1043,7 +1043,9 @@
     "retry": "Réessayer",
     "loading": "Chargement...",
     "comingSoon": "Bientôt disponible",
-    "somethingWrong": "Une erreur est survenue. Réessaie."
+    "somethingWrong": "Une erreur est survenue. Réessaie.",
+    "you": "toi",
+    "errorLoading": "Échec du chargement. Tirez pour réessayer."
   },
   "error": {
     "title": "Un problème est survenu",
@@ -1217,5 +1219,14 @@
     "team": "Équipe",
     "stopNumber": "Arrêt #",
     "totalTime": "Temps Total"
+  },
+  "leaguePicksFeed": {
+    "title": "Picks de la ligue",
+    "empty": "Aucun pick pour le moment. Sois le premier!",
+    "f1Unsupported": "Les réactions pour les ligues F1 arrivent bientôt."
+  },
+  "pickDescribe": {
+    "winner": "Vainqueur: {{pick}}",
+    "score": "Score: {{home}}-{{away}}"
   }
 }

@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import type { ReactionSummary } from './reactions';
 
 export interface LeagueParticipant {
   userId: string;
@@ -149,4 +150,50 @@ export const leaguesApi = {
       { token },
     );
   },
+
+  getPicksFeed(
+    token: string,
+    leagueId: string,
+    opts?: { cursor?: string; limit?: number },
+  ) {
+    const params = new URLSearchParams();
+    if (opts?.cursor) params.set('cursor', opts.cursor);
+    if (opts?.limit) params.set('limit', String(opts.limit));
+    const qs = params.toString();
+    return apiClient.get<LeaguePicksFeedResponse>(
+      `/leagues/${leagueId}/picks-feed${qs ? `?${qs}` : ''}`,
+      { token },
+    );
+  },
 };
+
+export interface LeaguePickFeedItem {
+  predictionId: string;
+  userId: string;
+  displayName: string;
+  avatar?: string;
+  isSelf: boolean;
+  sport: string;
+  gameApiId: number;
+  homeTeamName?: string;
+  awayTeamName?: string;
+  predictionType: string;
+  predictedOutcome?: string;
+  predictedHomeScore?: number;
+  predictedAwayScore?: number;
+  threshold?: number;
+  side?: string;
+  bttsAnswer?: string;
+  methodOfVictory?: string;
+  distanceAnswer?: string;
+  status: string;
+  pointsAwarded?: number;
+  createdAt: string;
+  reactions: ReactionSummary;
+}
+
+export interface LeaguePicksFeedResponse {
+  items: LeaguePickFeedItem[];
+  nextCursor: string | null;
+  isF1Unsupported?: boolean;
+}

@@ -114,7 +114,6 @@
     "noGamesAvailable": "No games available",
     "tapLeague": "Tap the league above to see standings and details",
     "pullToRefresh": "Pull down to refresh or check back later",
-    "selectLeague": "Select League",
     "searchLeagues": "Search leagues...",
     "allLeagues": "All Leagues",
     "domesticLeagues": "Domestic Leagues",
@@ -594,7 +593,8 @@
     "noPredictionsYet": "No predictions yet. Make your picks!",
     "correct": "correct",
     "predictionFailed": "Prediction Failed",
-    "couldNotPredict": "Could not submit prediction."
+    "couldNotPredict": "Could not submit prediction.",
+    "viewPicksFeed": "View picks & reactions"
   },
   "search": {
     "placeholder": "Search teams, leagues, matches...",
@@ -715,7 +715,7 @@
     "deselectAll": "Deselect all",
     "addAnotherLeague": "Add teams from another league",
     "addLeagueTitle": "Add a league",
-    "searchLeague": "Search leagues\u2026",
+    "searchLeague": "Search leagues…",
     "noMoreLeagues": "No more leagues to add.",
     "noTeamsForLeague": "No teams available for this league yet.",
     "hideLeagueSection": "Hide this league section",
@@ -784,7 +784,7 @@
     "step4Desc": "Exchange coins for real gift cards",
     "disclaimer": "Kinetic is a skill-based prediction game for entertainment purposes. Coins are virtual credits with no cash value. Not a gambling service.",
     "welcomeTitle": "Welcome to Kinetic Wallet",
-    "welcomeBody": "Coins are virtual credits used within Kinetic for:\n\n\u2022 Entering prediction leagues (skill-based competitions)\n\u2022 Redeeming promotional gift card rewards\n\nCoins have no real-world cash value and cannot be transferred to other users or converted to currency.",
+    "welcomeBody": "Coins are virtual credits used within Kinetic for:\n\n• Entering prediction leagues (skill-based competitions)\n• Redeeming promotional gift card rewards\n\nCoins have no real-world cash value and cannot be transferred to other users or converted to currency.",
     "iUnderstand": "I Understand",
     "txPurchase": "Coin Purchase",
     "txProBonus": "Pro Bonus",
@@ -1043,7 +1043,9 @@
     "retry": "Retry",
     "loading": "Loading...",
     "comingSoon": "Coming Soon",
-    "somethingWrong": "Something went wrong. Please try again."
+    "somethingWrong": "Something went wrong. Please try again.",
+    "you": "you",
+    "errorLoading": "Could not load. Pull down to retry."
   },
   "error": {
     "title": "Something went wrong",
@@ -1217,5 +1219,14 @@
     "team": "Team",
     "stopNumber": "Stop #",
     "totalTime": "Total Time"
+  },
+  "leaguePicksFeed": {
+    "title": "League Picks",
+    "empty": "No picks yet. Be the first!",
+    "f1Unsupported": "Reactions for F1 leagues are coming soon."
+  },
+  "pickDescribe": {
+    "winner": "Winner: {{pick}}",
+    "score": "Score: {{home}}-{{away}}"
   }
 }
