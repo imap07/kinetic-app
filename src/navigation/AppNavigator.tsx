@@ -61,6 +61,7 @@ import { EditFavoriteTeamsScreen } from '../screens/EditFavoriteTeamsScreen';
 import { ChangePasswordScreen } from '../screens/ChangePasswordScreen';
 import { QuestsScreen } from '../screens/QuestsScreen';
 import { QRScannerScreen } from '../screens/QRScannerScreen';
+import { JoinLeagueScreen } from '../screens/JoinLeagueScreen';
 import F1RacePredictionScreen from '../screens/F1RacePredictionScreen';
 // LeagueSelectionScreen removed from onboarding V2 flow
 import { logScreenView } from '../services/analytics';
@@ -132,6 +133,7 @@ function LeaguesNavigator() {
       <LeaguesStack.Screen name="LeaguePickSummary" component={PickSummaryScreen} />
       <LeaguesStack.Screen name="Leaderboard" component={LeaderboardScreen} />
       <LeaguesStack.Screen name="QRScanner" component={QRScannerScreen} />
+      <LeaguesStack.Screen name="JoinLeague" component={JoinLeagueScreen} />
     </LeaguesStack.Navigator>
   );
 }
@@ -417,6 +419,7 @@ export function AppNavigator() {
             Leagues: {
               screens: {
                 CoinLeagueDetail: 'league/:leagueId',
+                JoinLeague: 'join/:inviteCode',
               },
             },
           },

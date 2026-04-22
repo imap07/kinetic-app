@@ -36,6 +36,7 @@ export type LeaguesStackParamList = {
   LeaguePickSummary: undefined;
   Leaderboard: undefined;
   QRScanner: undefined;
+  JoinLeague: { inviteCode: string };
 };
 
 // Profile tab nested stack
