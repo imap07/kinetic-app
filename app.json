@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "buildNumber": "81",
+      "buildNumber": "83",
       "bundleIdentifier": "io.kinetic.app",
       "googleServicesFile": "./GoogleService-Info.plist",
       "usesAppleSignIn": true,
@@ -68,7 +68,7 @@
           ]
         }
       ],
-      "versionCode": 81
+      "versionCode": 83
     },
     "web": {
       "favicon": "./assets/favicon.png"

@@ -23,16 +23,16 @@ const AD_UNITS = {
     android: 'ca-app-pub-9821496555610524/2820185783',
   }) ?? TestIds.INTERSTITIAL,
   rewarded: __DEV__ ? TestIds.REWARDED : Platform.select({
-    ios: 'ca-app-pub-9821496555610524/7306225702',
-    android: 'ca-app-pub-9821496555610524/8071243544',
+    ios: 'ca-app-pub-9821496555610524/8209633862',
+    android: 'ca-app-pub-9821496555610524/2957307180',
   }) ?? TestIds.REWARDED,
 };
 
 // ── Frequency Config ────────────────────────────────────────
-const INTERSTITIAL_EVERY_N_ACTIONS = 3; // Show interstitial every 3 picks
-const MAX_INTERSTITIALS_PER_HOUR = 4;
-const MAX_REWARDED_PER_DAY = 5;
-const COINS_PER_REWARDED = 20;
+const INTERSTITIAL_EVERY_N_ACTIONS = 2; // Show interstitial every 2 picks
+const MAX_INTERSTITIALS_PER_HOUR = 8;
+const MAX_REWARDED_PER_DAY = 10;
+const COINS_PER_REWARDED = 30;
 
 /**
  * Reasons a rewarded ad flow can fail. The caller uses these to show
