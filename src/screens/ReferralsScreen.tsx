@@ -17,6 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { colors, spacing, borderRadius } from '../theme';
+import { track } from '../services/analytics';
 import { useAuth } from '../contexts/AuthContext';
 import {
   referralsApi,
@@ -71,9 +72,13 @@ export function ReferralsScreen() {
     const message = t('referrals.shareMessage', {
       url,
       coins: status.rewardCoins,
+      code: status.code,
     });
     try {
-      await Share.share({ message, url });
+      const res = await Share.share({ message, url });
+      if (res.action === Share.sharedAction) {
+        track({ event: 'referral_invited', channel: 'native_share' });
+      }
     } catch {
       /* user cancelled */
     }

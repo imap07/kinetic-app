@@ -4,7 +4,9 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { authApi } from '../api/auth';
+import { notificationsApi } from '../api/notifications';
 import { navigate } from '../navigation/navigationRef';
+import { track } from '../services/analytics';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -103,6 +105,12 @@ export function usePushNotifications(authToken: string | null | undefined) {
 
       if (data && typeof data === 'object') {
         const { type } = data as Record<string, unknown>;
+        if (typeof type === 'string') {
+          track({ event: 'push_opened', type });
+          if (authToken && /^[a-z_]{1,40}$/.test(type)) {
+            notificationsApi.trackOpen(type, authToken).catch(() => {});
+          }
+        }
         switch (type) {
           case 'league':
             if (data.leagueId) {

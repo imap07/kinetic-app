@@ -194,6 +194,10 @@ export const ANALYTICS_EVENTS = [
   'share_generated',
   'referral_invited',
   'referral_converted',
+  'win_celebration_shown',
+  'win_celebration_shared',
+  'win_celebration_dismissed',
+  'push_opened',
   // Ads
   'rewarded_ad_completed',
 ] as const;
@@ -226,7 +230,7 @@ export const PICK_REACTION_GLYPHS: Record<PickReactionKey, string> = {
 // drive-by signups from minting coins — they must demonstrate real
 // engagement first. Both referrer and referee get the same reward
 // (symmetric so copy reads cleanly in the share sheet).
-export const REFERRAL_REWARD_COINS = 50;
+export const REFERRAL_REWARD_COINS = 150;
 export const REFERRAL_QUALIFY_RESOLVED_PICKS = 3;
 
 // 8-char short code. Alphabet excludes O/0/I/1/L to avoid OCR

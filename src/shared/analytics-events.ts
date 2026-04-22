@@ -83,6 +83,10 @@ export type AnalyticsProps =
     }
   | { event: 'referral_invited'; channel: string }
   | { event: 'referral_converted'; daysToConvert: number }
+  | { event: 'win_celebration_shown'; sport: SportKey; points: number }
+  | { event: 'win_celebration_shared'; sport: SportKey; points: number }
+  | { event: 'win_celebration_dismissed'; sport: SportKey; points: number }
+  | { event: 'push_opened'; type: string }
   // ─── Ads ──────────────────────────────────────────────────
   | { event: 'rewarded_ad_completed'; coinsAwarded: number };
 

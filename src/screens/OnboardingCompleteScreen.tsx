@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,10 @@ import {
   Image,
   ScrollView,
   Alert,
+  Share,
 } from 'react-native';
+import { track } from '../services/analytics';
+import { referralsApi, buildReferralUrl, type ReferralStatus } from '../api/referrals';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
@@ -69,6 +72,28 @@ export function OnboardingCompleteScreen({
   const { tokens, refreshProfile } = useAuth();
   const { t } = useTranslation();
   const [saving, setSaving] = useState(false);
+  const [referral, setReferral] = useState<ReferralStatus | null>(null);
+
+  useEffect(() => {
+    if (!tokens?.accessToken) return;
+    referralsApi.getStatus(tokens.accessToken).then(setReferral).catch(() => {});
+  }, [tokens?.accessToken]);
+
+  const handleInvite = useCallback(async () => {
+    if (!referral?.code) return;
+    const url = buildReferralUrl(referral.code);
+    const message = t('referrals.shareMessage', {
+      url,
+      coins: referral.rewardCoins,
+      code: referral.code,
+    });
+    try {
+      const res = await Share.share({ message, url });
+      if (res.action === Share.sharedAction) {
+        track({ event: 'referral_invited', channel: 'onboarding' });
+      }
+    } catch {}
+  }, [referral, t]);
 
   const handleLetsGo = useCallback(async () => {
     if (!tokens?.accessToken) return;
@@ -249,6 +274,22 @@ export function OnboardingCompleteScreen({
 
       {/* CTA */}
       <View style={styles.ctaContainer}>
+        {referral?.code && (
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={handleInvite}
+            disabled={saving}
+            style={styles.inviteBtn}
+          >
+            <Ionicons name="gift-outline" size={16} color={colors.primary} />
+            <Text style={styles.inviteText}>
+              {t('onboardingComplete.inviteFriends', {
+                defaultValue: 'Invite a friend — earn {{coins}} coins',
+                coins: referral.rewardCoins,
+              })}
+            </Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity
           activeOpacity={0.85}
           onPress={handleLetsGo}
@@ -354,6 +395,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 48,
     paddingTop: 10,
+  },
+  inviteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    marginBottom: 10,
+  },
+  inviteText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 14,
+    color: colors.primary,
   },
   ctaWrap: { borderRadius: 14, overflow: 'hidden' },
   ctaBtn: {

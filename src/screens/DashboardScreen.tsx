@@ -36,6 +36,8 @@ import type { DailyChallenge } from '../api/challenges';
 import Toast from 'react-native-toast-message';
 import { useLiveGames } from '../contexts/LiveGamesContext';
 import { useStatsSSE, AchievementSSEData } from '../hooks/useStatsSSE';
+import { useWinCelebration } from '../hooks/useWinCelebration';
+import { WinCelebrationModal } from '../components/WinCelebrationModal';
 import { logSportTabViewed } from '../services/analytics';
 import { AdBanner } from '../components/AdBanner';
 import { RewardedAdButton } from '../components/RewardedAdButton';
@@ -145,6 +147,7 @@ export function DashboardScreen({ navigation }: Props) {
   const [showStreakModal, setShowStreakModal] = useState(false);
   const [todayChallenge, setTodayChallenge] = useState<DailyChallenge | null>(null);
   const [challengeSubmitting, setChallengeSubmitting] = useState(false);
+  const { pendingWin, dismissWin } = useWinCelebration();
 
   // ── In-memory stale-while-revalidate cache per sport ──
   // On tab switch: show cached data instantly, fetch fresh in background.
@@ -1746,6 +1749,15 @@ export function DashboardScreen({ navigation }: Props) {
       <GuidedFirstPickOverlay
         visible={guidedFirstPickVisible}
         onDismiss={dismissGuidedFirstPick}
+      />
+
+      {/* Post-win celebration: shows once per winning pick to surface the
+          SharePickCard at the most viral moment. State seen-gate in
+          AsyncStorage — see useWinCelebration. */}
+      <WinCelebrationModal
+        prediction={pendingWin}
+        username={user?.displayName ?? undefined}
+        onDismiss={dismissWin}
       />
     </View>
   );

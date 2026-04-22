@@ -14,7 +14,26 @@
     "build": "node scripts/bump-build.js",
     "build:ios": "node scripts/bump-build.js",
     "build:android": "bash scripts/build-android.sh",
-    "build:android:production": "bash scripts/build-android.sh --production"
+    "build:android:production": "bash scripts/build-android.sh --production",
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "jest": {
+    "preset": "jest-expo",
+    "setupFiles": ["<rootDir>/jest.setup.js"],
+    "moduleNameMapper": {
+      "^expo/src/winter/runtime\\.native$": "<rootDir>/jest.winter-stub.js",
+      "^expo/src/winter/runtime$": "<rootDir>/jest.winter-stub.js",
+      "^expo/src/winter/installGlobal$": "<rootDir>/jest.winter-stub.js",
+      "^expo/src/winter/ImportMetaRegistry$": "<rootDir>/jest.winter-stub.js"
+    },
+    "transformIgnorePatterns": [
+      "node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/.*|sentry-expo|native-base|react-native-svg|@react-native-async-storage/.*))"
+    ],
+    "testPathIgnorePatterns": ["/node_modules/", "/ios/", "/android/"],
+    "modulePathIgnorePatterns": ["<rootDir>/ios/", "<rootDir>/android/"],
+    "roots": ["<rootDir>/src"],
+    "rootDir": "."
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",
@@ -71,7 +90,12 @@
     "react-native-web": "^0.21.0"
   },
   "devDependencies": {
+    "@testing-library/react-native": "^13.3.3",
+    "@types/jest": "^30.0.0",
     "@types/react": "~19.2.2",
+    "jest": "^30.3.0",
+    "jest-expo": "^55.0.16",
+    "react-test-renderer": "19.2.0",
     "typescript": "~5.9.2"
   },
   "private": true,

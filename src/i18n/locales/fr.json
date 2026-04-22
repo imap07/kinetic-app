@@ -1034,7 +1034,13 @@
     "totalPoints": "POINTS TOTAUX",
     "shareMyPicks": "PARTAGER MES PICKS",
     "noActivePicksToShare": "Pas de picks actifs à partager",
-    "shareMessage": "Mes Picks Kinetic :\n\n{{picks}}\n\nPrédit des sports sur Kinetic !"
+    "shareMessage": "🔥 Mes pronostics Kinetic sont en feu :\n\n{{picks}}\n\nTu penses pouvoir me battre ? Inscris-toi et gagne 150 coins bonus 👉 https://kineticapp.ca"
+  },
+  "winCelebration": {
+    "title": "Tu as gagné !",
+    "points": "PTS",
+    "subtitle": "Partage ton pronostic — et invite un ami au passage.",
+    "later": "Plus tard"
   },
   "common": {
     "error": "Erreur",
@@ -1182,7 +1188,8 @@
     "subtitle": "Votre fil personnalisé est prêt",
     "letsGo": "C'est parti",
     "notifMyTeams": "Notifications: Mes Équipes",
-    "notifAllGames": "Notifications: Tous les Matchs"
+    "notifAllGames": "Notifications: Tous les Matchs",
+    "inviteFriends": "Invitez un ami — gagnez {{coins}} pièces"
   },
   "errorBoundary": {
     "title": "Une erreur est survenue",
@@ -1237,7 +1244,7 @@
     "copy": "Copier",
     "copied": "Copié",
     "share": "Partager",
-    "shareMessage": "Rejoins-moi sur Kinetic et on gagne tous les deux {{coins}} coins : {{url}}",
+    "shareMessage": "🎁 J'ai un bonus pour toi sur Kinetic — utilise mon code {{code}} et on gagne TOUS LES DEUX {{coins}} coins quand tu fais tes 3 premiers pronostics. 👉 {{url}}",
     "statPending": "En attente",
     "statQualified": "Qualifiés",
     "statCoinsEarned": "Coins gagnés",

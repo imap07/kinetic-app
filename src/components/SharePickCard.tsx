@@ -49,9 +49,10 @@ import type { PredictionData } from '../api';
 interface Props {
   prediction: PredictionData;
   username?: string;
+  onShared?: () => void;
 }
 
-export function SharePickCard({ prediction, username }: Props) {
+export function SharePickCard({ prediction, username, onShared }: Props) {
   const shotRef = useRef<ViewShot | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -79,6 +80,7 @@ export function SharePickCard({ prediction, username }: Props) {
         contentType: 'pick',
         destination: Platform.OS,
       });
+      onShared?.();
     } catch (err: any) {
       // Best-effort: errors here are almost always "user dismissed".
       if (__DEV__) console.warn('[share-pick]', err?.message);

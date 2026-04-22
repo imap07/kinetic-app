@@ -82,6 +82,14 @@ export interface SubscribeGameParams {
 // ─── API client ─────────────────────────────────────────────────────────────
 
 export const notificationsApi = {
+  // ── Open tracking ────────────────────────────────────────────────────────
+  trackOpen: (type: string, token: string) =>
+    apiClient.post<{ ok: boolean }>(
+      '/notifications/track-open',
+      { type },
+      { token },
+    ),
+
   // ── History ──────────────────────────────────────────────────────────────
   getHistory: (token: string, page = 1, limit = 20) =>
     apiClient.get<NotificationHistoryResponse>(

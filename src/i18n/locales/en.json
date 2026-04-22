@@ -1034,7 +1034,13 @@
     "totalPoints": "TOTAL POINTS",
     "shareMyPicks": "SHARE MY PICKS",
     "noActivePicksToShare": "No active picks to share",
-    "shareMessage": "My Kinetic Picks:\n\n{{picks}}\n\nPredict sports on Kinetic!"
+    "shareMessage": "🔥 My Kinetic picks are heating up:\n\n{{picks}}\n\nThink you can beat me? Sign up and grab 150 bonus coins 👉 https://kineticapp.ca"
+  },
+  "winCelebration": {
+    "title": "You won!",
+    "points": "PTS",
+    "subtitle": "Show off your pick — and bring a friend while you're at it.",
+    "later": "Maybe later"
   },
   "common": {
     "error": "Error",
@@ -1182,7 +1188,8 @@
     "subtitle": "Your personalized feed is ready",
     "letsGo": "Let's Go",
     "notifMyTeams": "Notifications: My Teams",
-    "notifAllGames": "Notifications: All Games"
+    "notifAllGames": "Notifications: All Games",
+    "inviteFriends": "Invite a friend — earn {{coins}} coins"
   },
   "errorBoundary": {
     "title": "Something went wrong",
@@ -1237,7 +1244,7 @@
     "copy": "Copy",
     "copied": "Copied",
     "share": "Share",
-    "shareMessage": "Join me on Kinetic and we both get {{coins}} coins: {{url}}",
+    "shareMessage": "🎁 I've got a bonus for you on Kinetic — use my code {{code}} and we BOTH get {{coins}} coins when you make your first 3 picks. 👉 {{url}}",
     "statPending": "Pending",
     "statQualified": "Qualified",
     "statCoinsEarned": "Coins earned",
