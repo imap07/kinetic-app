@@ -75,7 +75,7 @@ export function ReferralsScreen() {
       code: status.code,
     });
     try {
-      const res = await Share.share({ message, url });
+      const res = await Share.share({ message });
       if (res.action === Share.sharedAction) {
         track({ event: 'referral_invited', channel: 'native_share' });
       }
