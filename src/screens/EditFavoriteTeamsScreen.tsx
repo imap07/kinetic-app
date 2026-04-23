@@ -833,7 +833,17 @@ export function EditFavoriteTeamsScreen() {
     if (!tokens?.accessToken) return;
     setSaving(true);
     try {
-      const teams = Array.from(selected.values());
+      const teams = Array.from(selected.values())
+        // Drop entries with missing required fields — defensive guard against
+        // stale or malformed data that would cause backend DTO validation to fail.
+        .filter((t) => t.teamApiId > 0 && t.teamName && t.sport)
+        // Truncate logo URLs that could exceed the backend MaxLength limit.
+        .map((t) => ({
+          ...t,
+          teamLogo: t.teamLogo && t.teamLogo.length > 2000 ? undefined : t.teamLogo,
+          teamName: t.teamName.slice(0, 200),
+          leagueName: t.leagueName ? t.leagueName.slice(0, 200) : t.leagueName,
+        }));
       await favoriteTeamsApi.setFavoriteTeams(tokens.accessToken, teams);
       await refreshProfile();
       navigation.goBack();
