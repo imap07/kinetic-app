@@ -236,7 +236,9 @@
     "cameraPermission": "Camera access is needed to scan QR codes",
     "requestPermission": "Grant Permission",
     "invalidQR": "This QR code is not a valid Kinetic league invite",
-    "leagueNotFound": "League not found or invite code expired"
+    "leagueNotFound": "League not found or invite code expired",
+    "browsePublic": "Browse leagues",
+    "scanInvite": "Scan invite"
   },
   "picks": {
     "active": "Active",
@@ -268,7 +270,8 @@
     "resolvedAppearHere": "Your resolved predictions will appear here",
     "proInsights": "PRO INSIGHTS",
     "bestSport": "Best Sport",
-    "unlockDetailedStats": "Unlock detailed stats by sport"
+    "unlockDetailedStats": "Unlock detailed stats by sport",
+    "predictNow": "Predict now →"
   },
   "leaderboard": {
     "title": "GLOBAL RANKINGS",
@@ -372,7 +375,9 @@
     "hrsAgo": "{{count}} hrs ago",
     "dayAgo": "1 day ago",
     "daysAgo": "{{count}} days ago",
-    "loadingMore": "Loading more..."
+    "loadingMore": "Loading more...",
+    "emptyHint": "You're all caught up — we'll ping when there's news on your picks.",
+    "tunePreferences": "Tune preferences"
   },
   "notificationPrefs": {
     "title": "NOTIFICATION SETTINGS",
@@ -619,7 +624,8 @@
     "insufficientCoins": "Insufficient Coins",
     "insufficientCoinsDesc": "You need {{needed}} coins. You have {{available}} available.",
     "redeem": "Redeem",
-    "redemptionFailed": "Redemption failed."
+    "redemptionFailed": "Redemption failed.",
+    "viewOrders": "View my orders"
   },
   "sportSelection": {
     "step": "Step 1 of 3",
@@ -792,7 +798,9 @@
     "txLeagueRewards": "League Rewards",
     "txGiftCard": "Gift Card",
     "txRefund": "Refund",
-    "txWelcomeBonus": "Welcome Bonus"
+    "txWelcomeBonus": "Welcome Bonus",
+    "noTransactionsHint": "Make predictions, win streaks, and complete challenges to earn coins.",
+    "startEarning": "Start earning →"
   },
   "live": {
     "yesterday": "Yesterday",
@@ -1051,7 +1059,9 @@
     "comingSoon": "Coming Soon",
     "somethingWrong": "Something went wrong. Please try again.",
     "you": "you",
-    "errorLoading": "Could not load. Pull down to retry."
+    "errorLoading": "Could not load. Pull down to retry.",
+    "tryAgainLater": "Something went wrong. Try again in a moment.",
+    "done": "Done"
   },
   "error": {
     "title": "Something went wrong",
@@ -1186,7 +1196,7 @@
   "onboardingComplete": {
     "title": "You're all set!",
     "subtitle": "Your personalized feed is ready",
-    "letsGo": "Let's Go",
+    "letsGo": "Make my first prediction →",
     "notifMyTeams": "Notifications: My Teams",
     "notifAllGames": "Notifications: All Games",
     "inviteFriends": "Invite a friend — earn {{coins}} coins"

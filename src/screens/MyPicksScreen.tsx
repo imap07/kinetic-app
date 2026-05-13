@@ -714,6 +714,17 @@ export function MyPicksScreen() {
               ? t('picks.makePredictionsDesc')
               : t('picks.resolvedAppearHere')}
           </Text>
+          {/* CTA to jump straight to where they can actually pick.
+              Previously this empty state was a true dead end. */}
+          <TouchableOpacity
+            style={styles.emptyCta}
+            onPress={() => rootNav.navigate('Main' as any, { screen: 'Home' } as any)}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.emptyCtaText}>
+              {t('picks.predictNow', { defaultValue: 'Predict now →' })}
+            </Text>
+          </TouchableOpacity>
         </View>
       )}
     </>
@@ -837,6 +848,18 @@ const styles = StyleSheet.create({
   upgradeBtn: { fontFamily: 'Inter_700Bold', fontSize: 11, color: colors.primary, letterSpacing: 0.8 },
 
   emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 32 },
+  emptyCta: {
+    marginTop: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: colors.primary,
+    borderRadius: 999,
+  },
+  emptyCtaText: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 14,
+    color: colors.onPrimary,
+  },
   emptyTitle: {
     fontFamily: 'SpaceGrotesk_700Bold', fontSize: 20, color: colors.onSurface,
   },

@@ -236,7 +236,9 @@
     "cameraPermission": "L'accès à la caméra est nécessaire pour scanner les codes QR",
     "requestPermission": "Autoriser",
     "invalidQR": "Ce code QR n'est pas une invitation Kinetic valide",
-    "leagueNotFound": "Ligue introuvable ou code expiré"
+    "leagueNotFound": "Ligue introuvable ou code expiré",
+    "browsePublic": "Explorer les ligues",
+    "scanInvite": "Scanner un code"
   },
   "picks": {
     "active": "Actifs",
@@ -268,7 +270,8 @@
     "resolvedAppearHere": "Tes prédictions résolues apparaîtront ici",
     "proInsights": "ANALYSES PRO",
     "bestSport": "Meilleur Sport",
-    "unlockDetailedStats": "Débloque les stats détaillées par sport"
+    "unlockDetailedStats": "Débloque les stats détaillées par sport",
+    "predictNow": "Prédire maintenant →"
   },
   "leaderboard": {
     "title": "CLASSEMENT MONDIAL",
@@ -372,7 +375,9 @@
     "hrsAgo": "Il y a {{count}} h",
     "dayAgo": "Il y a 1 jour",
     "daysAgo": "Il y a {{count}} jours",
-    "loadingMore": "Chargement..."
+    "loadingMore": "Chargement...",
+    "emptyHint": "Vous êtes à jour — on vous avertira dès qu'il y a du nouveau sur vos picks.",
+    "tunePreferences": "Régler les préférences"
   },
   "notificationPrefs": {
     "title": "PARAMÈTRES DE NOTIFICATIONS",
@@ -619,7 +624,8 @@
     "insufficientCoins": "Pièces Insuffisantes",
     "insufficientCoinsDesc": "Tu as besoin de {{needed}} pièces. Tu as {{available}} disponibles.",
     "redeem": "Échanger",
-    "redemptionFailed": "L'échange a échoué."
+    "redemptionFailed": "L'échange a échoué.",
+    "viewOrders": "Voir mes commandes"
   },
   "sportSelection": {
     "step": "Étape 1 sur 3",
@@ -792,7 +798,9 @@
     "txLeagueRewards": "Récompenses de Ligue",
     "txGiftCard": "Carte Cadeau",
     "txRefund": "Remboursement",
-    "txWelcomeBonus": "Bonus de Bienvenue"
+    "txWelcomeBonus": "Bonus de Bienvenue",
+    "noTransactionsHint": "Faites des prédictions, gagnez des séries et relevez des défis pour gagner des pièces.",
+    "startEarning": "Commencer à gagner →"
   },
   "live": {
     "yesterday": "Hier",
@@ -1051,7 +1059,9 @@
     "comingSoon": "Bientôt disponible",
     "somethingWrong": "Une erreur est survenue. Réessaie.",
     "you": "toi",
-    "errorLoading": "Échec du chargement. Tirez pour réessayer."
+    "errorLoading": "Échec du chargement. Tirez pour réessayer.",
+    "tryAgainLater": "Une erreur est survenue. Réessayez dans un instant.",
+    "done": "Terminé"
   },
   "error": {
     "title": "Un problème est survenu",
@@ -1186,7 +1196,7 @@
   "onboardingComplete": {
     "title": "Vous êtes prêt !",
     "subtitle": "Votre fil personnalisé est prêt",
-    "letsGo": "C'est parti",
+    "letsGo": "Faire ma première prédiction →",
     "notifMyTeams": "Notifications: Mes Équipes",
     "notifAllGames": "Notifications: Tous les Matchs",
     "inviteFriends": "Invitez un ami — gagnez {{coins}} pièces"

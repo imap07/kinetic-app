@@ -212,6 +212,20 @@ export function WalletRewardsScreen() {
             <Text style={styles.emptyTxText}>
               {t('wallet.noTransactions')}
             </Text>
+            <Text style={styles.emptyTxHint}>
+              {t('wallet.noTransactionsHint', {
+                defaultValue: 'Make predictions, win streaks, and complete challenges to earn coins.',
+              })}
+            </Text>
+            <TouchableOpacity
+              style={styles.emptyTxCta}
+              onPress={() => (navigation as any).navigate('Main', { screen: 'Home' })}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.emptyTxCtaText}>
+                {t('wallet.startEarning', { defaultValue: 'Start earning →' })}
+              </Text>
+            </TouchableOpacity>
           </View>
         ) : (
           <View style={styles.txList}>
@@ -486,12 +500,33 @@ const styles = StyleSheet.create({
   emptyTx: {
     paddingVertical: spacing['3xl'],
     alignItems: 'center',
+    gap: spacing.sm,
   },
   emptyTxText: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 15,
+    color: colors.onSurface,
+    textAlign: 'center',
+  },
+  emptyTxHint: {
     fontFamily: 'Inter_400Regular',
-    fontSize: 13,
+    fontSize: 12,
     color: colors.onSurfaceDim,
     textAlign: 'center',
+    paddingHorizontal: spacing['2xl'],
+    lineHeight: 17,
+  },
+  emptyTxCta: {
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: 999,
+  },
+  emptyTxCtaText: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 13,
+    color: colors.onPrimary,
   },
 
   txList: {

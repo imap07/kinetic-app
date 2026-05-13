@@ -1208,7 +1208,16 @@ export function MatchPredictionScreen({ navigation }: Props) {
       }
     } catch (err: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Error', err.message || 'Failed to submit prediction');
+      // Show a localized title; the backend message goes in the body
+      // because it's often informative (e.g. "deadline passed"), but
+      // we fall back to a friendly localized string if it's blank or
+      // looks like a stack trace (no spaces, very long).
+      const raw = typeof err?.message === 'string' ? err.message : '';
+      const safeBody =
+        raw && raw.length < 200 && /\s/.test(raw)
+          ? raw
+          : t('common.tryAgainLater', { defaultValue: 'Something went wrong. Try again in a moment.' });
+      Alert.alert(t('common.error', { defaultValue: 'Error' }), safeBody);
     } finally {
       setSubmitting(false);
     }
@@ -1237,7 +1246,12 @@ export function MatchPredictionScreen({ navigation }: Props) {
               setBttsAnswer(null);
               Toast.show({ type: 'success', text1: t('matchPrediction.predictionCancelled'), text2: t('matchPrediction.pickSlotRefunded') });
             } catch (err: any) {
-              Alert.alert('Error', err.message || 'Failed to cancel prediction');
+              const raw = typeof err?.message === 'string' ? err.message : '';
+              const safeBody =
+                raw && raw.length < 200 && /\s/.test(raw)
+                  ? raw
+                  : t('common.tryAgainLater', { defaultValue: 'Something went wrong. Try again in a moment.' });
+              Alert.alert(t('common.error', { defaultValue: 'Error' }), safeBody);
             }
           },
         },

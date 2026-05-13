@@ -94,9 +94,32 @@ export function GiftcardRedeemScreen() {
                 giftcardType: card.type,
               });
               await Promise.all([fetchData(), refreshBalance()]);
-              Alert.alert(t('giftcard.redemptionSubmitted'), t('giftcard.redemptionSubmittedDesc'));
+              // Two-button confirmation so the success state has a
+              // forward path. The previous single-OK Alert dropped
+              // the user back on the form with no signal that the
+              // order existed elsewhere — they had to discover the
+              // History tab on their own.
+              Alert.alert(
+                t('giftcard.redemptionSubmitted'),
+                t('giftcard.redemptionSubmittedDesc'),
+                [
+                  {
+                    text: t('giftcard.viewOrders', { defaultValue: 'View my orders' }),
+                    onPress: () => setTab('history'),
+                  },
+                  {
+                    text: t('common.done', { defaultValue: 'Done' }),
+                    style: 'cancel',
+                  },
+                ],
+              );
             } catch (e: any) {
-              Alert.alert(t('common.error'), e.message || t('giftcard.redemptionFailed'));
+              const raw = typeof e?.message === 'string' ? e.message : '';
+              const safeBody =
+                raw && raw.length < 200 && /\s/.test(raw)
+                  ? raw
+                  : t('giftcard.redemptionFailed');
+              Alert.alert(t('common.error'), safeBody);
             } finally {
               setRedeeming(null);
             }

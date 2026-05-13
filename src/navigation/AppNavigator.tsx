@@ -465,12 +465,12 @@ export function AppNavigator() {
               <RootStack.Screen
                 name="Paywall"
                 component={PaywallScreen}
-                options={{ animation: 'slide_from_bottom', presentation: 'fullScreenModal' }}
+                options={{ animation: 'slide_from_bottom', presentation: 'modal' }}
               />
               <RootStack.Screen
                 name="Search"
                 component={SearchScreen}
-                options={{ animation: 'slide_from_bottom', presentation: 'fullScreenModal', headerShown: false }}
+                options={{ animation: 'slide_from_bottom', presentation: 'modal', headerShown: false }}
               />
             </>
           ) : (
@@ -523,12 +523,12 @@ export function AppNavigator() {
               <RootStack.Screen
                 name="Paywall"
                 component={PaywallScreen}
-                options={{ animation: 'slide_from_bottom', presentation: 'fullScreenModal' }}
+                options={{ animation: 'slide_from_bottom', presentation: 'modal' }}
               />
               <RootStack.Screen
                 name="Search"
                 component={SearchScreen}
-                options={{ animation: 'slide_from_bottom', presentation: 'fullScreenModal', headerShown: false }}
+                options={{ animation: 'slide_from_bottom', presentation: 'modal', headerShown: false }}
               />
             </>
           )

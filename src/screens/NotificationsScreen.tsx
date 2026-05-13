@@ -173,6 +173,21 @@ export function NotificationsScreen() {
         <View style={styles.emptyState}>
           <Feather name="bell-off" size={32} color={colors.onSurfaceVariant} />
           <Text style={styles.emptyText}>{t('notifications.empty')}</Text>
+          <Text style={styles.emptyHint}>
+            {t('notifications.emptyHint', {
+              defaultValue: "You're all caught up — we'll ping when there's news on your picks.",
+            })}
+          </Text>
+          <TouchableOpacity
+            style={styles.emptyCta}
+            onPress={() => (navigation as any).navigate('NotificationPreferences')}
+            activeOpacity={0.85}
+          >
+            <Feather name="settings" size={14} color={colors.primary} />
+            <Text style={styles.emptyCtaText}>
+              {t('notifications.tunePreferences', { defaultValue: 'Tune preferences' })}
+            </Text>
+          </TouchableOpacity>
         </View>
       );
     }
@@ -264,9 +279,34 @@ const styles = StyleSheet.create({
     paddingVertical: 48,
   },
   emptyText: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 16,
+    color: colors.onSurface,
+  },
+  emptyHint: {
     fontFamily: 'Inter_400Regular',
-    fontSize: 14,
+    fontSize: 13,
     color: colors.onSurfaceVariant,
+    textAlign: 'center',
+    paddingHorizontal: 32,
+    lineHeight: 18,
+  },
+  emptyCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(202,253,0,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(202,253,0,0.30)',
+    borderRadius: 999,
+  },
+  emptyCtaText: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 12,
+    color: colors.primary,
   },
 
   sectionHeader: {

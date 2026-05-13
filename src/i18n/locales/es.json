@@ -236,7 +236,9 @@
     "cameraPermission": "Se necesita acceso a la cámara para escanear códigos QR",
     "requestPermission": "Dar Permiso",
     "invalidQR": "Este código QR no es una invitación válida de Kinetic",
-    "leagueNotFound": "Liga no encontrada o código expirado"
+    "leagueNotFound": "Liga no encontrada o código expirado",
+    "browsePublic": "Explorar ligas",
+    "scanInvite": "Escanear código"
   },
   "picks": {
     "active": "Activos",
@@ -268,7 +270,8 @@
     "resolvedAppearHere": "Tus predicciones resueltas aparecerán aquí",
     "proInsights": "ANÁLISIS PRO",
     "bestSport": "Mejor Deporte",
-    "unlockDetailedStats": "Desbloquea estadísticas detalladas por deporte"
+    "unlockDetailedStats": "Desbloquea estadísticas detalladas por deporte",
+    "predictNow": "Predecir ahora →"
   },
   "leaderboard": {
     "title": "RANKINGS GLOBALES",
@@ -372,7 +375,9 @@
     "hrsAgo": "Hace {{count}} hrs",
     "dayAgo": "Hace 1 día",
     "daysAgo": "Hace {{count}} días",
-    "loadingMore": "Cargando más..."
+    "loadingMore": "Cargando más...",
+    "emptyHint": "Estás al día — te avisamos cuando haya novedades de tus picks.",
+    "tunePreferences": "Ajustar preferencias"
   },
   "notificationPrefs": {
     "title": "AJUSTES DE NOTIFICACIONES",
@@ -619,7 +624,8 @@
     "insufficientCoins": "Monedas Insuficientes",
     "insufficientCoinsDesc": "Necesitas {{needed}} monedas. Tienes {{available}} disponibles.",
     "redeem": "Canjear",
-    "redemptionFailed": "El canje falló."
+    "redemptionFailed": "El canje falló.",
+    "viewOrders": "Ver mis pedidos"
   },
   "sportSelection": {
     "step": "Paso 1 de 3",
@@ -792,7 +798,9 @@
     "txLeagueRewards": "Premios de Liga",
     "txGiftCard": "Tarjeta de Regalo",
     "txRefund": "Reembolso",
-    "txWelcomeBonus": "Bonus de Bienvenida"
+    "txWelcomeBonus": "Bonus de Bienvenida",
+    "noTransactionsHint": "Haz predicciones, gana rachas y completa retos para ganar monedas.",
+    "startEarning": "Empezar a ganar →"
   },
   "live": {
     "yesterday": "Ayer",
@@ -1051,7 +1059,9 @@
     "comingSoon": "Próximamente",
     "somethingWrong": "Algo salió mal. Intenta de nuevo.",
     "you": "tú",
-    "errorLoading": "No se pudo cargar. Desliza para reintentar."
+    "errorLoading": "No se pudo cargar. Desliza para reintentar.",
+    "tryAgainLater": "Algo salió mal. Inténtalo en un momento.",
+    "done": "Listo"
   },
   "error": {
     "title": "Algo salió mal",
@@ -1186,7 +1196,7 @@
   "onboardingComplete": {
     "title": "¡Todo listo!",
     "subtitle": "Tu feed personalizado está listo",
-    "letsGo": "¡Vamos!",
+    "letsGo": "Hacer mi primera predicción →",
     "notifMyTeams": "Notificaciones: Mis Equipos",
     "notifAllGames": "Notificaciones: Todos los Partidos",
     "inviteFriends": "Invita a un amigo — gana {{coins}} monedas"

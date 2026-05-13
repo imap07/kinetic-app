@@ -326,7 +326,7 @@ export function CoinLeaguesScreen() {
                   ? t('leagues.noOpenLeaguesHint')
                   : t('leagues.noJoinedLeaguesHint')}
               </Text>
-              {tab === 'open' && (
+              {tab === 'open' ? (
                 <TouchableOpacity
                   style={styles.createBtn}
                   onPress={() => setShowCreate(true)}
@@ -334,7 +334,31 @@ export function CoinLeaguesScreen() {
                   <Feather name="plus" size={16} color={colors.onPrimary} />
                   <Text style={styles.createBtnText}>{t('leagues.createLeague')}</Text>
                 </TouchableOpacity>
-              )}
+              ) : tab === 'my' ? (
+                /* My-leagues empty state used to be a dead end — no CTA,
+                   just text. Now offers the two ways in: browse the
+                   public league list, or scan a friend's invite QR. */
+                <View style={styles.emptyCtaRow}>
+                  <TouchableOpacity
+                    style={styles.createBtn}
+                    onPress={() => setTab('open')}
+                  >
+                    <Feather name="search" size={16} color={colors.onPrimary} />
+                    <Text style={styles.createBtnText}>
+                      {t('leagues.browsePublic', { defaultValue: 'Browse leagues' })}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.emptySecondaryBtn}
+                    onPress={() => (navigation as any).navigate('QRScanner')}
+                  >
+                    <Feather name="camera" size={16} color={colors.primary} />
+                    <Text style={styles.emptySecondaryBtnText}>
+                      {t('leagues.scanInvite', { defaultValue: 'Scan invite' })}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
             </View>
           )
         }
@@ -965,6 +989,29 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceGrotesk_700Bold',
     fontSize: 14,
     color: colors.onPrimary,
+  },
+  emptyCtaRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
+  emptySecondaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: 'rgba(202,253,0,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(202,253,0,0.30)',
+    paddingHorizontal: spacing['2xl'],
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.full,
+  },
+  emptySecondaryBtnText: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 14,
+    color: colors.primary,
   },
 
   /* ── League Card ── */
