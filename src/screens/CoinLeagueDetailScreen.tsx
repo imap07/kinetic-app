@@ -43,6 +43,11 @@ export function CoinLeagueDetailScreen() {
 
   const [league, setLeague] = useState<CoinLeague | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  // Per-userId rank delta vs. the previous poll. Powers the
+  // "↑3" / "↓1" badges next to live rank rows so users see their
+  // standing move in real time. Reset whenever the user leaves
+  // the screen.
+  const [rankDeltas, setRankDeltas] = useState<Map<string, number>>(new Map());
   const [matches, setMatches] = useState<SportGame[]>([]);
   const [activeMatchTab, setActiveMatchTab] = useState<'upcoming' | 'live' | 'recent'>('upcoming');
   const [predictions, setPredictions] = useState<Map<number, PredictionData>>(new Map());
@@ -128,6 +133,51 @@ export function CoinLeagueDetailScreen() {
     setLoading(true);
     fetchData().finally(() => setLoading(false));
   }, [fetchData]);
+
+  // Live leaderboard polling. Only active while at least one match in
+  // the league is currently LIVE — at all other times the standings
+  // can't move (resolution runs after final whistle), so polling
+  // would just burn battery and the 7,500 req/day API budget.
+  //
+  // Lightweight: hits /leagues/:id/leaderboard every 10s, diffs by
+  // userId rank, and writes deltas into `rankDeltas` so the row UI
+  // can render arrows. No full re-fetch of league/matches — that
+  // continues to require pull-to-refresh.
+  const hasLiveMatch = matches.some((m) => m.isLive);
+  useEffect(() => {
+    if (!hasLiveMatch || !tokens?.accessToken) return;
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const res = await leaguesApi.getLeaderboard(tokens.accessToken, leagueId);
+        if (cancelled || !res) return;
+        const prevRanks = new Map<string, number>();
+        leaderboard.forEach((e, i) => prevRanks.set(String(e.userId), i + 1));
+        const deltas = new Map<string, number>();
+        res.leaderboard.forEach((e, i) => {
+          const next = i + 1;
+          const prev = prevRanks.get(String(e.userId));
+          if (prev != null && prev !== next) deltas.set(String(e.userId), prev - next);
+        });
+        setLeaderboard(res.leaderboard);
+        if (deltas.size > 0) {
+          setRankDeltas(deltas);
+          // Clear the deltas after ~6s so the arrows fade off and the
+          // next poll's deltas aren't visually shouted over by old ones.
+          setTimeout(() => {
+            if (!cancelled) setRankDeltas(new Map());
+          }, 6000);
+        }
+      } catch {
+        /* transient — next tick retries */
+      }
+    };
+    const id = setInterval(tick, 10_000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [hasLiveMatch, tokens?.accessToken, leagueId, leaderboard]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -704,6 +754,32 @@ export function CoinLeagueDetailScreen() {
                     ) : (
                       <Text style={styles.lbPosText}>{entry.position}</Text>
                     )}
+                    {/* Real-time rank-change indicator. `rankDeltas`
+                        is populated only during live matches; outside
+                        that window the map is always empty and
+                        nothing renders here. */}
+                    {(() => {
+                      const delta = rankDeltas.get(String(entry.userId));
+                      if (!delta) return null;
+                      const up = delta > 0;
+                      return (
+                        <View
+                          style={[
+                            styles.lbDelta,
+                            up ? styles.lbDeltaUp : styles.lbDeltaDown,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.lbDeltaText,
+                              up ? styles.lbDeltaTextUp : styles.lbDeltaTextDown,
+                            ]}
+                          >
+                            {up ? '↑' : '↓'}{Math.abs(delta)}
+                          </Text>
+                        </View>
+                      );
+                    })()}
                   </View>
                   <View style={styles.lbInfo}>
                     <Text style={[styles.lbName, isCurrent && styles.lbNameCurrent]} numberOfLines={1}>
@@ -973,6 +1049,29 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceGrotesk_700Bold',
     fontSize: 14,
     color: colors.onSurfaceDim,
+  },
+  lbDelta: {
+    marginTop: 2,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 6,
+  },
+  lbDeltaUp: {
+    backgroundColor: 'rgba(202,253,0,0.18)',
+  },
+  lbDeltaDown: {
+    backgroundColor: 'rgba(244,67,54,0.18)',
+  },
+  lbDeltaText: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 9,
+    letterSpacing: 0.2,
+  },
+  lbDeltaTextUp: {
+    color: colors.primary,
+  },
+  lbDeltaTextDown: {
+    color: colors.error,
   },
   lbInfo: {
     flex: 1,
