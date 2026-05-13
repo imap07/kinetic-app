@@ -1290,5 +1290,13 @@
     "statsHidden": "El usuario ocultó sus estadísticas.",
     "recent": "Picks recientes",
     "historyHidden": "No hay historial compartido."
+  },
+  "comments": {
+    "title": "Comentarios",
+    "subtitle": "Corto y al grano — máx {{n}} caracteres",
+    "empty": "Sé el primero en comentar.",
+    "placeholder": "Di algo…",
+    "deletePromptTitle": "¿Borrar comentario?",
+    "delete": "Borrar"
   }
 }

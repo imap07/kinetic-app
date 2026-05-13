@@ -1290,5 +1290,13 @@
     "statsHidden": "Stats hidden by user.",
     "recent": "Recent picks",
     "historyHidden": "No history shared yet."
+  },
+  "comments": {
+    "title": "Comments",
+    "subtitle": "Keep it short — {{n}} chars max",
+    "empty": "Be the first to chime in.",
+    "placeholder": "Say something…",
+    "deletePromptTitle": "Delete comment?",
+    "delete": "Delete"
   }
 }

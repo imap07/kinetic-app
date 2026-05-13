@@ -22,6 +22,8 @@ import type { PickReactionKey } from '../shared/domain';
 import type { LeaguesStackParamList } from '../navigation/types';
 import { ReactionBar } from '../components/ReactionBar';
 import { PublicProfileSheet } from '../components/PublicProfileSheet';
+import { PickCommentsSheet } from '../components/PickCommentsSheet';
+import { commentsApi } from '../api/comments';
 
 type RouteParams = RouteProp<LeaguesStackParamList, 'LeaguePicksFeed'>;
 
@@ -107,11 +109,42 @@ export function LeaguePicksFeedScreen() {
   );
 
   const [profileUserId, setProfileUserId] = useState<string | null>(null);
+  const [commentsPickId, setCommentsPickId] = useState<string | null>(null);
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
+
+  // Batch-load comment counts whenever the pick list changes. One
+  // POST returns all counts as a map, so the feed shows "💬 3" badges
+  // without each card doing its own round-trip.
+  useEffect(() => {
+    if (!tokens?.accessToken || items.length === 0) return;
+    let cancelled = false;
+    const ids = items.map((i) => i.predictionId);
+    commentsApi
+      .batchCount(tokens.accessToken, ids)
+      .then((counts) => {
+        if (!cancelled) setCommentCounts(counts);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [items, tokens?.accessToken]);
+
+  const handleCountChange = useCallback(
+    (predictionId: string, delta: number) => {
+      setCommentCounts((prev) => ({
+        ...prev,
+        [predictionId]: Math.max(0, (prev[predictionId] ?? 0) + delta),
+      }));
+    },
+    [],
+  );
 
   const renderItem = useCallback(
     ({ item }: { item: LeaguePickFeedItem }) => (
       <PickFeedCard
         item={item}
+        commentCount={commentCounts[item.predictionId] ?? 0}
         onReact={(emoji) => handleToggle(item.predictionId, emoji)}
         // Tapping someone else's row opens their public profile sheet.
         // Self-taps are no-ops — there's already a Profile tab for that
@@ -119,9 +152,10 @@ export function LeaguePicksFeedScreen() {
         onProfilePress={
           item.isSelf ? undefined : () => setProfileUserId(item.userId)
         }
+        onCommentsPress={() => setCommentsPickId(item.predictionId)}
       />
     ),
-    [handleToggle],
+    [handleToggle, commentCounts],
   );
 
   if (loading) {
@@ -200,18 +234,28 @@ export function LeaguePicksFeedScreen() {
         userId={profileUserId}
         onClose={() => setProfileUserId(null)}
       />
+
+      <PickCommentsSheet
+        predictionId={commentsPickId}
+        onClose={() => setCommentsPickId(null)}
+        onCountChanged={handleCountChange}
+      />
     </View>
   );
 }
 
 function PickFeedCard({
   item,
+  commentCount,
   onReact,
   onProfilePress,
+  onCommentsPress,
 }: {
   item: LeaguePickFeedItem;
+  commentCount: number;
   onReact: (emoji: PickReactionKey) => void;
   onProfilePress?: () => void;
+  onCommentsPress: () => void;
 }) {
   const { t } = useTranslation();
   // Wrap the header in TouchableOpacity only when there's something
@@ -249,7 +293,20 @@ function PickFeedCard({
         <Text style={styles.pickSummary}>{describePick(item, t)}</Text>
       </View>
 
-      <ReactionBar summary={item.reactions} onToggle={onReact} />
+      <View style={styles.actionsRow}>
+        <ReactionBar summary={item.reactions} onToggle={onReact} />
+        <TouchableOpacity
+          style={styles.commentBtn}
+          onPress={onCommentsPress}
+          activeOpacity={0.7}
+          hitSlop={8}
+        >
+          <Feather name="message-circle" size={14} color={colors.onSurfaceVariant} />
+          <Text style={styles.commentCount}>
+            {commentCount > 0 ? commentCount : ''}
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -333,6 +390,27 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   pickSummary: { color: colors.onSurface, fontSize: 14, fontWeight: '600' },
+  actionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  commentBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: colors.surfaceContainerLow,
+  },
+  commentCount: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 12,
+    color: colors.onSurfaceVariant,
+    minWidth: 8,
+  },
   badge: {
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,

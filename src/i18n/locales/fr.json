@@ -1290,5 +1290,13 @@
     "statsHidden": "Statistiques masquées.",
     "recent": "Pronostics récents",
     "historyHidden": "Aucun historique partagé."
+  },
+  "comments": {
+    "title": "Commentaires",
+    "subtitle": "Court et bon — {{n}} caractères max",
+    "empty": "Soyez le premier à réagir.",
+    "placeholder": "Dites quelque chose…",
+    "deletePromptTitle": "Supprimer le commentaire ?",
+    "delete": "Supprimer"
   }
 }
