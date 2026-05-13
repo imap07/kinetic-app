@@ -78,7 +78,16 @@ export type AnalyticsProps =
   // ─── Growth ───────────────────────────────────────────────
   | {
       event: 'share_generated';
-      contentType: 'pick' | 'streak' | 'recap';
+      // pick = bare image share; pick_invite = native share sheet
+      // with referral message+url; pick_clipboard = user copied the
+      // prefilled invite to paste manually. Keeping these distinct
+      // lets us measure which surface drives conversion.
+      contentType:
+        | 'pick'
+        | 'pick_invite'
+        | 'pick_clipboard'
+        | 'streak'
+        | 'recap';
       destination?: string;
     }
   | { event: 'referral_invited'; channel: string }
