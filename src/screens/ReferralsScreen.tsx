@@ -23,6 +23,7 @@ import {
   referralsApi,
   buildReferralUrl,
   type ReferralStatus,
+  type InvitedFriend,
 } from '../api/referrals';
 
 export function ReferralsScreen() {
@@ -32,6 +33,7 @@ export function ReferralsScreen() {
   const { t } = useTranslation();
 
   const [status, setStatus] = useState<ReferralStatus | null>(null);
+  const [friends, setFriends] = useState<InvitedFriend[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -42,8 +44,14 @@ export function ReferralsScreen() {
       if (mode === 'initial') setLoading(true);
       if (mode === 'refresh') setRefreshing(true);
       try {
-        const res = await referralsApi.getStatus(tokens.accessToken);
-        setStatus(res);
+        // Fetched in parallel — neither call gates the other and the
+        // friends list is the most expensive piece to wait for.
+        const [s, fs] = await Promise.all([
+          referralsApi.getStatus(tokens.accessToken),
+          referralsApi.getFriends(tokens.accessToken).catch(() => [] as InvitedFriend[]),
+        ]);
+        setStatus(s);
+        setFriends(fs);
       } catch (e: any) {
         Alert.alert(t('common.error'), e?.message ?? t('common.somethingWrong'));
       } finally {
@@ -180,6 +188,23 @@ export function ReferralsScreen() {
           />
         </View>
 
+        {/* Invited friends — per-referee progress. Surfaces the
+            "Carlos: 1/3 picks resolved" information that the
+            aggregate stat cells above hide, so the user knows
+            which specific friend to nudge. Hidden when nobody's
+            been invited yet; the How-it-works block below
+            covers the empty case. */}
+        {friends.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              {t('referrals.invitedFriendsTitle', { defaultValue: 'Invited friends' })}
+            </Text>
+            {friends.map((f) => (
+              <FriendRow key={f.referralId} friend={f} t={t} />
+            ))}
+          </View>
+        )}
+
         {/* How it works */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('referrals.howTitle')}</Text>
@@ -221,6 +246,66 @@ function Step({ n, text }: { n: number; text: string }) {
         <Text style={styles.stepBadgeText}>{n}</Text>
       </View>
       <Text style={styles.stepText}>{text}</Text>
+    </View>
+  );
+}
+
+function FriendRow({
+  friend,
+  t,
+}: {
+  friend: InvitedFriend;
+  t: ReturnType<typeof useTranslation>['t'];
+}) {
+  const done = friend.status === 'qualified' || friend.status === 'rewarded';
+  const blocked = friend.status === 'blocked';
+  const progress = Math.min(friend.picksResolved / friend.picksNeeded, 1);
+
+  const statusLabel = blocked
+    ? t('referrals.friendBlocked', { defaultValue: 'Blocked' })
+    : friend.status === 'rewarded'
+      ? t('referrals.friendRewarded', { defaultValue: 'Rewarded ✓' })
+      : friend.status === 'qualified'
+        ? t('referrals.friendQualified', { defaultValue: 'Qualified — paying out' })
+        : t('referrals.friendProgress', {
+            defaultValue: '{{r}}/{{n}} picks resolved',
+            r: friend.picksResolved,
+            n: friend.picksNeeded,
+          });
+
+  return (
+    <View style={styles.friendRow}>
+      <View style={styles.friendAvatar}>
+        <Text style={styles.friendAvatarText}>
+          {(friend.refereeDisplayName || '?').slice(0, 1).toUpperCase()}
+        </Text>
+      </View>
+      <View style={styles.friendBody}>
+        <Text style={styles.friendName} numberOfLines={1}>
+          {friend.refereeDisplayName}
+        </Text>
+        <Text
+          style={[
+            styles.friendStatus,
+            done && styles.friendStatusDone,
+            blocked && styles.friendStatusBlocked,
+          ]}
+        >
+          {statusLabel}
+        </Text>
+        {/* Progress bar hidden for terminal states (done / blocked).
+            Keeps the row visually quiet once nothing else can change. */}
+        {!done && !blocked && (
+          <View style={styles.friendProgressBar}>
+            <View
+              style={[
+                styles.friendProgressFill,
+                { width: `${progress * 100}%` },
+              ]}
+            />
+          </View>
+        )}
+      </View>
     </View>
   );
 }
@@ -371,5 +456,58 @@ const styles = StyleSheet.create({
     fontSize: 11,
     textAlign: 'center',
     lineHeight: 16,
+  },
+
+  friendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+  },
+  friendAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(202,253,0,0.10)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(202,253,0,0.30)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  friendAvatarText: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 14,
+    color: colors.primary,
+  },
+  friendBody: {
+    flex: 1,
+    gap: 4,
+  },
+  friendName: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 14,
+    color: colors.onSurface,
+  },
+  friendStatus: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 12,
+    color: colors.onSurfaceVariant,
+  },
+  friendStatusDone: {
+    color: colors.primary,
+  },
+  friendStatusBlocked: {
+    color: colors.error,
+  },
+  friendProgressBar: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    overflow: 'hidden',
+  },
+  friendProgressFill: {
+    height: '100%',
+    backgroundColor: colors.primary,
+    borderRadius: 2,
   },
 });

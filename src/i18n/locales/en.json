@@ -1271,6 +1271,11 @@
     "onboardingHint": "Enter it now and you both earn {{coins}} coins when you resolve {{picks}} picks.",
     "onboardingPlaceholder": "ABC12345",
     "onboardingSaved": "We'll apply it after setup",
-    "onboardingInvalid": "Codes are 4–12 letters and numbers"
+    "onboardingInvalid": "Codes are 4–12 letters and numbers",
+    "invitedFriendsTitle": "Invited friends",
+    "friendBlocked": "Blocked",
+    "friendRewarded": "Rewarded ✓",
+    "friendQualified": "Qualified — paying out",
+    "friendProgress": "{{r}}/{{n}} picks resolved"
   }
 }

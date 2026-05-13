@@ -1271,6 +1271,11 @@
     "onboardingHint": "Saisis-le maintenant et vous gagnez {{coins}} coins chacun après {{picks}} prédictions résolues.",
     "onboardingPlaceholder": "ABC12345",
     "onboardingSaved": "On l'appliquera après la configuration",
-    "onboardingInvalid": "Les codes font 4 à 12 lettres et chiffres"
+    "onboardingInvalid": "Les codes font 4 à 12 lettres et chiffres",
+    "invitedFriendsTitle": "Amis invités",
+    "friendBlocked": "Bloqué",
+    "friendRewarded": "Récompensé ✓",
+    "friendQualified": "Qualifié — récompense en cours",
+    "friendProgress": "{{r}}/{{n}} pronostics résolus"
   }
 }

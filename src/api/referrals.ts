@@ -18,9 +18,27 @@ export interface ApplyReferralResponse {
   blocked?: boolean;
 }
 
+export interface InvitedFriend {
+  referralId: string;
+  refereeDisplayName: string;
+  status: 'pending' | 'qualified' | 'rewarded' | 'blocked';
+  picksResolved: number;
+  picksNeeded: number;
+  qualifiedAt: string | null;
+  rewardedAt: string | null;
+}
+
 export const referralsApi = {
   getStatus(token: string) {
     return apiClient.get<ReferralStatus>('/referrals/me', { token });
+  },
+
+  // Per-friend progress: "Carlos: 1/3 picks resolved". Used by
+  // ReferralsScreen to make the abstract aggregate counts feel
+  // tangible — knowing which specific friend is one pick away from
+  // converting drives more outreach than seeing "1 pending".
+  getFriends(token: string) {
+    return apiClient.get<InvitedFriend[]>('/referrals/friends', { token });
   },
 
   apply(token: string, code: string) {
