@@ -35,6 +35,7 @@ import { AchievementProvider } from './src/contexts/AchievementContext';
 import { AdProvider } from './src/contexts/AdContext';
 import { RewardsProvider } from './src/contexts/RewardsContext';
 import { RewardTierCelebration } from './src/components/RewardTierCelebration';
+import { CoinGainToast } from './src/components/CoinGainToast';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { toastConfig } from './src/components/ToastConfig';
@@ -181,6 +182,7 @@ export default function App() {
                     <AppNavigator />
                     <OfflineBanner />
                     <RewardTierCelebration />
+                    <CoinGainToast />
                     <Toast config={toastConfig} topOffset={60} />
                   </RewardsProvider>
                 </AchievementProvider>

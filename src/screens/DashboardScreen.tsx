@@ -12,7 +12,9 @@ import {
   Modal,
   TextInput,
   Dimensions,
+  Alert,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation as useRootNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -1729,9 +1731,51 @@ export function DashboardScreen({ navigation }: Props) {
             <View style={styles.streakModalInfoRow}>
               <Ionicons name="shield-checkmark" size={14} color={colors.info} />
               <Text style={styles.streakModalInfoText}>
-                {t('streak.shieldsAvailable')}: {streakInfo?.shieldsAvailable ?? 0}
+                {(streakInfo?.shieldsAvailable ?? 0) > 0
+                  ? t('streak.shieldsExplainer', {
+                      defaultValue:
+                        'Shields: {{count}} · auto-protects your streak if you miss a day',
+                      count: streakInfo?.shieldsAvailable ?? 0,
+                    })
+                  : t('streak.shieldsNone', {
+                      defaultValue:
+                        'No shields — Pro members earn one each week.',
+                    })}
               </Text>
             </View>
+
+            {/* Manual shield burn — visible only when at risk and there's
+                a shield to use. The backend also auto-applies a shield
+                at the next pick when the streak would break, so this is
+                an optional "lock it in now" path for users who want the
+                psychological reassurance before the deadline. */}
+            {(streakInfo?.shieldsAvailable ?? 0) > 0 && (
+              <TouchableOpacity
+                style={styles.streakModalShieldBtn}
+                activeOpacity={0.85}
+                onPress={async () => {
+                  try {
+                    await streaksApi.useStreakShield(tokens!.accessToken);
+                    const fresh = await streaksApi.getStreakInfo(tokens!.accessToken);
+                    setStreakInfo(fresh);
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                  } catch (e: any) {
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                    Alert.alert(
+                      t('common.error', { defaultValue: 'Error' }),
+                      t('streak.shieldUseFailed', {
+                        defaultValue: 'Could not use shield. Try again later.',
+                      }),
+                    );
+                  }
+                }}
+              >
+                <Ionicons name="shield" size={14} color={colors.onPrimary} />
+                <Text style={styles.streakModalShieldBtnText}>
+                  {t('streak.useShield', { defaultValue: 'Use a shield now' })}
+                </Text>
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity
               style={styles.streakModalDismiss}
@@ -2867,6 +2911,22 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.onPrimary,
     letterSpacing: 0.5,
+  },
+  streakModalShieldBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 999,
+    backgroundColor: colors.info,
+    marginTop: 8,
+  },
+  streakModalShieldBtnText: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 13,
+    color: colors.onPrimary,
+    letterSpacing: 0.3,
   },
 
   // ── Daily Challenge Card ──

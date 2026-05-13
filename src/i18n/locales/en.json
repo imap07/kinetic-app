@@ -1213,7 +1213,11 @@
     "nextMilestone": "Next milestone",
     "shieldsAvailable": "Shields available",
     "milestone": "Day Streak!",
-    "coinsEarned": "coins earned"
+    "coinsEarned": "coins earned",
+    "shieldsExplainer": "Shields: {{count}} · auto-protects your streak if you miss a day",
+    "shieldsNone": "No shields — Pro members earn one each week.",
+    "useShield": "Use a shield now",
+    "shieldUseFailed": "Could not use shield. Try again later."
   },
   "challenge": {
     "daily": "Daily Challenge",

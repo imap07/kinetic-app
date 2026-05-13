@@ -1213,7 +1213,11 @@
     "nextMilestone": "Próximo hito",
     "shieldsAvailable": "Escudos disponibles",
     "milestone": "¡Días de racha!",
-    "coinsEarned": "monedas ganadas"
+    "coinsEarned": "monedas ganadas",
+    "shieldsExplainer": "Escudos: {{count}} · protegen tu racha si te saltas un día",
+    "shieldsNone": "Sin escudos — los miembros Pro ganan uno por semana.",
+    "useShield": "Usar un escudo",
+    "shieldUseFailed": "No se pudo usar el escudo. Inténtalo más tarde."
   },
   "challenge": {
     "daily": "Desafío Diario",
