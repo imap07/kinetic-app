@@ -240,3 +240,12 @@ export const REFERRAL_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 export const REFERRAL_CODE_LENGTH = 8;
 
 export type ReferralStatus = 'pending' | 'qualified' | 'rewarded' | 'blocked';
+
+// Daily app-open streak rewards. Disociated from the pick-streak
+// mechanic so casual users (who don't make a pick every day) still
+// have a reason to launch the app — small per-day coin trickle
+// plus a meaningful weekly milestone keeps the habit loop without
+// canibalising the existing prediction-streak surface.
+export const DAILY_OPEN_REWARD_COINS = 2;
+export const DAILY_OPEN_MILESTONE_DAYS = 7;
+export const DAILY_OPEN_MILESTONE_BONUS = 50;

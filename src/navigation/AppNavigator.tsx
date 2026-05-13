@@ -18,6 +18,7 @@ import {
 } from './types';
 import { useAuth } from '../contexts/AuthContext';
 import { usePushNotifications } from '../hooks/usePushNotifications';
+import { useDailyOpenCheckIn } from '../hooks/useDailyOpenCheckIn';
 import { colors } from '../theme';
 import { ONBOARDING_COMPLETE_KEY } from '../screens/OnboardingScreen';
 import { SportSelectionScreen } from '../screens/SportSelectionScreen';
@@ -355,6 +356,11 @@ function getActiveRouteName(state: NavigationState | undefined): string | undefi
 
 export function AppNavigator() {
   const { isAuthenticated, isLoading, user } = useAuth();
+  // Daily app-open check-in fires on mount + every foreground.
+  // Mounted here (rather than in App.tsx) because the hook needs
+  // both AuthContext and CoinContext, and both are providers
+  // wrapping AppNavigator.
+  useDailyOpenCheckIn();
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
   const routeNameRef = useRef<string | undefined>(undefined);
 

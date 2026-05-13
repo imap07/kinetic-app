@@ -29,6 +29,14 @@ export interface StreakLeaderboardResponse {
   board: StreakLeaderboardEntry[];
 }
 
+export interface DailyOpenCheckInResponse {
+  streak: number;
+  awardedCoins: number;
+  milestoneCoins: number;
+  isNewDay: boolean;
+  nextMilestoneDays: number;
+}
+
 export const streaksApi = {
   getStreakInfo(token: string) {
     return apiClient.get<StreakInfo>('/streaks/me', { token });
@@ -36,6 +44,17 @@ export const streaksApi = {
 
   useStreakShield(token: string) {
     return apiClient.post<UseShieldResponse>('/streaks/use-shield', undefined, { token });
+  },
+
+  // Fire-and-forget on app foreground. Backend is idempotent per
+  // UTC day, so launching the app multiple times in a day is a
+  // server-side no-op after the first call.
+  dailyOpenCheckIn(token: string) {
+    return apiClient.post<DailyOpenCheckInResponse>(
+      '/streaks/daily-open-check-in',
+      undefined,
+      { token },
+    );
   },
 
   // Public leaderboard — no token required. Users with
