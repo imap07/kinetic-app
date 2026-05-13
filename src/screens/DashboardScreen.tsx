@@ -46,6 +46,7 @@ import { RewardedAdButton } from '../components/RewardedAdButton';
 import { useAds } from '../contexts/AdContext';
 import { NextUpHero } from '../components/NextUpHero';
 import { GuidedFirstPickOverlay } from '../components/GuidedFirstPickOverlay';
+import { Skeleton } from '../components/Skeleton';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type Props = {
@@ -540,8 +541,17 @@ export function DashboardScreen({ navigation }: Props) {
       <View style={styles.container}>
         <AppHeader />
         <SportTabs activeSport={activeSport} onSportChange={handleSportChange} visibleSports={user?.favoriteSports} />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+        {/* Skeleton mimics the live action hero + a row of game cards.
+            Replaces the bare spinner so the cold-start screen has the
+            same visual shape as the loaded screen, not a blank slate. */}
+        <View style={styles.skeletonContainer}>
+          <Skeleton height={120} radius={16} />
+          <Skeleton height={20} width="40%" style={{ marginTop: 20, marginBottom: 10 }} />
+          {[0, 1, 2].map((i) => (
+            <View key={i} style={{ marginBottom: 10 }}>
+              <Skeleton height={84} radius={12} />
+            </View>
+          ))}
         </View>
       </View>
     );
@@ -1810,6 +1820,7 @@ export function DashboardScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  skeletonContainer: { flex: 1, paddingHorizontal: 16, paddingTop: 14 },
 
   scrollView: { flex: 1 },
 

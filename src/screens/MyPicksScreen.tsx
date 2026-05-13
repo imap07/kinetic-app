@@ -18,6 +18,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing } from '../theme';
 import Toast from 'react-native-toast-message';
 import { AppHeader } from '../components/AppHeader';
+import { Skeleton } from '../components/Skeleton';
 import { useAuth } from '../contexts/AuthContext';
 import { predictionsApi, SPORT_TABS } from '../api';
 import type { PredictionData, MyStatsResponse, DetailedStatsResponse } from '../api';
@@ -735,8 +736,18 @@ export function MyPicksScreen() {
       <AppHeader showSearch={false} />
 
       {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+        /* Skeleton replaces the bare ActivityIndicator — perceived
+           performance is materially better than a generic spinner,
+           especially on the cold-start path. Three cards worth of
+           placeholders matches the typical fold. */
+        <View style={styles.skeletonContainer}>
+          <Skeleton height={56} radius={12} />
+          <Skeleton height={1} style={{ marginVertical: 12, opacity: 0.4 }} />
+          {[0, 1, 2].map((i) => (
+            <View key={i} style={{ marginBottom: 12 }}>
+              <Skeleton height={88} radius={12} />
+            </View>
+          ))}
         </View>
       ) : (
         <FlatList
@@ -758,6 +769,7 @@ export function MyPicksScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  skeletonContainer: { paddingHorizontal: 16, paddingTop: 12 },
 
   statsBanner: {
     flexDirection: 'row', marginHorizontal: 16, marginBottom: 16,
