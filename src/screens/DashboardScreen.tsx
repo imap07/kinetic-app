@@ -47,6 +47,7 @@ import { useAds } from '../contexts/AdContext';
 import { NextUpHero } from '../components/NextUpHero';
 import { GuidedFirstPickOverlay } from '../components/GuidedFirstPickOverlay';
 import { Skeleton } from '../components/Skeleton';
+import { QuestsCard } from '../components/QuestsCard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type Props = {
@@ -1175,6 +1176,17 @@ export function DashboardScreen({ navigation }: Props) {
             </View>
           </TouchableOpacity>
         ) : null}
+
+        {/* Daily quests card — promoted from the buried progress bar
+            inside the stats card to its own hero-level card with
+            per-quest progress. Hidden until dailyStatus.quests is
+            available so we don't flash an empty shell. */}
+        {dailyStatus?.quests && (
+          <QuestsCard
+            quests={dailyStatus.quests}
+            onPress={() => navigation.navigate('Quests')}
+          />
+        )}
 
         {/* Daily Challenge Card — from /api/challenges/today */}
         {todayChallenge && (

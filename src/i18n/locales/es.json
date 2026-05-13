@@ -468,7 +468,9 @@
     "quest3Title": "Gana recompensas bonus",
     "quest3Desc": "Completa todos los retos para un bonus",
     "comingSoon": "Más retos y recompensas llegarán pronto.",
-    "errorLoading": "Error al cargar retos"
+    "errorLoading": "Error al cargar retos",
+    "allDoneTitle": "¡Todos los retos completos!",
+    "progressTitle": "{{done}} de {{total}} completos"
   },
   "tiers": {
     "rookie": "Novato",

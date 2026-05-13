@@ -468,7 +468,9 @@
     "quest3Title": "Gagne des récompenses bonus",
     "quest3Desc": "Complète tous les défis pour un bonus",
     "comingSoon": "Plus de défis et récompenses arrivent bientôt.",
-    "errorLoading": "Erreur de chargement des défis"
+    "errorLoading": "Erreur de chargement des défis",
+    "allDoneTitle": "Toutes les quêtes terminées !",
+    "progressTitle": "{{done}} sur {{total}} terminées"
   },
   "tiers": {
     "rookie": "Débutant",
