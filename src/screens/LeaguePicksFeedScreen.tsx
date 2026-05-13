@@ -21,6 +21,7 @@ import type { ReactionSummary } from '../api/reactions';
 import type { PickReactionKey } from '../shared/domain';
 import type { LeaguesStackParamList } from '../navigation/types';
 import { ReactionBar } from '../components/ReactionBar';
+import { PublicProfileSheet } from '../components/PublicProfileSheet';
 
 type RouteParams = RouteProp<LeaguesStackParamList, 'LeaguePicksFeed'>;
 
@@ -105,11 +106,19 @@ export function LeaguePicksFeedScreen() {
     [items, tokens?.accessToken],
   );
 
+  const [profileUserId, setProfileUserId] = useState<string | null>(null);
+
   const renderItem = useCallback(
     ({ item }: { item: LeaguePickFeedItem }) => (
       <PickFeedCard
         item={item}
         onReact={(emoji) => handleToggle(item.predictionId, emoji)}
+        // Tapping someone else's row opens their public profile sheet.
+        // Self-taps are no-ops — there's already a Profile tab for that
+        // and tap-on-self would be a confusing back-and-forth.
+        onProfilePress={
+          item.isSelf ? undefined : () => setProfileUserId(item.userId)
+        }
       />
     ),
     [handleToggle],
@@ -186,6 +195,11 @@ export function LeaguePicksFeedScreen() {
           <Text style={styles.errorText}>{error}</Text>
         </View>
       )}
+
+      <PublicProfileSheet
+        userId={profileUserId}
+        onClose={() => setProfileUserId(null)}
+      />
     </View>
   );
 }
@@ -193,14 +207,23 @@ export function LeaguePicksFeedScreen() {
 function PickFeedCard({
   item,
   onReact,
+  onProfilePress,
 }: {
   item: LeaguePickFeedItem;
   onReact: (emoji: PickReactionKey) => void;
+  onProfilePress?: () => void;
 }) {
   const { t } = useTranslation();
+  // Wrap the header in TouchableOpacity only when there's something
+  // to do — preserves the static-card feel for self-rows.
+  const HeaderWrap: any = onProfilePress ? TouchableOpacity : View;
   return (
     <View style={styles.card}>
-      <View style={styles.cardHeader}>
+      <HeaderWrap
+        style={styles.cardHeader}
+        activeOpacity={onProfilePress ? 0.7 : undefined}
+        onPress={onProfilePress}
+      >
         {item.avatar ? (
           <ExpoImage source={{ uri: item.avatar }} style={styles.avatar} />
         ) : (
@@ -220,7 +243,7 @@ function PickFeedCard({
           </Text>
         </View>
         <StatusBadge status={item.status} points={item.pointsAwarded} />
-      </View>
+      </HeaderWrap>
 
       <View style={styles.pickBody}>
         <Text style={styles.pickSummary}>{describePick(item, t)}</Text>

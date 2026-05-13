@@ -1279,5 +1279,16 @@
     "friendRewarded": "Récompensé ✓",
     "friendQualified": "Qualifié — récompense en cours",
     "friendProgress": "{{r}}/{{n}} pronostics résolus"
+  },
+  "publicProfile": {
+    "private": "Ce profil est privé.",
+    "notFound": "Utilisateur non trouvé.",
+    "winRate": "Taux de réussite",
+    "streak": "Série",
+    "bestStreak": "Meilleure",
+    "picks": "Pronostics",
+    "statsHidden": "Statistiques masquées.",
+    "recent": "Pronostics récents",
+    "historyHidden": "Aucun historique partagé."
   }
 }

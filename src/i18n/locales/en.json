@@ -1279,5 +1279,16 @@
     "friendRewarded": "Rewarded ✓",
     "friendQualified": "Qualified — paying out",
     "friendProgress": "{{r}}/{{n}} picks resolved"
+  },
+  "publicProfile": {
+    "private": "This profile is private.",
+    "notFound": "User not found.",
+    "winRate": "Win rate",
+    "streak": "Streak",
+    "bestStreak": "Best",
+    "picks": "Picks",
+    "statsHidden": "Stats hidden by user.",
+    "recent": "Recent picks",
+    "historyHidden": "No history shared yet."
   }
 }

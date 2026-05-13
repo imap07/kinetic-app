@@ -1279,5 +1279,16 @@
     "friendRewarded": "Recompensado ✓",
     "friendQualified": "Calificado — pagando",
     "friendProgress": "{{r}}/{{n}} picks resueltos"
+  },
+  "publicProfile": {
+    "private": "Este perfil es privado.",
+    "notFound": "Usuario no encontrado.",
+    "winRate": "Aciertos",
+    "streak": "Racha",
+    "bestStreak": "Mejor",
+    "picks": "Picks",
+    "statsHidden": "El usuario ocultó sus estadísticas.",
+    "recent": "Picks recientes",
+    "historyHidden": "No hay historial compartido."
   }
 }
