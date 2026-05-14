@@ -57,6 +57,8 @@ export type ProfileStackParamList = {
   StreakLeaderboard: undefined;
   FriendsLeaderboard: undefined;
   Rivalries: undefined;
+  Seasons: undefined;
+  Cosmetics: undefined;
   Referrals: undefined;
 };
 

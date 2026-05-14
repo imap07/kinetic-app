@@ -844,6 +844,32 @@ export function ProfileScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
+            style={styles.settingsRow}
+            onPress={() => profileNav.navigate('Seasons')}
+          >
+            <View style={styles.settingsRowLeft}>
+              <Feather name="award" size={18} color={colors.onSurface} />
+              <Text style={styles.settingsRowText}>
+                {t('seasons.title', { defaultValue: 'Season Pass' })}
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={16} color={colors.onSurfaceVariant} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.settingsRow}
+            onPress={() => profileNav.navigate('Cosmetics')}
+          >
+            <View style={styles.settingsRowLeft}>
+              <Feather name="star" size={18} color={colors.onSurface} />
+              <Text style={styles.settingsRowText}>
+                {t('cosmetics.title', { defaultValue: 'Cosmetics' })}
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={16} color={colors.onSurfaceVariant} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
             style={styles.logoutBtn}
             onPress={handleLogout}
             activeOpacity={0.7}

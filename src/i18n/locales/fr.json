@@ -1343,5 +1343,34 @@
     "aloneTitle": "Pas encore d'amis",
     "aloneBody": "Invitez un ami pour rivaliser sur les séries. Vous gagnez tous les deux des pièces.",
     "inviteCta": "Inviter un ami"
+  },
+  "seasons": {
+    "title": "Pass Saison",
+    "pointsThisSeason": "points cette saison",
+    "toNextTier": "{{n}} pts pour le Palier {{tier}}",
+    "maxTier": "Palier max atteint",
+    "daysLeft": "{{n}} jours restants",
+    "tier": "Palier {{n}}",
+    "pointsRequired": "{{n}} pts",
+    "freeTrack": "Gratuit",
+    "proTrack": "Pro",
+    "claim": "Récupérer",
+    "claimed": "Récupéré",
+    "locked": "Verrouillé",
+    "claimFailed": "Impossible de récupérer",
+    "none": "Pas de saison active. Revenez bientôt.",
+    "proUpsell": "Activez Pro pour des récompenses plus riches à chaque palier"
+  },
+  "cosmetics": {
+    "title": "Cosmétiques",
+    "frames": "Cadres",
+    "badges": "Insignes",
+    "equip": "Équiper",
+    "equipped": "Équipé",
+    "source": {
+      "season": "Récompense de saison",
+      "grant": "Don",
+      "shop": "Boutique"
+    }
   }
 }

@@ -143,6 +143,8 @@ function ProfileNavigator() {
       <ProfileStack.Screen name="StreakLeaderboard" getComponent={() => require('../screens/StreakLeaderboardScreen').StreakLeaderboardScreen} />
       <ProfileStack.Screen name="FriendsLeaderboard" getComponent={() => require('../screens/FriendsLeaderboardScreen').FriendsLeaderboardScreen} />
       <ProfileStack.Screen name="Rivalries" getComponent={() => require('../screens/RivalriesScreen').RivalriesScreen} />
+      <ProfileStack.Screen name="Seasons" getComponent={() => require('../screens/SeasonsScreen').SeasonsScreen} />
+      <ProfileStack.Screen name="Cosmetics" getComponent={() => require('../screens/CosmeticsScreen').CosmeticsScreen} />
       <ProfileStack.Screen name="Referrals" getComponent={() => require('../screens/ReferralsScreen').ReferralsScreen} />
     </ProfileStack.Navigator>
   );

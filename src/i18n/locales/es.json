@@ -1343,5 +1343,34 @@
     "aloneTitle": "Aún no tienes amigos",
     "aloneBody": "Invita a un amigo para competir en rachas. Ambos ganan monedas cuando califica.",
     "inviteCta": "Invitar a un amigo"
+  },
+  "seasons": {
+    "title": "Pase de Temporada",
+    "pointsThisSeason": "puntos esta temporada",
+    "toNextTier": "{{n}} pts para el Nivel {{tier}}",
+    "maxTier": "Nivel máximo alcanzado",
+    "daysLeft": "Quedan {{n}} días",
+    "tier": "Nivel {{n}}",
+    "pointsRequired": "{{n}} pts",
+    "freeTrack": "Gratis",
+    "proTrack": "Pro",
+    "claim": "Reclamar",
+    "claimed": "Reclamado",
+    "locked": "Bloqueado",
+    "claimFailed": "No se pudo reclamar",
+    "none": "No hay temporada activa. Vuelve pronto.",
+    "proUpsell": "Desbloquea Pro para recompensas más generosas en cada nivel"
+  },
+  "cosmetics": {
+    "title": "Cosméticos",
+    "frames": "Marcos",
+    "badges": "Insignias",
+    "equip": "Equipar",
+    "equipped": "Equipado",
+    "source": {
+      "season": "Premio de temporada",
+      "grant": "Regalo",
+      "shop": "Tienda"
+    }
   }
 }

@@ -1343,5 +1343,34 @@
     "aloneTitle": "No friends yet",
     "aloneBody": "Invite a friend to compete on streaks. Both of you earn coins when they qualify.",
     "inviteCta": "Invite a friend"
+  },
+  "seasons": {
+    "title": "Season Pass",
+    "pointsThisSeason": "points this season",
+    "toNextTier": "{{n}} pts to Tier {{tier}}",
+    "maxTier": "Max tier reached",
+    "daysLeft": "{{n}} days left",
+    "tier": "Tier {{n}}",
+    "pointsRequired": "{{n}} pts",
+    "freeTrack": "Free",
+    "proTrack": "Pro",
+    "claim": "Claim",
+    "claimed": "Claimed",
+    "locked": "Locked",
+    "claimFailed": "Could not claim",
+    "none": "No active season right now. Check back soon.",
+    "proUpsell": "Unlock Pro track for richer rewards at every tier"
+  },
+  "cosmetics": {
+    "title": "Cosmetics",
+    "frames": "Frames",
+    "badges": "Badges",
+    "equip": "Equip",
+    "equipped": "Equipped",
+    "source": {
+      "season": "Season reward",
+      "grant": "Grant",
+      "shop": "Shop"
+    }
   }
 }
