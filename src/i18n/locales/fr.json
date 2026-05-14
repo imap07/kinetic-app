@@ -1305,7 +1305,14 @@
     "empty": "Soyez le premier à réagir.",
     "placeholder": "Dites quelque chose…",
     "deletePromptTitle": "Supprimer le commentaire ?",
-    "delete": "Supprimer"
+    "delete": "Supprimer",
+    "reportPromptTitle": "Signaler ce commentaire ?",
+    "reportThanksTitle": "Merci pour le signalement",
+    "reportThanksBody": "Nous allons le vérifier. Vous ne le verrez plus ici.",
+    "reasonSpam": "Spam",
+    "reasonAbuse": "Abus ou harcèlement",
+    "reasonInappropriate": "Inapproprié",
+    "reasonOther": "Autre"
   },
   "hotMatches": {
     "title": "🔥 EN FORME",

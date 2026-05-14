@@ -1305,7 +1305,14 @@
     "empty": "Be the first to chime in.",
     "placeholder": "Say something…",
     "deletePromptTitle": "Delete comment?",
-    "delete": "Delete"
+    "delete": "Delete",
+    "reportPromptTitle": "Report comment?",
+    "reportThanksTitle": "Thanks for the heads-up",
+    "reportThanksBody": "We'll review this comment. You won't see it again here.",
+    "reasonSpam": "Spam",
+    "reasonAbuse": "Abuse or harassment",
+    "reasonInappropriate": "Inappropriate",
+    "reasonOther": "Other"
   },
   "hotMatches": {
     "title": "🔥 TODAY'S HEAT",

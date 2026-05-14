@@ -53,4 +53,21 @@ export const commentsApi = {
       { token },
     );
   },
+
+  // Apple-required UGC report flow. `reason` is one of:
+  //   'spam' | 'abuse' | 'inappropriate' | 'other'
+  // Backend auto-hides the comment from the feed after 3 open
+  // reports (admin can review the queue and resolve / hard-delete).
+  report(
+    token: string,
+    commentId: string,
+    reason: 'spam' | 'abuse' | 'inappropriate' | 'other',
+    detail?: string,
+  ) {
+    return apiClient.post<{ reported: true; hidden: boolean }>(
+      `/picks/comments/${commentId}/report`,
+      { reason, ...(detail ? { detail } : {}) },
+      { token },
+    );
+  },
 };

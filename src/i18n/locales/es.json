@@ -1305,7 +1305,14 @@
     "empty": "Sé el primero en comentar.",
     "placeholder": "Di algo…",
     "deletePromptTitle": "¿Borrar comentario?",
-    "delete": "Borrar"
+    "delete": "Borrar",
+    "reportPromptTitle": "¿Reportar comentario?",
+    "reportThanksTitle": "Gracias por avisarnos",
+    "reportThanksBody": "Lo revisaremos. No verás este comentario otra vez.",
+    "reasonSpam": "Spam",
+    "reasonAbuse": "Abuso o acoso",
+    "reasonInappropriate": "Inapropiado",
+    "reasonOther": "Otro"
   },
   "hotMatches": {
     "title": "🔥 LO MÁS HOT",

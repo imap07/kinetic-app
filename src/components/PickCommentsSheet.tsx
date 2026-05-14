@@ -123,6 +123,65 @@ export function PickCommentsSheet({
     }
   }, [body, predictionId, tokens?.accessToken, t, onCountChanged]);
 
+  /**
+   * UGC report flow — required by Apple 1.2(iii). Surfaces the four
+   * canonical reasons as ActionSheet rows; backend accepts an
+   * optional detail string which we leave to a future "Other →
+   * describe" sub-screen if we ever see spam patterns we can't
+   * categorise. The comment auto-hides once N users report it.
+   */
+  const handleReport = useCallback(
+    (comment: PickComment) => {
+      if (!tokens?.accessToken) return;
+      const submit = async (
+        reason: 'spam' | 'abuse' | 'inappropriate' | 'other',
+      ) => {
+        try {
+          await commentsApi.report(tokens.accessToken, comment.id, reason);
+          Alert.alert(
+            t('comments.reportThanksTitle', { defaultValue: 'Thanks for the heads-up' }),
+            t('comments.reportThanksBody', {
+              defaultValue: "We'll review this comment. You won't see it again here.",
+            }),
+          );
+          // Optimistic hide for the reporter regardless of threshold.
+          setItems((prev) => prev.filter((c) => c.id !== comment.id));
+        } catch (e: any) {
+          const raw = typeof e?.message === 'string' ? e.message : '';
+          Alert.alert(
+            t('common.error'),
+            raw && /\s/.test(raw) ? raw : t('common.tryAgainLater'),
+          );
+        }
+      };
+      Alert.alert(
+        t('comments.reportPromptTitle', { defaultValue: 'Report comment?' }),
+        comment.body,
+        [
+          { text: t('common.cancel'), style: 'cancel' },
+          {
+            text: t('comments.reasonSpam', { defaultValue: 'Spam' }),
+            onPress: () => submit('spam'),
+          },
+          {
+            text: t('comments.reasonAbuse', { defaultValue: 'Abuse or harassment' }),
+            onPress: () => submit('abuse'),
+          },
+          {
+            text: t('comments.reasonInappropriate', { defaultValue: 'Inappropriate' }),
+            onPress: () => submit('inappropriate'),
+            style: 'destructive',
+          },
+          {
+            text: t('comments.reasonOther', { defaultValue: 'Other' }),
+            onPress: () => submit('other'),
+          },
+        ],
+      );
+    },
+    [tokens?.accessToken, t],
+  );
+
   const handleDelete = useCallback(
     (comment: PickComment) => {
       if (!tokens?.accessToken || !predictionId) return;
@@ -224,13 +283,21 @@ export function PickCommentsSheet({
                       </Text>
                       <Text style={styles.body}>{item.body}</Text>
                     </View>
-                    {item.isMine && (
+                    {item.isMine ? (
                       <TouchableOpacity
                         onPress={() => handleDelete(item)}
                         hitSlop={10}
                         style={styles.deleteBtn}
                       >
                         <Feather name="trash-2" size={14} color={colors.onSurfaceVariant} />
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        onPress={() => handleReport(item)}
+                        hitSlop={10}
+                        style={styles.deleteBtn}
+                      >
+                        <Feather name="flag" size={14} color={colors.onSurfaceVariant} />
                       </TouchableOpacity>
                     )}
                   </View>
