@@ -26,6 +26,7 @@ import type { Fixture, FixtureEvent, FixtureStatistic, SportGame, PredictionData
 import Toast from 'react-native-toast-message';
 import { logPickAttempted, logPickCompleted } from '../services/analytics';
 import { FootballPitch } from '../components/FootballPitch';
+import { MatchInsightsCard } from '../components/MatchInsightsCard';
 import { useAds } from '../contexts/AdContext';
 import { useGameSubscription } from '../hooks/useGameSubscription';
 import { Feather } from '@expo/vector-icons';
@@ -1774,6 +1775,16 @@ export function MatchPredictionScreen({ navigation }: Props) {
             </View>
           </TouchableOpacity>
         )}
+
+        {/* Pre-match narrative card — rule-based form pills + insight
+            strings. Auto-hides itself when the backend has no data
+            (unsupported sport, brand-new teams, etc.). */}
+        <MatchInsightsCard
+          sport={sport as any}
+          gameApiId={fixtureApiId}
+          homeTeamName={homeTeamName}
+          awayTeamName={awayTeamName}
+        />
 
         {/* SEASON FORM (Sprint 3): handball / hockey / rugby / volleyball / baseball */}
         {!isF1 && !isFootball && genericGame && ['handball','hockey','rugby','volleyball','baseball'].includes(sport) && (

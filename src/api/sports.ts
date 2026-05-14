@@ -224,6 +224,21 @@ export const sportsApi = {
     );
   },
 
+  // Pre-match narrative pack: last-5 form per team + rule-based
+  // insight strings ("Bayern on a 3-game winning streak"). Returns
+  // empty for unsupported sports — client just renders nothing.
+  getMatchInsights(token: string, sport: SportKey, gameId: number) {
+    return apiClient.get<{
+      homeForm: ('W' | 'L' | 'D')[];
+      awayForm: ('W' | 'L' | 'D')[];
+      narratives: Array<{
+        side: 'home' | 'away';
+        kind: 'streak' | 'recent';
+        text: string;
+      }>;
+    }>(`/sports/${sport}/games/${gameId}/insights`, { token });
+  },
+
   getDashboard(token: string, sport: SportKey, signal?: AbortSignal) {
     return apiClient.get<SportDashboard>(`/sports/${sport}/dashboard`, { token, signal });
   },
