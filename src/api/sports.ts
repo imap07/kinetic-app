@@ -216,6 +216,14 @@ export const sportsApi = {
     return apiClient.get<HottestMatch[]>(`/sports/heat?limit=${limit}`, { token });
   },
 
+  // Rotating one-liners for the activity ticker at the top of Home.
+  getActivityTicker(token: string) {
+    return apiClient.get<Array<{ kind: 'count' | 'win' | 'streak'; text: string }>>(
+      '/sports/activity-ticker',
+      { token },
+    );
+  },
+
   getDashboard(token: string, sport: SportKey, signal?: AbortSignal) {
     return apiClient.get<SportDashboard>(`/sports/${sport}/dashboard`, { token, signal });
   },

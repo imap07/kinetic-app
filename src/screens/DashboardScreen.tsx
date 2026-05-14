@@ -49,6 +49,7 @@ import { GuidedFirstPickOverlay } from '../components/GuidedFirstPickOverlay';
 import { Skeleton } from '../components/Skeleton';
 import { QuestsCard } from '../components/QuestsCard';
 import { HotMatchesCarousel } from '../components/HotMatchesCarousel';
+import { ActivityTicker } from '../components/ActivityTicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type Props = {
@@ -880,6 +881,11 @@ export function DashboardScreen({ navigation }: Props) {
             onPress={() => handleMatchPress(nextUpGame.game)}
           />
         )}
+
+        {/* Activity ticker: rotating one-liners. Anti-empty-room
+            signal — makes the app feel populated even before the
+            user makes their first pick. */}
+        <ActivityTicker />
 
         {/* Non-F1: Live games */}
         {!isF1 && hasLiveOrUpcoming && liveGames.length > 0 && (
