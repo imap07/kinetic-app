@@ -1240,7 +1240,8 @@
     "shieldsExplainer": "Escudos: {{count}} · protegen tu racha si te saltas un día",
     "shieldsNone": "Sin escudos — los miembros Pro ganan uno por semana.",
     "useShield": "Usar un escudo",
-    "shieldUseFailed": "No se pudo usar el escudo. Inténtalo más tarde."
+    "shieldUseFailed": "No se pudo usar el escudo. Inténtalo más tarde.",
+    "viewFriends": "Comparar con amigos"
   },
   "challenge": {
     "daily": "Desafío Diario",
@@ -1333,5 +1334,12 @@
     "live": "EN VIVO",
     "inMin": "en {{n}}m",
     "inHr": "en {{n}}h"
+  },
+  "friendsLeaderboard": {
+    "title": "Rachas de amigos",
+    "subtitle": "Tú y los amigos con los que conectaste.",
+    "aloneTitle": "Aún no tienes amigos",
+    "aloneBody": "Invita a un amigo para competir en rachas. Ambos ganan monedas cuando califica.",
+    "inviteCta": "Invitar a un amigo"
   }
 }

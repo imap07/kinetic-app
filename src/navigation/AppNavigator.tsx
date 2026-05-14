@@ -56,6 +56,7 @@ import { LeaguePicksFeedScreen } from '../screens/LeaguePicksFeedScreen';
 import { ReferralsScreen } from '../screens/ReferralsScreen';
 import { GiftcardRedeemScreen } from '../screens/GiftcardRedeemScreen';
 import { StreakLeaderboardScreen } from '../screens/StreakLeaderboardScreen';
+import { FriendsLeaderboardScreen } from '../screens/FriendsLeaderboardScreen';
 import { EditFavoriteSportsScreen } from '../screens/EditFavoriteSportsScreen';
 import { EditFavoriteLeaguesScreen } from '../screens/EditFavoriteLeaguesScreen';
 import { EditFavoriteTeamsScreen } from '../screens/EditFavoriteTeamsScreen';
@@ -159,6 +160,7 @@ function ProfileNavigator() {
       <ProfileStack.Screen name="CoinStore" component={CoinStoreScreen} />
       <ProfileStack.Screen name="GiftcardRedeem" component={GiftcardRedeemScreen} />
       <ProfileStack.Screen name="StreakLeaderboard" component={StreakLeaderboardScreen} />
+      <ProfileStack.Screen name="FriendsLeaderboard" component={FriendsLeaderboardScreen} />
       <ProfileStack.Screen name="Referrals" component={ReferralsScreen} />
     </ProfileStack.Navigator>
   );

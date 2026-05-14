@@ -62,4 +62,22 @@ export const streaksApi = {
   getLeaderboard() {
     return apiClient.get<StreakLeaderboardResponse>('/streaks/leaderboard');
   },
+
+  // Friends-only leaderboard sourced from the viewer's mutual
+  // referral graph. Returns the viewer + everyone they invited /
+  // were invited by, sorted by current streak.
+  getFriendsLeaderboard(token: string) {
+    return apiClient.get<
+      Array<{
+        userId: string;
+        displayName: string;
+        avatar: string | null;
+        tier: string;
+        currentStreak: number;
+        bestStreak: number;
+        totalPoints: number;
+        isMe: boolean;
+      }>
+    >('/streaks/friends-leaderboard', { token });
+  },
 };

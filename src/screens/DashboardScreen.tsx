@@ -1813,6 +1813,27 @@ export function DashboardScreen({ navigation }: Props) {
             )}
 
             <TouchableOpacity
+              style={styles.streakModalFriends}
+              onPress={() => {
+                setShowStreakModal(false);
+                // Cross-stack jump — friends board lives in the
+                // Profile stack alongside the public streak board.
+                rootNav.navigate('Main' as any, {
+                  screen: 'Profile',
+                  params: { screen: 'FriendsLeaderboard' },
+                } as any);
+              }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="people" size={14} color={colors.primary} />
+              <Text style={styles.streakModalFriendsText}>
+                {t('streak.viewFriends', {
+                  defaultValue: 'Compare with friends',
+                })}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
               style={styles.streakModalDismiss}
               onPress={() => setShowStreakModal(false)}
               activeOpacity={0.7}
@@ -2957,6 +2978,20 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: colors.info,
     marginTop: 8,
+  },
+  streakModalFriends: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    marginTop: 4,
+  },
+  streakModalFriendsText: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 12,
+    color: colors.primary,
+    letterSpacing: 0.3,
   },
   streakModalShieldBtnText: {
     fontFamily: 'SpaceGrotesk_700Bold',

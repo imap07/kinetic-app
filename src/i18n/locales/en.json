@@ -1240,7 +1240,8 @@
     "shieldsExplainer": "Shields: {{count}} · auto-protects your streak if you miss a day",
     "shieldsNone": "No shields — Pro members earn one each week.",
     "useShield": "Use a shield now",
-    "shieldUseFailed": "Could not use shield. Try again later."
+    "shieldUseFailed": "Could not use shield. Try again later.",
+    "viewFriends": "Compare with friends"
   },
   "challenge": {
     "daily": "Daily Challenge",
@@ -1333,5 +1334,12 @@
     "live": "LIVE",
     "inMin": "in {{n}}m",
     "inHr": "in {{n}}h"
+  },
+  "friendsLeaderboard": {
+    "title": "Friends Streaks",
+    "subtitle": "You and the friends you connected with.",
+    "aloneTitle": "No friends yet",
+    "aloneBody": "Invite a friend to compete on streaks. Both of you earn coins when they qualify.",
+    "inviteCta": "Invite a friend"
   }
 }

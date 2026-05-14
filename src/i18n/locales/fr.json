@@ -1240,7 +1240,8 @@
     "shieldsExplainer": "Boucliers: {{count}} · protègent votre série si vous manquez un jour",
     "shieldsNone": "Pas de boucliers — les membres Pro en gagnent un par semaine.",
     "useShield": "Utiliser un bouclier",
-    "shieldUseFailed": "Impossible d'utiliser le bouclier. Réessayez plus tard."
+    "shieldUseFailed": "Impossible d'utiliser le bouclier. Réessayez plus tard.",
+    "viewFriends": "Comparer avec des amis"
   },
   "challenge": {
     "daily": "Défi du Jour",
@@ -1333,5 +1334,12 @@
     "live": "EN DIRECT",
     "inMin": "dans {{n}}m",
     "inHr": "dans {{n}}h"
+  },
+  "friendsLeaderboard": {
+    "title": "Séries entre amis",
+    "subtitle": "Vous et les amis avec qui vous avez connecté.",
+    "aloneTitle": "Pas encore d'amis",
+    "aloneBody": "Invitez un ami pour rivaliser sur les séries. Vous gagnez tous les deux des pièces.",
+    "inviteCta": "Inviter un ami"
   }
 }
