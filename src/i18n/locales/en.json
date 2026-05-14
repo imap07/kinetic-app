@@ -437,7 +437,9 @@
     "weeklyRecap": "Weekly recap",
     "weeklyRecapDesc": "Sunday summary of your picks, points, and league standing.",
     "commentReceived": "Comments on your picks",
-    "commentReceivedDesc": "Get notified when someone comments on a pick you made."
+    "commentReceivedDesc": "Get notified when someone comments on a pick you made.",
+    "rivalry": "Rivalries (1v1)",
+    "rivalryDesc": "Get notified for rivalry challenges, accepts, and final results."
   },
   "paywall": {
     "title": "KINETIC PRO",

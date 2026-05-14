@@ -56,6 +56,7 @@ export type ProfileStackParamList = {
   GiftcardRedeem: undefined;
   StreakLeaderboard: undefined;
   FriendsLeaderboard: undefined;
+  Rivalries: undefined;
   Referrals: undefined;
 };
 

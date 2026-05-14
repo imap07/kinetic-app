@@ -63,6 +63,7 @@ interface LocalPrefs {
   streakAtRisk: boolean;
   weeklyRecap: boolean;
   commentReceived: boolean;
+  rivalry: boolean;
   quietHoursEnabled: boolean;
   quietHoursStart: string;
   quietHoursEnd: string;
@@ -80,6 +81,7 @@ const DEFAULT_PREFS: LocalPrefs = {
   streakAtRisk: true,
   weeklyRecap: true,
   commentReceived: true,
+  rivalry: true,
   quietHoursEnabled: false,
   quietHoursStart: '23:00',
   quietHoursEnd: '07:00',
@@ -99,6 +101,7 @@ const TYPE_KEYS: ReadonlyArray<keyof NotificationTypes> = [
   'streakAtRisk',
   'weeklyRecap',
   'commentReceived',
+  'rivalry',
 ];
 
 export function NotificationPreferencesScreen() {
@@ -132,6 +135,7 @@ export function NotificationPreferencesScreen() {
           streakAtRisk: remote.types?.streakAtRisk ?? true,
           weeklyRecap: remote.types?.weeklyRecap ?? true,
           commentReceived: remote.types?.commentReceived ?? true,
+          rivalry: remote.types?.rivalry ?? true,
           quietHoursEnabled: remote.quietHoursEnabled ?? false,
           quietHoursStart: remote.quietHoursStart ?? '23:00',
           quietHoursEnd: remote.quietHoursEnd ?? '07:00',
@@ -332,6 +336,15 @@ export function NotificationPreferencesScreen() {
               defaultValue: 'Get notified when someone comments on a pick you made.',
             }),
             'commentReceived',
+            typesDisabled,
+          )}
+          <View style={styles.divider} />
+          {renderRow(
+            t('notificationPrefs.rivalry', { defaultValue: 'Rivalries (1v1)' }),
+            t('notificationPrefs.rivalryDesc', {
+              defaultValue: 'Get notified for rivalry challenges, accepts, and final results.',
+            }),
+            'rivalry',
             typesDisabled,
           )}
         </View>

@@ -828,6 +828,21 @@ export function ProfileScreen() {
             <Feather name="chevron-right" size={16} color={colors.onSurfaceVariant} />
           </TouchableOpacity>
 
+          {/* 1v1 Rivalries — Sprint B #46. Sits next to Referrals
+              because they share the friends-graph dependency. */}
+          <TouchableOpacity
+            style={styles.settingsRow}
+            onPress={() => profileNav.navigate('Rivalries')}
+          >
+            <View style={styles.settingsRowLeft}>
+              <Feather name="zap" size={18} color={colors.onSurface} />
+              <Text style={styles.settingsRowText}>
+                {t('rivalries.title', { defaultValue: 'Rivalries' })}
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={16} color={colors.onSurfaceVariant} />
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={styles.logoutBtn}
             onPress={handleLogout}

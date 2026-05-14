@@ -48,6 +48,9 @@ export interface NotificationTypes {
   // default: true. Without this opt-in the comments feature dies
   // on the vine — nobody knows when they got a reply.
   commentReceived: boolean;
+  // 1v1 rivalry pushes (challenge / accept / resolved). Backend
+  // default: true — opt-in is implicit in accepting a challenge.
+  rivalry: boolean;
 }
 
 export interface NotificationPreferences {
