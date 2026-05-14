@@ -190,6 +190,43 @@ export function PickSummaryScreen({ navigation }: Props) {
               {pick.pointsAwarded > 0 && (
                 <Text style={styles.pointsAwarded}>+{pick.pointsAwarded} PTS</Text>
               )}
+              {/* Templated autopsy + percentile callout — emitted by
+                  the backend on resolved picks. Pending picks and
+                  pre-v1.6 resolved picks come back without it. */}
+              {pick.autopsy && (
+                <View
+                  style={[
+                    styles.autopsyCard,
+                    pick.autopsy.kind === 'win' && styles.autopsyWin,
+                    pick.autopsy.kind === 'loss' && styles.autopsyLoss,
+                    pick.autopsy.kind === 'void' && styles.autopsyVoid,
+                  ]}
+                >
+                  <Ionicons
+                    name={
+                      pick.autopsy.kind === 'win'
+                        ? 'trending-up'
+                        : pick.autopsy.kind === 'loss'
+                          ? 'trending-down'
+                          : 'remove-circle-outline'
+                    }
+                    size={14}
+                    color={
+                      pick.autopsy.kind === 'win'
+                        ? colors.primary
+                        : pick.autopsy.kind === 'loss'
+                          ? colors.error
+                          : colors.onSurfaceVariant
+                    }
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.autopsyText}>{pick.autopsy.text}</Text>
+                    {pick.autopsy.detail && (
+                      <Text style={styles.autopsyDetail}>{pick.autopsy.detail}</Text>
+                    )}
+                  </View>
+                </View>
+              )}
             </View>
           ))
         )}
@@ -399,6 +436,33 @@ const styles = StyleSheet.create({
     color: colors.primary,
     marginTop: 6,
     textAlign: 'right',
+  },
+  autopsyCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginTop: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: colors.surfaceContainerLow,
+    borderLeftWidth: 2,
+    borderLeftColor: colors.outline,
+  },
+  autopsyWin: { borderLeftColor: colors.primary },
+  autopsyLoss: { borderLeftColor: colors.error },
+  autopsyVoid: { borderLeftColor: colors.onSurfaceVariant },
+  autopsyText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12,
+    color: colors.onSurface,
+    lineHeight: 16,
+  },
+  autopsyDetail: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 11,
+    color: colors.onSurfaceVariant,
+    marginTop: 2,
   },
 
   summarySection: {

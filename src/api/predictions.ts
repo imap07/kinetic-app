@@ -30,6 +30,22 @@ export interface PredictionData {
   actualAwayScore: number | null;
   pointsAwarded: number;
   resolvedAt: string | null;
+  // Snapshot of pick distribution at resolution time, used by the
+  // post-resolution percentile callout. Null on pending picks and
+  // on pre-v1.6 resolved picks (graceful fallback).
+  pickDistribution?: {
+    home: number;
+    away: number;
+    draw: number;
+    total: number;
+  } | null;
+  // Server-rendered narrative (rule-based, NOT AI). Null when the
+  // pick is pending or doesn't match a known template.
+  autopsy?: {
+    text: string;
+    detail: string | null;
+    kind: 'win' | 'loss' | 'void';
+  } | null;
   createdAt: string;
   updatedAt: string;
 }
