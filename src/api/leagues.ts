@@ -41,6 +41,11 @@ export interface CoinLeague {
   footballLeagueLogo?: string;
   isThemed?: boolean;
   inviteCode?: string;
+  // Genre / themed leagues (Sprint C #51). Client maps the slug
+  // to an icon + accent on the league card; description is short
+  // marketing copy under the name.
+  themeSlug?: 'high-stakes' | 'beginner' | 'event' | 'underdog' | 'weekend-only' | null;
+  themeDescription?: string | null;
   // F1 Race Weekend fields
   f1RaceApiId?: number;
   f1CompetitionName?: string;

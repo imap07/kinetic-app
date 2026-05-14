@@ -243,7 +243,12 @@
     "invalidQR": "Este código QR no es una invitación válida de Kinetic",
     "leagueNotFound": "Liga no encontrada o código expirado",
     "browsePublic": "Explorar ligas",
-    "scanInvite": "Escanear código"
+    "scanInvite": "Escanear código",
+    "themeHighStakes": "Apuesta Alta",
+    "themeBeginner": "Para Empezar",
+    "themeEvent": "Noche de Evento",
+    "themeUnderdog": "Locura del Underdog",
+    "themeWeekend": "Solo Fin de Semana"
   },
   "picks": {
     "active": "Activos",

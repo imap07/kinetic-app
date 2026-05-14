@@ -243,7 +243,12 @@
     "invalidQR": "This QR code is not a valid Kinetic league invite",
     "leagueNotFound": "League not found or invite code expired",
     "browsePublic": "Browse leagues",
-    "scanInvite": "Scan invite"
+    "scanInvite": "Scan invite",
+    "themeHighStakes": "High Roller",
+    "themeBeginner": "Beginner Friendly",
+    "themeEvent": "Event Night",
+    "themeUnderdog": "Underdog Insanity",
+    "themeWeekend": "Weekend Only"
   },
   "picks": {
     "active": "Active",

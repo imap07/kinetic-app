@@ -207,6 +207,40 @@ export function CoinLeaguesScreen() {
     }
   };
 
+  /** Genre badge config — keyed by themeSlug from the backend. */
+  const themeLabelFor = (slug: NonNullable<CoinLeague['themeSlug']>): string => {
+    switch (slug) {
+      case 'high-stakes':
+        return t('leagues.themeHighStakes', { defaultValue: 'High Roller' });
+      case 'beginner':
+        return t('leagues.themeBeginner', { defaultValue: 'Beginner Friendly' });
+      case 'event':
+        return t('leagues.themeEvent', { defaultValue: 'Event Night' });
+      case 'underdog':
+        return t('leagues.themeUnderdog', { defaultValue: 'Underdog Insanity' });
+      case 'weekend-only':
+        return t('leagues.themeWeekend', { defaultValue: 'Weekend Only' });
+    }
+  };
+  const themeIconFor = (slug: NonNullable<CoinLeague['themeSlug']>): string => {
+    switch (slug) {
+      case 'high-stakes': return 'flame';
+      case 'beginner': return 'leaf';
+      case 'event': return 'megaphone';
+      case 'underdog': return 'paw';
+      case 'weekend-only': return 'calendar';
+    }
+  };
+  const themeBadgeStyleFor = (slug: NonNullable<CoinLeague['themeSlug']>) => {
+    switch (slug) {
+      case 'high-stakes': return styles.themeBadgeHighStakes;
+      case 'beginner': return styles.themeBadgeBeginner;
+      case 'event': return styles.themeBadgeEvent;
+      case 'underdog': return styles.themeBadgeUnderdog;
+      case 'weekend-only': return styles.themeBadgeWeekend;
+    }
+  };
+
   /** Accent bar color by entry fee tier */
   const tierAccentColor = (fee: number): string => {
     if (fee === 0) return colors.outline;          // Free = subtle gray
@@ -398,6 +432,32 @@ export function CoinLeaguesScreen() {
 
                 {/* League name */}
                 <Text style={styles.leagueName} numberOfLines={1}>{league.name}</Text>
+
+                {/* Genre/theme badge — visible only on system-curated
+                    themed leagues (high-stakes, beginner, etc.). Pure
+                    cosmetic v1; doesn't affect pick mechanics. */}
+                {league.themeSlug && (
+                  <View
+                    style={[
+                      styles.themeBadge,
+                      themeBadgeStyleFor(league.themeSlug),
+                    ]}
+                  >
+                    <Ionicons
+                      name={themeIconFor(league.themeSlug) as any}
+                      size={11}
+                      color={colors.onSurface}
+                    />
+                    <Text style={styles.themeBadgeText} numberOfLines={1}>
+                      {themeLabelFor(league.themeSlug)}
+                    </Text>
+                  </View>
+                )}
+                {league.themeDescription && (
+                  <Text style={styles.themeDescription} numberOfLines={2}>
+                    {league.themeDescription}
+                  </Text>
+                )}
 
                 {/* Sport row */}
                 {sportMeta && (
@@ -1071,6 +1131,37 @@ const styles = StyleSheet.create({
     color: colors.onSurface,
     marginBottom: 2,
   },
+
+  /* Genre/theme badge — placed above the sport row when present */
+  themeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    marginBottom: 6,
+  },
+  themeBadgeText: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 10,
+    color: colors.onSurface,
+    letterSpacing: 0.5,
+  },
+  themeDescription: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 12,
+    color: colors.onSurfaceVariant,
+    marginBottom: 8,
+    lineHeight: 16,
+  },
+  themeBadgeHighStakes: { backgroundColor: 'rgba(252,91,0,0.18)' },
+  themeBadgeBeginner: { backgroundColor: 'rgba(79,195,247,0.18)' },
+  themeBadgeEvent: { backgroundColor: 'rgba(187,134,252,0.18)' },
+  themeBadgeUnderdog: { backgroundColor: 'rgba(255,215,0,0.18)' },
+  themeBadgeWeekend: { backgroundColor: 'rgba(202,253,0,0.18)' },
 
   /* Sport row */
   sportRow: {
