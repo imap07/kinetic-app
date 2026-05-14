@@ -38,7 +38,12 @@ interface AuthState {
 
 interface AuthContextValue extends AuthState {
   loginWithEmail: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, displayName: string) => Promise<void>;
+  register: (
+    email: string,
+    password: string,
+    displayName: string,
+    birthdate: string,
+  ) => Promise<void>;
   loginWithSocial: (
     provider: SocialProvider,
     accessToken: string,
@@ -212,8 +217,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const register = useCallback(
-    async (email: string, password: string, displayName: string) => {
-      const { user, tokens } = await authApi.register(email, password, displayName);
+    async (
+      email: string,
+      password: string,
+      displayName: string,
+      birthdate: string,
+    ) => {
+      const { user, tokens } = await authApi.register(
+        email,
+        password,
+        displayName,
+        birthdate,
+      );
       await persistTokens(tokens);
       setAuth(user, tokens);
       logSignUp('email');

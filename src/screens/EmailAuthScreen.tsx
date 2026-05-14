@@ -24,6 +24,25 @@ import {
   validatePassword,
   PASSWORD_MIN_LENGTH,
 } from '../services/passwordPolicy';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { MIN_AGE_YEARS } from '../shared/domain';
+
+// Bound for the date picker — anything after this point can't be
+// 18+, so the picker won't let users land there at all.
+const MAX_BIRTHDATE = (() => {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - MIN_AGE_YEARS);
+  return d;
+})();
+
+function yearsBetween(dob: Date, now = new Date()): number {
+  let years = now.getFullYear() - dob.getFullYear();
+  const before =
+    now.getMonth() < dob.getMonth() ||
+    (now.getMonth() === dob.getMonth() && now.getDate() < dob.getDate());
+  if (before) years -= 1;
+  return years;
+}
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'EmailAuth'>;
@@ -40,6 +59,12 @@ export function EmailAuthScreen({ navigation }: Props) {
   const [displayName, setDisplayName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  // Birthdate is captured only for registration. Null until the user
+  // confirms via the system picker. The picker enforces MAX_BIRTHDATE
+  // (today minus 18y), but we also re-check on submit so a manual
+  // override can't bypass.
+  const [birthdate, setBirthdate] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const isLogin = mode === 'login';
 
@@ -51,11 +76,13 @@ export function EmailAuthScreen({ navigation }: Props) {
   // digit, symbol) or the server will reject with 400.
   const passwordCheck = validatePassword(password);
 
+  const ageOk = !!birthdate && yearsBetween(birthdate) >= MIN_AGE_YEARS;
   const canSubmit = isLogin
     ? !!email.trim() && password.length > 0
     : !!email.trim() &&
       passwordCheck.valid &&
-      displayName.trim().length >= 2;
+      displayName.trim().length >= 2 &&
+      ageOk;
 
   const handleSubmit = async () => {
     if (!canSubmit || loading) return;
@@ -65,7 +92,18 @@ export function EmailAuthScreen({ navigation }: Props) {
       if (isLogin) {
         await loginWithEmail(email.trim(), password);
       } else {
-        await register(email.trim(), password, displayName.trim());
+        if (!birthdate) {
+          Alert.alert(
+            t('common.error'),
+            t('emailAuth.birthdateRequired', {
+              defaultValue: 'Please confirm your date of birth.',
+            }),
+          );
+          return;
+        }
+        // Backend re-validates — this is a UX guard, not the gate.
+        const iso = birthdate.toISOString().slice(0, 10);
+        await register(email.trim(), password, displayName.trim(), iso);
       }
     } catch (err) {
       const message =
@@ -138,6 +176,74 @@ export function EmailAuthScreen({ navigation }: Props) {
                 editable={!loading}
               />
             </View>
+          </View>
+        )}
+
+        {!isLogin && (
+          <View style={styles.inputSection}>
+            <Text style={styles.inputLabel}>
+              {t('emailAuth.birthdate', { defaultValue: 'Date of birth' })}
+            </Text>
+            <TouchableOpacity
+              style={styles.inputContainer}
+              onPress={() => setShowDatePicker(true)}
+              activeOpacity={0.7}
+              disabled={loading}
+            >
+              <MaterialCommunityIcons
+                name="calendar"
+                size={18}
+                color={colors.onSurfaceDim}
+              />
+              <Text
+                style={[
+                  styles.input,
+                  !birthdate && { color: colors.onSurfaceDim },
+                ]}
+              >
+                {birthdate
+                  ? birthdate.toLocaleDateString(undefined, {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                    })
+                  : t('emailAuth.birthdatePlaceholder', {
+                      defaultValue: 'Tap to select',
+                    })}
+              </Text>
+            </TouchableOpacity>
+            <Text style={styles.helperText}>
+              {t('emailAuth.birthdateHelper', {
+                defaultValue: 'Kinetic is 18+. We never share your birthdate.',
+              })}
+            </Text>
+            {showDatePicker && (
+              <DateTimePicker
+                value={birthdate ?? MAX_BIRTHDATE}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                maximumDate={MAX_BIRTHDATE}
+                minimumDate={new Date(1920, 0, 1)}
+                onChange={(event, selected) => {
+                  // Android dismisses the picker before delivering the
+                  // value; iOS keeps it open. Mirror both behaviors.
+                  if (Platform.OS !== 'ios') setShowDatePicker(false);
+                  if (event.type === 'set' && selected) {
+                    setBirthdate(selected);
+                  }
+                }}
+              />
+            )}
+            {Platform.OS === 'ios' && showDatePicker && (
+              <TouchableOpacity
+                onPress={() => setShowDatePicker(false)}
+                style={styles.dateDoneBtn}
+              >
+                <Text style={styles.dateDoneText}>
+                  {t('common.done', { defaultValue: 'Done' })}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -351,6 +457,22 @@ const styles = StyleSheet.create({
     ...typography.bodyMd,
     color: colors.onSurface,
     padding: 0,
+  },
+  helperText: {
+    ...typography.bodySm,
+    color: colors.onSurfaceDim,
+    marginTop: 6,
+    fontSize: 11,
+  },
+  dateDoneBtn: {
+    alignSelf: 'flex-end',
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+  },
+  dateDoneText: {
+    ...typography.labelMd,
+    color: colors.primary,
+    fontSize: 14,
   },
   forgotLink: {
     alignSelf: 'flex-end',

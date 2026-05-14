@@ -107,15 +107,20 @@ export type AcquisitionSourceKey =
   | 'other';
 
 export const authApi = {
-  register(email: string, password: string, displayName: string) {
+  register(
+    email: string,
+    password: string,
+    displayName: string,
+    birthdate: string,
+  ) {
     return apiClient.post<AuthResponse>('/auth/register', {
       email,
       password,
       displayName,
-      // Belt-and-suspenders: the `x-device-type` header on every request
-      // is the primary signal, but we include it in the body too so
-      // older server builds that only read the DTO still tag the session
-      // correctly.
+      // ISO date string (YYYY-MM-DD). Backend enforces 18+ via
+      // MIN_AGE_YEARS; surface the 400 response as a friendly
+      // "must be 18+" error at the call site.
+      birthdate,
       deviceType: 'mobile',
     });
   },

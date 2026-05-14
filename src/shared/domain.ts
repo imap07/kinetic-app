@@ -241,6 +241,14 @@ export const REFERRAL_CODE_LENGTH = 8;
 
 export type ReferralStatus = 'pending' | 'qualified' | 'rewarded' | 'blocked';
 
+// Minimum age to use Kinetic. The Terms state 18+ (kinetic-landing
+// terms/page.tsx §3), but until v1.6 we had no enforcement at the
+// registration boundary — Apple guideline 5.1.1(a) calls this out
+// for any app with virtual-currency-to-real-reward flows (our coin
+// → giftcard surface qualifies). New signups must supply a
+// birthdate and pass the check; pre-v1.6 users are grandfathered.
+export const MIN_AGE_YEARS = 18;
+
 // Daily app-open streak rewards. Disociated from the pick-streak
 // mechanic so casual users (who don't make a pick every day) still
 // have a reason to launch the app — small per-day coin trickle

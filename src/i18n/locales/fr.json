@@ -41,7 +41,11 @@
     "createAccountBtn": "CRÉER UN COMPTE",
     "newHere": "Nouveau ?",
     "alreadyAccount": "Tu as déjà un compte ?",
-    "createAnAccount": "Créer un Compte"
+    "createAnAccount": "Créer un Compte",
+    "birthdate": "Date de naissance",
+    "birthdatePlaceholder": "Toucher pour sélectionner",
+    "birthdateHelper": "Kinetic est 18+. Nous ne partageons jamais votre date de naissance.",
+    "birthdateRequired": "Veuillez confirmer votre date de naissance."
   },
   "onboarding": {
     "skip": "Passer",
