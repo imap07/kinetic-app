@@ -118,7 +118,11 @@ export function PublicProfileSheet({ userId, onClose }: Props) {
             <ScrollView showsVerticalScrollIndicator={false}>
               <View style={styles.header}>
                 {profile.avatar ? (
-                  <ExpoImage source={{ uri: profile.avatar }} style={styles.avatar} />
+                  <ExpoImage
+                    source={{ uri: profile.avatar }}
+                    style={styles.avatar}
+                    cachePolicy="memory-disk"
+                  />
                 ) : (
                   <View style={[styles.avatar, styles.avatarFallback]}>
                     <Text style={styles.avatarInitial}>

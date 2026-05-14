@@ -158,7 +158,8 @@
     "proAnnualDesc": "Mejor valor — solo $3.33/mes",
     "coinsPerYear": "50 monedas/mes (600/año)",
     "proActiveMember": "Eres miembro Kinetic Pro. 50 monedas se acreditan cada mes.",
-    "disclaimer": "Kinetic es un juego de predicción basado en habilidad con fines de entretenimiento. Las monedas son créditos virtuales sin valor monetario. Todas las compras son procesadas por el App Store. No es un servicio de apuestas."
+    "disclaimer": "Kinetic es un juego de predicción basado en habilidad con fines de entretenimiento. Las monedas son créditos virtuales sin valor monetario. Todas las compras son procesadas por el App Store. No es un servicio de apuestas.",
+    "firstPurchaseDiscount": "Oferta de bienvenida: -20% en tu primer paquete de monedas."
   },
   "coins": {
     "earned": "Ganadas",

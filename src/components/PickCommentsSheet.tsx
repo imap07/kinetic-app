@@ -268,7 +268,11 @@ export function PickCommentsSheet({
                 renderItem={({ item }) => (
                   <View style={styles.row}>
                     {item.avatar ? (
-                      <ExpoImage source={{ uri: item.avatar }} style={styles.avatar} />
+                      <ExpoImage
+                        source={{ uri: item.avatar }}
+                        style={styles.avatar}
+                        cachePolicy="memory-disk"
+                      />
                     ) : (
                       <View style={[styles.avatar, styles.avatarFallback]}>
                         <Text style={styles.avatarInitial}>

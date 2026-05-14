@@ -127,7 +127,14 @@ export function HotMatchesCarousel() {
 
 function Logo({ uri }: { uri: string | null }) {
   if (uri) {
-    return <ExpoImage source={{ uri }} style={styles.logo} contentFit="contain" />;
+    return (
+      <ExpoImage
+        source={{ uri }}
+        style={styles.logo}
+        contentFit="contain"
+        cachePolicy="memory-disk"
+      />
+    );
   }
   return <View style={styles.logoFallback} />;
 }

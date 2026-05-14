@@ -16,6 +16,7 @@ import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { colors, spacing, borderRadius } from '../theme';
 import { useCoins } from '../contexts/CoinContext';
+import { useAuth } from '../contexts/AuthContext';
 import { usePurchases } from '../contexts/PurchasesContext';
 import { RewardedAdButton } from '../components/RewardedAdButton';
 
@@ -37,6 +38,14 @@ export function CoinStoreScreen() {
   const { t } = useTranslation();
   const { balance, available, earnedCoins, purchasedCoins, isLoading: balanceLoading, refreshBalanceAfterPurchase } = useCoins();
   const { currentOffering, purchasePackage, isProMember } = usePurchases();
+  // First-purchase discount eligibility — driven by the server-side
+  // flag `firstCoinPurchaseAt`. Drops to false the moment a webhook
+  // confirms a purchase, so the banner stops showing on the next
+  // profile refresh. UX surface only; pricing itself comes from a
+  // RevenueCat promo offer configured in App Store Connect.
+  const { user } = useAuth();
+  const isFirstPurchaseEligible =
+    user != null && !user.firstCoinPurchaseAt && !isProMember;
   const [purchasing, setPurchasing] = useState<string | null>(null);
 
   // RevenueCat packages (when configured in App Store Connect)
@@ -153,6 +162,21 @@ export function CoinStoreScreen() {
         <Text style={styles.sectionSubtext}>
           {t('coinStore.buyCoinsDesc')}
         </Text>
+
+        {/* First-purchase discount banner. Backend flag — actual
+            pricing comes from a RevenueCat promo offer configured
+            in App Store Connect. The banner is informational; the
+            real discount applies at checkout via the platform. */}
+        {isFirstPurchaseEligible && (
+          <View style={styles.firstBuyBanner}>
+            <Feather name="gift" size={16} color={colors.primary} />
+            <Text style={styles.firstBuyBannerText}>
+              {t('coinStore.firstPurchaseDiscount', {
+                defaultValue: 'Welcome offer: -20% on your first coin pack.',
+              })}
+            </Text>
+          </View>
+        )}
 
         <View style={styles.packagesGrid}>
           {LOCAL_PACKAGES.map((lp, index) => {
@@ -489,6 +513,25 @@ const styles = StyleSheet.create({
     color: colors.onSurfaceVariant,
     paddingHorizontal: spacing['2xl'],
     marginBottom: spacing.lg,
+  },
+  firstBuyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginHorizontal: spacing['2xl'],
+    marginBottom: spacing.lg,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(202,253,0,0.08)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(202,253,0,0.30)',
+  },
+  firstBuyBannerText: {
+    flex: 1,
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 13,
+    color: colors.onSurface,
   },
 
   emptyState: {

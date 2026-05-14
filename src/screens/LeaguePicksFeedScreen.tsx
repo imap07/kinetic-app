@@ -269,7 +269,11 @@ function PickFeedCard({
         onPress={onProfilePress}
       >
         {item.avatar ? (
-          <ExpoImage source={{ uri: item.avatar }} style={styles.avatar} />
+          <ExpoImage
+            source={{ uri: item.avatar }}
+            style={styles.avatar}
+            cachePolicy="memory-disk"
+          />
         ) : (
           <View style={[styles.avatar, styles.avatarFallback]}>
             <Text style={styles.avatarInitial}>

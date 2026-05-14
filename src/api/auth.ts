@@ -40,6 +40,9 @@ export interface User {
   dataSharing: boolean;
   isActive: boolean;
   onboardingCompleted: boolean;
+  // Null until the user buys their first coin pack. Drives the
+  // "-20% your first purchase" banner in CoinStoreScreen.
+  firstCoinPurchaseAt?: string | null;
 }
 
 interface AuthResponse {

@@ -158,7 +158,8 @@
     "proAnnualDesc": "Meilleur rapport — seulement 3,33$/mois",
     "coinsPerYear": "50 pièces/mois (600/an)",
     "proActiveMember": "Tu es membre Kinetic Pro. 50 pièces sont créditées chaque mois.",
-    "disclaimer": "Kinetic est un jeu de prédiction basé sur les compétences à des fins de divertissement. Les pièces sont des crédits virtuels sans valeur monétaire. Tous les achats sont traités par l'App Store. Ce n'est pas un service de jeux d'argent."
+    "disclaimer": "Kinetic est un jeu de prédiction basé sur les compétences à des fins de divertissement. Les pièces sont des crédits virtuels sans valeur monétaire. Tous les achats sont traités par l'App Store. Ce n'est pas un service de jeux d'argent.",
+    "firstPurchaseDiscount": "Offre de bienvenue : -20% sur votre premier pack de pièces."
   },
   "coins": {
     "earned": "Gagnées",
