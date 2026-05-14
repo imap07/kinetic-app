@@ -901,14 +901,26 @@ export function MatchPredictionScreen({ navigation }: Props) {
     setPlayerModalLoading(true);
     setPlayerModal(null);
     try {
-      const data = await footballApi.getPlayerProfile(tokens.accessToken, playerApiId);
+      // Football keeps its rich endpoint (career stats / leagues /
+      // photos). Other sports go through the new generic
+      // /sports/:sport/players/:id surface — the modal renders
+      // whatever fields are present and skips the rest, so the two
+      // shapes don't need to converge perfectly.
+      const data =
+        sport === 'football'
+          ? await footballApi.getPlayerProfile(tokens.accessToken, playerApiId)
+          : await sportsApi.getPlayerProfile(
+              tokens.accessToken,
+              sport as any,
+              playerApiId,
+            );
       if (data) setPlayerModal(data);
     } catch (err) {
       console.warn('Failed to load player profile', err);
     } finally {
       setPlayerModalLoading(false);
     }
-  }, [tokens?.accessToken]);
+  }, [tokens?.accessToken, sport]);
 
   const isFootball = sport === 'football';
   const hasDraw = !NO_DRAW_SPORTS.includes(sport);

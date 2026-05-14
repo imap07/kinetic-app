@@ -224,6 +224,23 @@ export const sportsApi = {
     );
   },
 
+  // Compact player card — name, team, position, age, photo. Used
+  // by the tappable-player surface on MatchPrediction. Returns
+  // null when the sport doesn't expose player data or the player
+  // isn't in our sync.
+  getPlayerProfile(token: string, sport: SportKey, playerId: number) {
+    return apiClient.get<{
+      apiId: number;
+      name: string;
+      sport: string;
+      teamName: string | null;
+      position: string | null;
+      age: number | null;
+      country: string | null;
+      photo: string | null;
+    } | null>(`/sports/${sport}/players/${playerId}`, { token });
+  },
+
   // Pre-match narrative pack: last-5 form per team + rule-based
   // insight strings ("Bayern on a 3-game winning streak"). Returns
   // empty for unsupported sports — client just renders nothing.
