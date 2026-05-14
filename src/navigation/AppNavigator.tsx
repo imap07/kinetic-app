@@ -41,35 +41,15 @@ import { MyPicksScreen } from '../screens/MyPicksScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { EditProfileScreen } from '../screens/EditProfileScreen';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
-import { NotificationPreferencesScreen } from '../screens/NotificationPreferencesScreen';
-import { SportNotificationPreferencesScreen } from '../screens/SportNotificationPreferencesScreen';
-import { SecurityPrivacyScreen } from '../screens/SecurityPrivacyScreen';
 import { WalletRewardsScreen } from '../screens/WalletRewardsScreen';
 import { LeagueDetailScreen } from '../screens/LeagueDetailScreen';
 import { CustomTabBar } from '../components/CustomTabBar';
-import { PaywallScreen } from '../screens/PaywallScreen';
 import { SearchScreen } from '../screens/SearchScreen';
-import { CoinStoreScreen } from '../screens/CoinStoreScreen';
-import { CoinLeaguesScreen } from '../screens/CoinLeaguesScreen';
-import { CoinLeagueDetailScreen } from '../screens/CoinLeagueDetailScreen';
-import { LeaguePicksFeedScreen } from '../screens/LeaguePicksFeedScreen';
-import { ReferralsScreen } from '../screens/ReferralsScreen';
-import { GiftcardRedeemScreen } from '../screens/GiftcardRedeemScreen';
-import { StreakLeaderboardScreen } from '../screens/StreakLeaderboardScreen';
-import { FriendsLeaderboardScreen } from '../screens/FriendsLeaderboardScreen';
-import { RivalriesScreen } from '../screens/RivalriesScreen';
-import { EditFavoriteSportsScreen } from '../screens/EditFavoriteSportsScreen';
-import { EditFavoriteLeaguesScreen } from '../screens/EditFavoriteLeaguesScreen';
-import { EditFavoriteTeamsScreen } from '../screens/EditFavoriteTeamsScreen';
-import { ChangePasswordScreen } from '../screens/ChangePasswordScreen';
-import { QuestsScreen } from '../screens/QuestsScreen';
-import { QRScannerScreen } from '../screens/QRScannerScreen';
-import { JoinLeagueScreen } from '../screens/JoinLeagueScreen';
-import F1RacePredictionScreen from '../screens/F1RacePredictionScreen';
 // LeagueSelectionScreen removed from onboarding V2 flow
 import { logScreenView } from '../services/analytics';
 import { navigationRef } from './navigationRef';
 import { ScreenErrorBoundary } from '../components/ScreenErrorBoundary';
+import { markReady } from '../utils/perfMarks';
 
 const darkScreenOptions = {
   headerShown: false as const,
@@ -101,9 +81,9 @@ function HomeNavigator() {
       <HomeStack.Screen name="DashboardHome" component={DashboardScreen} />
       <HomeStack.Screen name="LeagueDetail" component={LeagueDetailScreen} />
       <HomeStack.Screen name="MatchPrediction" component={MatchPredictionScreen} />
-      <HomeStack.Screen name="F1RacePrediction" component={F1RacePredictionScreen} />
+      <HomeStack.Screen name="F1RacePrediction" getComponent={() => require('../screens/F1RacePredictionScreen').default} />
       <HomeStack.Screen name="PickSummary" component={PickSummaryScreen} />
-      <HomeStack.Screen name="Quests" component={QuestsScreen} />
+      <HomeStack.Screen name="Quests" getComponent={() => require('../screens/QuestsScreen').QuestsScreen} />
     </HomeStack.Navigator>
   );
 }
@@ -116,7 +96,7 @@ function LiveNavigator() {
     <LiveStack.Navigator screenOptions={darkScreenOptions}>
       <LiveStack.Screen name="LiveHome" component={LiveScreen} />
       <LiveStack.Screen name="LiveMatchPrediction" component={MatchPredictionScreen} />
-      <LiveStack.Screen name="LiveF1RacePrediction" component={F1RacePredictionScreen} />
+      <LiveStack.Screen name="LiveF1RacePrediction" getComponent={() => require('../screens/F1RacePredictionScreen').default} />
       <LiveStack.Screen name="LivePickSummary" component={PickSummaryScreen} />
     </LiveStack.Navigator>
   );
@@ -128,15 +108,15 @@ const LeaguesStack = createNativeStackNavigator<LeaguesStackParamList>();
 function LeaguesNavigator() {
   return (
     <LeaguesStack.Navigator screenOptions={darkScreenOptions}>
-      <LeaguesStack.Screen name="LeaguesHome" component={CoinLeaguesScreen} />
-      <LeaguesStack.Screen name="CoinLeagueDetail" component={CoinLeagueDetailScreen} />
-      <LeaguesStack.Screen name="LeaguePicksFeed" component={LeaguePicksFeedScreen} />
+      <LeaguesStack.Screen name="LeaguesHome" getComponent={() => require('../screens/CoinLeaguesScreen').CoinLeaguesScreen} />
+      <LeaguesStack.Screen name="CoinLeagueDetail" getComponent={() => require('../screens/CoinLeagueDetailScreen').CoinLeagueDetailScreen} />
+      <LeaguesStack.Screen name="LeaguePicksFeed" getComponent={() => require('../screens/LeaguePicksFeedScreen').LeaguePicksFeedScreen} />
       <LeaguesStack.Screen name="LeagueMatchPrediction" component={MatchPredictionScreen} />
-      <LeaguesStack.Screen name="LeagueF1RacePrediction" component={F1RacePredictionScreen} />
+      <LeaguesStack.Screen name="LeagueF1RacePrediction" getComponent={() => require('../screens/F1RacePredictionScreen').default} />
       <LeaguesStack.Screen name="LeaguePickSummary" component={PickSummaryScreen} />
       <LeaguesStack.Screen name="Leaderboard" component={LeaderboardScreen} />
-      <LeaguesStack.Screen name="QRScanner" component={QRScannerScreen} />
-      <LeaguesStack.Screen name="JoinLeague" component={JoinLeagueScreen} />
+      <LeaguesStack.Screen name="QRScanner" getComponent={() => require('../screens/QRScannerScreen').QRScannerScreen} />
+      <LeaguesStack.Screen name="JoinLeague" getComponent={() => require('../screens/JoinLeagueScreen').JoinLeagueScreen} />
     </LeaguesStack.Navigator>
   );
 }
@@ -149,21 +129,21 @@ function ProfileNavigator() {
     <ProfileStack.Navigator screenOptions={darkScreenOptions}>
       <ProfileStack.Screen name="ProfileHome" component={ProfileScreen} />
       <ProfileStack.Screen name="EditProfile" component={EditProfileScreen} />
-      <ProfileStack.Screen name="EditFavoriteSports" component={EditFavoriteSportsScreen} />
-      <ProfileStack.Screen name="EditFavoriteLeagues" component={EditFavoriteLeaguesScreen} />
-      <ProfileStack.Screen name="EditFavoriteTeams" component={EditFavoriteTeamsScreen} />
-      <ProfileStack.Screen name="ChangePassword" component={ChangePasswordScreen} />
+      <ProfileStack.Screen name="EditFavoriteSports" getComponent={() => require('../screens/EditFavoriteSportsScreen').EditFavoriteSportsScreen} />
+      <ProfileStack.Screen name="EditFavoriteLeagues" getComponent={() => require('../screens/EditFavoriteLeaguesScreen').EditFavoriteLeaguesScreen} />
+      <ProfileStack.Screen name="EditFavoriteTeams" getComponent={() => require('../screens/EditFavoriteTeamsScreen').EditFavoriteTeamsScreen} />
+      <ProfileStack.Screen name="ChangePassword" getComponent={() => require('../screens/ChangePasswordScreen').ChangePasswordScreen} />
       <ProfileStack.Screen name="Notifications" component={NotificationsScreen} />
-      <ProfileStack.Screen name="NotificationPreferences" component={NotificationPreferencesScreen} />
-      <ProfileStack.Screen name="SportNotificationPreferences" component={SportNotificationPreferencesScreen} />
-      <ProfileStack.Screen name="SecurityPrivacy" component={SecurityPrivacyScreen} />
+      <ProfileStack.Screen name="NotificationPreferences" getComponent={() => require('../screens/NotificationPreferencesScreen').NotificationPreferencesScreen} />
+      <ProfileStack.Screen name="SportNotificationPreferences" getComponent={() => require('../screens/SportNotificationPreferencesScreen').SportNotificationPreferencesScreen} />
+      <ProfileStack.Screen name="SecurityPrivacy" getComponent={() => require('../screens/SecurityPrivacyScreen').SecurityPrivacyScreen} />
       <ProfileStack.Screen name="WalletRewards" component={WalletRewardsScreen} />
-      <ProfileStack.Screen name="CoinStore" component={CoinStoreScreen} />
-      <ProfileStack.Screen name="GiftcardRedeem" component={GiftcardRedeemScreen} />
-      <ProfileStack.Screen name="StreakLeaderboard" component={StreakLeaderboardScreen} />
-      <ProfileStack.Screen name="FriendsLeaderboard" component={FriendsLeaderboardScreen} />
-      <ProfileStack.Screen name="Rivalries" component={RivalriesScreen} />
-      <ProfileStack.Screen name="Referrals" component={ReferralsScreen} />
+      <ProfileStack.Screen name="CoinStore" getComponent={() => require('../screens/CoinStoreScreen').CoinStoreScreen} />
+      <ProfileStack.Screen name="GiftcardRedeem" getComponent={() => require('../screens/GiftcardRedeemScreen').GiftcardRedeemScreen} />
+      <ProfileStack.Screen name="StreakLeaderboard" getComponent={() => require('../screens/StreakLeaderboardScreen').StreakLeaderboardScreen} />
+      <ProfileStack.Screen name="FriendsLeaderboard" getComponent={() => require('../screens/FriendsLeaderboardScreen').FriendsLeaderboardScreen} />
+      <ProfileStack.Screen name="Rivalries" getComponent={() => require('../screens/RivalriesScreen').RivalriesScreen} />
+      <ProfileStack.Screen name="Referrals" getComponent={() => require('../screens/ReferralsScreen').ReferralsScreen} />
     </ProfileStack.Navigator>
   );
 }
@@ -447,7 +427,12 @@ export function AppNavigator() {
   }
 
   return (
-    <NavigationContainer ref={navigationRef} linking={linking} onStateChange={onNavigationStateChange}>
+    <NavigationContainer
+      ref={navigationRef}
+      linking={linking}
+      onReady={() => markReady('navigator-ready')}
+      onStateChange={onNavigationStateChange}
+    >
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         {isAuthenticated ? (
           onboardingDone ? (
@@ -464,17 +449,17 @@ export function AppNavigator() {
               />
               <RootStack.Screen
                 name="NotificationPreferences"
-                component={NotificationPreferencesScreen}
+                getComponent={() => require('../screens/NotificationPreferencesScreen').NotificationPreferencesScreen}
                 options={{ animation: 'slide_from_right' }}
               />
               <RootStack.Screen
                 name="SportNotificationPreferences"
-                component={SportNotificationPreferencesScreen}
+                getComponent={() => require('../screens/SportNotificationPreferencesScreen').SportNotificationPreferencesScreen}
                 options={{ animation: 'slide_from_right' }}
               />
               <RootStack.Screen
                 name="Paywall"
-                component={PaywallScreen}
+                getComponent={() => require('../screens/PaywallScreen').PaywallScreen}
                 options={{ animation: 'slide_from_bottom', presentation: 'modal' }}
               />
               <RootStack.Screen
@@ -522,17 +507,17 @@ export function AppNavigator() {
               />
               <RootStack.Screen
                 name="NotificationPreferences"
-                component={NotificationPreferencesScreen}
+                getComponent={() => require('../screens/NotificationPreferencesScreen').NotificationPreferencesScreen}
                 options={{ animation: 'slide_from_right' }}
               />
               <RootStack.Screen
                 name="SportNotificationPreferences"
-                component={SportNotificationPreferencesScreen}
+                getComponent={() => require('../screens/SportNotificationPreferencesScreen').SportNotificationPreferencesScreen}
                 options={{ animation: 'slide_from_right' }}
               />
               <RootStack.Screen
                 name="Paywall"
-                component={PaywallScreen}
+                getComponent={() => require('../screens/PaywallScreen').PaywallScreen}
                 options={{ animation: 'slide_from_bottom', presentation: 'modal' }}
               />
               <RootStack.Screen

@@ -3,6 +3,10 @@ import { initSentry } from './src/observability/sentry';
 // — we want boot-time errors in React/i18n to reach the dashboard too.
 initSentry();
 
+// Stamp boot time as the first user-code side-effect so cold-start
+// metrics include i18n + icon-font costs that show up below.
+import './src/utils/perfMarks';
+
 import './src/i18n';
 import i18n from './src/i18n';
 import React, { useEffect } from 'react';
@@ -22,10 +26,12 @@ import {
   Inter_600SemiBold,
   Inter_700Bold,
 } from '@expo-google-fonts/inter';
+// Only the two icon families used by the cold-start path (tab bar +
+// dashboard) are preloaded. FontAwesome5 / MaterialIcons / Feather
+// auto-load their fonts on first render via vector-icons; deferring
+// them shaves ~80-150ms off the splash on a real device.
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { PurchasesProvider } from './src/contexts/PurchasesContext';
@@ -156,8 +162,6 @@ export default function App() {
     Inter_700Bold,
     ...MaterialCommunityIcons.font,
     ...Ionicons.font,
-    ...FontAwesome5.font,
-    ...MaterialIcons.font,
   });
 
   if (!fontsLoaded) {
