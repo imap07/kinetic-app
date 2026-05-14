@@ -38,6 +38,12 @@ export interface NotificationTypes {
   coinLeagues: boolean;
   dailyReminders: boolean;
   achievements: boolean;
+  // 20 UTC streak-at-risk push (≥2-day streak about to break).
+  // Backend default: true. Independent of dailyReminders so users
+  // can keep one without the other.
+  streakAtRisk: boolean;
+  // Sunday weekly-recap. Backend default: true.
+  weeklyRecap: boolean;
 }
 
 export interface NotificationPreferences {

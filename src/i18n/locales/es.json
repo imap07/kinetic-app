@@ -421,7 +421,11 @@
     "pushDesc": "Recibe alertas de partidos, predicciones y más",
     "notificationTypes": "TIPOS DE NOTIFICACIÓN",
     "errorTitle": "Error",
-    "errorMessage": "No se pudieron actualizar las preferencias. Inténtalo de nuevo."
+    "errorMessage": "No se pudieron actualizar las preferencias. Inténtalo de nuevo.",
+    "streakAtRisk": "Racha en riesgo",
+    "streakAtRiskDesc": "Aviso al final del día cuando tu racha está a punto de romperse.",
+    "weeklyRecap": "Resumen semanal",
+    "weeklyRecapDesc": "Resumen dominical de tus picks, puntos y posición en ligas."
   },
   "paywall": {
     "title": "KINETIC PRO",

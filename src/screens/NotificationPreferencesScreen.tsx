@@ -60,6 +60,8 @@ interface LocalPrefs {
   coinLeagues: boolean;
   dailyReminders: boolean;
   achievements: boolean;
+  streakAtRisk: boolean;
+  weeklyRecap: boolean;
   quietHoursEnabled: boolean;
   quietHoursStart: string;
   quietHoursEnd: string;
@@ -74,6 +76,8 @@ const DEFAULT_PREFS: LocalPrefs = {
   coinLeagues: true,
   dailyReminders: true,
   achievements: true,
+  streakAtRisk: true,
+  weeklyRecap: true,
   quietHoursEnabled: false,
   quietHoursStart: '23:00',
   quietHoursEnd: '07:00',
@@ -90,6 +94,8 @@ const TYPE_KEYS: ReadonlyArray<keyof NotificationTypes> = [
   'coinLeagues',
   'dailyReminders',
   'achievements',
+  'streakAtRisk',
+  'weeklyRecap',
 ];
 
 export function NotificationPreferencesScreen() {
@@ -120,6 +126,8 @@ export function NotificationPreferencesScreen() {
           coinLeagues: remote.types?.coinLeagues ?? true,
           dailyReminders: remote.types?.dailyReminders ?? true,
           achievements: remote.types?.achievements ?? true,
+          streakAtRisk: remote.types?.streakAtRisk ?? true,
+          weeklyRecap: remote.types?.weeklyRecap ?? true,
           quietHoursEnabled: remote.quietHoursEnabled ?? false,
           quietHoursStart: remote.quietHoursStart ?? '23:00',
           quietHoursEnd: remote.quietHoursEnd ?? '07:00',
@@ -293,6 +301,24 @@ export function NotificationPreferencesScreen() {
             t('notificationPrefs.achievements'),
             t('notificationPrefs.achievementsDesc'),
             'achievements',
+            typesDisabled,
+          )}
+          <View style={styles.divider} />
+          {renderRow(
+            t('notificationPrefs.streakAtRisk', { defaultValue: 'Streak at risk' }),
+            t('notificationPrefs.streakAtRiskDesc', {
+              defaultValue: 'Late-day reminder when your streak is about to break.',
+            }),
+            'streakAtRisk',
+            typesDisabled,
+          )}
+          <View style={styles.divider} />
+          {renderRow(
+            t('notificationPrefs.weeklyRecap', { defaultValue: 'Weekly recap' }),
+            t('notificationPrefs.weeklyRecapDesc', {
+              defaultValue: 'Sunday summary of your picks, points, and league standing.',
+            }),
+            'weeklyRecap',
             typesDisabled,
           )}
         </View>

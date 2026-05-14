@@ -421,7 +421,11 @@
     "pushDesc": "Reçois des alertes pour les matchs, prédictions et plus",
     "notificationTypes": "TYPES DE NOTIFICATIONS",
     "errorTitle": "Erreur",
-    "errorMessage": "Échec de la mise à jour des préférences. Réessaie."
+    "errorMessage": "Échec de la mise à jour des préférences. Réessaie.",
+    "streakAtRisk": "Série en danger",
+    "streakAtRiskDesc": "Rappel en fin de journée quand votre série va se rompre.",
+    "weeklyRecap": "Récap hebdomadaire",
+    "weeklyRecapDesc": "Résumé du dimanche : pronostics, points et classement."
   },
   "paywall": {
     "title": "KINETIC PRO",
