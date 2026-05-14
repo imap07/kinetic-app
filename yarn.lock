@@ -3915,6 +3915,11 @@ expo-file-system@~55.0.17:
   resolved "https://registry.yarnpkg.com/expo-file-system/-/expo-file-system-55.0.17.tgz#81e4bc15773ed0c0098edd26a8c2d31f3844219d"
   integrity sha512-d27K1cagUOt2BwxwPka9KW8Znu5kN1tnairozCzzCRZviZFtWnBxwFuJ3KU6MAbav/9UhSMkp5Ve/oZ+SR0UgQ==
 
+expo-file-system@~55.0.20:
+  version "55.0.20"
+  resolved "https://registry.yarnpkg.com/expo-file-system/-/expo-file-system-55.0.20.tgz#bd6ab262b305f995f0395b6c8a37aaa053a577e9"
+  integrity sha512-sBCHhNlCT3EiqCcE6xSbyvOLUAlKx7+p0qjo+c+UPyC/gMrXUdva99g25uptM+fEMwy2co25MUQQ0U0guQLOQA==
+
 expo-font@~55.0.4, expo-font@~55.0.6:
   version "55.0.6"
   resolved "https://registry.yarnpkg.com/expo-font/-/expo-font-55.0.6.tgz#f6ef6c7a9d2ff70bd7c22fc2b01f7db0bdbbeefc"

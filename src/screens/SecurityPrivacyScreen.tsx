@@ -16,6 +16,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+// expo-file-system v55 moved cacheDirectory + writeAsStringAsync to
+// the `legacy` subpath; the new typed root only exports class-based
+// File/Directory APIs. The legacy surface is still supported and is
+// the right call for this one-shot file write.
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { colors, spacing, borderRadius } from '../theme';
 import { ModalCloseButton } from '../components';
 import { legalApi, authApi } from '../api';
@@ -113,6 +119,7 @@ export function SecurityPrivacyScreen() {
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [sessionsExpanded, setSessionsExpanded] = useState(false);
   const [revokingId, setRevokingId] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   // Biometric state
   const [biometricAvailable, setBiometricAvailable] = useState(false);
@@ -160,6 +167,54 @@ export function SecurityPrivacyScreen() {
     },
     [user?.email, tokens?.refreshToken],
   );
+
+  /**
+   * PIPEDA / Quebec Law 25 — user-facing data export.
+   *
+   * Backend endpoint already returns the full payload; we write it
+   * to a temp JSON file under the cache dir and hand it to the
+   * system share sheet so the user can save it anywhere they want
+   * (Files, Drive, email, AirDrop). Doing the share-as-file dance
+   * — rather than copying to clipboard — keeps large exports
+   * usable and matches the access-rights expectation of being
+   * able to "take a copy".
+   */
+  const handleExportData = useCallback(async () => {
+    if (exporting || !tokens?.accessToken) return;
+    setExporting(true);
+    try {
+      const data = await authApi.exportMyData(tokens.accessToken);
+      const filename = `kinetic-data-${new Date().toISOString().slice(0, 10)}.json`;
+      const path = `${FileSystem.cacheDirectory}${filename}`;
+      await FileSystem.writeAsStringAsync(path, JSON.stringify(data, null, 2), {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+      const available = await Sharing.isAvailableAsync();
+      if (!available) {
+        Alert.alert(
+          t('common.error'),
+          t('security.exportShareUnavailable', {
+            defaultValue: 'Sharing is not available on this device.',
+          }),
+        );
+        return;
+      }
+      await Sharing.shareAsync(path, {
+        mimeType: 'application/json',
+        dialogTitle: t('security.exportDialogTitle', {
+          defaultValue: 'Save your Kinetic data',
+        }),
+      });
+    } catch (e: any) {
+      const raw = typeof e?.message === 'string' ? e.message : '';
+      Alert.alert(
+        t('common.error'),
+        raw && /\s/.test(raw) ? raw : t('common.tryAgainLater'),
+      );
+    } finally {
+      setExporting(false);
+    }
+  }, [exporting, tokens?.accessToken, t]);
 
   const fetchSessions = useCallback(async () => {
     try {
@@ -468,6 +523,33 @@ export function SecurityPrivacyScreen() {
         <Text style={[styles.sectionLabel, { marginTop: spacing['3xl'] }]}>{t('security.privacy')}</Text>
         <View style={styles.card}>
           {privacyToggles.map(renderToggleRow)}
+        </View>
+
+        {/* Data rights — PIPEDA / Quebec Law 25 access surface.
+            Backend endpoint /auth/export already exists; this just
+            wires it to a user-facing button + native share so the
+            user can save the JSON anywhere they want. */}
+        <Text style={[styles.sectionLabel, { marginTop: spacing['3xl'] }]}>
+          {t('security.dataRights', { defaultValue: 'Your data' })}
+        </Text>
+        <View style={styles.card}>
+          <TouchableOpacity
+            style={styles.legalRow}
+            onPress={handleExportData}
+            disabled={exporting}
+          >
+            <Feather name="download" size={18} color={colors.onSurfaceVariant} />
+            <Text style={styles.legalText}>
+              {exporting
+                ? t('security.exportPreparing', { defaultValue: 'Preparing your data…' })
+                : t('security.exportData', { defaultValue: 'Export my data' })}
+            </Text>
+            {exporting ? (
+              <ActivityIndicator size="small" color={colors.onSurfaceDim} />
+            ) : (
+              <Feather name="chevron-right" size={14} color={colors.onSurfaceDim} />
+            )}
+          </TouchableOpacity>
         </View>
 
         {/* Legal links */}

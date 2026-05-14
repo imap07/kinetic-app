@@ -774,7 +774,12 @@
     "justNow": "Just now",
     "minsAgo": "{{count}}m ago",
     "hoursAgo": "{{count}}h ago",
-    "daysAgo": "{{count}}d ago"
+    "daysAgo": "{{count}}d ago",
+    "dataRights": "Your data",
+    "exportData": "Export my data",
+    "exportPreparing": "Preparing your data…",
+    "exportDialogTitle": "Save your Kinetic data",
+    "exportShareUnavailable": "Sharing is not available on this device."
   },
   "wallet": {
     "title": "WALLET",

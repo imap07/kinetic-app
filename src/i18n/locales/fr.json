@@ -774,7 +774,12 @@
     "justNow": "À l'instant",
     "minsAgo": "il y a {{count}}m",
     "hoursAgo": "il y a {{count}}h",
-    "daysAgo": "il y a {{count}}j"
+    "daysAgo": "il y a {{count}}j",
+    "dataRights": "Vos données",
+    "exportData": "Exporter mes données",
+    "exportPreparing": "Préparation de vos données…",
+    "exportDialogTitle": "Enregistrer vos données Kinetic",
+    "exportShareUnavailable": "Le partage n'est pas disponible sur cet appareil."
   },
   "wallet": {
     "title": "PORTEFEUILLE",

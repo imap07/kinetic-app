@@ -774,7 +774,12 @@
     "justNow": "Ahora",
     "minsAgo": "hace {{count}}m",
     "hoursAgo": "hace {{count}}h",
-    "daysAgo": "hace {{count}}d"
+    "daysAgo": "hace {{count}}d",
+    "dataRights": "Tus datos",
+    "exportData": "Exportar mis datos",
+    "exportPreparing": "Preparando tus datos…",
+    "exportDialogTitle": "Guardar tus datos de Kinetic",
+    "exportShareUnavailable": "Compartir no está disponible en este dispositivo."
   },
   "wallet": {
     "title": "BILLETERA",

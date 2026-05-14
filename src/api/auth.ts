@@ -207,6 +207,15 @@ export const authApi = {
     return apiClient.get<ProfileResponse>('/auth/me', { token });
   },
 
+  // PIPEDA / Quebec Law 25 access surface. Backend throttle is
+  // 5 calls/hour so a stale UI tap isn't catastrophic. Returned
+  // shape is the full DataExport — typed as `unknown` here so we
+  // don't have to mirror the entire schema in the client; the UX
+  // just stringifies + shares.
+  exportMyData(token: string) {
+    return apiClient.get<unknown>('/auth/export', { token });
+  },
+
   updateProfile(token: string, data: UpdateProfileData) {
     return apiClient.patch<ProfileResponse>('/auth/profile', data, { token });
   },
