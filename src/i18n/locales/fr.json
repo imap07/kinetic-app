@@ -248,7 +248,8 @@
     "themeBeginner": "Pour Débutants",
     "themeEvent": "Soirée Événement",
     "themeUnderdog": "Folie Underdog",
-    "themeWeekend": "Week-end Uniquement"
+    "themeWeekend": "Week-end Uniquement",
+    "presentedBy": "Présenté par {{name}}"
   },
   "picks": {
     "active": "Actifs",

@@ -248,7 +248,8 @@
     "themeBeginner": "Beginner Friendly",
     "themeEvent": "Event Night",
     "themeUnderdog": "Underdog Insanity",
-    "themeWeekend": "Weekend Only"
+    "themeWeekend": "Weekend Only",
+    "presentedBy": "Presented by {{name}}"
   },
   "picks": {
     "active": "Active",

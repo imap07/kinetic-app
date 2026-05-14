@@ -46,6 +46,17 @@ export interface CoinLeague {
   // marketing copy under the name.
   themeSlug?: 'high-stakes' | 'beginner' | 'event' | 'underdog' | 'weekend-only' | null;
   themeDescription?: string | null;
+  // White-label / sponsored league (Sprint F #62/#63). When set the
+  // league card renders the partner's brand strip in place of the
+  // default Kinetic styling. `revShareBps` is captured purely for
+  // back-office reporting — clients ignore it.
+  sponsorship?: {
+    partnerKey: string;
+    partnerName: string;
+    partnerLogo?: string | null;
+    brandColor?: string | null;
+    revShareBps?: number;
+  } | null;
   // F1 Race Weekend fields
   f1RaceApiId?: number;
   f1CompetitionName?: string;

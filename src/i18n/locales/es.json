@@ -248,7 +248,8 @@
     "themeBeginner": "Para Empezar",
     "themeEvent": "Noche de Evento",
     "themeUnderdog": "Locura del Underdog",
-    "themeWeekend": "Solo Fin de Semana"
+    "themeWeekend": "Solo Fin de Semana",
+    "presentedBy": "Presentado por {{name}}"
   },
   "picks": {
     "active": "Activos",

@@ -28,6 +28,7 @@ import {
   TextInput,
   Modal,
   Share,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -400,7 +401,10 @@ export function CoinLeaguesScreen() {
           const isMember = isParticipant(league);
           const isActionLoading = actionLoading === league._id;
           const sportMeta = SPORT_TABS.find((s) => s.key === league.sport);
-          const accentColor = tierAccentColor(league.entryFee);
+          // Sponsorship brand color (when present) wins over the default
+          // tier color so partner leagues are visually distinct in the
+          // list. Falls back to tier accent for everything else.
+          const accentColor = league.sponsorship?.brandColor || tierAccentColor(league.entryFee);
           const spotsRatio = league.maxParticipants > 0
             ? league.participants.length / league.maxParticipants
             : 0;
@@ -432,6 +436,36 @@ export function CoinLeaguesScreen() {
 
                 {/* League name */}
                 <Text style={styles.leagueName} numberOfLines={1}>{league.name}</Text>
+
+                {/* Presented-by strip — shown only on white-label /
+                    sponsored leagues. Small enough not to disrupt the
+                    card hierarchy but loud enough that the partner
+                    gets credit. */}
+                {league.sponsorship && (
+                  <View
+                    style={[
+                      styles.sponsorStrip,
+                      league.sponsorship.brandColor
+                        ? { backgroundColor: `${league.sponsorship.brandColor}1A`, borderColor: `${league.sponsorship.brandColor}55` }
+                        : null,
+                    ]}
+                  >
+                    {league.sponsorship.partnerLogo ? (
+                      <Image
+                        source={{ uri: league.sponsorship.partnerLogo }}
+                        style={styles.sponsorLogo}
+                      />
+                    ) : (
+                      <Ionicons name="ribbon" size={11} color={colors.onSurface} />
+                    )}
+                    <Text style={styles.sponsorText} numberOfLines={1}>
+                      {t('leagues.presentedBy', {
+                        defaultValue: 'Presented by {{name}}',
+                        name: league.sponsorship.partnerName,
+                      })}
+                    </Text>
+                  </View>
+                )}
 
                 {/* Genre/theme badge — visible only on system-curated
                     themed leagues (high-stakes, beginner, etc.). Pure
@@ -1156,6 +1190,28 @@ const styles = StyleSheet.create({
     color: colors.onSurfaceVariant,
     marginBottom: 8,
     lineHeight: 16,
+  },
+  sponsorStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(202,253,0,0.35)',
+    backgroundColor: 'rgba(202,253,0,0.10)',
+    marginTop: 4,
+    marginBottom: 6,
+    maxWidth: '100%',
+  },
+  sponsorLogo: { width: 14, height: 14, borderRadius: 3 },
+  sponsorText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 11,
+    color: colors.onSurface,
+    flexShrink: 1,
   },
   themeBadgeHighStakes: { backgroundColor: 'rgba(252,91,0,0.18)' },
   themeBadgeBeginner: { backgroundColor: 'rgba(79,195,247,0.18)' },
