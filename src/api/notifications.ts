@@ -44,6 +44,10 @@ export interface NotificationTypes {
   streakAtRisk: boolean;
   // Sunday weekly-recap. Backend default: true.
   weeklyRecap: boolean;
+  // Push when someone comments on the user's own pick. Backend
+  // default: true. Without this opt-in the comments feature dies
+  // on the vine — nobody knows when they got a reply.
+  commentReceived: boolean;
 }
 
 export interface NotificationPreferences {

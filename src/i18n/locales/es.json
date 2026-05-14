@@ -429,7 +429,9 @@
     "streakAtRisk": "Racha en riesgo",
     "streakAtRiskDesc": "Aviso al final del día cuando tu racha está a punto de romperse.",
     "weeklyRecap": "Resumen semanal",
-    "weeklyRecapDesc": "Resumen dominical de tus picks, puntos y posición en ligas."
+    "weeklyRecapDesc": "Resumen dominical de tus picks, puntos y posición en ligas.",
+    "commentReceived": "Comentarios en tus picks",
+    "commentReceivedDesc": "Recibe aviso cuando alguien comente uno de tus picks."
   },
   "paywall": {
     "title": "KINETIC PRO",

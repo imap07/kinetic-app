@@ -429,7 +429,9 @@
     "streakAtRisk": "Série en danger",
     "streakAtRiskDesc": "Rappel en fin de journée quand votre série va se rompre.",
     "weeklyRecap": "Récap hebdomadaire",
-    "weeklyRecapDesc": "Résumé du dimanche : pronostics, points et classement."
+    "weeklyRecapDesc": "Résumé du dimanche : pronostics, points et classement.",
+    "commentReceived": "Commentaires sur vos pronostics",
+    "commentReceivedDesc": "Soyez notifié quand quelqu'un commente un de vos pronostics."
   },
   "paywall": {
     "title": "KINETIC PRO",

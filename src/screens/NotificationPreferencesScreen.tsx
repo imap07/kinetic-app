@@ -62,6 +62,7 @@ interface LocalPrefs {
   achievements: boolean;
   streakAtRisk: boolean;
   weeklyRecap: boolean;
+  commentReceived: boolean;
   quietHoursEnabled: boolean;
   quietHoursStart: string;
   quietHoursEnd: string;
@@ -78,6 +79,7 @@ const DEFAULT_PREFS: LocalPrefs = {
   achievements: true,
   streakAtRisk: true,
   weeklyRecap: true,
+  commentReceived: true,
   quietHoursEnabled: false,
   quietHoursStart: '23:00',
   quietHoursEnd: '07:00',
@@ -96,6 +98,7 @@ const TYPE_KEYS: ReadonlyArray<keyof NotificationTypes> = [
   'achievements',
   'streakAtRisk',
   'weeklyRecap',
+  'commentReceived',
 ];
 
 export function NotificationPreferencesScreen() {
@@ -128,6 +131,7 @@ export function NotificationPreferencesScreen() {
           achievements: remote.types?.achievements ?? true,
           streakAtRisk: remote.types?.streakAtRisk ?? true,
           weeklyRecap: remote.types?.weeklyRecap ?? true,
+          commentReceived: remote.types?.commentReceived ?? true,
           quietHoursEnabled: remote.quietHoursEnabled ?? false,
           quietHoursStart: remote.quietHoursStart ?? '23:00',
           quietHoursEnd: remote.quietHoursEnd ?? '07:00',
@@ -319,6 +323,15 @@ export function NotificationPreferencesScreen() {
               defaultValue: 'Sunday summary of your picks, points, and league standing.',
             }),
             'weeklyRecap',
+            typesDisabled,
+          )}
+          <View style={styles.divider} />
+          {renderRow(
+            t('notificationPrefs.commentReceived', { defaultValue: 'Comments on your picks' }),
+            t('notificationPrefs.commentReceivedDesc', {
+              defaultValue: 'Get notified when someone comments on a pick you made.',
+            }),
+            'commentReceived',
             typesDisabled,
           )}
         </View>

@@ -429,7 +429,9 @@
     "streakAtRisk": "Streak at risk",
     "streakAtRiskDesc": "Late-day reminder when your streak is about to break.",
     "weeklyRecap": "Weekly recap",
-    "weeklyRecapDesc": "Sunday summary of your picks, points, and league standing."
+    "weeklyRecapDesc": "Sunday summary of your picks, points, and league standing.",
+    "commentReceived": "Comments on your picks",
+    "commentReceivedDesc": "Get notified when someone comments on a pick you made."
   },
   "paywall": {
     "title": "KINETIC PRO",
