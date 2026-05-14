@@ -1298,5 +1298,12 @@
     "placeholder": "Di algo…",
     "deletePromptTitle": "¿Borrar comentario?",
     "delete": "Borrar"
+  },
+  "hotMatches": {
+    "title": "🔥 LO MÁS HOT",
+    "subtitle": "Los más picados en todos los deportes",
+    "live": "EN VIVO",
+    "inMin": "en {{n}}m",
+    "inHr": "en {{n}}h"
   }
 }

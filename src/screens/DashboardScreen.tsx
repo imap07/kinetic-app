@@ -48,6 +48,7 @@ import { NextUpHero } from '../components/NextUpHero';
 import { GuidedFirstPickOverlay } from '../components/GuidedFirstPickOverlay';
 import { Skeleton } from '../components/Skeleton';
 import { QuestsCard } from '../components/QuestsCard';
+import { HotMatchesCarousel } from '../components/HotMatchesCarousel';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type Props = {
@@ -1187,6 +1188,12 @@ export function DashboardScreen({ navigation }: Props) {
             onPress={() => navigation.navigate('Quests')}
           />
         )}
+
+        {/* Cross-sport "Today's Heat" carousel — auto-hidden when
+            the backend returns 0 items, so it stays out of the way
+            on quiet days but also surfaces cross-sport discovery
+            on busy ones. */}
+        <HotMatchesCarousel />
 
         {/* Daily Challenge Card — from /api/challenges/today */}
         {todayChallenge && (

@@ -1298,5 +1298,12 @@
     "placeholder": "Say something…",
     "deletePromptTitle": "Delete comment?",
     "delete": "Delete"
+  },
+  "hotMatches": {
+    "title": "🔥 TODAY'S HEAT",
+    "subtitle": "Most-picked across all sports",
+    "live": "LIVE",
+    "inMin": "in {{n}}m",
+    "inHr": "in {{n}}h"
   }
 }

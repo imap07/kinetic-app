@@ -159,6 +159,20 @@ export interface PopularTeamsResponse {
   leagues?: LeagueFilter[];
 }
 
+export interface HottestMatch {
+  sport: SportKey;
+  gameApiId: number;
+  leagueApiId: number | null;
+  homeTeamName: string;
+  awayTeamName: string;
+  homeTeamLogo: string | null;
+  awayTeamLogo: string | null;
+  leagueName: string | null;
+  leagueLogo: string | null;
+  gameDate: string;
+  predictionCount: number;
+}
+
 export interface MmaFighter {
   apiId: number;
   name: string;
@@ -194,6 +208,12 @@ export const sportsApi = {
 
   getAvailableSports(token: string) {
     return apiClient.get<SportMeta[]>('/sports', { token });
+  },
+
+  // Cross-sport "today's heat" — most-picked matches in the last 24h
+  // with kickoff still ahead or live. Used by the Home carousel.
+  getHottestToday(token: string, limit = 5) {
+    return apiClient.get<HottestMatch[]>(`/sports/heat?limit=${limit}`, { token });
   },
 
   getDashboard(token: string, sport: SportKey, signal?: AbortSignal) {

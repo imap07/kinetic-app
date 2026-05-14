@@ -1298,5 +1298,12 @@
     "placeholder": "Dites quelque chose…",
     "deletePromptTitle": "Supprimer le commentaire ?",
     "delete": "Supprimer"
+  },
+  "hotMatches": {
+    "title": "🔥 EN FORME",
+    "subtitle": "Les plus pronostiqués tous sports",
+    "live": "EN DIRECT",
+    "inMin": "dans {{n}}m",
+    "inHr": "dans {{n}}h"
   }
 }
