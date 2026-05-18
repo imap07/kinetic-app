@@ -2,6 +2,7 @@
 const en = require('../locales/en.json');
 const es = require('../locales/es.json');
 const fr = require('../locales/fr.json');
+const pt = require('../locales/pt.json');
 
 function flatten(obj: Record<string, unknown>, prefix = ''): string[] {
   const out: string[] = [];
@@ -17,10 +18,11 @@ function flatten(obj: Record<string, unknown>, prefix = ''): string[] {
   return out;
 }
 
-describe('i18n parity EN/ES/FR', () => {
+describe('i18n parity EN/ES/FR/PT', () => {
   const enKeys = flatten(en).sort();
   const esKeys = flatten(es).sort();
   const frKeys = flatten(fr).sort();
+  const ptKeys = flatten(pt).sort();
 
   it('ES has the same keys as EN', () => {
     expect(esKeys).toEqual(enKeys);
@@ -30,7 +32,11 @@ describe('i18n parity EN/ES/FR', () => {
     expect(frKeys).toEqual(enKeys);
   });
 
-  it('Sprint 1 growth keys exist in all 3 languages', () => {
+  it('PT has the same keys as EN', () => {
+    expect(ptKeys).toEqual(enKeys);
+  });
+
+  it('Sprint 1 growth keys exist in all 4 languages', () => {
     const required = [
       'winCelebration.title',
       'winCelebration.points',
@@ -43,13 +49,14 @@ describe('i18n parity EN/ES/FR', () => {
       expect(enKeys).toContain(key);
       expect(esKeys).toContain(key);
       expect(frKeys).toContain(key);
+      expect(ptKeys).toContain(key);
     }
   });
 
   it('referrals.shareMessage carries {{code}} and {{coins}} placeholders', () => {
     const pick = (obj: Record<string, unknown>, path: string) =>
       path.split('.').reduce<unknown>((acc, k) => (acc as Record<string, unknown>)[k], obj) as string;
-    for (const locale of [en, es, fr]) {
+    for (const locale of [en, es, fr, pt]) {
       const msg = pick(locale, 'referrals.shareMessage');
       expect(msg).toMatch(/\{\{\s*code\s*\}\}/);
       expect(msg).toMatch(/\{\{\s*coins\s*\}\}/);

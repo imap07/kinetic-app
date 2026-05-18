@@ -5,12 +5,18 @@ import * as Localization from 'expo-localization';
 import en from './locales/en.json';
 import es from './locales/es.json';
 import fr from './locales/fr.json';
+import pt from './locales/pt.json';
 
 const deviceLocale = Localization.getLocales()[0]?.languageCode ?? 'en';
 
 i18n.use(initReactI18next).init({
-  resources: { en: { translation: en }, es: { translation: es }, fr: { translation: fr } },
-  lng: ['es', 'fr'].includes(deviceLocale) ? deviceLocale : 'en',
+  resources: {
+    en: { translation: en },
+    es: { translation: es },
+    fr: { translation: fr },
+    pt: { translation: pt },
+  },
+  lng: ['es', 'fr', 'pt'].includes(deviceLocale) ? deviceLocale : 'en',
   fallbackLng: 'en',
   interpolation: { escapeValue: false },
 });

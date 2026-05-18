@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import i18n from '../i18n';
 import { authApi, ApiError } from '../api';
+import { normalizeBackendLanguage } from '../api/auth';
 import { registerTokenProvider } from '../api/client';
 import type { AuthTokens, User, SocialProvider, UpdateProfileData, UpdatePreferencesData } from '../api';
 import { signOutFromGoogle } from '../services/googleAuth';
@@ -223,11 +225,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       displayName: string,
       birthdate: string,
     ) => {
+      // Server-emitted copy (welcome email, push notifications) is keyed
+      // off `preferredLanguage` on the user document. Seed it with the
+      // language the user is already seeing in the app — anything we
+      // can't normalize collapses to 'en' on the backend.
+      const preferredLanguage = normalizeBackendLanguage(i18n.language);
       const { user, tokens } = await authApi.register(
         email,
         password,
         displayName,
         birthdate,
+        preferredLanguage,
       );
       await persistTokens(tokens);
       setAuth(user, tokens);
@@ -243,7 +251,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       accessToken: string,
       extra?: { idToken?: string; email?: string; displayName?: string; avatar?: string },
     ) => {
-      const { user, tokens } = await authApi.loginWithSocial(provider, accessToken, extra);
+      const preferredLanguage = normalizeBackendLanguage(i18n.language);
+      const { user, tokens } = await authApi.loginWithSocial(provider, accessToken, {
+        ...extra,
+        preferredLanguage,
+      });
       await persistTokens(tokens);
       setAuth(user, tokens);
       logLogin(provider as 'google' | 'apple');

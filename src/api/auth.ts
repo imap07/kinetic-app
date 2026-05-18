@@ -109,12 +109,25 @@ export type AcquisitionSourceKey =
   | 'twitter'
   | 'other';
 
+// Maps an i18next language code (which may include region, "pt-BR")
+// to the four-letter set the backend accepts. Anything unknown collapses
+// to 'en' on the server side too, so this is a best-effort hint.
+export type BackendLanguage = 'en' | 'es' | 'fr' | 'pt';
+export function normalizeBackendLanguage(lng?: string | null): BackendLanguage {
+  if (!lng) return 'en';
+  const head = lng.toLowerCase().split(/[-_]/)[0];
+  return (['en', 'es', 'fr', 'pt'] as const).includes(head as BackendLanguage)
+    ? (head as BackendLanguage)
+    : 'en';
+}
+
 export const authApi = {
   register(
     email: string,
     password: string,
     displayName: string,
     birthdate: string,
+    preferredLanguage?: BackendLanguage,
   ) {
     return apiClient.post<AuthResponse>('/auth/register', {
       email,
@@ -125,6 +138,7 @@ export const authApi = {
       // "must be 18+" error at the call site.
       birthdate,
       deviceType: 'mobile',
+      ...(preferredLanguage ? { preferredLanguage } : {}),
     });
   },
 
@@ -140,7 +154,13 @@ export const authApi = {
   loginWithSocial(
     provider: SocialProvider,
     accessToken: string,
-    extra?: { idToken?: string; email?: string; displayName?: string; avatar?: string },
+    extra?: {
+      idToken?: string;
+      email?: string;
+      displayName?: string;
+      avatar?: string;
+      preferredLanguage?: BackendLanguage;
+    },
   ) {
     return apiClient.post<AuthResponse>('/auth/login/social', {
       provider,
@@ -148,6 +168,15 @@ export const authApi = {
       ...extra,
       deviceType: 'mobile',
     });
+  },
+
+  /**
+   * Persist the user's chosen language on the backend so future emails
+   * and push notifications honor it. Called from the language switcher
+   * after `i18n.changeLanguage(...)` succeeds.
+   */
+  setPreferredLanguage(preferredLanguage: BackendLanguage) {
+    return apiClient.patch<AuthResponse>('/auth/profile', { preferredLanguage });
   },
 
   /**
