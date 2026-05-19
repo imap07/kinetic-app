@@ -12,6 +12,7 @@ import {
   Alert,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import i18n from '../i18n';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -35,6 +36,12 @@ import {
   disableBiometricLogin,
   isBiometricLoginEnabled,
 } from '../services/biometricAuth';
+import {
+  setAppLocale,
+  clearAppLocaleOverride,
+  getLocaleOverride,
+  type AppLocale,
+} from '../services/locale';
 
 type SettingToggle = {
   id: string;
@@ -126,6 +133,43 @@ export function SecurityPrivacyScreen() {
   const [biometricLabel, setBiometricLabel] = useState('Biometric Login');
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [biometricLoading, setBiometricLoading] = useState(true);
+
+  // Language state — `null` means we're still loading the override flag,
+  // or the user is on the system default. We render the active i18n
+  // language as the highlighted option in either case, so the user sees
+  // their current state immediately.
+  const [localeOverride, setLocaleOverride] = useState<AppLocale | null>(null);
+  const [localeChanging, setLocaleChanging] = useState(false);
+  const currentLocale = (i18n.language as AppLocale) ?? 'en';
+
+  useEffect(() => {
+    let cancelled = false;
+    getLocaleOverride().then((v) => {
+      if (!cancelled) setLocaleOverride(v);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handlePickLocale = useCallback(
+    async (next: AppLocale | null) => {
+      if (localeChanging) return;
+      setLocaleChanging(true);
+      try {
+        if (next === null) {
+          await clearAppLocaleOverride();
+          setLocaleOverride(null);
+        } else {
+          await setAppLocale(next);
+          setLocaleOverride(next);
+        }
+      } finally {
+        setLocaleChanging(false);
+      }
+    },
+    [localeChanging],
+  );
 
   // Check biometric hardware and current status on mount
   useEffect(() => {
@@ -429,6 +473,47 @@ export function SecurityPrivacyScreen() {
           </View>
         </View>
 
+        {/* Language */}
+        <View style={styles.card}>
+          <View style={styles.toggleRow}>
+            <View style={styles.toggleIcon}>
+              <MaterialCommunityIcons name="translate" size={20} color={colors.primary} />
+            </View>
+            <View style={styles.toggleContent}>
+              <Text style={styles.toggleLabel}>{t('security.language')}</Text>
+              <Text style={styles.toggleSub}>{t('security.languageDesc')}</Text>
+            </View>
+          </View>
+          <View style={styles.langChipRow}>
+            {([
+              { code: null, label: t('security.systemDefault') },
+              { code: 'en' as const, label: 'English' },
+              { code: 'es' as const, label: 'Español' },
+              { code: 'fr' as const, label: 'Français' },
+              { code: 'pt' as const, label: 'Português' },
+            ]).map((opt) => {
+              const isActive =
+                opt.code === null
+                  ? localeOverride === null
+                  : localeOverride === opt.code ||
+                    (localeOverride === null && currentLocale === opt.code);
+              return (
+                <TouchableOpacity
+                  key={opt.code ?? 'system'}
+                  onPress={() => handlePickLocale(opt.code)}
+                  disabled={localeChanging}
+                  style={[styles.langChip, isActive && styles.langChipActive]}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.langChipText, isActive && styles.langChipTextActive]}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
         {/* Change Password */}
         <TouchableOpacity
           style={styles.actionRow}
@@ -611,6 +696,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing['2xl'],
     marginBottom: spacing.md,
     marginTop: spacing.xl,
+  },
+
+  // Language picker chips. Active chip is filled with primary, inactive
+  // chips read as outlined pills. Wraps on small screens — five chips
+  // (System + 4 langs) just barely fit on one row at ~360pt.
+  langChipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
+  },
+  langChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    borderColor: colors.surfaceContainerHighest,
+    backgroundColor: 'transparent',
+  },
+  langChipActive: {
+    backgroundColor: 'rgba(202,253,0,0.12)',
+    borderColor: colors.primary,
+  },
+  langChipText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12,
+    color: colors.onSurfaceVariant,
+  },
+  langChipTextActive: {
+    color: colors.primary,
   },
 
   card: {

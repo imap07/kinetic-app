@@ -817,7 +817,10 @@
     "exportData": "Export my data",
     "exportPreparing": "Preparing your data…",
     "exportDialogTitle": "Save your Kinetic data",
-    "exportShareUnavailable": "Sharing is not available on this device."
+    "exportShareUnavailable": "Sharing is not available on this device.",
+    "language": "Language",
+    "languageDesc": "Choose the language used throughout the app",
+    "systemDefault": "System default"
   },
   "wallet": {
     "title": "WALLET",

@@ -817,7 +817,10 @@
     "exportData": "Exporter mes données",
     "exportPreparing": "Préparation de vos données…",
     "exportDialogTitle": "Enregistrer vos données Kinetic",
-    "exportShareUnavailable": "Le partage n'est pas disponible sur cet appareil."
+    "exportShareUnavailable": "Le partage n'est pas disponible sur cet appareil.",
+    "language": "Langue",
+    "languageDesc": "Choisis la langue utilisée dans toute l'application",
+    "systemDefault": "Par défaut du système"
   },
   "wallet": {
     "title": "PORTEFEUILLE",

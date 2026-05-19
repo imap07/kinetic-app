@@ -817,7 +817,10 @@
     "exportData": "Exportar meus dados",
     "exportPreparing": "Preparando seus dados…",
     "exportDialogTitle": "Salvar seus dados do Kinetic",
-    "exportShareUnavailable": "Compartilhamento indisponível neste dispositivo."
+    "exportShareUnavailable": "Compartilhamento indisponível neste dispositivo.",
+    "language": "Idioma",
+    "languageDesc": "Escolha o idioma usado em todo o app",
+    "systemDefault": "Padrão do sistema"
   },
   "wallet": {
     "title": "CARTEIRA",
