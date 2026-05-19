@@ -21,6 +21,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../theme';
 import type { SportGame } from '../api/sports';
 
@@ -41,6 +42,7 @@ function relativeTime(dateStr: string): string {
 }
 
 export function NextUpHero({ game, isFavoriteTeam, onPress }: Props) {
+  const { t } = useTranslation();
   const heroLabel = isFavoriteTeam ? 'A FAVORITE IS PLAYING' : 'NEXT UP';
   return (
     <TouchableOpacity
@@ -92,7 +94,7 @@ export function NextUpHero({ game, isFavoriteTeam, onPress }: Props) {
         </View>
 
         <View style={styles.cta}>
-          <Text style={styles.ctaText}>MAKE YOUR PICK</Text>
+          <Text style={styles.ctaText}>{t('dashboard.makeYourPick')}</Text>
           <Feather name="arrow-right" size={14} color={colors.primary} />
         </View>
       </LinearGradient>

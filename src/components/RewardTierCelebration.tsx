@@ -8,51 +8,55 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 import { useRewards } from '../contexts/RewardsContext';
 
 interface TierInfo {
   icon: string;
   iconFamily: 'ionicons' | 'material';
   color: string;
-  label: string;
-  subtitle: string;
+  labelKey: string;
+  subtitleKey: string;
 }
 
+// Tier visual config + i18n keys. The label/subtitle are resolved at
+// render time via `t(tier.labelKey)` so language changes apply
+// immediately instead of being baked at module-load.
 const TIER_MAP: Record<string, TierInfo> = {
   bronze: {
     icon: 'trophy',
     iconFamily: 'ionicons',
     color: '#CD7F32',
-    label: 'BRONZE UNLOCKED!',
-    subtitle: 'You earned a profile badge!',
+    labelKey: 'rewardTier.bronzeTitle',
+    subtitleKey: 'rewardTier.bronzeDesc',
   },
   silver: {
     icon: 'star',
     iconFamily: 'ionicons',
     color: '#C0C0C0',
-    label: 'SILVER UNLOCKED!',
-    subtitle: 'x1.5 multiplier on your next league!',
+    labelKey: 'rewardTier.silverTitle',
+    subtitleKey: 'rewardTier.silverDesc',
   },
   gold: {
     icon: 'gift',
     iconFamily: 'ionicons',
     color: '#FFD700',
-    label: 'GOLD UNLOCKED!',
-    subtitle: 'You earned a $5 gift card!',
+    labelKey: 'rewardTier.goldTitle',
+    subtitleKey: 'rewardTier.goldDesc',
   },
   diamond: {
     icon: 'diamond',
     iconFamily: 'material',
     color: '#00BCD4',
-    label: 'DIAMOND UNLOCKED!',
-    subtitle: 'You earned a $10 gift card!',
+    labelKey: 'rewardTier.diamondTitle',
+    subtitleKey: 'rewardTier.diamondDesc',
   },
   legend: {
     icon: 'crown',
     iconFamily: 'material',
     color: '#9B59B6',
-    label: 'LEGEND UNLOCKED!',
-    subtitle: 'You earned a $25 gift card!',
+    labelKey: 'rewardTier.legendTitle',
+    subtitleKey: 'rewardTier.legendDesc',
   },
 };
 
@@ -60,6 +64,7 @@ const PARTICLE_COLORS = ['#CAFD00', '#FFD700', '#FF6B6B', '#4FC3F7', '#FF9800', 
 const PARTICLE_COUNT = 12;
 
 export function RewardTierCelebration() {
+  const { t } = useTranslation();
   const { showCelebration, celebrationTier, claimTier, dismissCelebration } = useRewards();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -196,11 +201,11 @@ export function RewardTierCelebration() {
 
       {/* Tier label */}
       <Text style={[styles.tierLabel, { color: tier.color }]}>
-        {tier.label}
+        {t(tier.labelKey)}
       </Text>
 
       {/* Subtitle */}
-      <Text style={styles.subtitle}>{tier.subtitle}</Text>
+      <Text style={styles.subtitle}>{t(tier.subtitleKey)}</Text>
 
       {/* Claim button */}
       <TouchableOpacity
@@ -214,7 +219,7 @@ export function RewardTierCelebration() {
           end={{ x: 1, y: 1 }}
           style={styles.claimBtn}
         >
-          <Text style={styles.claimBtnText}>CLAIM REWARD</Text>
+          <Text style={styles.claimBtnText}>{t('rewardTier.claimReward')}</Text>
         </LinearGradient>
       </TouchableOpacity>
     </Animated.View>

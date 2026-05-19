@@ -24,7 +24,7 @@ export function RewardedAdButton() {
       if (result.coins > 0) {
         Toast.show({
           type: 'success',
-          text1: `+${result.coins} coins!`,
+          text1: t('ads.coinsEarnedToast', { count: result.coins }),
           text2: t('ads.rewardEarned'),
           visibilityTime: 2500,
         });

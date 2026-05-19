@@ -21,7 +21,11 @@
     "authFailed": "Authentication Failed",
     "biometricFailed": "Biometric login failed. Please try another method.",
     "sessionExpired": "Session expired",
-    "sessionExpiredMessage": "Your session has expired. Please sign in again."
+    "sessionExpiredMessage": "Your session has expired. Please sign in again.",
+    "errorTitle": "Error",
+    "googleAuthFailed": "Google sign-in failed. Please try again.",
+    "appleAuthFailed": "Apple sign-in failed. Please try again.",
+    "appleNoIdentityToken": "Apple sign-in failed: no identity token received."
   },
   "emailAuth": {
     "signIn": "Sign In",
@@ -282,7 +286,8 @@
     "proInsights": "PRO INSIGHTS",
     "bestSport": "Best Sport",
     "unlockDetailedStats": "Unlock detailed stats by sport",
-    "predictNow": "Predict now →"
+    "predictNow": "Predict now →",
+    "multiplierBadge": "{{value}}× multiplier"
   },
   "leaderboard": {
     "title": "GLOBAL RANKINGS",
@@ -297,7 +302,9 @@
     "topPercent": "Top {{percent}}% of {{total}} players",
     "predictions": "Predictions",
     "you": "(You)",
-    "errorLoading": "Error loading leaderboard"
+    "errorLoading": "Error loading leaderboard",
+    "noRankingsYet": "No Rankings Yet",
+    "noRankingsSubtitle": "Make predictions to earn points and climb the leaderboard"
   },
   "profile": {
     "editProfile": "EDIT PROFILE",
@@ -346,7 +353,8 @@
     "securitySettings": "SECURITY & SETTINGS",
     "logOut": "LOG OUT",
     "matches": "MATCHES",
-    "draw": "Draw"
+    "draw": "Draw",
+    "rewardsHeader": "REWARDS"
   },
   "editProfile": {
     "title": "EDIT PROFILE",
@@ -620,7 +628,15 @@
     "correct": "correct",
     "predictionFailed": "Prediction Failed",
     "couldNotPredict": "Could not submit prediction.",
-    "viewPicksFeed": "View picks & reactions"
+    "viewPicksFeed": "View picks & reactions",
+    "colDriver": "Driver",
+    "colTeam": "Team",
+    "colWins": "Wins",
+    "colPts": "Pts",
+    "colP": "P",
+    "colW": "W",
+    "colDraw": "D",
+    "colLoss": "L"
   },
   "search": {
     "placeholder": "Search teams, leagues, matches...",
@@ -646,7 +662,8 @@
     "insufficientCoinsDesc": "You need {{needed}} coins. You have {{available}} available.",
     "redeem": "Redeem",
     "redemptionFailed": "Redemption failed.",
-    "viewOrders": "View my orders"
+    "viewOrders": "View my orders",
+    "confirmMessage": "Redeem {{coins}} coins for a ${{dollars}} {{name}} gift card?\n\nProcessing takes up to {{hours}} hours."
   },
   "sportSelection": {
     "step": "Step 1 of 3",
@@ -673,7 +690,17 @@
     "modeTeams": "Teams",
     "modeFighters": "Fighters",
     "modeLeagues": "Leagues",
-    "noLeagues": "No leagues available yet"
+    "noLeagues": "No leagues available yet",
+    "clearAll": "Clear all",
+    "clearFilters": "Clear filters",
+    "noConstructorsFound": "No constructors found",
+    "noTeamsFound": "No teams found",
+    "followDriverTitle": "Follow a Driver",
+    "searchCountryPlaceholder": "Search country...",
+    "searchLeaguePlaceholder": "Search league...",
+    "remove": "Remove",
+    "noDriversAvailable": "No drivers available",
+    "filterTeams": "Filter Teams"
   },
   "acquisitionSource": {
     "step": "Step 3 of 3",
@@ -955,7 +982,24 @@
     "seasonAgainst": "Against",
     "fighterRecord": "FIGHTER RECORD",
     "fighterRecordEmpty": "Record not available yet",
-    "recordWLD": "W-L-D"
+    "recordWLD": "W-L-D",
+    "headerDraws": "Draws",
+    "tapToExpand": "Tap to expand",
+    "playerPass": "Pass {{value}}",
+    "playerTackles": "Tackles {{count}}",
+    "playerSaves": "Saves {{count}}",
+    "h2hShortLabel": "H2H",
+    "statShotsOnGoal": "SHOTS ON GOAL",
+    "statTotalShots": "TOTAL SHOTS",
+    "statCorners": "CORNERS",
+    "statFouls": "FOULS",
+    "statOffsides": "OFFSIDES",
+    "f1Position": "Position",
+    "f1Points": "Points",
+    "f1Wins": "Wins",
+    "f1Podiums": "Podiums",
+    "f1WDC": "WDC",
+    "f1GPs": "GPs"
   },
   "sports": {
     "afl": {
@@ -1087,7 +1131,12 @@
     "you": "you",
     "errorLoading": "Could not load. Pull down to retry.",
     "tryAgainLater": "Something went wrong. Try again in a moment.",
-    "done": "Done"
+    "done": "Done",
+    "failedToSubmit": "Failed to submit",
+    "pleaseTryAgain": "Please try again",
+    "home": "Home",
+    "away": "Away",
+    "playerFallback": "player"
   },
   "error": {
     "title": "Something went wrong",
@@ -1105,7 +1154,8 @@
     "dailyLimitDesc": "Come back tomorrow for more bonus coins.",
     "notReadyTitle": "Ad not ready",
     "notReadyDesc": "Please try again in a moment.",
-    "networkError": "Could not connect. Check your connection and try again."
+    "networkError": "Could not connect. Check your connection and try again.",
+    "coinsEarnedToast": "+{{count}} coins!"
   },
   "passwordPolicy": {
     "ruleLength": "At least {{count}} characters",
@@ -1225,7 +1275,10 @@
     "letsGo": "Make my first prediction →",
     "notifMyTeams": "Notifications: My Teams",
     "notifAllGames": "Notifications: All Games",
-    "inviteFriends": "Invite a friend — earn {{coins}} coins"
+    "inviteFriends": "Invite a friend — earn {{coins}} coins",
+    "setupIncomplete": "Setup incomplete",
+    "setupIncompleteMsg": "We couldn't save your picks. Please try again.",
+    "tryAgain": "Try again"
   },
   "errorBoundary": {
     "title": "Something went wrong",
@@ -1266,7 +1319,8 @@
     "driver": "Driver",
     "team": "Team",
     "stopNumber": "Stop #",
-    "totalTime": "Total Time"
+    "totalTime": "Total Time",
+    "startingGrid": "STARTING GRID"
   },
   "leaguePicksFeed": {
     "title": "League Picks",
@@ -1303,7 +1357,8 @@
     "friendBlocked": "Blocked",
     "friendRewarded": "Rewarded ✓",
     "friendQualified": "Qualified — paying out",
-    "friendProgress": "{{r}}/{{n}} picks resolved"
+    "friendProgress": "{{r}}/{{n}} picks resolved",
+    "useCodeLabel": "USE CODE"
   },
   "publicProfile": {
     "private": "This profile is private.",
@@ -1373,5 +1428,65 @@
       "grant": "Grant",
       "shop": "Shop"
     }
+  },
+  "f1Prediction": {
+    "tabWinner": "Race Winner",
+    "tabPodium": "Podium Top 3",
+    "tabH2H": "Head-to-Head",
+    "tabFastest": "Fastest Lap",
+    "tabPoints": "Points Finish",
+    "tabPitstops": "Pit Stops",
+    "podiumTitle": "Predict the podium",
+    "podiumSub": "Select drivers for each position. Perfect order = 50 pts!",
+    "podiumLocked": "Podium pick locked for this race",
+    "posWinner": "P1 — Winner",
+    "posSecond": "P2 — Second",
+    "posThird": "P3 — Third",
+    "selectDriver": "Select a driver",
+    "selectAll3Podium": "Select all 3 podium positions",
+    "predictionSaved": "Prediction saved!",
+    "pickLockedIn": "Your pick is locked in.",
+    "h2hPickSaved": "H2H pick saved!",
+    "failedToSave": "Failed to save prediction",
+    "whoWillWin": "Who will win the race?",
+    "whoWillFastest": "Who will set the fastest lap?",
+    "underdogHint": "Picking an underdog earns more points!",
+    "fastestHint": "Select the driver you think will record the fastest lap",
+    "alreadyPickedGeneric": "You already have a pick for this race",
+    "lockWinnerPick": "Lock Winner Pick",
+    "lockFastestPick": "Lock Fastest Lap Pick",
+    "lockPodiumPick": "Lock Podium Pick",
+    "lockPointsPick": "Lock Points Finish Pick",
+    "h2hSectionTitle": "Head-to-Head",
+    "h2hNoMatchups": "No matchups available for this race yet.",
+    "h2hMatchupsTitle": "Head-to-Head Matchups",
+    "h2hMatchupsDesc": "Who finishes ahead? Pick your winner in each battle.",
+    "pointsSectionTitle": "Points Finish",
+    "pointsDesc": "Will this driver finish in the top 10 and score points?",
+    "pointsLocked": "Points finish pick locked",
+    "pointsWillFinish": "Will {{driver}} finish in the top 10?"
+  },
+  "share": {
+    "notSupported": "Sharing not supported on this device",
+    "dialogTitle": "Share your pick",
+    "pickMessageNoRef": "Just made my pick on Kinetic. {{home}} vs {{away}}.",
+    "pickMessageWithRef": "Just made my pick on Kinetic. {{home}} vs {{away}}. Join with my code {{code}} — we both get {{coins}} coins. {{url}}",
+    "leagueMessage": "Join my league \"{{name}}\" on Kinetic! {{url}}"
+  },
+  "purchases": {
+    "purchaseFailed": "Purchase failed"
+  },
+  "rewardTier": {
+    "claimReward": "CLAIM REWARD",
+    "bronzeTitle": "BRONZE UNLOCKED!",
+    "bronzeDesc": "You earned a profile badge!",
+    "silverTitle": "SILVER UNLOCKED!",
+    "silverDesc": "x1.5 multiplier on your next league!",
+    "goldTitle": "GOLD UNLOCKED!",
+    "goldDesc": "You earned a $5 gift card!",
+    "diamondTitle": "DIAMOND UNLOCKED!",
+    "diamondDesc": "You earned a $10 gift card!",
+    "legendTitle": "LEGEND UNLOCKED!",
+    "legendDesc": "You earned a $25 gift card!"
   }
 }

@@ -291,12 +291,14 @@ function getEventIcon(event: FixtureEvent) {
   return { icon: 'ellipse', lib: 'ion' as const, color: colors.onSurfaceVariant, bg: colors.surfaceContainerHighest };
 }
 
+// Labels resolved at render-time via `t(stat.labelKey)`. `key` is the
+// raw stat name returned by the football API and must NOT be localized.
 const STAT_KEYS = [
-  { key: 'Shots on Goal', label: 'SHOTS ON GOAL' },
-  { key: 'Total Shots', label: 'TOTAL SHOTS' },
-  { key: 'Corner Kicks', label: 'CORNERS' },
-  { key: 'Fouls', label: 'FOULS' },
-  { key: 'Offsides', label: 'OFFSIDES' },
+  { key: 'Shots on Goal', labelKey: 'matchPrediction.statShotsOnGoal' },
+  { key: 'Total Shots', labelKey: 'matchPrediction.statTotalShots' },
+  { key: 'Corner Kicks', labelKey: 'matchPrediction.statCorners' },
+  { key: 'Fouls', labelKey: 'matchPrediction.statFouls' },
+  { key: 'Offsides', labelKey: 'matchPrediction.statOffsides' },
 ];
 
 // ─── Generic Events Tab ──────────────────────────────────────────────────────
@@ -469,6 +471,7 @@ function GenericStatsTab({ stats, homeTeamName, awayTeamName }: { stats: any; ho
 
 // ─── Generic H2H Tab ─────────────────────────────────────────────────────────
 function GenericH2HTab({ games, homeTeamId, homeTeamName, awayTeamName, sport }: { games: any[]; homeTeamId: number; homeTeamName: string; awayTeamName: string; sport?: string }) {
+  const { t } = useTranslation();
   // Hide the "Draws" column entirely for sports where draws aren't a
   // real outcome (basketball, baseball, AF, volleyball, AFL, MMA,
   // hockey, F1). Before this, those sports always showed "0 Draws"
@@ -494,7 +497,7 @@ function GenericH2HTab({ games, homeTeamId, homeTeamName, awayTeamName, sport }:
         {showDraws && (
           <View style={{ alignItems: 'center', gap: 4 }}>
             <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 24, color: colors.onSurfaceVariant }}>{draws}</Text>
-            <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 11, color: colors.onSurfaceVariant }}>Draws</Text>
+            <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 11, color: colors.onSurfaceVariant }}>{t('matchPrediction.headerDraws')}</Text>
           </View>
         )}
         <View style={{ alignItems: 'center', gap: 4 }}>
@@ -1106,8 +1109,8 @@ export function MatchPredictionScreen({ navigation }: Props) {
     fetchGame();
   }, [fetchGame]);
 
-  const homeTeamName = fixture?.homeTeam?.name || genericGame?.homeTeam?.name || 'Home';
-  const awayTeamName = fixture?.awayTeam?.name || genericGame?.awayTeam?.name || 'Away';
+  const homeTeamName = fixture?.homeTeam?.name || genericGame?.homeTeam?.name || t('common.home');
+  const awayTeamName = fixture?.awayTeam?.name || genericGame?.awayTeam?.name || t('common.away');
   const homeTeamLogo = fixture?.homeTeam?.logo || genericGame?.homeTeam?.logo || '';
   const awayTeamLogo = fixture?.awayTeam?.logo || genericGame?.awayTeam?.logo || '';
   const leagueName = fixture?.leagueName || genericGame?.leagueName || '';
@@ -1401,7 +1404,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
                 <ExpoImage source={{ uri: f1CircuitImage }} style={styles.f1DetailCircuitImage} contentFit="contain" cachePolicy="memory-disk" />
                 <View style={styles.f1CircuitZoomHint}>
                   <Ionicons name="expand-outline" size={14} color="rgba(255,255,255,0.5)" />
-                  <Text style={styles.f1CircuitZoomHintText}>Tap to expand</Text>
+                  <Text style={styles.f1CircuitZoomHintText}>{t('matchPrediction.tapToExpand')}</Text>
                 </View>
               </TouchableOpacity>
             ) : null}
@@ -2646,7 +2649,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
                 </View>
 
                 {/* Other stats — dual bars */}
-                {STAT_KEYS.map(({ key, label }) => {
+                {STAT_KEYS.map(({ key, labelKey }) => {
                   const [homeVal, awayVal] = getStatValue(stats, key);
                   if (homeVal === null && awayVal === null) return null;
                   const hNum = parseInt(homeVal || '0', 10);
@@ -2658,7 +2661,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
                         <Text style={[styles.statValueHome, hNum > aNum && styles.statValueWinning]}>
                           {homeVal || '0'}
                         </Text>
-                        <Text style={styles.statLabel}>{label}</Text>
+                        <Text style={styles.statLabel}>{t(labelKey)}</Text>
                         <Text style={[styles.statValueAway, aNum > hNum && styles.statValueWinning]}>
                           {awayVal || '0'}
                         </Text>
@@ -3052,13 +3055,13 @@ export function MatchPredictionScreen({ navigation }: Props) {
                           <Text style={styles.playerModalExtraText}>⏱ {playerModal.stats.minutes}'</Text>
                         ) : null}
                         {playerModal.stats.passAccuracy ? (
-                          <Text style={styles.playerModalExtraText}>Pass {playerModal.stats.passAccuracy}</Text>
+                          <Text style={styles.playerModalExtraText}>{t('matchPrediction.playerPass', { value: playerModal.stats.passAccuracy })}</Text>
                         ) : null}
                         {playerModal.stats.tackles > 0 ? (
-                          <Text style={styles.playerModalExtraText}>Tackles {playerModal.stats.tackles}</Text>
+                          <Text style={styles.playerModalExtraText}>{t('matchPrediction.playerTackles', { count: playerModal.stats.tackles })}</Text>
                         ) : null}
                         {playerModal.stats.saves > 0 ? (
-                          <Text style={styles.playerModalExtraText}>Saves {playerModal.stats.saves}</Text>
+                          <Text style={styles.playerModalExtraText}>{t('matchPrediction.playerSaves', { count: playerModal.stats.saves })}</Text>
                         ) : null}
                       </View>
                     </>
@@ -3113,12 +3116,12 @@ export function MatchPredictionScreen({ navigation }: Props) {
                   {/* Stats grid */}
                   <View style={styles.f1DriverModalStatsGrid}>
                     {[
-                      { label: 'Position', value: f1DriverModal.stats?.position ? `P${f1DriverModal.stats.position}` : '—', icon: 'podium-outline' },
-                      { label: 'Points', value: f1DriverModal.stats?.points ?? '—', icon: 'star-outline' },
-                      { label: 'Wins', value: f1DriverModal.stats?.wins ?? '—', icon: 'trophy-outline' },
-                      { label: 'Podiums', value: f1DriverModal.stats?.podiums ?? '—', icon: 'medal-outline' },
-                      { label: 'WDC', value: f1DriverModal.stats?.worldChampionships ?? '—', icon: 'ribbon-outline' },
-                      { label: 'GPs', value: f1DriverModal.stats?.grandsPrixEntered ?? '—', icon: 'flag-outline' },
+                      { label: t('matchPrediction.f1Position'), value: f1DriverModal.stats?.position ? `P${f1DriverModal.stats.position}` : '—', icon: 'podium-outline' },
+                      { label: t('matchPrediction.f1Points'), value: f1DriverModal.stats?.points ?? '—', icon: 'star-outline' },
+                      { label: t('matchPrediction.f1Wins'), value: f1DriverModal.stats?.wins ?? '—', icon: 'trophy-outline' },
+                      { label: t('matchPrediction.f1Podiums'), value: f1DriverModal.stats?.podiums ?? '—', icon: 'medal-outline' },
+                      { label: t('matchPrediction.f1WDC'), value: f1DriverModal.stats?.worldChampionships ?? '—', icon: 'ribbon-outline' },
+                      { label: t('matchPrediction.f1GPs'), value: f1DriverModal.stats?.grandsPrixEntered ?? '—', icon: 'flag-outline' },
                     ].map((stat, i) => (
                       <View key={i} style={styles.f1DriverModalStatItem}>
                         <Ionicons name={stat.icon as any} size={16} color={colors.primary} />

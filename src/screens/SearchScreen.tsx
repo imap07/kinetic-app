@@ -266,7 +266,7 @@ export function SearchScreen() {
               <Text style={styles.matchDate}>{dateStr}</Text>
             </View>
             <View style={styles.predictChip}>
-              <Text style={styles.predictChipText}>PREDICT</Text>
+              <Text style={styles.predictChipText}>{t('live.predict')}</Text>
             </View>
           </TouchableOpacity>
         );

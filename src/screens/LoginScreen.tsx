@@ -45,6 +45,7 @@ type LegalModalProps = {
 };
 
 function LegalModal({ visible, type, onClose }: LegalModalProps) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [content, setContent] = useState('');
   const [title, setTitle] = useState('');
@@ -110,7 +111,7 @@ function LegalModal({ visible, type, onClose }: LegalModalProps) {
             onPress={onClose}
             activeOpacity={0.8}
           >
-            <Text style={modalStyles.closeBtnText}>CLOSE</Text>
+            <Text style={modalStyles.closeBtnText}>{t('security.close')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -238,8 +239,8 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
       const message =
         err instanceof ApiError
           ? err.message
-          : 'Google sign-in failed. Please try again.';
-      Alert.alert('Error', message);
+          : t('login.googleAuthFailed');
+      Alert.alert(t('login.errorTitle'), message);
     } finally {
       setSocialLoading(null);
     }
@@ -256,7 +257,7 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
       });
 
       if (!credential.identityToken) {
-        Alert.alert('Error', 'Apple sign-in failed: no identity token received.');
+        Alert.alert(t('login.errorTitle'), t('login.appleNoIdentityToken'));
         return;
       }
 
@@ -274,8 +275,8 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
       const message =
         err instanceof ApiError
           ? err.message
-          : 'Apple sign-in failed. Please try again.';
-      Alert.alert('Error', message);
+          : t('login.appleAuthFailed');
+      Alert.alert(t('login.errorTitle'), message);
     } finally {
       setSocialLoading(null);
     }

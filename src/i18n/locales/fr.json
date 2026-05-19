@@ -21,7 +21,11 @@
     "authFailed": "Échec d'authentification",
     "biometricFailed": "Échec biométrique. Essaie une autre méthode.",
     "sessionExpired": "Session expirée",
-    "sessionExpiredMessage": "Votre session a expiré. Veuillez vous reconnecter."
+    "sessionExpiredMessage": "Votre session a expiré. Veuillez vous reconnecter.",
+    "errorTitle": "Erreur",
+    "googleAuthFailed": "Échec de la connexion Google. Réessaie.",
+    "appleAuthFailed": "Échec de la connexion Apple. Réessaie.",
+    "appleNoIdentityToken": "Échec de la connexion Apple : aucun jeton d'identité reçu."
   },
   "emailAuth": {
     "signIn": "Connexion",
@@ -282,7 +286,8 @@
     "proInsights": "ANALYSES PRO",
     "bestSport": "Meilleur Sport",
     "unlockDetailedStats": "Débloque les stats détaillées par sport",
-    "predictNow": "Prédire maintenant →"
+    "predictNow": "Prédire maintenant →",
+    "multiplierBadge": "Multiplicateur {{value}}×"
   },
   "leaderboard": {
     "title": "CLASSEMENT MONDIAL",
@@ -297,7 +302,9 @@
     "topPercent": "Top {{percent}}% de {{total}} joueurs",
     "predictions": "Prédictions",
     "you": "(Toi)",
-    "errorLoading": "Erreur de chargement du classement"
+    "errorLoading": "Erreur de chargement du classement",
+    "noRankingsYet": "Pas encore de classement",
+    "noRankingsSubtitle": "Fais des pronostics pour gagner des points et grimper au classement"
   },
   "profile": {
     "editProfile": "MODIFIER PROFIL",
@@ -346,7 +353,8 @@
     "securitySettings": "SÉCURITÉ ET PARAMÈTRES",
     "logOut": "SE DÉCONNECTER",
     "matches": "MATCHS",
-    "draw": "Match Nul"
+    "draw": "Match Nul",
+    "rewardsHeader": "RÉCOMPENSES"
   },
   "editProfile": {
     "title": "MODIFIER PROFIL",
@@ -620,7 +628,15 @@
     "correct": "correctes",
     "predictionFailed": "Prédiction Échouée",
     "couldNotPredict": "Impossible de soumettre la prédiction.",
-    "viewPicksFeed": "Voir picks et réactions"
+    "viewPicksFeed": "Voir picks et réactions",
+    "colDriver": "Pilote",
+    "colTeam": "Écurie",
+    "colWins": "Vict.",
+    "colPts": "Pts",
+    "colP": "J",
+    "colW": "V",
+    "colDraw": "N",
+    "colLoss": "D"
   },
   "search": {
     "placeholder": "Cherche équipes, ligues, matchs...",
@@ -646,7 +662,8 @@
     "insufficientCoinsDesc": "Tu as besoin de {{needed}} pièces. Tu as {{available}} disponibles.",
     "redeem": "Échanger",
     "redemptionFailed": "L'échange a échoué.",
-    "viewOrders": "Voir mes commandes"
+    "viewOrders": "Voir mes commandes",
+    "confirmMessage": "Échanger {{coins}} pièces contre une carte-cadeau {{name}} de {{dollars}} $ ?\n\nLe traitement prend jusqu'à {{hours}} heures."
   },
   "sportSelection": {
     "step": "Étape 1 sur 3",
@@ -673,7 +690,17 @@
     "modeTeams": "Équipes",
     "modeFighters": "Combattants",
     "modeLeagues": "Ligues",
-    "noLeagues": "Aucune ligue disponible pour le moment"
+    "noLeagues": "Aucune ligue disponible pour le moment",
+    "clearAll": "Tout effacer",
+    "clearFilters": "Effacer les filtres",
+    "noConstructorsFound": "Aucune écurie trouvée",
+    "noTeamsFound": "Aucune équipe trouvée",
+    "followDriverTitle": "Suivre un pilote",
+    "searchCountryPlaceholder": "Rechercher un pays...",
+    "searchLeaguePlaceholder": "Rechercher une ligue...",
+    "remove": "Retirer",
+    "noDriversAvailable": "Aucun pilote disponible",
+    "filterTeams": "Filtrer les équipes"
   },
   "acquisitionSource": {
     "step": "Étape 3 sur 3",
@@ -955,7 +982,24 @@
     "seasonAgainst": "Contre",
     "fighterRecord": "PALMARÈS DU COMBATTANT",
     "fighterRecordEmpty": "Palmarès non disponible",
-    "recordWLD": "V-D-N"
+    "recordWLD": "V-D-N",
+    "headerDraws": "Nuls",
+    "tapToExpand": "Appuyer pour agrandir",
+    "playerPass": "Passe {{value}}",
+    "playerTackles": "Tacles {{count}}",
+    "playerSaves": "Arrêts {{count}}",
+    "h2hShortLabel": "H2H",
+    "statShotsOnGoal": "TIRS CADRÉS",
+    "statTotalShots": "TIRS TOTAUX",
+    "statCorners": "CORNERS",
+    "statFouls": "FAUTES",
+    "statOffsides": "HORS-JEU",
+    "f1Position": "Position",
+    "f1Points": "Points",
+    "f1Wins": "Victoires",
+    "f1Podiums": "Podiums",
+    "f1WDC": "Titres",
+    "f1GPs": "GPs"
   },
   "sports": {
     "afl": {
@@ -1087,7 +1131,12 @@
     "you": "toi",
     "errorLoading": "Échec du chargement. Tirez pour réessayer.",
     "tryAgainLater": "Une erreur est survenue. Réessayez dans un instant.",
-    "done": "Terminé"
+    "done": "Terminé",
+    "failedToSubmit": "Échec de l'envoi",
+    "pleaseTryAgain": "Réessaie",
+    "home": "Domicile",
+    "away": "Extérieur",
+    "playerFallback": "joueur"
   },
   "error": {
     "title": "Un problème est survenu",
@@ -1105,7 +1154,8 @@
     "dailyLimitDesc": "Revenez demain pour gagner plus de pièces bonus.",
     "notReadyTitle": "Publicité indisponible",
     "notReadyDesc": "Veuillez réessayer dans un instant.",
-    "networkError": "Connexion impossible. Vérifiez votre réseau et réessayez."
+    "networkError": "Connexion impossible. Vérifiez votre réseau et réessayez.",
+    "coinsEarnedToast": "+{{count}} pièces !"
   },
   "passwordPolicy": {
     "ruleLength": "Au moins {{count}} caractères",
@@ -1225,7 +1275,10 @@
     "letsGo": "Faire ma première prédiction →",
     "notifMyTeams": "Notifications: Mes Équipes",
     "notifAllGames": "Notifications: Tous les Matchs",
-    "inviteFriends": "Invitez un ami — gagnez {{coins}} pièces"
+    "inviteFriends": "Invitez un ami — gagnez {{coins}} pièces",
+    "setupIncomplete": "Configuration incomplète",
+    "setupIncompleteMsg": "Impossible d'enregistrer tes choix. Réessaie.",
+    "tryAgain": "Réessayer"
   },
   "errorBoundary": {
     "title": "Une erreur est survenue",
@@ -1266,7 +1319,8 @@
     "driver": "Pilote",
     "team": "Équipe",
     "stopNumber": "Arrêt #",
-    "totalTime": "Temps Total"
+    "totalTime": "Temps Total",
+    "startingGrid": "GRILLE DE DÉPART"
   },
   "leaguePicksFeed": {
     "title": "Picks de la ligue",
@@ -1303,7 +1357,8 @@
     "friendBlocked": "Bloqué",
     "friendRewarded": "Récompensé ✓",
     "friendQualified": "Qualifié — récompense en cours",
-    "friendProgress": "{{r}}/{{n}} pronostics résolus"
+    "friendProgress": "{{r}}/{{n}} pronostics résolus",
+    "useCodeLabel": "UTILISE LE CODE"
   },
   "publicProfile": {
     "private": "Ce profil est privé.",
@@ -1373,5 +1428,65 @@
       "grant": "Don",
       "shop": "Boutique"
     }
+  },
+  "f1Prediction": {
+    "tabWinner": "Vainqueur de la course",
+    "tabPodium": "Podium Top 3",
+    "tabH2H": "Face à face",
+    "tabFastest": "Tour le plus rapide",
+    "tabPoints": "Arrivée dans les points",
+    "tabPitstops": "Pit Stops",
+    "podiumTitle": "Pronostique le podium",
+    "podiumSub": "Choisis un pilote pour chaque position. Ordre parfait = 50 pts !",
+    "podiumLocked": "Pronostic de podium verrouillé pour cette course",
+    "posWinner": "P1 — Vainqueur",
+    "posSecond": "P2 — Deuxième",
+    "posThird": "P3 — Troisième",
+    "selectDriver": "Choisis un pilote",
+    "selectAll3Podium": "Choisis les 3 positions du podium",
+    "predictionSaved": "Pronostic enregistré !",
+    "pickLockedIn": "Ton pronostic est verrouillé.",
+    "h2hPickSaved": "Pronostic H2H enregistré !",
+    "failedToSave": "Impossible d'enregistrer le pronostic",
+    "whoWillWin": "Qui va gagner la course ?",
+    "whoWillFastest": "Qui fera le tour le plus rapide ?",
+    "underdogHint": "Choisir un outsider rapporte plus de points !",
+    "fastestHint": "Choisis le pilote qui réalisera le tour le plus rapide",
+    "alreadyPickedGeneric": "Tu as déjà un pronostic pour cette course",
+    "lockWinnerPick": "Verrouiller le pronostic du vainqueur",
+    "lockFastestPick": "Verrouiller le tour le plus rapide",
+    "lockPodiumPick": "Verrouiller le pronostic de podium",
+    "lockPointsPick": "Verrouiller l'arrivée dans les points",
+    "h2hSectionTitle": "Face à face",
+    "h2hNoMatchups": "Aucun duel disponible pour cette course.",
+    "h2hMatchupsTitle": "Duels face à face",
+    "h2hMatchupsDesc": "Qui termine devant ? Choisis ton vainqueur dans chaque duel.",
+    "pointsSectionTitle": "Arrivée dans les points",
+    "pointsDesc": "Ce pilote terminera-t-il dans le top 10 et marquera-t-il des points ?",
+    "pointsLocked": "Pronostic d'arrivée dans les points verrouillé",
+    "pointsWillFinish": "{{driver}} terminera-t-il dans le top 10 ?"
+  },
+  "share": {
+    "notSupported": "Le partage n'est pas disponible sur cet appareil",
+    "dialogTitle": "Partage ton pronostic",
+    "pickMessageNoRef": "Je viens de faire mon pronostic sur Kinetic. {{home}} vs {{away}}.",
+    "pickMessageWithRef": "Je viens de faire mon pronostic sur Kinetic. {{home}} vs {{away}}. Rejoins-moi avec mon code {{code}} — on gagne tous les deux {{coins}} pièces. {{url}}",
+    "leagueMessage": "Rejoins ma ligue « {{name}} » sur Kinetic ! {{url}}"
+  },
+  "purchases": {
+    "purchaseFailed": "Échec de l'achat"
+  },
+  "rewardTier": {
+    "claimReward": "RÉCLAMER LA RÉCOMPENSE",
+    "bronzeTitle": "BRONZE DÉBLOQUÉ !",
+    "bronzeDesc": "Tu as gagné un badge de profil !",
+    "silverTitle": "ARGENT DÉBLOQUÉ !",
+    "silverDesc": "Multiplicateur x1,5 sur ta prochaine ligue !",
+    "goldTitle": "OR DÉBLOQUÉ !",
+    "goldDesc": "Tu as gagné une carte-cadeau de 5 $ !",
+    "diamondTitle": "DIAMANT DÉBLOQUÉ !",
+    "diamondDesc": "Tu as gagné une carte-cadeau de 10 $ !",
+    "legendTitle": "LÉGENDE DÉBLOQUÉE !",
+    "legendDesc": "Tu as gagné une carte-cadeau de 25 $ !"
   }
 }

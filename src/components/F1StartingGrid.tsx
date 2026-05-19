@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../theme';
 
 type Driver = {
@@ -19,13 +20,14 @@ type Props = {
  * Odd positions on the left (pole side), even on the right.
  */
 export function F1StartingGrid({ drivers }: Props) {
+  const { t } = useTranslation();
   if (!drivers.length) return null;
 
   const sorted = [...drivers].sort((a, b) => a.position - b.position);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>STARTING GRID</Text>
+      <Text style={styles.title}>{t('f1.startingGrid')}</Text>
       <View style={styles.grid}>
         {/* Track lines */}
         <View style={styles.trackLineLeft} />

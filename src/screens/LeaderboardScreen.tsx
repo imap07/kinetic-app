@@ -179,7 +179,7 @@ export function LeaderboardScreen({ navigation }: Props) {
         </View>
         <View style={styles.entryPoints}>
           <Text style={styles.entryPointsValue}>{formatPoints(item.totalPoints)}</Text>
-          <Text style={styles.entryPointsLabel}>PTS</Text>
+          <Text style={styles.entryPointsLabel}>{t('profile.ptsUnit')}</Text>
         </View>
       </View>
     );
@@ -200,9 +200,9 @@ export function LeaderboardScreen({ navigation }: Props) {
       ) : entries.length === 0 && !myRank?.entry ? (
         <View style={styles.emptyContainer}>
           <MaterialCommunityIcons name="trophy-outline" size={48} color={colors.onSurfaceVariant} />
-          <Text style={styles.emptyTitle}>No Rankings Yet</Text>
+          <Text style={styles.emptyTitle}>{t('leaderboard.noRankingsYet')}</Text>
           <Text style={styles.emptySubtitle}>
-            Make predictions to earn points and climb the leaderboard
+            {t('leaderboard.noRankingsSubtitle')}
           </Text>
         </View>
       ) : (

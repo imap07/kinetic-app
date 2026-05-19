@@ -296,7 +296,7 @@ export function DashboardScreen({ navigation }: Props) {
         text2: t('challenge.waitingResult'),
       });
     } catch (err: any) {
-      Toast.show({ type: 'error', text1: 'Error', text2: err.message || 'Failed to submit' });
+      Toast.show({ type: 'error', text1: t('common.error'), text2: err.message || t('common.failedToSubmit') });
     } finally {
       setChallengeSubmitting(false);
     }
@@ -707,7 +707,7 @@ export function DashboardScreen({ navigation }: Props) {
                       </View>
                       <View style={styles.f1StandingsPointsCol}>
                         <Text style={styles.f1StandingsPoints}>{d.points || 0}</Text>
-                        <Text style={styles.f1StandingsPtsLabel}>PTS</Text>
+                        <Text style={styles.f1StandingsPtsLabel}>{t('profile.ptsUnit')}</Text>
                       </View>
                     </View>
                   ))}
@@ -727,7 +727,7 @@ export function DashboardScreen({ navigation }: Props) {
                       </View>
                       <View style={styles.f1StandingsPointsCol}>
                         <Text style={styles.f1StandingsPoints}>{team.points || 0}</Text>
-                        <Text style={styles.f1StandingsPtsLabel}>PTS</Text>
+                        <Text style={styles.f1StandingsPtsLabel}>{t('profile.ptsUnit')}</Text>
                       </View>
                     </View>
                   ))}
@@ -1090,7 +1090,7 @@ export function DashboardScreen({ navigation }: Props) {
               <View style={{ flex: 1 }}>
                 <Text style={styles.predictorTitle}>{t('dashboard.yourStats')}</Text>
                 <Text style={styles.predictorSubtitle}>
-                  <Text style={styles.predictorPts}>{userStats.totalPoints.toLocaleString()} PTS</Text>
+                  <Text style={styles.predictorPts}>{userStats.totalPoints.toLocaleString()} {t('profile.ptsUnit')}</Text>
                 </Text>
               </View>
 
@@ -1122,7 +1122,7 @@ export function DashboardScreen({ navigation }: Props) {
               {/* Today's picks counter (informational only — there is no daily limit) */}
               <View style={styles.dailyRing}>
                 <Text style={styles.dailyRingValue}>{dailyStatus.picksToday}</Text>
-                <Text style={styles.dailyRingLabel}>TODAY</Text>
+                <Text style={styles.dailyRingLabel}>{t('dashboard.today')}</Text>
               </View>
             </View>
 

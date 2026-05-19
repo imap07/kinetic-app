@@ -81,7 +81,12 @@ export function GiftcardRedeemScreen() {
 
     Alert.alert(
       t('giftcard.confirmRedemption'),
-      `Redeem ${denomination.coins} coins for a $${denomination.dollarValue} ${card.name} gift card?\n\nProcessing takes up to ${catalog?.holdHours ?? 48} hours.`,
+      t('giftcard.confirmMessage', {
+        coins: denomination.coins,
+        dollars: denomination.dollarValue,
+        name: card.name,
+        hours: catalog?.holdHours ?? 48,
+      }),
       [
         { text: t('common.cancel'), style: 'cancel' },
         {

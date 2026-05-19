@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../theme';
 import { useRewards } from '../contexts/RewardsContext';
 
@@ -27,6 +28,7 @@ function capitalize(s: string): string {
 }
 
 export function RewardsProgressCard() {
+  const { t } = useTranslation();
   const { rewardStatus, claimTier } = useRewards();
   const progressAnim = useRef(new Animated.Value(0)).current;
 
@@ -55,7 +57,7 @@ export function RewardsProgressCard() {
       {/* Header */}
       <View style={styles.headerRow}>
         <Ionicons name="trophy" size={18} color={colors.primary} />
-        <Text style={styles.headerText}>REWARDS</Text>
+        <Text style={styles.headerText}>{t('profile.rewardsHeader')}</Text>
       </View>
 
       {/* Progress bar */}

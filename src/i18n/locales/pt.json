@@ -21,7 +21,11 @@
     "authFailed": "Falha na autenticação",
     "biometricFailed": "Falha no login biométrico. Tente outro método.",
     "sessionExpired": "Sessão expirada",
-    "sessionExpiredMessage": "Sua sessão expirou. Faça login novamente."
+    "sessionExpiredMessage": "Sua sessão expirou. Faça login novamente.",
+    "errorTitle": "Erro",
+    "googleAuthFailed": "Falha no login com Google. Tente novamente.",
+    "appleAuthFailed": "Falha no login com Apple. Tente novamente.",
+    "appleNoIdentityToken": "Falha no login com Apple: nenhum token de identidade recebido."
   },
   "emailAuth": {
     "signIn": "Entrar",
@@ -282,7 +286,8 @@
     "proInsights": "INSIGHTS PRO",
     "bestSport": "Melhor Esporte",
     "unlockDetailedStats": "Libere estatísticas detalhadas por esporte",
-    "predictNow": "Palpitar agora →"
+    "predictNow": "Palpitar agora →",
+    "multiplierBadge": "Multiplicador {{value}}×"
   },
   "leaderboard": {
     "title": "RANKING GLOBAL",
@@ -297,7 +302,9 @@
     "topPercent": "Top {{percent}}% de {{total}} jogadores",
     "predictions": "Palpites",
     "you": "(Você)",
-    "errorLoading": "Erro ao carregar ranking"
+    "errorLoading": "Erro ao carregar ranking",
+    "noRankingsYet": "Sem ranking ainda",
+    "noRankingsSubtitle": "Faça palpites para ganhar pontos e subir no ranking"
   },
   "profile": {
     "editProfile": "EDITAR PERFIL",
@@ -346,7 +353,8 @@
     "securitySettings": "SEGURANÇA E CONFIGURAÇÕES",
     "logOut": "SAIR",
     "matches": "PARTIDAS",
-    "draw": "Empate"
+    "draw": "Empate",
+    "rewardsHeader": "RECOMPENSAS"
   },
   "editProfile": {
     "title": "EDITAR PERFIL",
@@ -620,7 +628,15 @@
     "correct": "corretos",
     "predictionFailed": "Falha no Palpite",
     "couldNotPredict": "Não foi possível enviar o palpite.",
-    "viewPicksFeed": "Ver palpites e reações"
+    "viewPicksFeed": "Ver palpites e reações",
+    "colDriver": "Piloto",
+    "colTeam": "Equipe",
+    "colWins": "Vit.",
+    "colPts": "Pts",
+    "colP": "J",
+    "colW": "V",
+    "colDraw": "E",
+    "colLoss": "D"
   },
   "search": {
     "placeholder": "Buscar times, ligas, partidas...",
@@ -646,7 +662,8 @@
     "insufficientCoinsDesc": "Você precisa de {{needed}} moedas. Você tem {{available}} disponíveis.",
     "redeem": "Resgatar",
     "redemptionFailed": "Falha no resgate.",
-    "viewOrders": "Ver meus pedidos"
+    "viewOrders": "Ver meus pedidos",
+    "confirmMessage": "Resgatar {{coins}} moedas por um gift card {{name}} de ${{dollars}}?\n\nO processamento leva até {{hours}} horas."
   },
   "sportSelection": {
     "step": "Passo 1 de 3",
@@ -673,7 +690,17 @@
     "modeTeams": "Times",
     "modeFighters": "Lutadores",
     "modeLeagues": "Ligas",
-    "noLeagues": "Nenhuma liga disponível ainda"
+    "noLeagues": "Nenhuma liga disponível ainda",
+    "clearAll": "Limpar tudo",
+    "clearFilters": "Limpar filtros",
+    "noConstructorsFound": "Nenhum construtor encontrado",
+    "noTeamsFound": "Nenhum time encontrado",
+    "followDriverTitle": "Seguir um piloto",
+    "searchCountryPlaceholder": "Buscar país...",
+    "searchLeaguePlaceholder": "Buscar liga...",
+    "remove": "Remover",
+    "noDriversAvailable": "Nenhum piloto disponível",
+    "filterTeams": "Filtrar times"
   },
   "acquisitionSource": {
     "step": "Passo 3 de 3",
@@ -955,7 +982,24 @@
     "seasonAgainst": "Contra",
     "fighterRecord": "CARTEL DO LUTADOR",
     "fighterRecordEmpty": "Cartel indisponível ainda",
-    "recordWLD": "V-D-E"
+    "recordWLD": "V-D-E",
+    "headerDraws": "Empates",
+    "tapToExpand": "Toque para ampliar",
+    "playerPass": "Passe {{value}}",
+    "playerTackles": "Desarmes {{count}}",
+    "playerSaves": "Defesas {{count}}",
+    "h2hShortLabel": "H2H",
+    "statShotsOnGoal": "CHUTES AO GOL",
+    "statTotalShots": "CHUTES TOTAIS",
+    "statCorners": "ESCANTEIOS",
+    "statFouls": "FALTAS",
+    "statOffsides": "IMPEDIMENTOS",
+    "f1Position": "Posição",
+    "f1Points": "Pontos",
+    "f1Wins": "Vitórias",
+    "f1Podiums": "Pódios",
+    "f1WDC": "Mundiais",
+    "f1GPs": "GPs"
   },
   "sports": {
     "afl": {
@@ -1087,7 +1131,12 @@
     "you": "você",
     "errorLoading": "Não foi possível carregar. Puxe para tentar de novo.",
     "tryAgainLater": "Algo deu errado. Tente novamente em instantes.",
-    "done": "Concluído"
+    "done": "Concluído",
+    "failedToSubmit": "Falha ao enviar",
+    "pleaseTryAgain": "Tente novamente",
+    "home": "Casa",
+    "away": "Fora",
+    "playerFallback": "jogador"
   },
   "error": {
     "title": "Algo deu errado",
@@ -1105,7 +1154,8 @@
     "dailyLimitDesc": "Volte amanhã para mais moedas bônus.",
     "notReadyTitle": "Anúncio não está pronto",
     "notReadyDesc": "Tente novamente em instantes.",
-    "networkError": "Não foi possível conectar. Verifique sua conexão e tente novamente."
+    "networkError": "Não foi possível conectar. Verifique sua conexão e tente novamente.",
+    "coinsEarnedToast": "+{{count}} moedas!"
   },
   "passwordPolicy": {
     "ruleLength": "Pelo menos {{count}} caracteres",
@@ -1225,7 +1275,10 @@
     "letsGo": "Fazer meu primeiro palpite →",
     "notifMyTeams": "Notificações: Meus Times",
     "notifAllGames": "Notificações: Todos os Jogos",
-    "inviteFriends": "Convide um amigo — ganhe {{coins}} moedas"
+    "inviteFriends": "Convide um amigo — ganhe {{coins}} moedas",
+    "setupIncomplete": "Configuração incompleta",
+    "setupIncompleteMsg": "Não conseguimos salvar suas escolhas. Tente novamente.",
+    "tryAgain": "Tentar novamente"
   },
   "errorBoundary": {
     "title": "Algo deu errado",
@@ -1266,7 +1319,8 @@
     "driver": "Piloto",
     "team": "Equipe",
     "stopNumber": "Parada #",
-    "totalTime": "Tempo Total"
+    "totalTime": "Tempo Total",
+    "startingGrid": "GRID DE LARGADA"
   },
   "leaguePicksFeed": {
     "title": "Palpites da Liga",
@@ -1303,7 +1357,8 @@
     "friendBlocked": "Bloqueado",
     "friendRewarded": "Recompensado ✓",
     "friendQualified": "Qualificado — pagando",
-    "friendProgress": "{{r}}/{{n}} palpites resolvidos"
+    "friendProgress": "{{r}}/{{n}} palpites resolvidos",
+    "useCodeLabel": "USE O CÓDIGO"
   },
   "publicProfile": {
     "private": "Este perfil é privado.",
@@ -1373,5 +1428,65 @@
       "grant": "Concedido",
       "shop": "Loja"
     }
+  },
+  "f1Prediction": {
+    "tabWinner": "Vencedor da corrida",
+    "tabPodium": "Pódio Top 3",
+    "tabH2H": "Mano a mano",
+    "tabFastest": "Volta mais rápida",
+    "tabPoints": "Chegada na pontuação",
+    "tabPitstops": "Pit Stops",
+    "podiumTitle": "Preveja o pódio",
+    "podiumSub": "Escolha pilotos para cada posição. Ordem perfeita = 50 pts!",
+    "podiumLocked": "Palpite de pódio travado para esta corrida",
+    "posWinner": "P1 — Vencedor",
+    "posSecond": "P2 — Segundo",
+    "posThird": "P3 — Terceiro",
+    "selectDriver": "Escolha um piloto",
+    "selectAll3Podium": "Escolha os 3 lugares do pódio",
+    "predictionSaved": "Palpite salvo!",
+    "pickLockedIn": "Seu palpite está travado.",
+    "h2hPickSaved": "Palpite H2H salvo!",
+    "failedToSave": "Não foi possível salvar o palpite",
+    "whoWillWin": "Quem vai vencer a corrida?",
+    "whoWillFastest": "Quem fará a volta mais rápida?",
+    "underdogHint": "Escolher um azarão dá mais pontos!",
+    "fastestHint": "Escolha o piloto que você acha que fará a volta mais rápida",
+    "alreadyPickedGeneric": "Você já tem um palpite para esta corrida",
+    "lockWinnerPick": "Travar palpite do vencedor",
+    "lockFastestPick": "Travar palpite da volta mais rápida",
+    "lockPodiumPick": "Travar palpite do pódio",
+    "lockPointsPick": "Travar palpite de pontos",
+    "h2hSectionTitle": "Mano a mano",
+    "h2hNoMatchups": "Sem confrontos disponíveis para esta corrida ainda.",
+    "h2hMatchupsTitle": "Confrontos mano a mano",
+    "h2hMatchupsDesc": "Quem termina à frente? Escolha seu vencedor em cada confronto.",
+    "pointsSectionTitle": "Chegada na pontuação",
+    "pointsDesc": "Este piloto vai terminar no top 10 e marcar pontos?",
+    "pointsLocked": "Palpite de pontos travado",
+    "pointsWillFinish": "{{driver}} vai terminar no top 10?"
+  },
+  "share": {
+    "notSupported": "Compartilhamento não disponível neste dispositivo",
+    "dialogTitle": "Compartilhe seu palpite",
+    "pickMessageNoRef": "Acabei de fazer meu palpite no Kinetic. {{home}} vs {{away}}.",
+    "pickMessageWithRef": "Acabei de fazer meu palpite no Kinetic. {{home}} vs {{away}}. Entre com meu código {{code}} — nós dois ganhamos {{coins}} moedas. {{url}}",
+    "leagueMessage": "Entre na minha liga \"{{name}}\" no Kinetic! {{url}}"
+  },
+  "purchases": {
+    "purchaseFailed": "Falha na compra"
+  },
+  "rewardTier": {
+    "claimReward": "RESGATAR RECOMPENSA",
+    "bronzeTitle": "BRONZE DESBLOQUEADO!",
+    "bronzeDesc": "Você ganhou um badge de perfil!",
+    "silverTitle": "PRATA DESBLOQUEADA!",
+    "silverDesc": "Multiplicador x1,5 na sua próxima liga!",
+    "goldTitle": "OURO DESBLOQUEADO!",
+    "goldDesc": "Você ganhou um gift card de $5!",
+    "diamondTitle": "DIAMANTE DESBLOQUEADO!",
+    "diamondDesc": "Você ganhou um gift card de $10!",
+    "legendTitle": "LENDA DESBLOQUEADA!",
+    "legendDesc": "Você ganhou um gift card de $25!"
   }
 }

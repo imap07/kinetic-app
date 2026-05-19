@@ -456,11 +456,11 @@ function StandingsTab({ standings, sport }: { standings: SportStandingEntry[] | 
       <View style={styles.standingsWrap}>
         <View style={styles.standingsHeaderRow}>
           <Text style={[styles.standingsHeaderCell, { width: 32 }]}>#</Text>
-          <Text style={[styles.standingsHeaderCell, { flex: 1 }]}>Driver</Text>
-          <Text style={[styles.standingsHeaderCell, styles.standingsNumCell]}>Team</Text>
-          <Text style={[styles.standingsHeaderCell, styles.standingsNumCell, { width: 48 }]}>Wins</Text>
+          <Text style={[styles.standingsHeaderCell, { flex: 1 }]}>{t('leagueDetail.colDriver')}</Text>
+          <Text style={[styles.standingsHeaderCell, styles.standingsNumCell]}>{t('leagueDetail.colTeam')}</Text>
+          <Text style={[styles.standingsHeaderCell, styles.standingsNumCell, { width: 48 }]}>{t('leagueDetail.colWins')}</Text>
           <Text style={[styles.standingsHeaderCell, styles.standingsNumCell, { color: colors.primary }]}>
-            Pts
+            {t('leagueDetail.colPts')}
           </Text>
         </View>
         {standings.map((entry) => (
@@ -516,13 +516,13 @@ function StandingsTab({ standings, sport }: { standings: SportStandingEntry[] | 
     <>
       <View style={styles.standingsHeaderRow}>
         <Text style={[styles.standingsHeaderCell, { width: 32 }]}>#</Text>
-        <Text style={[styles.standingsHeaderCell, { flex: 1 }]}>Team</Text>
-        <Text style={[styles.standingsHeaderCell, styles.standingsNumCell]}>P</Text>
-        <Text style={[styles.standingsHeaderCell, styles.standingsNumCell]}>W</Text>
-        {hasDrawn && <Text style={[styles.standingsHeaderCell, styles.standingsNumCell]}>D</Text>}
-        <Text style={[styles.standingsHeaderCell, styles.standingsNumCell]}>L</Text>
+        <Text style={[styles.standingsHeaderCell, { flex: 1 }]}>{t('leagueDetail.colTeam')}</Text>
+        <Text style={[styles.standingsHeaderCell, styles.standingsNumCell]}>{t('leagueDetail.colP')}</Text>
+        <Text style={[styles.standingsHeaderCell, styles.standingsNumCell]}>{t('leagueDetail.colW')}</Text>
+        {hasDrawn && <Text style={[styles.standingsHeaderCell, styles.standingsNumCell]}>{t('leagueDetail.colDraw')}</Text>}
+        <Text style={[styles.standingsHeaderCell, styles.standingsNumCell]}>{t('leagueDetail.colLoss')}</Text>
         <Text style={[styles.standingsHeaderCell, styles.standingsNumCell, { color: colors.primary }]}>
-          Pts
+          {t('leagueDetail.colPts')}
         </Text>
       </View>
       {rows.map((entry) => (

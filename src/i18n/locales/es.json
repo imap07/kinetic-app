@@ -21,7 +21,11 @@
     "authFailed": "Error de Autenticación",
     "biometricFailed": "Error biométrico. Intenta otro método.",
     "sessionExpired": "Sesión expirada",
-    "sessionExpiredMessage": "Tu sesión ha expirado. Por favor inicia sesión de nuevo."
+    "sessionExpiredMessage": "Tu sesión ha expirado. Por favor inicia sesión de nuevo.",
+    "errorTitle": "Error",
+    "googleAuthFailed": "Falló el inicio de sesión con Google. Inténtalo de nuevo.",
+    "appleAuthFailed": "Falló el inicio de sesión con Apple. Inténtalo de nuevo.",
+    "appleNoIdentityToken": "Falló el inicio de sesión con Apple: no se recibió token de identidad."
   },
   "emailAuth": {
     "signIn": "Iniciar Sesión",
@@ -282,7 +286,8 @@
     "proInsights": "ANÁLISIS PRO",
     "bestSport": "Mejor Deporte",
     "unlockDetailedStats": "Desbloquea estadísticas detalladas por deporte",
-    "predictNow": "Predecir ahora →"
+    "predictNow": "Predecir ahora →",
+    "multiplierBadge": "Multiplicador {{value}}×"
   },
   "leaderboard": {
     "title": "RANKINGS GLOBALES",
@@ -297,7 +302,9 @@
     "topPercent": "Top {{percent}}% de {{total}} jugadores",
     "predictions": "Predicciones",
     "you": "(Tú)",
-    "errorLoading": "Error al cargar rankings"
+    "errorLoading": "Error al cargar rankings",
+    "noRankingsYet": "Aún sin ranking",
+    "noRankingsSubtitle": "Haz predicciones para ganar puntos y subir en el ranking"
   },
   "profile": {
     "editProfile": "EDITAR PERFIL",
@@ -346,7 +353,8 @@
     "securitySettings": "SEGURIDAD Y CONFIGURACIÓN",
     "logOut": "CERRAR SESIÓN",
     "matches": "PARTIDOS",
-    "draw": "Empate"
+    "draw": "Empate",
+    "rewardsHeader": "RECOMPENSAS"
   },
   "editProfile": {
     "title": "EDITAR PERFIL",
@@ -620,7 +628,15 @@
     "correct": "correctas",
     "predictionFailed": "Predicción Fallida",
     "couldNotPredict": "No se pudo enviar la predicción.",
-    "viewPicksFeed": "Ver picks y reacciones"
+    "viewPicksFeed": "Ver picks y reacciones",
+    "colDriver": "Piloto",
+    "colTeam": "Equipo",
+    "colWins": "Vict.",
+    "colPts": "Pts",
+    "colP": "J",
+    "colW": "V",
+    "colDraw": "E",
+    "colLoss": "D"
   },
   "search": {
     "placeholder": "Busca equipos, ligas, partidos...",
@@ -646,7 +662,8 @@
     "insufficientCoinsDesc": "Necesitas {{needed}} monedas. Tienes {{available}} disponibles.",
     "redeem": "Canjear",
     "redemptionFailed": "El canje falló.",
-    "viewOrders": "Ver mis pedidos"
+    "viewOrders": "Ver mis pedidos",
+    "confirmMessage": "¿Canjear {{coins}} monedas por una gift card {{name}} de ${{dollars}}?\n\nEl procesamiento tarda hasta {{hours}} horas."
   },
   "sportSelection": {
     "step": "Paso 1 de 3",
@@ -673,7 +690,17 @@
     "modeTeams": "Equipos",
     "modeFighters": "Peleadores",
     "modeLeagues": "Ligas",
-    "noLeagues": "Aún no hay ligas disponibles"
+    "noLeagues": "Aún no hay ligas disponibles",
+    "clearAll": "Limpiar todo",
+    "clearFilters": "Limpiar filtros",
+    "noConstructorsFound": "No se encontraron constructores",
+    "noTeamsFound": "No se encontraron equipos",
+    "followDriverTitle": "Seguir a un piloto",
+    "searchCountryPlaceholder": "Buscar país...",
+    "searchLeaguePlaceholder": "Buscar liga...",
+    "remove": "Quitar",
+    "noDriversAvailable": "No hay pilotos disponibles",
+    "filterTeams": "Filtrar equipos"
   },
   "acquisitionSource": {
     "step": "Paso 3 de 3",
@@ -955,7 +982,24 @@
     "seasonAgainst": "En contra",
     "fighterRecord": "RÉCORD DEL LUCHADOR",
     "fighterRecordEmpty": "Récord aún no disponible",
-    "recordWLD": "V-D-E"
+    "recordWLD": "V-D-E",
+    "headerDraws": "Empates",
+    "tapToExpand": "Toca para ampliar",
+    "playerPass": "Pase {{value}}",
+    "playerTackles": "Entradas {{count}}",
+    "playerSaves": "Atajadas {{count}}",
+    "h2hShortLabel": "H2H",
+    "statShotsOnGoal": "TIROS AL ARCO",
+    "statTotalShots": "TIROS TOTALES",
+    "statCorners": "CÓRNERS",
+    "statFouls": "FALTAS",
+    "statOffsides": "OFFSIDES",
+    "f1Position": "Posición",
+    "f1Points": "Puntos",
+    "f1Wins": "Victorias",
+    "f1Podiums": "Podios",
+    "f1WDC": "Campeonatos",
+    "f1GPs": "GPs"
   },
   "sports": {
     "afl": {
@@ -1087,7 +1131,12 @@
     "you": "tú",
     "errorLoading": "No se pudo cargar. Desliza para reintentar.",
     "tryAgainLater": "Algo salió mal. Inténtalo en un momento.",
-    "done": "Listo"
+    "done": "Listo",
+    "failedToSubmit": "No se pudo enviar",
+    "pleaseTryAgain": "Inténtalo de nuevo",
+    "home": "Local",
+    "away": "Visitante",
+    "playerFallback": "jugador"
   },
   "error": {
     "title": "Algo salió mal",
@@ -1105,7 +1154,8 @@
     "dailyLimitDesc": "Vuelve mañana para ganar más monedas.",
     "notReadyTitle": "Anuncio no disponible",
     "notReadyDesc": "Inténtalo de nuevo en un momento.",
-    "networkError": "No se pudo conectar. Revisa tu conexión e inténtalo de nuevo."
+    "networkError": "No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.",
+    "coinsEarnedToast": "¡+{{count}} monedas!"
   },
   "passwordPolicy": {
     "ruleLength": "Al menos {{count}} caracteres",
@@ -1225,7 +1275,10 @@
     "letsGo": "Hacer mi primera predicción →",
     "notifMyTeams": "Notificaciones: Mis Equipos",
     "notifAllGames": "Notificaciones: Todos los Partidos",
-    "inviteFriends": "Invita a un amigo — gana {{coins}} monedas"
+    "inviteFriends": "Invita a un amigo — gana {{coins}} monedas",
+    "setupIncomplete": "Configuración incompleta",
+    "setupIncompleteMsg": "No pudimos guardar tus selecciones. Inténtalo de nuevo.",
+    "tryAgain": "Reintentar"
   },
   "errorBoundary": {
     "title": "Algo salió mal",
@@ -1266,7 +1319,8 @@
     "driver": "Piloto",
     "team": "Equipo",
     "stopNumber": "Parada #",
-    "totalTime": "Tiempo Total"
+    "totalTime": "Tiempo Total",
+    "startingGrid": "PARRILLA DE SALIDA"
   },
   "leaguePicksFeed": {
     "title": "Picks de la liga",
@@ -1303,7 +1357,8 @@
     "friendBlocked": "Bloqueado",
     "friendRewarded": "Recompensado ✓",
     "friendQualified": "Calificado — pagando",
-    "friendProgress": "{{r}}/{{n}} picks resueltos"
+    "friendProgress": "{{r}}/{{n}} picks resueltos",
+    "useCodeLabel": "USA EL CÓDIGO"
   },
   "publicProfile": {
     "private": "Este perfil es privado.",
@@ -1373,5 +1428,65 @@
       "grant": "Regalo",
       "shop": "Tienda"
     }
+  },
+  "f1Prediction": {
+    "tabWinner": "Ganador de la carrera",
+    "tabPodium": "Podio Top 3",
+    "tabH2H": "Mano a mano",
+    "tabFastest": "Vuelta rápida",
+    "tabPoints": "Llegada en puntos",
+    "tabPitstops": "Pit Stops",
+    "podiumTitle": "Predice el podio",
+    "podiumSub": "Elige pilotos para cada posición. ¡Orden perfecto = 50 pts!",
+    "podiumLocked": "Predicción de podio bloqueada para esta carrera",
+    "posWinner": "P1 — Ganador",
+    "posSecond": "P2 — Segundo",
+    "posThird": "P3 — Tercero",
+    "selectDriver": "Elige un piloto",
+    "selectAll3Podium": "Elige los 3 puestos del podio",
+    "predictionSaved": "¡Predicción guardada!",
+    "pickLockedIn": "Tu predicción quedó registrada.",
+    "h2hPickSaved": "¡Predicción H2H guardada!",
+    "failedToSave": "No se pudo guardar la predicción",
+    "whoWillWin": "¿Quién ganará la carrera?",
+    "whoWillFastest": "¿Quién hará la vuelta más rápida?",
+    "underdogHint": "¡Elegir un underdog da más puntos!",
+    "fastestHint": "Elige el piloto que crees registrará la vuelta más rápida",
+    "alreadyPickedGeneric": "Ya tienes una predicción para esta carrera",
+    "lockWinnerPick": "Bloquear predicción del ganador",
+    "lockFastestPick": "Bloquear predicción de vuelta rápida",
+    "lockPodiumPick": "Bloquear predicción del podio",
+    "lockPointsPick": "Bloquear predicción de puntos",
+    "h2hSectionTitle": "Mano a mano",
+    "h2hNoMatchups": "Aún no hay duelos disponibles para esta carrera.",
+    "h2hMatchupsTitle": "Duelos mano a mano",
+    "h2hMatchupsDesc": "¿Quién termina por delante? Elige tu ganador en cada duelo.",
+    "pointsSectionTitle": "Llegada en puntos",
+    "pointsDesc": "¿Este piloto terminará en el top 10 y sumará puntos?",
+    "pointsLocked": "Predicción de puntos bloqueada",
+    "pointsWillFinish": "¿{{driver}} terminará en el top 10?"
+  },
+  "share": {
+    "notSupported": "Compartir no está disponible en este dispositivo",
+    "dialogTitle": "Comparte tu predicción",
+    "pickMessageNoRef": "Acabo de hacer mi predicción en Kinetic. {{home}} vs {{away}}.",
+    "pickMessageWithRef": "Acabo de hacer mi predicción en Kinetic. {{home}} vs {{away}}. Únete con mi código {{code}} — ambos ganamos {{coins}} monedas. {{url}}",
+    "leagueMessage": "¡Únete a mi liga \"{{name}}\" en Kinetic! {{url}}"
+  },
+  "purchases": {
+    "purchaseFailed": "Falló la compra"
+  },
+  "rewardTier": {
+    "claimReward": "RECLAMAR RECOMPENSA",
+    "bronzeTitle": "¡BRONCE DESBLOQUEADO!",
+    "bronzeDesc": "¡Ganaste un badge de perfil!",
+    "silverTitle": "¡PLATA DESBLOQUEADA!",
+    "silverDesc": "¡Multiplicador x1.5 en tu próxima liga!",
+    "goldTitle": "¡ORO DESBLOQUEADO!",
+    "goldDesc": "¡Ganaste una gift card de $5!",
+    "diamondTitle": "¡DIAMANTE DESBLOQUEADO!",
+    "diamondDesc": "¡Ganaste una gift card de $10!",
+    "legendTitle": "¡LEYENDA DESBLOQUEADA!",
+    "legendDesc": "¡Ganaste una gift card de $25!"
   }
 }

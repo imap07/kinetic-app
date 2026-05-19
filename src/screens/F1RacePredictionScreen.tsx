@@ -28,13 +28,16 @@ import { sportsApi } from '../api/sports';
 
 type TabKey = 'winner' | 'podium' | 'h2h' | 'fastest' | 'points' | 'pitstops';
 
-const TABS: { key: TabKey; label: string; icon: string; points: string }[] = [
-  { key: 'winner', label: 'Race Winner', icon: 'trophy', points: '30 pts' },
-  { key: 'podium', label: 'Podium Top 3', icon: 'podium', points: '50 pts' },
-  { key: 'h2h', label: 'Head-to-Head', icon: 'people', points: '10 pts' },
-  { key: 'fastest', label: 'Fastest Lap', icon: 'speedometer', points: '20 pts' },
-  { key: 'points', label: 'Points Finish', icon: 'flag', points: '8 pts' },
-  { key: 'pitstops', label: 'Pit Stops', icon: 'build', points: '' },
+// Tab metadata that doesn't depend on locale. The visible `label` is
+// resolved per-render inside the component via `t('f1Prediction.tab*')`
+// so language switches re-render correctly.
+const TAB_META: { key: TabKey; labelKey: string; icon: string; points: string }[] = [
+  { key: 'winner', labelKey: 'f1Prediction.tabWinner', icon: 'trophy', points: '30 pts' },
+  { key: 'podium', labelKey: 'f1Prediction.tabPodium', icon: 'podium', points: '50 pts' },
+  { key: 'h2h', labelKey: 'f1Prediction.tabH2H', icon: 'people', points: '10 pts' },
+  { key: 'fastest', labelKey: 'f1Prediction.tabFastest', icon: 'speedometer', points: '20 pts' },
+  { key: 'points', labelKey: 'f1Prediction.tabPoints', icon: 'flag', points: '8 pts' },
+  { key: 'pitstops', labelKey: 'f1Prediction.tabPitstops', icon: 'build', points: '' },
 ];
 
 interface F1Pitstop {
@@ -126,19 +129,19 @@ export default function F1RacePredictionScreen() {
 
       switch (type) {
         case 'race_winner':
-          if (!selectedWinner) { Alert.alert('Select a driver'); setSubmitting(false); return; }
+          if (!selectedWinner) { Alert.alert(t('f1Prediction.selectDriver')); setSubmitting(false); return; }
           payload.predictedDriverApiId = selectedWinner;
           break;
         case 'podium':
-          if (podiumPicks.some((p) => !p)) { Alert.alert('Select all 3 podium positions'); setSubmitting(false); return; }
+          if (podiumPicks.some((p) => !p)) { Alert.alert(t('f1Prediction.selectAll3Podium')); setSubmitting(false); return; }
           payload.podiumPicks = podiumPicks.map((dId, i) => ({ position: i + 1, driverApiId: dId }));
           break;
         case 'fastest_lap':
-          if (!selectedFastest) { Alert.alert('Select a driver'); setSubmitting(false); return; }
+          if (!selectedFastest) { Alert.alert(t('f1Prediction.selectDriver')); setSubmitting(false); return; }
           payload.predictedDriverApiId = selectedFastest;
           break;
         case 'points_finish':
-          if (!pointsDriver) { Alert.alert('Select a driver'); setSubmitting(false); return; }
+          if (!pointsDriver) { Alert.alert(t('f1Prediction.selectDriver')); setSubmitting(false); return; }
           payload.pointsFinishDriverApiId = pointsDriver;
           payload.pointsFinishPrediction = pointsPrediction;
           break;
@@ -147,10 +150,10 @@ export default function F1RacePredictionScreen() {
       }
 
       await f1PredictionsApi.create(payload, token);
-      Alert.alert('Prediction saved!', `Your ${type.replace(/_/g, ' ')} pick is locked in.`);
+      Alert.alert(t('f1Prediction.predictionSaved'), t('f1Prediction.pickLockedIn'));
       fetchData(); // Refresh picks
     } catch (e: any) {
-      Alert.alert('Error', e?.message || 'Failed to save prediction');
+      Alert.alert(t('login.errorTitle'), e?.message || t('f1Prediction.failedToSave'));
     } finally {
       setSubmitting(false);
     }
@@ -169,10 +172,10 @@ export default function F1RacePredictionScreen() {
       }, token);
       const key = `${matchup.driverA.driverApiId}-${matchup.driverB.driverApiId}`;
       setH2hPicks((prev) => new Map(prev).set(key, winner));
-      Alert.alert('H2H pick saved!');
+      Alert.alert(t('f1Prediction.h2hPickSaved'));
       fetchData();
     } catch (e: any) {
-      Alert.alert('Error', e?.message || 'Failed to save prediction');
+      Alert.alert(t('login.errorTitle'), e?.message || t('f1Prediction.failedToSave'));
     } finally {
       setSubmitting(false);
     }
@@ -250,13 +253,13 @@ export default function F1RacePredictionScreen() {
 
       {/* Prediction type tabs */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabScroll} contentContainerStyle={styles.tabContainer}>
-        {TABS.map((tab) => {
+        {TAB_META.map((tab) => {
           const isActive = activeTab === tab.key;
           const picked =
             tab.key === 'pitstops'
               ? false
               : hasPick(tab.key === 'h2h' ? 'head_to_head' : tab.key === 'fastest' ? 'fastest_lap' : tab.key === 'points' ? 'points_finish' : tab.key === 'winner' ? 'race_winner' : 'podium');
-          const label = tab.key === 'pitstops' ? t('f1.pitstops') : tab.label;
+          const label = tab.key === 'pitstops' ? t('f1.pitstops') : t(tab.labelKey);
           return (
             <TouchableOpacity
               key={tab.key}
@@ -323,16 +326,16 @@ export default function F1RacePredictionScreen() {
     return (
       <View style={styles.sectionWrap}>
         <Text style={styles.sectionTitle}>
-          {type === 'race_winner' ? 'Who will win the race?' : 'Who will set the fastest lap?'}
+          {type === 'race_winner' ? t('f1Prediction.whoWillWin') : t('f1Prediction.whoWillFastest')}
         </Text>
         <Text style={styles.sectionSub}>
-          {type === 'race_winner' ? 'Picking an underdog earns more points!' : 'Select the driver you think will record the fastest lap'}
+          {type === 'race_winner' ? t('f1Prediction.underdogHint') : t('f1Prediction.fastestHint')}
         </Text>
 
         {alreadyPicked && (
           <View style={styles.alreadyPickedBanner}>
             <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
-            <Text style={styles.alreadyPickedText}>You already have a {type.replace(/_/g, ' ')} pick for this race</Text>
+            <Text style={styles.alreadyPickedText}>{t('f1Prediction.alreadyPickedGeneric')}</Text>
           </View>
         )}
 
@@ -383,7 +386,7 @@ export default function F1RacePredictionScreen() {
             ) : (
               <>
                 <Ionicons name="lock-closed" size={16} color={colors.background} />
-                <Text style={styles.submitBtnText}>Lock {type === 'race_winner' ? 'Winner' : 'Fastest Lap'} Pick</Text>
+                <Text style={styles.submitBtnText}>{type === 'race_winner' ? t('f1Prediction.lockWinnerPick') : t('f1Prediction.lockFastestPick')}</Text>
               </>
             )}
           </TouchableOpacity>
@@ -394,17 +397,17 @@ export default function F1RacePredictionScreen() {
 
   function renderPodiumPicker() {
     const alreadyPicked = hasPick('podium');
-    const posLabels = ['P1 — Winner', 'P2 — Second', 'P3 — Third'];
+    const posLabels = [t('f1Prediction.posWinner'), t('f1Prediction.posSecond'), t('f1Prediction.posThird')];
 
     return (
       <View style={styles.sectionWrap}>
-        <Text style={styles.sectionTitle}>Predict the podium</Text>
-        <Text style={styles.sectionSub}>Select drivers for each position. Perfect order = 50 pts!</Text>
+        <Text style={styles.sectionTitle}>{t('f1Prediction.podiumTitle')}</Text>
+        <Text style={styles.sectionSub}>{t('f1Prediction.podiumSub')}</Text>
 
         {alreadyPicked && (
           <View style={styles.alreadyPickedBanner}>
             <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
-            <Text style={styles.alreadyPickedText}>Podium pick locked for this race</Text>
+            <Text style={styles.alreadyPickedText}>{t('f1Prediction.podiumLocked')}</Text>
           </View>
         )}
 
@@ -482,7 +485,7 @@ export default function F1RacePredictionScreen() {
             ) : (
               <>
                 <Ionicons name="lock-closed" size={16} color={colors.background} />
-                <Text style={styles.submitBtnText}>Lock Podium Pick</Text>
+                <Text style={styles.submitBtnText}>{t('f1Prediction.lockPodiumPick')}</Text>
               </>
             )}
           </TouchableOpacity>
@@ -495,16 +498,16 @@ export default function F1RacePredictionScreen() {
     if (matchups.length === 0) {
       return (
         <View style={styles.sectionWrap}>
-          <Text style={styles.sectionTitle}>Head-to-Head</Text>
-          <Text style={styles.emptyHint}>No matchups available for this race yet.</Text>
+          <Text style={styles.sectionTitle}>{t('f1Prediction.h2hSectionTitle')}</Text>
+          <Text style={styles.emptyHint}>{t('f1Prediction.h2hNoMatchups')}</Text>
         </View>
       );
     }
 
     return (
       <View style={styles.sectionWrap}>
-        <Text style={styles.sectionTitle}>Head-to-Head Matchups</Text>
-        <Text style={styles.sectionSub}>Who finishes ahead? Pick your winner in each battle.</Text>
+        <Text style={styles.sectionTitle}>{t('f1Prediction.h2hMatchupsTitle')}</Text>
+        <Text style={styles.sectionSub}>{t('f1Prediction.h2hMatchupsDesc')}</Text>
 
         {matchups.map((matchup, idx) => {
           const key = `${matchup.driverA.driverApiId}-${matchup.driverB.driverApiId}`;
@@ -625,13 +628,13 @@ export default function F1RacePredictionScreen() {
 
     return (
       <View style={styles.sectionWrap}>
-        <Text style={styles.sectionTitle}>Points Finish</Text>
-        <Text style={styles.sectionSub}>Will this driver finish in the top 10 and score points?</Text>
+        <Text style={styles.sectionTitle}>{t('f1Prediction.pointsSectionTitle')}</Text>
+        <Text style={styles.sectionSub}>{t('f1Prediction.pointsDesc')}</Text>
 
         {alreadyPicked && (
           <View style={styles.alreadyPickedBanner}>
             <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
-            <Text style={styles.alreadyPickedText}>Points finish pick locked</Text>
+            <Text style={styles.alreadyPickedText}>{t('f1Prediction.pointsLocked')}</Text>
           </View>
         )}
 
@@ -662,20 +665,20 @@ export default function F1RacePredictionScreen() {
         {pointsDriver && !alreadyPicked && (
           <View style={styles.pointsToggle}>
             <Text style={styles.pointsToggleLabel}>
-              Will <Text style={{ color: colors.primary }}>{getDriverById(pointsDriver)?.driverName?.split(' ').pop()}</Text> finish in the top 10?
+              {t('f1Prediction.pointsWillFinish', { driver: getDriverById(pointsDriver)?.driverName?.split(' ').pop() ?? '' })}
             </Text>
             <View style={styles.pointsToggleRow}>
               <TouchableOpacity
                 style={[styles.pointsToggleBtn, pointsPrediction && styles.pointsToggleBtnActive]}
                 onPress={() => setPointsPrediction(true)}
               >
-                <Text style={[styles.pointsToggleBtnText, pointsPrediction && styles.pointsToggleBtnTextActive]}>Yes</Text>
+                <Text style={[styles.pointsToggleBtnText, pointsPrediction && styles.pointsToggleBtnTextActive]}>{t('picks.answerYes')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.pointsToggleBtn, !pointsPrediction && styles.pointsToggleBtnActive]}
                 onPress={() => setPointsPrediction(false)}
               >
-                <Text style={[styles.pointsToggleBtnText, !pointsPrediction && styles.pointsToggleBtnTextActive]}>No</Text>
+                <Text style={[styles.pointsToggleBtnText, !pointsPrediction && styles.pointsToggleBtnTextActive]}>{t('picks.answerNo')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -693,7 +696,7 @@ export default function F1RacePredictionScreen() {
             ) : (
               <>
                 <Ionicons name="lock-closed" size={16} color={colors.background} />
-                <Text style={styles.submitBtnText}>Lock Points Finish Pick</Text>
+                <Text style={styles.submitBtnText}>{t('f1Prediction.lockPointsPick')}</Text>
               </>
             )}
           </TouchableOpacity>

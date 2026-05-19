@@ -622,7 +622,7 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
             </TouchableOpacity>
           ))}
           <TouchableOpacity style={styles.chipClear} onPress={clearFilters}>
-            <Text style={styles.chipClearText}>Clear all</Text>
+            <Text style={styles.chipClearText}>{t('teamSelection.clearAll')}</Text>
           </TouchableOpacity>
         </ScrollView>
       )}
@@ -750,7 +750,7 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
             }
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>No constructors found</Text>
+                <Text style={styles.emptyText}>{t('teamSelection.noConstructorsFound')}</Text>
               </View>
             }
             ListFooterComponent={<View style={{ height: 120 }} />}
@@ -840,10 +840,10 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
             !state.loading ? (
               <View style={styles.emptyContainer}>
                 <Ionicons name="search-outline" size={36} color={colors.onSurfaceDim} />
-                <Text style={styles.emptyText}>No teams found</Text>
+                <Text style={styles.emptyText}>{t('teamSelection.noTeamsFound')}</Text>
                 {(searchQuery || hasActiveFilters) && (
                   <TouchableOpacity onPress={clearFilters} style={{ marginTop: 8 }}>
-                    <Text style={styles.emptyAction}>Clear filters</Text>
+                    <Text style={styles.emptyAction}>{t('teamSelection.clearFilters')}</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -859,16 +859,16 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
           <View style={styles.modalSheet}>
             <View style={styles.modalHandle} />
             <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Follow a Driver</Text>
+              <Text style={styles.sheetTitle}>{t('teamSelection.followDriverTitle')}</Text>
               {selectedDriverId && (
                 <TouchableOpacity onPress={() => { setSelectedDriverId(null); setSelectedDriverName(null); setSelectedDriverImage(null); setF1DriverSheet(false); }}>
-                  <Text style={styles.sheetClear}>Remove</Text>
+                  <Text style={styles.sheetClear}>{t('teamSelection.remove')}</Text>
                 </TouchableOpacity>
               )}
             </View>
             <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
               {f1Teams.flatMap(t => t.drivers).length === 0 ? (
-                <Text style={styles.sheetHint}>No drivers available</Text>
+                <Text style={styles.sheetHint}>{t('teamSelection.noDriversAvailable')}</Text>
               ) : (
                 f1Teams.flatMap(t => t.drivers.map(d => ({ ...d, teamName: t.name, teamLogo: t.logo }))).map(driver => {
                   const isSelected = selectedDriverId === driver.apiId;
@@ -916,10 +916,10 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
 
             {/* Sheet header */}
             <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Filter Teams</Text>
+              <Text style={styles.sheetTitle}>{t('teamSelection.filterTeams')}</Text>
               {(draftFilters.countries.length > 0 || draftFilters.leagueIds.length > 0) && (
                 <TouchableOpacity onPress={() => setDraftFilters({ countries: [], leagueIds: [], leagueNames: [] })}>
-                  <Text style={styles.sheetClear}>Clear all</Text>
+                  <Text style={styles.sheetClear}>{t('teamSelection.clearAll')}</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -949,7 +949,7 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
               <Ionicons name="search" size={15} color={colors.onSurfaceDim} />
               <TextInput
                 style={styles.sheetSearchInput}
-                placeholder={filterTab === 'country' ? 'Search country...' : 'Search league...'}
+                placeholder={filterTab === 'country' ? t('teamSelection.searchCountryPlaceholder') : t('teamSelection.searchLeaguePlaceholder')}
                 placeholderTextColor={colors.onSurfaceDim}
                 value={filterSearch}
                 onChangeText={setFilterSearch}

@@ -44,6 +44,7 @@ import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image as ExpoImage } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../theme';
 import { track } from '../services/analytics';
 import { referralsApi, buildReferralUrl } from '../api/referrals';
@@ -63,6 +64,7 @@ interface ReferralBits {
 }
 
 export function SharePickCard({ prediction, username, onShared }: Props) {
+  const { t } = useTranslation();
   const shotRef = useRef<ViewShot | null>(null);
   const { tokens } = useAuth();
   const [busy, setBusy] = useState(false);
@@ -104,11 +106,19 @@ export function SharePickCard({ prediction, username, onShared }: Props) {
    * so even image-only destinations carry the invite hook.
    */
   const buildShareMessage = (): string => {
-    if (!referral) return `Just made my pick on Kinetic. ${prediction.homeTeamName} vs ${prediction.awayTeamName}.`;
-    return (
-      `Just made my pick on Kinetic. ${prediction.homeTeamName} vs ${prediction.awayTeamName}. ` +
-      `Join with my code ${referral.code} — we both get ${referral.rewardCoins} coins. ${referral.url}`
-    );
+    if (!referral) {
+      return t('share.pickMessageNoRef', {
+        home: prediction.homeTeamName,
+        away: prediction.awayTeamName,
+      });
+    }
+    return t('share.pickMessageWithRef', {
+      home: prediction.homeTeamName,
+      away: prediction.awayTeamName,
+      code: referral.code,
+      coins: referral.rewardCoins,
+      url: referral.url,
+    });
   };
 
   const handleShareImage = async () => {
@@ -120,12 +130,12 @@ export function SharePickCard({ prediction, username, onShared }: Props) {
 
       const available = await Sharing.isAvailableAsync();
       if (!available) {
-        Alert.alert('Sharing not supported on this device');
+        Alert.alert(t('share.notSupported'));
         return;
       }
       await Sharing.shareAsync(uri, {
         mimeType: 'image/png',
-        dialogTitle: 'Share your pick',
+        dialogTitle: t('share.dialogTitle'),
       });
       track({
         event: 'share_generated',
@@ -232,13 +242,13 @@ export function SharePickCard({ prediction, username, onShared }: Props) {
             <Text style={styles.pickText}>{predictedText}</Text>
             {prediction.oddsMultiplier ? (
               <Text style={styles.multiplier}>
-                {prediction.oddsMultiplier.toFixed(1)}× multiplier
+                {t('picks.multiplierBadge', { value: prediction.oddsMultiplier.toFixed(1) })}
               </Text>
             ) : null}
           </View>
 
           <Text style={styles.footer}>
-            @{username ?? 'player'} · kineticapp.ca
+            @{username ?? t('common.playerFallback')} · kineticapp.ca
           </Text>
 
           {/* Referral hook baked into the image so even share paths
@@ -246,7 +256,7 @@ export function SharePickCard({ prediction, username, onShared }: Props) {
               deliver the invite code visually. */}
           {referral && (
             <View style={styles.referralPill}>
-              <Text style={styles.referralPillLabel}>USE CODE</Text>
+              <Text style={styles.referralPillLabel}>{t('referrals.useCodeLabel')}</Text>
               <Text style={styles.referralPillCode}>{referral.code}</Text>
               <Text style={styles.referralPillReward}>
                 we both get {referral.rewardCoins} coins

@@ -190,12 +190,12 @@ export function OnboardingCompleteScreen({
     if (!onboardingSuccess) {
       const message =
         (onboardingError as any)?.message ||
-        'We couldn\'t save your picks. Please try again.';
+        t('onboardingComplete.setupIncompleteMsg');
       Alert.alert(
-        'Setup incomplete',
+        t('onboardingComplete.setupIncomplete'),
         message,
         [
-          { text: 'Try again', onPress: () => {} },
+          { text: t('onboardingComplete.tryAgain'), onPress: () => {} },
         ],
         { cancelable: true },
       );

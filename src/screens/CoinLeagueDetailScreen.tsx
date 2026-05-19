@@ -496,7 +496,7 @@ export function CoinLeagueDetailScreen() {
               {[
                 { icon: 'trophy', label: t('leagueDetail.f1Winner'), pts: '30' },
                 { icon: 'podium', label: t('leagueDetail.f1Podium'), pts: '50' },
-                { icon: 'people', label: 'H2H', pts: '10' },
+                { icon: 'people', label: t('matchPrediction.h2hShortLabel'), pts: '10' },
                 { icon: 'speedometer', label: t('leagueDetail.f1Fastest'), pts: '20' },
                 { icon: 'flag', label: t('leagueDetail.f1Points'), pts: '8' },
               ].map((item) => (
@@ -604,7 +604,7 @@ export function CoinLeagueDetailScreen() {
                         ) : (
                           <View style={styles.teamLogoPlaceholder} />
                         )}
-                        <Text style={styles.teamName} numberOfLines={1}>{game.homeTeam?.name ?? 'Home'}</Text>
+                        <Text style={styles.teamName} numberOfLines={1}>{game.homeTeam?.name ?? t('common.home')}</Text>
                       </View>
                       <View style={styles.matchScore}>
                         {isPast || game.isLive ? (
@@ -623,7 +623,7 @@ export function CoinLeagueDetailScreen() {
                         ) : (
                           <View style={styles.teamLogoPlaceholder} />
                         )}
-                        <Text style={styles.teamName} numberOfLines={1}>{game.awayTeam?.name ?? 'Away'}</Text>
+                        <Text style={styles.teamName} numberOfLines={1}>{game.awayTeam?.name ?? t('common.away')}</Text>
                       </View>
                     </View>
 
@@ -633,10 +633,10 @@ export function CoinLeagueDetailScreen() {
                         <Ionicons name="checkmark-circle" size={14} color={colors.primary} />
                         <Text style={styles.predictionLockedText}>
                           {existingPred.predictedOutcome === 'home'
-                            ? game.homeTeam?.name ?? 'Home'
+                            ? game.homeTeam?.name ?? t('common.home')
                             : existingPred.predictedOutcome === 'away'
-                            ? game.awayTeam?.name ?? 'Away'
-                            : 'Draw'}
+                            ? game.awayTeam?.name ?? t('common.away')
+                            : t('leagueDetail.draw')}
                         </Text>
                         {existingPred.status !== 'pending' && (
                           <View style={[
@@ -647,7 +647,7 @@ export function CoinLeagueDetailScreen() {
                               styles.predResultText,
                               { color: existingPred.status === 'won' ? '#4CAF50' : '#F44336' },
                             ]}>
-                              {existingPred.status === 'won' ? `+${existingPred.pointsAwarded} pts` : 'Lost'}
+                              {existingPred.status === 'won' ? `+${existingPred.pointsAwarded} pts` : t('picks.lost')}
                             </Text>
                           </View>
                         )}
@@ -662,7 +662,7 @@ export function CoinLeagueDetailScreen() {
                               style={styles.predBtn}
                               onPress={() => handleInlinePredict(game, 'home')}
                             >
-                              <Text style={styles.predBtnText}>{game.homeTeam?.name?.split(' ').pop() ?? 'Home'}</Text>
+                              <Text style={styles.predBtnText}>{game.homeTeam?.name?.split(' ').pop() ?? t('common.home')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                               style={styles.predBtnDraw}
@@ -674,7 +674,7 @@ export function CoinLeagueDetailScreen() {
                               style={styles.predBtn}
                               onPress={() => handleInlinePredict(game, 'away')}
                             >
-                              <Text style={styles.predBtnText}>{game.awayTeam?.name?.split(' ').pop() ?? 'Away'}</Text>
+                              <Text style={styles.predBtnText}>{game.awayTeam?.name?.split(' ').pop() ?? t('common.away')}</Text>
                             </TouchableOpacity>
                           </>
                         )}

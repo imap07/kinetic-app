@@ -188,7 +188,7 @@ export function PickSummaryScreen({ navigation }: Props) {
                 </View>
               </View>
               {pick.pointsAwarded > 0 && (
-                <Text style={styles.pointsAwarded}>+{pick.pointsAwarded} PTS</Text>
+                <Text style={styles.pointsAwarded}>+{pick.pointsAwarded} {t('profile.ptsUnit')}</Text>
               )}
               {/* Templated autopsy + percentile callout — emitted by
                   the backend on resolved picks. Pending picks and
@@ -253,7 +253,7 @@ export function PickSummaryScreen({ navigation }: Props) {
         {totalPoints > 0 && (
           <View style={styles.maxScoreCard}>
             <Text style={styles.maxScoreLabel}>{t('pickSummary.totalPoints')}</Text>
-            <Text style={styles.maxScoreValue}>{totalPoints.toLocaleString()} PTS</Text>
+            <Text style={styles.maxScoreValue}>{totalPoints.toLocaleString()} {t('profile.ptsUnit')}</Text>
           </View>
         )}
 

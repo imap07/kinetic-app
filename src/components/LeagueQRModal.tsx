@@ -41,13 +41,13 @@ export function LeagueQRModal({ visible, onClose, league }: LeagueQRModalProps) 
   const handleShare = useCallback(async () => {
     try {
       await Share.share({
-        message: `Join my league "${league.name}" on Kinetic! ${inviteUrl}`,
+        message: t('share.leagueMessage', { name: league.name, url: inviteUrl }),
         url: inviteUrl,
       });
     } catch {
       // User cancelled or share failed — no action needed
     }
-  }, [league.name, inviteUrl]);
+  }, [league.name, inviteUrl, t]);
 
   return (
     <Modal

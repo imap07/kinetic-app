@@ -21,9 +21,11 @@ import {
 } from '../api/cosmetics';
 import { colors, spacing } from '../theme';
 
-const CATEGORIES: { key: CosmeticCategory; label: string }[] = [
-  { key: 'frame', label: 'Frames' },
-  { key: 'badge', label: 'Badges' },
+// Category list. Labels are resolved at render time via
+// `t('cosmetics.frames')` / `t('cosmetics.badges')` — see usage below.
+const CATEGORIES: { key: CosmeticCategory }[] = [
+  { key: 'frame' },
+  { key: 'badge' },
 ];
 
 const RARITY_COLOR: Record<string, string> = {
@@ -55,7 +57,7 @@ export function CosmeticsScreen() {
       setCatalog(c.catalog);
       setInv(m);
     } catch (err: any) {
-      Toast.show({ type: 'error', text1: err?.message ?? 'Error' });
+      Toast.show({ type: 'error', text1: err?.message ?? t('common.error') });
     } finally {
       setLoading(false);
     }
@@ -83,7 +85,7 @@ export function CosmeticsScreen() {
         );
         setInv(res);
       } catch (err: any) {
-        Toast.show({ type: 'error', text1: err?.message ?? 'Error' });
+        Toast.show({ type: 'error', text1: err?.message ?? t('common.error') });
       } finally {
         setEquipping(null);
       }
@@ -123,7 +125,7 @@ export function CosmeticsScreen() {
               onPress={() => setCategory(c.key)}
             >
               <Text style={[styles.tabText, active && styles.tabTextActive]}>
-                {t(`cosmetics.${c.key}s`, { defaultValue: c.label })}
+                {t(`cosmetics.${c.key}s`)}
               </Text>
             </TouchableOpacity>
           );

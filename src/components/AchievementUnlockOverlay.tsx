@@ -204,7 +204,7 @@ export function AchievementUnlockOverlay({ achievement, onDismiss }: Props) {
             {/* Points badge */}
             <View style={styles.pointsBadge}>
               <Text style={styles.pointsText}>+{achievement.points}</Text>
-              <Text style={styles.pointsLabel}>PTS</Text>
+              <Text style={styles.pointsLabel}>{t('profile.ptsUnit')}</Text>
             </View>
           </View>
         </LinearGradient>

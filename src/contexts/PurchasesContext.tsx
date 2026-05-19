@@ -14,6 +14,7 @@ import Purchases, {
 } from 'react-native-purchases';
 import RevenueCatUI, { PAYWALL_RESULT } from 'react-native-purchases-ui';
 import Toast from 'react-native-toast-message';
+import i18n from '../i18n';
 import { useAuth } from './AuthContext';
 import { logSubscriptionStart } from '../services/analytics';
 
@@ -183,7 +184,11 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
       return true;
     } catch (e: any) {
       if (!e.userCancelled) {
-        Toast.show({ type: 'error', text1: 'Purchase failed', text2: e.message || 'Please try again' });
+        Toast.show({
+          type: 'error',
+          text1: i18n.t('purchases.purchaseFailed'),
+          text2: e.message || i18n.t('common.pleaseTryAgain'),
+        });
       }
       return false;
     }
