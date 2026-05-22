@@ -55,6 +55,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { colors, borderRadius } from '../theme';
+import { AdBanner } from '../components/AdBanner';
 import { useAuth } from '../contexts/AuthContext';
 import { favoriteTeamsApi, FavoriteTeam } from '../api/favoriteTeams';
 import { sportsApi, SPORT_TABS, PopularTeam, SportLeague, SportKey } from '../api/sports';
@@ -1014,6 +1015,7 @@ export function EditFavoriteTeamsScreen() {
         onPick={handleAddLeague}
         excludeIds={excludePickerIds}
       />
+      <AdBanner placement="edit_favorite_teams" />
     </View>
   );
 }

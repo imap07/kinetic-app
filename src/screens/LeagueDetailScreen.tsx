@@ -14,6 +14,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { colors } from '../theme';
+import { AdBanner } from '../components/AdBanner';
 import Toast from 'react-native-toast-message';
 import { useAuth } from '../contexts/AuthContext';
 import { leaguesApi } from '../api/leagues';
@@ -274,6 +275,7 @@ export function LeagueDetailScreen() {
 
         <View style={{ height: 80 }} />
       </ScrollView>
+      <AdBanner placement="league_detail" />
     </View>
   );
 }

@@ -51,6 +51,9 @@ export interface NotificationTypes {
   // 1v1 rivalry pushes (challenge / accept / resolved). Backend
   // default: true — opt-in is implicit in accepting a challenge.
   rivalry: boolean;
+  // Friend overtake push (a friend just passed the user on the
+  // streak leaderboard). Backend default: true.
+  friendOvertake: boolean;
 }
 
 export interface NotificationPreferences {

@@ -37,6 +37,7 @@ import { streaksApi } from '../api/streaks';
 import type { StreakLeaderboardEntry } from '../api/streaks';
 import { useAuth } from '../contexts/AuthContext';
 import { Skeleton } from '../components/Skeleton';
+import { AdBanner } from '../components/AdBanner';
 
 export function StreakLeaderboardScreen() {
   const { t } = useTranslation();
@@ -166,6 +167,7 @@ export function StreakLeaderboardScreen() {
           }
         />
       )}
+      <AdBanner placement="streak_leaderboard" />
     </View>
   );
 }

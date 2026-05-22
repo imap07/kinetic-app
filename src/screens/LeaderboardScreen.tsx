@@ -11,6 +11,7 @@ import {
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius } from '../theme';
+import { AdBanner } from '../components/AdBanner';
 import { LeaguesStackParamList } from '../navigation/types';
 import { useAuth } from '../contexts/AuthContext';
 import { leaderboardApi, predictionsApi } from '../api';
@@ -218,6 +219,7 @@ export function LeaderboardScreen({ navigation }: Props) {
           }
         />
       )}
+      <AdBanner placement="leaderboard" />
     </View>
   );
 }

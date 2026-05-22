@@ -42,6 +42,7 @@ import { leaguesApi } from '../api/leagues';
 import type { CoinLeague, CreateLeagueDto } from '../api/leagues';
 import { SPORT_TABS } from '../api/sports';
 import { AdBanner } from '../components/AdBanner';
+import { useAds } from '../contexts/AdContext';
 import { RewardedAdButton } from '../components/RewardedAdButton';
 
 type TabFilter = 'open' | 'my' | 'rankings';
@@ -54,6 +55,7 @@ export function CoinLeaguesScreen() {
   // the only number that can correctly gate join/create. `balance` would be
   // misleading because it includes locked entry fees the user can't spend.
   const { available, refreshBalance } = useCoins();
+  const { trackAction, showRewardedAd, rewardedAdsRemaining } = useAds();
   const { t } = useTranslation();
 
   const [tab, setTab] = useState<TabFilter>('open');
@@ -106,7 +108,33 @@ export function CoinLeaguesScreen() {
 
   const handleJoin = async (league: CoinLeague) => {
     if (available < league.entryFee) {
-      Alert.alert(t('leagues.insufficientCoins'), t('leagues.insufficientCoinsDesc', { fee: league.entryFee, available }));
+      // Instead of a dead-end alert, offer the user a rewarded ad right
+      // here. A user blocked from joining a paid league is the highest-
+      // intent moment to monetize via rewarded video — they have a
+      // concrete goal that 30 coins gets them closer to.
+      const buttons: any[] = [{ text: t('leagues.cancel'), style: 'cancel' }];
+      if (rewardedAdsRemaining > 0) {
+        buttons.push({
+          text: t('ads.watchAd'),
+          onPress: async () => {
+            const result = await showRewardedAd();
+            if (result.coins > 0) {
+              await refreshBalance();
+            } else if (result.error === 'daily_limit') {
+              Alert.alert(t('ads.dailyLimitTitle'), t('ads.dailyLimitDesc'));
+            } else if (result.error === 'ad_unavailable') {
+              Alert.alert(t('ads.notReadyTitle'), t('ads.notReadyDesc'));
+            } else if (result.error === 'network') {
+              Alert.alert(t('ads.notReadyTitle'), t('ads.networkError'));
+            }
+          },
+        });
+      }
+      Alert.alert(
+        t('leagues.insufficientCoins'),
+        t('leagues.insufficientCoinsDesc', { fee: league.entryFee, available }),
+        buttons,
+      );
       return;
     }
     Alert.alert(
@@ -122,6 +150,7 @@ export function CoinLeaguesScreen() {
             setActionLoading(league._id);
             try {
               await leaguesApi.join(tokens!.accessToken, league._id);
+              trackAction();
               await Promise.all([fetchLeagues(), refreshBalance()]);
             } catch (e: any) {
               Alert.alert(t('common.error'), e.message || t('leagues.couldNotJoin'));

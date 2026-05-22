@@ -23,6 +23,7 @@ import {
 import { colors, spacing, borderRadius } from '../theme';
 import { useCoins } from '../contexts/CoinContext';
 import { useAuth } from '../contexts/AuthContext';
+import { AdBanner } from '../components/AdBanner';
 import { coinsApi } from '../api/coins';
 import type { CoinTransaction } from '../api/coins';
 import type { ProfileStackParamList } from '../navigation/types';
@@ -333,6 +334,7 @@ export function WalletRewardsScreen() {
           </View>
         </View>
       </Modal>
+      <AdBanner placement="wallet" />
     </View>
   );
 }

@@ -20,6 +20,7 @@ import {
   CosmeticInventory,
 } from '../api/cosmetics';
 import { colors, spacing } from '../theme';
+import { AdBanner } from '../components/AdBanner';
 
 // Category list. Labels are resolved at render time via
 // `t('cosmetics.frames')` / `t('cosmetics.badges')` — see usage below.
@@ -180,6 +181,7 @@ export function CosmeticsScreen() {
           );
         })}
       </ScrollView>
+      <AdBanner placement="cosmetics" />
     </SafeAreaView>
   );
 }

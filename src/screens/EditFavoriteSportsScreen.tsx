@@ -15,6 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { colors, borderRadius } from '../theme';
+import { AdBanner } from '../components/AdBanner';
 import { useAuth } from '../contexts/AuthContext';
 import { authApi } from '../api';
 import type { SportKey } from '../api/sports';
@@ -283,6 +284,7 @@ export function EditFavoriteSportsScreen() {
           </TouchableOpacity>
         </View>
       )}
+      <AdBanner placement="edit_favorite_sports" />
     </View>
   );
 }

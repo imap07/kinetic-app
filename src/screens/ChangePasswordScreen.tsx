@@ -16,6 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { colors, spacing, borderRadius } from '../theme';
+import { AdBanner } from '../components/AdBanner';
 import { useAuth } from '../contexts/AuthContext';
 import { authApi, ApiError } from '../api';
 import {
@@ -296,6 +297,7 @@ export function ChangePasswordScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      <AdBanner placement="change_password" />
     </View>
   );
 }

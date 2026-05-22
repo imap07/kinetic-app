@@ -398,6 +398,13 @@
     "emptyHint": "Vous êtes à jour — on vous avertira dès qu'il y a du nouveau sur vos picks.",
     "tunePreferences": "Régler les préférences"
   },
+  "friendsRank": {
+    "inviteTitle": "Invite des amis, gagne des pièces",
+    "inviteBody": "+50 pièces pour chaque ami qui s'inscrit et pronostique.",
+    "rankTitle": "Tu es #{{rank}} sur {{total}}",
+    "rankLead": "Tu mènes face à tes amis. Garde la série vivante.",
+    "rankBehind": "Touche pour voir qui te précède."
+  },
   "notificationPrefs": {
     "title": "PARAMÈTRES DE NOTIFICATIONS",
     "masterToggle": "Notifications Push",
@@ -448,7 +455,9 @@
     "commentReceived": "Commentaires sur vos pronostics",
     "commentReceivedDesc": "Soyez notifié quand quelqu'un commente un de vos pronostics.",
     "rivalry": "Rivalités (1v1)",
-    "rivalryDesc": "Soyez notifié des défis, acceptations et résultats de rivalités."
+    "rivalryDesc": "Soyez notifié des défis, acceptations et résultats de rivalités.",
+    "friendOvertake": "Un ami vous dépasse",
+    "friendOvertakeDesc": "Un ami vient de vous dépasser dans le classement des séries."
   },
   "paywall": {
     "title": "KINETIC PRO",
@@ -1158,7 +1167,11 @@
     "notReadyTitle": "Publicité indisponible",
     "notReadyDesc": "Veuillez réessayer dans un instant.",
     "networkError": "Connexion impossible. Vérifiez votre réseau et réessayez.",
-    "coinsEarnedToast": "+{{count}} pièces !"
+    "coinsEarnedToast": "+{{count}} pièces !",
+    "attPromptTitle": "Aidez-nous à garder Kinetic gratuit",
+    "attPromptBody": "Nous affichons des publicités pour garder Kinetic gratuit pour tous. Autoriser le suivi nous permet de vous montrer des annonces pertinentes — Kinetic gagne ainsi davantage et nous pouvons continuer à créer de nouvelles fonctionnalités.\n\nRien de ce que vous faites dans Kinetic n'est partagé avec les annonceurs.",
+    "attPromptCta": "Continuer",
+    "attPromptSkip": "Plus tard"
   },
   "passwordPolicy": {
     "ruleLength": "Au moins {{count}} caractères",

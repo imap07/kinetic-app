@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius } from '../theme';
+import { AdBanner } from '../components/AdBanner';
 import { useAuth } from '../contexts/AuthContext';
 import { ApiError } from '../api';
 
@@ -302,6 +303,7 @@ export function EditProfileScreen() {
           </View>
         </View>
       </Modal>
+      <AdBanner placement="edit_profile" />
     </View>
   );
 }

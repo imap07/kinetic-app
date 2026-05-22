@@ -29,6 +29,8 @@ import { useNavigation } from '@react-navigation/native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { colors, spacing } from '../theme';
+import { AdBanner } from '../components/AdBanner';
+import { useAds } from '../contexts/AdContext';
 import { useAuth } from '../contexts/AuthContext';
 import { rivalriesApi, type Rivalry, type RivalriesResponse } from '../api/rivalries';
 import { streaksApi } from '../api/streaks';
@@ -39,6 +41,7 @@ export function RivalriesScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const { tokens } = useAuth();
+  const { trackAction } = useAds();
 
   const [data, setData] = useState<RivalriesResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -70,12 +73,13 @@ export function RivalriesScreen() {
       if (!tokens?.accessToken) return;
       try {
         await rivalriesApi.accept(tokens.accessToken, r.id);
+        trackAction();
         await load();
       } catch (e: any) {
         Alert.alert(t('common.error'), e?.message ?? t('common.tryAgainLater'));
       }
     },
-    [tokens?.accessToken, load, t],
+    [tokens?.accessToken, load, t, trackAction],
   );
 
   const handleDecline = useCallback(
@@ -190,6 +194,7 @@ export function RivalriesScreen() {
           await load();
         }}
       />
+      <AdBanner placement="rivalries" />
     </View>
   );
 }

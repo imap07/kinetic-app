@@ -30,6 +30,7 @@ import { Image as ExpoImage } from 'expo-image';
 import { colors, spacing } from '../theme';
 import { streaksApi } from '../api/streaks';
 import { useAuth } from '../contexts/AuthContext';
+import { AdBanner } from '../components/AdBanner';
 
 interface Entry {
   userId: string;
@@ -176,6 +177,7 @@ export function FriendsLeaderboardScreen() {
           }
         />
       )}
+      <AdBanner placement="friends_leaderboard" />
     </View>
   );
 }

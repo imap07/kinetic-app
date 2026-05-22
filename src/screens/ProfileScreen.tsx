@@ -22,6 +22,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme';
+import { AdBanner } from '../components/AdBanner';
 import { AppHeader } from '../components/AppHeader';
 import { ProfileStackParamList, RootStackParamList } from '../navigation/types';
 import { useAuth } from '../contexts/AuthContext';
@@ -881,6 +882,7 @@ export function ProfileScreen() {
 
         <View style={{ height: 80 }} />
       </ScrollView>
+      <AdBanner placement="profile" />
     </View>
   );
 }

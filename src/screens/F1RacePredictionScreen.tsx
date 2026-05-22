@@ -25,6 +25,8 @@ import {
   F1PredictionType,
 } from '../api/predictions';
 import { sportsApi } from '../api/sports';
+import { useAds } from '../contexts/AdContext';
+import { AdBanner } from '../components/AdBanner';
 
 type TabKey = 'winner' | 'podium' | 'h2h' | 'fastest' | 'points' | 'pitstops';
 
@@ -67,6 +69,7 @@ export default function F1RacePredictionScreen() {
   const route = useRoute();
   const { t } = useTranslation();
   const { tokens } = useAuth();
+  const { trackAction } = useAds();
 
   const { raceApiId, competitionName, circuitName } = route.params as {
     raceApiId: number;
@@ -150,6 +153,7 @@ export default function F1RacePredictionScreen() {
       }
 
       await f1PredictionsApi.create(payload, token);
+      trackAction();
       Alert.alert(t('f1Prediction.predictionSaved'), t('f1Prediction.pickLockedIn'));
       fetchData(); // Refresh picks
     } catch (e: any) {
@@ -172,6 +176,7 @@ export default function F1RacePredictionScreen() {
       }, token);
       const key = `${matchup.driverA.driverApiId}-${matchup.driverB.driverApiId}`;
       setH2hPicks((prev) => new Map(prev).set(key, winner));
+      trackAction();
       Alert.alert(t('f1Prediction.h2hPickSaved'));
       fetchData();
     } catch (e: any) {
@@ -310,6 +315,7 @@ export default function F1RacePredictionScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+      <AdBanner placement="f1_race" />
     </SafeAreaView>
   );
 

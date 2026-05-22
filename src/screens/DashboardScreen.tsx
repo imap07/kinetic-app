@@ -48,6 +48,7 @@ import { NextUpHero } from '../components/NextUpHero';
 import { GuidedFirstPickOverlay } from '../components/GuidedFirstPickOverlay';
 import { Skeleton } from '../components/Skeleton';
 import { QuestsCard } from '../components/QuestsCard';
+import { FriendsRankCard } from '../components/FriendsRankCard';
 import { HotMatchesCarousel } from '../components/HotMatchesCarousel';
 import { ActivityTicker } from '../components/ActivityTicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -992,7 +993,8 @@ export function DashboardScreen({ navigation }: Props) {
                 {isF1 ? t('dashboard.recentRaces') : t('dashboard.recentResults')}
               </Text>
             </View>
-            {recentGames.slice(0, RECENT_GAMES_LIMIT).map((game) => (
+            {recentGames.slice(0, RECENT_GAMES_LIMIT).map((game, idx) => (
+              <React.Fragment key={game.apiId || game._id}>
               <TouchableOpacity
                 key={game.apiId || game._id}
                 style={styles.todayCard}
@@ -1070,6 +1072,14 @@ export function DashboardScreen({ navigation }: Props) {
                   </>
                 )}
               </TouchableOpacity>
+              {/* In-feed banner cada 4 partidos. Acepta el costo de
+                  cambiar `.map((game) =>` a `(game, idx) =>` para ganar
+                  ~+25% de impresiones banner por sesión sin tocar UX
+                  de los cards. */}
+              {(idx + 1) % 4 === 0 && (
+                <AdBanner placement="recent_games_inline" />
+              )}
+              </React.Fragment>
             ))}
           </View>
         )}
@@ -1194,6 +1204,26 @@ export function DashboardScreen({ navigation }: Props) {
             onPress={() => navigation.navigate('Quests')}
           />
         )}
+
+        {/* Friends/referrals surface — drives social retention by
+            promoting the otherwise-buried referral CTA and surfacing
+            the user's current rank on the friends leaderboard. Both
+            states share the same component (invite-first vs ranked)
+            so we only ever take one card slot. */}
+        <FriendsRankCard
+          onPressInvite={() =>
+            rootNav.navigate('Main', {
+              screen: 'Profile',
+              params: { screen: 'Referrals' },
+            } as any)
+          }
+          onPressLeaderboard={() =>
+            rootNav.navigate('Main', {
+              screen: 'Profile',
+              params: { screen: 'FriendsLeaderboard' },
+            } as any)
+          }
+        />
 
         {/* Cross-sport "Today's Heat" carousel — auto-hidden when
             the backend returns 0 items, so it stays out of the way
@@ -1448,7 +1478,8 @@ export function DashboardScreen({ navigation }: Props) {
                 {isF1 ? t('dashboard.recentRaces') : t('dashboard.lastResults')}
               </Text>
             </View>
-            {recentGames.slice(0, RECENT_GAMES_LIMIT).map((game) => (
+            {recentGames.slice(0, RECENT_GAMES_LIMIT).map((game, idx) => (
+              <React.Fragment key={game.apiId || game._id}>
               <TouchableOpacity
                 key={game.apiId || game._id}
                 style={styles.todayCard}
@@ -1517,6 +1548,10 @@ export function DashboardScreen({ navigation }: Props) {
                   </>
                 )}
               </TouchableOpacity>
+              {(idx + 1) % 4 === 0 && (
+                <AdBanner placement="last_results_inline" />
+              )}
+              </React.Fragment>
             ))}
           </View>
         )}

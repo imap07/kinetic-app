@@ -398,6 +398,13 @@
     "emptyHint": "Estás al día — te avisamos cuando haya novedades de tus picks.",
     "tunePreferences": "Ajustar preferencias"
   },
+  "friendsRank": {
+    "inviteTitle": "Invita amigos, gana monedas",
+    "inviteBody": "+50 monedas por cada amigo que se una y haga su pick.",
+    "rankTitle": "Estás #{{rank}} de {{total}}",
+    "rankLead": "Lideras entre tus amigos. Mantén la racha viva.",
+    "rankBehind": "Toca para ver quién está arriba."
+  },
   "notificationPrefs": {
     "title": "AJUSTES DE NOTIFICACIONES",
     "masterToggle": "Notificaciones Push",
@@ -448,7 +455,9 @@
     "commentReceived": "Comentarios en tus picks",
     "commentReceivedDesc": "Recibe aviso cuando alguien comente uno de tus picks.",
     "rivalry": "Rivalidades (1v1)",
-    "rivalryDesc": "Recibe avisos de retos, aceptaciones y resultados de rivalidades."
+    "rivalryDesc": "Recibe avisos de retos, aceptaciones y resultados de rivalidades.",
+    "friendOvertake": "Un amigo te superó",
+    "friendOvertakeDesc": "Un amigo acaba de pasarte en el ranking de rachas."
   },
   "paywall": {
     "title": "KINETIC PRO",
@@ -1158,7 +1167,11 @@
     "notReadyTitle": "Anuncio no disponible",
     "notReadyDesc": "Inténtalo de nuevo en un momento.",
     "networkError": "No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.",
-    "coinsEarnedToast": "¡+{{count}} monedas!"
+    "coinsEarnedToast": "¡+{{count}} monedas!",
+    "attPromptTitle": "Ayúdanos a mantener Kinetic gratis",
+    "attPromptBody": "Mostramos anuncios para mantener Kinetic gratis para todos. Permitir el seguimiento nos deja mostrar anuncios relevantes para ti — lo que hace ganar más a Kinetic y nos permite seguir desarrollando nuevas funciones.\n\nNada de lo que haces en Kinetic se comparte con los anunciantes.",
+    "attPromptCta": "Continuar",
+    "attPromptSkip": "Ahora no"
   },
   "passwordPolicy": {
     "ruleLength": "Al menos {{count}} caracteres",

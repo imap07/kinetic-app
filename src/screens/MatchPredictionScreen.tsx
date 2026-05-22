@@ -28,6 +28,7 @@ import { logPickAttempted, logPickCompleted } from '../services/analytics';
 import { FootballPitch } from '../components/FootballPitch';
 import { MatchInsightsCard } from '../components/MatchInsightsCard';
 import { useAds } from '../contexts/AdContext';
+import { AdBanner } from '../components/AdBanner';
 import { useGameSubscription } from '../hooks/useGameSubscription';
 import { Feather } from '@expo/vector-icons';
 
@@ -3186,6 +3187,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
           </View>
         </View>
       </Modal>
+      <AdBanner placement="match_prediction" />
     </View>
   );
 }

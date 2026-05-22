@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import { colors, spacing, borderRadius } from '../theme';
+import { AdBanner } from '../components/AdBanner';
 import { useAuth } from '../contexts/AuthContext';
 import { notificationsApi, NotificationTypes } from '../api/notifications';
 
@@ -203,6 +204,7 @@ export function SportNotificationPreferencesScreen() {
           )}
         </ScrollView>
       )}
+      <AdBanner placement="sport_notif_prefs" />
     </View>
   );
 }

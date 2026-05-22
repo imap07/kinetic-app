@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import { colors, spacing, borderRadius } from '../theme';
+import { AdBanner } from '../components/AdBanner';
 import { useAuth } from '../contexts/AuthContext';
 import { notificationsApi, NotificationTypes } from '../api/notifications';
 
@@ -64,6 +65,7 @@ interface LocalPrefs {
   weeklyRecap: boolean;
   commentReceived: boolean;
   rivalry: boolean;
+  friendOvertake: boolean;
   quietHoursEnabled: boolean;
   quietHoursStart: string;
   quietHoursEnd: string;
@@ -82,6 +84,7 @@ const DEFAULT_PREFS: LocalPrefs = {
   weeklyRecap: true,
   commentReceived: true,
   rivalry: true,
+  friendOvertake: true,
   quietHoursEnabled: false,
   quietHoursStart: '23:00',
   quietHoursEnd: '07:00',
@@ -102,6 +105,7 @@ const TYPE_KEYS: ReadonlyArray<keyof NotificationTypes> = [
   'weeklyRecap',
   'commentReceived',
   'rivalry',
+  'friendOvertake',
 ];
 
 export function NotificationPreferencesScreen() {
@@ -136,6 +140,7 @@ export function NotificationPreferencesScreen() {
           weeklyRecap: remote.types?.weeklyRecap ?? true,
           commentReceived: remote.types?.commentReceived ?? true,
           rivalry: remote.types?.rivalry ?? true,
+          friendOvertake: remote.types?.friendOvertake ?? true,
           quietHoursEnabled: remote.quietHoursEnabled ?? false,
           quietHoursStart: remote.quietHoursStart ?? '23:00',
           quietHoursEnd: remote.quietHoursEnd ?? '07:00',
@@ -347,6 +352,15 @@ export function NotificationPreferencesScreen() {
             'rivalry',
             typesDisabled,
           )}
+          <View style={styles.divider} />
+          {renderRow(
+            t('notificationPrefs.friendOvertake', { defaultValue: 'Friend overtakes you' }),
+            t('notificationPrefs.friendOvertakeDesc', {
+              defaultValue: 'A friend just passed you on the streak leaderboard.',
+            }),
+            'friendOvertake',
+            typesDisabled,
+          )}
         </View>
 
         {/* By Sport */}
@@ -457,6 +471,7 @@ export function NotificationPreferencesScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+      <AdBanner placement="notif_prefs" />
     </View>
   );
 }

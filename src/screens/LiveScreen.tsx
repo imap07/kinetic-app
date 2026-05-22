@@ -365,12 +365,13 @@ export function LiveScreen() {
               </View>
 
               {/* Games */}
-              {group.games.map((game) => {
+              {group.games.map((game, idx) => {
                 const statusType = getStatusType(game);
                 const isLive = statusType === 'live';
                 const isUpcoming = statusType === 'upcoming';
 
                 return (
+                  <React.Fragment key={game.apiId || game._id}>
                   <TouchableOpacity
                     key={game.apiId || game._id}
                     style={[styles.gameRow, isLive && styles.gameRowLive]}
@@ -450,6 +451,10 @@ export function LiveScreen() {
                       </View>
                     ) : null}
                   </TouchableOpacity>
+                  {(idx + 1) % 4 === 0 && (
+                    <AdBanner placement="live_inline" />
+                  )}
+                  </React.Fragment>
                 );
               })}
             </View>

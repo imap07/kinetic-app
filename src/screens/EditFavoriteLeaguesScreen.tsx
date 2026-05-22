@@ -18,6 +18,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { colors, borderRadius } from '../theme';
+import { AdBanner } from '../components/AdBanner';
 import { useAuth } from '../contexts/AuthContext';
 import {
   footballLeaguesApi,
@@ -750,6 +751,7 @@ export function EditFavoriteLeaguesScreen() {
           </TouchableOpacity>
         </View>
       )}
+      <AdBanner placement="edit_favorite_leagues" />
     </View>
   );
 }

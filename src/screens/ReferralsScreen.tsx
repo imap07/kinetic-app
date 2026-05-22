@@ -25,6 +25,7 @@ import {
   type ReferralStatus,
   type InvitedFriend,
 } from '../api/referrals';
+import { AdBanner } from '../components/AdBanner';
 
 export function ReferralsScreen() {
   const insets = useSafeAreaInsets();
@@ -216,6 +217,7 @@ export function ReferralsScreen() {
         {/* Fine print */}
         <Text style={styles.finePrint}>{t('referrals.finePrint')}</Text>
       </ScrollView>
+      <AdBanner placement="referrals" />
     </View>
   );
 }

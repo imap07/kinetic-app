@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,8 @@ import * as Linking from 'expo-linking';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { colors, spacing, borderRadius } from '../theme';
+import { AdBanner } from '../components/AdBanner';
+import { useAds } from '../contexts/AdContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useCoins } from '../contexts/CoinContext';
 import { leaguesApi } from '../api/leagues';
@@ -133,6 +135,19 @@ export function CoinLeagueDetailScreen() {
     setLoading(true);
     fetchData().finally(() => setLoading(false));
   }, [fetchData]);
+
+  // Fire a rewarded interstitial when the user opens a finished
+  // league — they're checking final standings/winnings, a celebrate
+  // moment with spare attention. Once per session per league via
+  // ref to avoid re-firing on focus changes.
+  const { showRewardedInterstitial } = useAds();
+  const firedRewardRef = useRef(false);
+  useEffect(() => {
+    if (firedRewardRef.current || !league) return;
+    if (league.status !== 'completed') return;
+    firedRewardRef.current = true;
+    showRewardedInterstitial().catch(() => {});
+  }, [league, showRewardedInterstitial]);
 
   // Live leaderboard polling. Only active while at least one match in
   // the league is currently LIVE — at all other times the standings
@@ -807,6 +822,7 @@ export function CoinLeagueDetailScreen() {
           )}
         </View>
       </ScrollView>
+      <AdBanner placement="coin_league_detail" />
     </View>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,8 @@ import { useTranslation } from 'react-i18next';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius } from '../theme';
+import { AdBanner } from '../components/AdBanner';
+import { useAds } from '../contexts/AdContext';
 import { HomeStackParamList } from '../navigation/types';
 import { useAuth } from '../contexts/AuthContext';
 import { predictionsApi } from '../api/predictions';
@@ -70,6 +72,22 @@ export function PickSummaryScreen({ navigation }: Props) {
   }, [tokens?.accessToken]);
 
   useEffect(() => { fetchPicks(); }, [fetchPicks]);
+
+  // Fire a rewarded interstitial on first mount — this screen renders
+  // the celebration of "you just submitted your picks", a moment with
+  // attention to spare and where a small bonus feels generous.
+  const { showRewardedInterstitial } = useAds();
+  const firedRewardRef = useRef(false);
+  useEffect(() => {
+    if (firedRewardRef.current) return;
+    firedRewardRef.current = true;
+    // Tiny delay lets the screen finish its enter animation so the
+    // fullscreen ad doesn't slam over the post-pick celebration toast.
+    const id = setTimeout(() => {
+      showRewardedInterstitial().catch(() => {});
+    }, 800);
+    return () => clearTimeout(id);
+  }, [showRewardedInterstitial]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -265,6 +283,7 @@ export function PickSummaryScreen({ navigation }: Props) {
         <View style={{ height: 24 }} />
       </ScrollView>
       )}
+      <AdBanner placement="pick_summary" />
     </View>
   );
 }

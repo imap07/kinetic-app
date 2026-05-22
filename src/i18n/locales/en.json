@@ -398,6 +398,13 @@
     "emptyHint": "You're all caught up — we'll ping when there's news on your picks.",
     "tunePreferences": "Tune preferences"
   },
+  "friendsRank": {
+    "inviteTitle": "Invite friends, earn coins",
+    "inviteBody": "+50 coins for every friend who joins and picks.",
+    "rankTitle": "You're #{{rank}} of {{total}}",
+    "rankLead": "You're leading your friends. Keep the streak alive.",
+    "rankBehind": "Tap to see who's above you."
+  },
   "notificationPrefs": {
     "title": "NOTIFICATION SETTINGS",
     "masterToggle": "Push Notifications",
@@ -448,7 +455,9 @@
     "commentReceived": "Comments on your picks",
     "commentReceivedDesc": "Get notified when someone comments on a pick you made.",
     "rivalry": "Rivalries (1v1)",
-    "rivalryDesc": "Get notified for rivalry challenges, accepts, and final results."
+    "rivalryDesc": "Get notified for rivalry challenges, accepts, and final results.",
+    "friendOvertake": "Friend overtakes you",
+    "friendOvertakeDesc": "A friend just passed you on the streak leaderboard."
   },
   "paywall": {
     "title": "KINETIC PRO",
@@ -1158,7 +1167,11 @@
     "notReadyTitle": "Ad not ready",
     "notReadyDesc": "Please try again in a moment.",
     "networkError": "Could not connect. Check your connection and try again.",
-    "coinsEarnedToast": "+{{count}} coins!"
+    "coinsEarnedToast": "+{{count}} coins!",
+    "attPromptTitle": "Help keep Kinetic free",
+    "attPromptBody": "We show ads to keep Kinetic free for everyone. Allowing tracking lets us show ads that are relevant to you — which earns Kinetic more, so we can keep building new features.\n\nNothing you do in Kinetic is shared with advertisers.",
+    "attPromptCta": "Continue",
+    "attPromptSkip": "Not now"
   },
   "passwordPolicy": {
     "ruleLength": "At least {{count}} characters",

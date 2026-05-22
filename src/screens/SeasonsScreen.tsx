@@ -16,12 +16,15 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { seasonsApi, SeasonStatus, SeasonTierView } from '../api/seasons';
 import { colors, spacing } from '../theme';
+import { AdBanner } from '../components/AdBanner';
+import { useAds } from '../contexts/AdContext';
 
 export function SeasonsScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const { tokens } = useAuth();
   const accessToken = tokens?.accessToken;
+  const { trackAction, showRewardedInterstitial } = useAds();
 
   const [status, setStatus] = useState<SeasonStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,6 +63,13 @@ export function SeasonsScreen() {
           type: 'success',
           text1: t('seasons.claimed', { defaultValue: 'Reward claimed' }),
         });
+        // Right after a positive event (tier just claimed) is the
+        // ideal moment for a rewarded interstitial — user is happy,
+        // a +5 coin bonus on top of the tier reward feels generous,
+        // and the format pays better than a forced interstitial.
+        // We don't await this — the toast fires immediately, the ad
+        // loads in the background.
+        showRewardedInterstitial().catch(() => {});
       } catch (err: any) {
         Toast.show({
           type: 'error',
@@ -70,7 +80,7 @@ export function SeasonsScreen() {
         setClaiming(null);
       }
     },
-    [accessToken, t],
+    [accessToken, t, trackAction],
   );
 
   if (loading) {
@@ -163,6 +173,7 @@ export function SeasonsScreen() {
           />
         ))}
       </ScrollView>
+      <AdBanner placement="seasons" />
     </SafeAreaView>
   );
 }

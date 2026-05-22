@@ -24,6 +24,7 @@ import { ReactionBar } from '../components/ReactionBar';
 import { PublicProfileSheet } from '../components/PublicProfileSheet';
 import { PickCommentsSheet } from '../components/PickCommentsSheet';
 import { commentsApi } from '../api/comments';
+import { AdBanner } from '../components/AdBanner';
 
 type RouteParams = RouteProp<LeaguesStackParamList, 'LeaguePicksFeed'>;
 
@@ -240,6 +241,8 @@ export function LeaguePicksFeedScreen() {
         onClose={() => setCommentsPickId(null)}
         onCountChanged={handleCountChange}
       />
+
+      <AdBanner placement="league_picks_feed" />
     </View>
   );
 }

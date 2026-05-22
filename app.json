@@ -16,7 +16,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "buildNumber": "86",
+      "buildNumber": "88",
       "bundleIdentifier": "io.kinetic.app",
       "googleServicesFile": "./GoogleService-Info.plist",
       "usesAppleSignIn": true,
@@ -70,7 +70,7 @@
           ]
         }
       ],
-      "versionCode": 86
+      "versionCode": 88
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -104,12 +104,19 @@
       "./plugins/withAdiRegistration",
       "./plugins/withAndroidSigning",
       "expo-localization",
-      "expo-tracking-transparency",
+      [
+        "expo-tracking-transparency",
+        {
+          "userTrackingPermission": "Kinetic uses this to show you relevant ads and improve your experience."
+        }
+      ],
       [
         "react-native-google-mobile-ads",
         {
           "androidAppId": "ca-app-pub-9821496555610524~8593987728",
-          "iosAppId": "ca-app-pub-9821496555610524~9907069395"
+          "iosAppId": "ca-app-pub-9821496555610524~9907069395",
+          "userTrackingUsageDescription": "Kinetic uses this to show you relevant ads and improve your experience.",
+          "delayAppMeasurementInit": true
         }
       ],
       "expo-build-properties",

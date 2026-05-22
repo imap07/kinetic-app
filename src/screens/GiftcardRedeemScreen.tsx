@@ -14,6 +14,8 @@ import { useNavigation } from '@react-navigation/native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { colors, spacing, borderRadius } from '../theme';
+import { AdBanner } from '../components/AdBanner';
+import { useAds } from '../contexts/AdContext';
 import { useCoins } from '../contexts/CoinContext';
 import { useAuth } from '../contexts/AuthContext';
 import { giftcardsApi } from '../api/giftcards';
@@ -32,6 +34,7 @@ export function GiftcardRedeemScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { tokens } = useAuth();
+  const { trackAction } = useAds();
   // For gift card redemption, only earned coins can be used. We still track
   // `available` for general display but gate redemption on `earnedCoins`.
   const { available, earnedCoins, refreshBalance } = useCoins();
@@ -98,6 +101,7 @@ export function GiftcardRedeemScreen() {
                 coinsToSpend: denomination.coins,
                 giftcardType: card.type,
               });
+              trackAction();
               await Promise.all([fetchData(), refreshBalance()]);
               // Two-button confirmation so the success state has a
               // forward path. The previous single-OK Alert dropped
@@ -300,6 +304,7 @@ export function GiftcardRedeemScreen() {
           </>
         )}
       </ScrollView>
+      <AdBanner placement="giftcard_redeem" />
     </View>
   );
 }

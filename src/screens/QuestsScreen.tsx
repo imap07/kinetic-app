@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,8 @@ import type { DailyStatusResponse, QuestProgress } from '../api/predictions';
 import type { HomeStackParamList } from '../navigation/types';
 import Toast from 'react-native-toast-message';
 import { useTranslation } from 'react-i18next';
+import { AdBanner } from '../components/AdBanner';
+import { useAds } from '../contexts/AdContext';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'Quests'>;
 
@@ -92,6 +94,24 @@ export function QuestsScreen({ navigation }: Props) {
   }, [fetchData]);
 
   const quests = dailyStatus?.quests;
+
+  // Fire a rewarded interstitial once per mount when the user has at
+  // least one completed quest today — this is a "celebrate" moment,
+  // not a forced ad: the format gives them a skip option and a +5
+  // coin bonus if they watch. We guard with a ref so a quick
+  // refresh-then-tab-away-and-back doesn't re-fire the same impression.
+  const { showRewardedInterstitial } = useAds();
+  const firedRewardRef = useRef(false);
+  useEffect(() => {
+    if (firedRewardRef.current || !quests) return;
+    const anyCompleted =
+      quests.pick3?.completed ||
+      quests.multiSport?.completed ||
+      quests.bonusReward?.completed;
+    if (!anyCompleted) return;
+    firedRewardRef.current = true;
+    showRewardedInterstitial().catch(() => {});
+  }, [quests, showRewardedInterstitial]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -208,6 +228,7 @@ export function QuestsScreen({ navigation }: Props) {
           <Text style={styles.comingSoonText}>{t('quests.comingSoon')}</Text>
         </View>
       </ScrollView>
+      <AdBanner placement="quests" />
     </View>
   );
 }

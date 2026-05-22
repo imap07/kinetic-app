@@ -753,7 +753,17 @@ export function MyPicksScreen() {
         <FlatList
           data={predictions}
           keyExtractor={(item) => item._id}
-          renderItem={({ item }) => <PredictionCard prediction={item} />}
+          renderItem={({ item, index }) => (
+            // In-feed banner cada 4 picks. La FlatList ya virtualiza,
+            // así que los banners fuera de viewport no se cargan hasta
+            // que el user scrollea — sin penalty de bandwidth.
+            <>
+              <PredictionCard prediction={item} />
+              {(index + 1) % 4 === 0 && (
+                <AdBanner placement="my_picks_inline" />
+              )}
+            </>
+          )}
           ListHeaderComponent={listHeader}
           contentContainerStyle={{ paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}

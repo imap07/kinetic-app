@@ -24,6 +24,7 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { colors, spacing, borderRadius } from '../theme';
+import { AdBanner } from '../components/AdBanner';
 import { ModalCloseButton } from '../components';
 import { legalApi, authApi } from '../api';
 import type { SessionInfo } from '../api';
@@ -664,6 +665,7 @@ export function SecurityPrivacyScreen() {
         type="privacy"
         onClose={() => setLegalModal(null)}
       />
+      <AdBanner placement="security_privacy" />
     </View>
   );
 }
