@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -74,6 +74,25 @@ export function PaywallScreen({ navigation, route }: Props) {
 
   const monthlyPrice = monthlyPkg?.product?.priceString ?? '$3.99';
   const annualPrice = annualPkg?.product?.priceString ?? '$24.99';
+
+  // Compute the actual savings of annual vs 12× monthly. Hardcoding
+  // "SAVE 48%" would lie if App Store Connect ever changes the
+  // configured price for either tier — and we already had a bug where
+  // the legacy "SAVE 44%" badge referenced stale $5.99/$39.99 pricing.
+  // Numeric `price` is the float in the user's local currency; both
+  // packages are always in the same currency (RevenueCat normalizes
+  // per storefront), so the percentage is locale-safe.
+  const savingsPercent = useMemo(() => {
+    const m = monthlyPkg?.product?.price;
+    const a = annualPkg?.product?.price;
+    if (!m || !a || m <= 0) return null;
+    const yearlyAtMonthlyRate = m * 12;
+    if (a >= yearlyAtMonthlyRate) return null;
+    return Math.round(((yearlyAtMonthlyRate - a) / yearlyAtMonthlyRate) * 100);
+  }, [monthlyPkg?.product?.price, annualPkg?.product?.price]);
+  const savingsLabel = savingsPercent != null
+    ? t('paywall.savePercent', { percent: savingsPercent })
+    : t('paywall.save48'); // fallback to old hardcoded copy if prices unavailable
 
   // Apple grants a free trial only once per Apple ID. If the user has
   // already consumed it, showing "7-day free trial" on the card would
@@ -199,7 +218,7 @@ export function PaywallScreen({ navigation, route }: Props) {
             activeOpacity={0.8}
           >
             <View style={styles.saveBadge}>
-              <Text style={styles.saveBadgeText}>{t('paywall.save48')}</Text>
+              <Text style={styles.saveBadgeText}>{savingsLabel}</Text>
             </View>
             <Text style={styles.pricingLabel}>{t('paywall.annual')}</Text>
             <Text style={styles.pricingAmount}>{t('paywall.perYear', { price: annualPrice })}</Text>

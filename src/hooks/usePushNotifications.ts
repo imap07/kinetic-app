@@ -31,6 +31,46 @@ function devLog(...args: unknown[]): void {
   }
 }
 
+/**
+ * Module-level cache of the currently-registered Expo push token. Set by
+ * the hook after a successful `registerPushToken` API call and cleared
+ * after `removeRegisteredPushToken`. Exposed so AuthContext.logout can
+ * read it without prop-drilling through React tree.
+ *
+ * Why a module global instead of a context: the push token is a single
+ * per-install value (Expo issues one per app install), so there's no
+ * meaningful per-component state. AuthContext is one of many readers,
+ * and a module ref avoids creating a circular dep with NotificationContext.
+ */
+let cachedPushToken: string | null = null;
+
+/** Read the last-registered push token, or null if registration never
+ *  completed for this app launch. */
+export function getCachedPushToken(): string | null {
+  return cachedPushToken;
+}
+
+/**
+ * Unregister the cached push token from the backend, then clear the
+ * cache. No-op if no token is registered. Safe to call repeatedly.
+ * Used by AuthContext.logout so the next user on this device doesn't
+ * receive notifications meant for the previous one.
+ */
+export async function removeRegisteredPushToken(authToken: string): Promise<void> {
+  const t = cachedPushToken;
+  if (!t) return;
+  try {
+    await authApi.removePushToken(t, authToken);
+  } catch (err) {
+    devLog('Failed to remove push token from backend:', err);
+    // Don't rethrow — logout must continue even if the backend call
+    // fails. Worst case: stale token gets garbage-collected when the
+    // next user's expoPushTokens array is set, or when Expo retires it.
+  } finally {
+    cachedPushToken = null;
+  }
+}
+
 async function registerForPushNotificationsAsync(): Promise<string | null> {
   if (!Device.isDevice) {
     devLog('Push notifications require a physical device');
@@ -89,6 +129,7 @@ export function usePushNotifications(authToken: string | null | undefined) {
       try {
         await authApi.registerPushToken(token, authToken);
         registeredRef.current = true;
+        cachedPushToken = token;
         devLog('Push token registered with backend');
       } catch (err) {
         devLog('Failed to register push token with backend:', err);

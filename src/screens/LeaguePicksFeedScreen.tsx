@@ -18,6 +18,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { leaguesApi, type LeaguePickFeedItem } from '../api/leagues';
 import { reactionsApi } from '../api/reactions';
 import type { ReactionSummary } from '../api/reactions';
+import { track } from '../services/analytics';
 import type { PickReactionKey } from '../shared/domain';
 import type { LeaguesStackParamList } from '../navigation/types';
 import { ReactionBar } from '../components/ReactionBar';
@@ -80,12 +81,17 @@ export function LeaguePicksFeedScreen() {
   const handleToggle = useCallback(
     async (predictionId: string, emoji: PickReactionKey) => {
       if (!tokens?.accessToken) return;
+      // Capture intent BEFORE the optimistic mutation: had=true means
+      // the user is removing an existing reaction, had=false means
+      // adding. The optimistic update flips it immediately, so we
+      // must record direction here for the analytics event below.
+      const target = items.find((it) => it.predictionId === predictionId);
+      const had = target?.reactions.myReactions.includes(emoji) ?? false;
       // Optimistic update
       const prevItems = items;
       setItems((current) =>
         current.map((it) => {
           if (it.predictionId !== predictionId) return it;
-          const had = it.reactions.myReactions.includes(emoji);
           const newMy = had
             ? it.reactions.myReactions.filter((e) => e !== emoji)
             : [...it.reactions.myReactions, emoji];
@@ -101,6 +107,14 @@ export function LeaguePicksFeedScreen() {
             it.predictionId === predictionId ? { ...it, reactions: res.summary } : it,
           ),
         );
+        // Only emit on confirmed server success — optimistic-only
+        // events would inflate counts when the API actually rejects
+        // (rate limit, league not joined, etc.) and we roll back.
+        track({
+          event: 'reaction_toggled',
+          emoji,
+          action: had ? 'removed' : 'added',
+        }).catch(() => {});
       } catch {
         // Rollback on failure
         setItems(prevItems);
@@ -111,6 +125,13 @@ export function LeaguePicksFeedScreen() {
 
   const [profileUserId, setProfileUserId] = useState<string | null>(null);
   const [commentsPickId, setCommentsPickId] = useState<string | null>(null);
+  // Derived from the open pick — passed to PickCommentsSheet so the
+  // comment_posted analytics event can mark whether the user was
+  // commenting on someone else's pick (high-signal social action) vs
+  // self-annotating (low signal).
+  const commentsPickIsOthers = commentsPickId
+    ? !(items.find((it) => it.predictionId === commentsPickId)?.isSelf ?? false)
+    : false;
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
 
   // Batch-load comment counts whenever the pick list changes. One
@@ -240,6 +261,7 @@ export function LeaguePicksFeedScreen() {
         predictionId={commentsPickId}
         onClose={() => setCommentsPickId(null)}
         onCountChanged={handleCountChange}
+        isOthersPick={commentsPickIsOthers}
       />
 
       <AdBanner placement="league_picks_feed" />

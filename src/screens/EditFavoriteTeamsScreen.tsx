@@ -58,6 +58,7 @@ import { colors, borderRadius } from '../theme';
 import { AdBanner } from '../components/AdBanner';
 import { useAuth } from '../contexts/AuthContext';
 import { favoriteTeamsApi, FavoriteTeam } from '../api/favoriteTeams';
+import { ApiError } from '../api';
 import { sportsApi, SPORT_TABS, PopularTeam, SportLeague, SportKey } from '../api/sports';
 
 // ─── Sport colors (match EditFavoriteLeaguesScreen) ──────
@@ -260,7 +261,12 @@ function LeagueSection({
             {leagueName}
           </Text>
           <Text style={[styles.leagueHeaderCount, { color: accent }]}>
-            {selectedCount} / {teams.length || '?'}
+            {/* Display the actual loaded count once the teams array is
+                populated. "?" was previously shown while loading AND
+                when the league had zero teams — confusing for users on
+                a never-seeded league. Now: if still loading, show a
+                clear hyphen; otherwise show the real count. */}
+            {selectedCount} / {loading ? '…' : teams.length}
           </Text>
         </View>
         {teams.length > 0 && (
@@ -359,8 +365,14 @@ function AddLeagueModal({
     if (!tokens?.accessToken) return;
     let cancelled = false;
     setLoading(true);
+    // Request the FULL active catalog (not just featured). Users
+    // have typically already followed the featured set during
+    // onboarding, so the picker would otherwise be empty after
+    // excludeIds filters out their existing pins. With `all: true`
+    // the long tail is available — the modal's local search filters
+    // it down to whatever the user types.
     sportsApi
-      .getLeagues(tokens.accessToken, sport as SportKey)
+      .getLeagues(tokens.accessToken, sport as SportKey, { all: true })
       .then((res) => {
         if (!cancelled) setLeagues(res);
       })
@@ -832,27 +844,82 @@ export function EditFavoriteTeamsScreen() {
 
   const handleSave = useCallback(async () => {
     if (!tokens?.accessToken) return;
+    // Client-side cap that mirrors the backend's ArrayMaxSize(500) on
+    // FavoriteTeamsDto. Without this the user gets a generic
+    // 400/"Could not save your teams" error after the roundtrip with
+    // no way to know they hit a limit.
+    if (selected.size > 500) {
+      Alert.alert(
+        t('common.error'),
+        t(
+          'editFavoriteTeams.tooManyTeams',
+          'You can follow up to 500 teams. Remove some before saving.',
+        ),
+      );
+      return;
+    }
     setSaving(true);
     try {
       const teams = Array.from(selected.values())
         // Drop entries with missing required fields — defensive guard against
         // stale or malformed data that would cause backend DTO validation to fail.
         .filter((t) => t.teamApiId > 0 && t.teamName && t.sport)
-        // Truncate logo URLs that could exceed the backend MaxLength limit.
+        // Explicit projection (no `...t` spread) — `selected` is seeded
+        // from `user.favoriteTeams` which arrives as Mongoose subdocs,
+        // each carrying an `_id` field that the backend's
+        // FavoriteTeamDto rejects under `forbidNonWhitelisted: true`
+        // with "teams.0.property _id should not exist". Same risk for
+        // any future server-only field (createdAt, __v, etc.) — by
+        // listing the allowed keys here we guarantee the payload stays
+        // within the DTO schema regardless of what the read endpoint
+        // happens to include.
         .map((t) => ({
-          ...t,
-          teamLogo: t.teamLogo && t.teamLogo.length > 2000 ? undefined : t.teamLogo,
+          sport: t.sport,
+          teamApiId: t.teamApiId,
           teamName: t.teamName.slice(0, 200),
-          leagueName: t.leagueName ? t.leagueName.slice(0, 200) : t.leagueName,
+          // Truncate logo URLs that could exceed the backend MaxLength
+          // limit. Silent drop is safe — the UI re-renders from server
+          // state, which refetches the logo via getPopularTeams.
+          teamLogo:
+            t.teamLogo && t.teamLogo.length <= 2000 ? t.teamLogo : undefined,
+          // Normalize an absent/zero leagueApiId to undefined. The DTO
+          // declares `leagueApiId?` with `@Min(1)` — so the server
+          // accepts undefined but rejects 0 with "leagueApiId must
+          // not be less than 1".
+          leagueApiId:
+            typeof t.leagueApiId === 'number' && t.leagueApiId > 0
+              ? t.leagueApiId
+              : undefined,
+          leagueName: t.leagueName ? t.leagueName.slice(0, 200) : undefined,
         }));
-      await favoriteTeamsApi.setFavoriteTeams(tokens.accessToken, teams);
-      await refreshProfile();
+      const res = await favoriteTeamsApi.setFavoriteTeams(tokens.accessToken, teams);
+      // Patch-only refresh — eliminates the extra /auth/me roundtrip
+      // and the inconsistency window where a failed GET would leave
+      // the badge stale after a successful save.
+      await refreshProfile({ favoriteTeams: res.favoriteTeams as any });
       navigation.goBack();
-    } catch {
-      Alert.alert(
-        t('common.error'),
-        t('editFavoriteTeams.errorTeams', 'Could not save your teams. Try again.'),
-      );
+    } catch (err) {
+      // Generic "Could not save your teams" was hiding the real
+      // failure cause — DTO validation messages, 5xx, timeouts all
+      // looked identical to the user. Now we surface what we have:
+      // ApiError exposes `status` + the server's `message` (which
+      // for class-validator failures is a joined array of field
+      // errors, e.g. "teamApiId must not be less than 1"). Anything
+      // non-ApiError (network/JSON) falls back to the generic copy.
+      // eslint-disable-next-line no-console
+      console.error('[EditFavoriteTeams] save failed', err);
+      if (err instanceof ApiError) {
+        const detail = err.message || `HTTP ${err.status}`;
+        Alert.alert(
+          t('common.error'),
+          `${t('editFavoriteTeams.errorTeams', 'Could not save your teams. Try again.')}\n\n${detail}`,
+        );
+      } else {
+        Alert.alert(
+          t('common.error'),
+          t('editFavoriteTeams.errorTeams', 'Could not save your teams. Try again.'),
+        );
+      }
     } finally {
       setSaving(false);
     }
@@ -877,6 +944,35 @@ export function EditFavoriteTeamsScreen() {
     selected.size !== originalKeys.size ||
     Array.from(selected.keys()).some((k) => !originalKeys.has(k));
   const canSave = hasChanges;
+
+  // Guard against accidental loss of selection. The screen accumulates
+  // a multi-step edit (toggle teams across multiple leagues, switch
+  // sports, pin new leagues) and goBack with hasChanges silently
+  // discards everything — historically reported as "I added 5 teams
+  // and they disappeared." The confirm only fires when there's actual
+  // unsaved work AND we're not already in the middle of a save flow.
+  useEffect(() => {
+    const unsub = navigation.addListener('beforeRemove', (e) => {
+      if (!hasChanges || saving) return;
+      e.preventDefault();
+      Alert.alert(
+        t('editFavoriteTeams.discardTitle', 'Discard changes?'),
+        t(
+          'editFavoriteTeams.discardBody',
+          'You have unsaved team selections. Leave without saving?',
+        ),
+        [
+          { text: t('common.cancel', 'Cancel'), style: 'cancel' },
+          {
+            text: t('common.discard', 'Discard'),
+            style: 'destructive',
+            onPress: () => navigation.dispatch(e.data.action),
+          },
+        ],
+      );
+    });
+    return unsub;
+  }, [navigation, hasChanges, saving, t]);
 
   const excludePickerIds = useMemo(
     () => new Set(activePins.map((p) => p.leagueApiId)),

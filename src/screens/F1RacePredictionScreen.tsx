@@ -27,6 +27,8 @@ import {
 import { sportsApi } from '../api/sports';
 import { useAds } from '../contexts/AdContext';
 import { AdBanner } from '../components/AdBanner';
+import { track } from '../services/analytics';
+import type { PredictionType as ContractPredictionType } from '../shared/domain';
 
 type TabKey = 'winner' | 'podium' | 'h2h' | 'fastest' | 'points' | 'pitstops';
 
@@ -68,7 +70,7 @@ export default function F1RacePredictionScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { t } = useTranslation();
-  const { tokens } = useAuth();
+  const { tokens, user } = useAuth();
   const { trackAction } = useAds();
 
   const { raceApiId, competitionName, circuitName } = route.params as {
@@ -76,6 +78,25 @@ export default function F1RacePredictionScreen() {
     competitionName?: string;
     circuitName?: string;
   };
+  const navSource = (route.params as any)?.source as
+    | 'dashboard'
+    | 'deeplink'
+    | 'notification'
+    | 'search'
+    | 'league'
+    | undefined;
+
+  // Activation funnel entry — see MatchPredictionScreen for rationale.
+  // Sport hardcoded to 'formula-1' since this screen is F1-only.
+  useEffect(() => {
+    track({
+      event: 'pick_screen_opened',
+      sport: 'formula-1',
+      gameApiId: raceApiId,
+      source: navSource ?? 'dashboard',
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [raceApiId]);
 
   const [activeTab, setActiveTab] = useState<TabKey>('winner');
   const [drivers, setDrivers] = useState<F1DriverOption[]>([]);
@@ -152,8 +173,19 @@ export default function F1RacePredictionScreen() {
           break;
       }
 
-      await f1PredictionsApi.create(payload, token);
+      const result = await f1PredictionsApi.create(payload, token);
       trackAction();
+      // F1 prediction types map 1:1 onto the contract PredictionType
+      // union. `isFirstPick` reads pre-refresh user state — same caveat
+      // as MatchPredictionScreen: the create endpoint increments on
+      // the server but our local user object hasn't been refetched.
+      track({
+        event: 'pick_submitted',
+        sport: 'formula-1',
+        predictionType: type as ContractPredictionType,
+        oddsMultiplier: (result as any)?.oddsMultiplier ?? 1,
+        isFirstPick: (user?.totalPredictions ?? 1) === 0,
+      }).catch(() => {});
       Alert.alert(t('f1Prediction.predictionSaved'), t('f1Prediction.pickLockedIn'));
       fetchData(); // Refresh picks
     } catch (e: any) {
@@ -167,7 +199,7 @@ export default function F1RacePredictionScreen() {
     if (submitting) return;
     setSubmitting(true);
     try {
-      await f1PredictionsApi.create({
+      const result = await f1PredictionsApi.create({
         raceApiId,
         predictionType: 'head_to_head',
         driverAApiId: matchup.driverA.driverApiId,
@@ -177,6 +209,13 @@ export default function F1RacePredictionScreen() {
       const key = `${matchup.driverA.driverApiId}-${matchup.driverB.driverApiId}`;
       setH2hPicks((prev) => new Map(prev).set(key, winner));
       trackAction();
+      track({
+        event: 'pick_submitted',
+        sport: 'formula-1',
+        predictionType: 'head_to_head' as ContractPredictionType,
+        oddsMultiplier: (result as any)?.oddsMultiplier ?? 1,
+        isFirstPick: (user?.totalPredictions ?? 1) === 0,
+      }).catch(() => {});
       Alert.alert(t('f1Prediction.h2hPickSaved'));
       fetchData();
     } catch (e: any) {

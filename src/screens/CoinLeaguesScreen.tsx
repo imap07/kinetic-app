@@ -39,6 +39,7 @@ import { ModalCloseButton } from '../components';
 import { useCoins } from '../contexts/CoinContext';
 import { useAuth } from '../contexts/AuthContext';
 import { leaguesApi } from '../api/leagues';
+import { track } from '../services/analytics';
 import type { CoinLeague, CreateLeagueDto } from '../api/leagues';
 import { SPORT_TABS } from '../api/sports';
 import { AdBanner } from '../components/AdBanner';
@@ -151,6 +152,20 @@ export function CoinLeaguesScreen() {
             try {
               await leaguesApi.join(tokens!.accessToken, league._id);
               trackAction();
+              // Split paid/free events — see CoinLeagueDetailScreen
+              // for the funnel rationale.
+              if (league.entryFee > 0) {
+                track({
+                  event: 'league_joined_paid',
+                  entryFeeCoins: league.entryFee,
+                  leagueType: league.leagueType ?? 'unknown',
+                }).catch(() => {});
+              } else {
+                track({
+                  event: 'league_joined_free',
+                  leagueType: league.leagueType ?? 'unknown',
+                }).catch(() => {});
+              }
               await Promise.all([fetchLeagues(), refreshBalance()]);
             } catch (e: any) {
               Alert.alert(t('common.error'), e.message || t('leagues.couldNotJoin'));
@@ -177,6 +192,7 @@ export function CoinLeaguesScreen() {
             setActionLoading(league._id);
             try {
               await leaguesApi.leave(tokens!.accessToken, league._id);
+              track({ event: 'league_left', isPaid: league.entryFee > 0 }).catch(() => {});
               await Promise.all([fetchLeagues(), refreshBalance()]);
             } catch (e: any) {
               Alert.alert(t('common.error'), e.message || t('leagues.couldNotLeave'));
@@ -197,6 +213,13 @@ export function CoinLeaguesScreen() {
     setActionLoading('create');
     try {
       await leaguesApi.create(tokens!.accessToken, dto);
+      track({
+        event: 'league_created',
+        isPaid: dto.entryFee > 0,
+        entryFeeCoins: dto.entryFee,
+        maxMembers: (dto as any).maxMembers ?? 0,
+        leagueType: (dto as any).leagueType ?? 'unknown',
+      }).catch(() => {});
       setShowCreate(false);
       await Promise.all([fetchLeagues(), refreshBalance()]);
     } catch (e: any) {

@@ -10,11 +10,26 @@ import { usePurchases } from '../contexts/PurchasesContext';
 import type { RootStackParamList } from '../navigation/types';
 
 export function ProUpgradeBanner() {
-  const { isProMember } = usePurchases();
+  const { isProMember, currentOffering } = usePurchases();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { t } = useTranslation();
 
   if (isProMember) return null;
+
+  // Pull the monthly price live from RevenueCat so the badge stays in
+  // sync with whatever App Store Connect has configured. Falls back to
+  // the spec'd $3.99 only when the offering hasn't loaded yet — same
+  // strategy as PaywallScreen.tsx so the user never sees two different
+  // prices for the same product in the same session.
+  const monthlyPkg =
+    currentOffering?.monthly ??
+    currentOffering?.availablePackages?.find(
+      (p) => p.identifier === '$rc_monthly' || p.product?.identifier === 'kinetic_pro_monthly',
+    ) ??
+    null;
+  const monthlyPriceLabel = monthlyPkg?.product?.priceString
+    ? `${monthlyPkg.product.priceString}/mo`
+    : '$3.99/mo';
 
   return (
     <TouchableOpacity
@@ -37,7 +52,7 @@ export function ProUpgradeBanner() {
             <Text style={styles.subtitle}>{t('ads.removeAdsDesc')}</Text>
           </View>
           <View style={styles.priceBadge}>
-            <Text style={styles.priceText}>$3.99/mo</Text>
+            <Text style={styles.priceText}>{monthlyPriceLabel}</Text>
           </View>
         </View>
       </LinearGradient>

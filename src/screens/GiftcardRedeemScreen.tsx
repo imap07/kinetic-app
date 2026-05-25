@@ -19,6 +19,7 @@ import { useAds } from '../contexts/AdContext';
 import { useCoins } from '../contexts/CoinContext';
 import { useAuth } from '../contexts/AuthContext';
 import { giftcardsApi } from '../api/giftcards';
+import { track } from '../services/analytics';
 import type { GiftcardCatalog, GiftcardCatalogItem, GiftcardRedemption } from '../api/giftcards';
 
 type TabFilter = 'catalog' | 'history';
@@ -102,6 +103,17 @@ export function GiftcardRedeemScreen() {
                 giftcardType: card.type,
               });
               trackAction();
+              // Reward-loop close event. dollarValueCents avoids
+              // floating-point precision drift in downstream sums
+              // (PostHog aggregates over millions of these). `kind`
+              // is the partner brand string (e.g. "amazon_us",
+              // "starbucks_us"), useful for partner-level reporting.
+              track({
+                event: 'giftcard_redeemed',
+                kind: card.type,
+                coinsSpent: denomination.coins,
+                dollarValueCents: Math.round(denomination.dollarValue * 100),
+              }).catch(() => {});
               await Promise.all([fetchData(), refreshBalance()]);
               // Two-button confirmation so the success state has a
               // forward path. The previous single-OK Alert dropped

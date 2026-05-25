@@ -11,6 +11,7 @@ import { ONBOARDING_COMPLETE_KEY } from '../screens/OnboardingScreen';
 import { logLogin, logSignUp, logLogout, identifyUser, clearAnalyticsUser } from '../services/analytics';
 import { attemptBiometricLogin, isBiometricLoginEnabled, enableBiometricLogin, disableBiometricLogin } from '../services/biometricAuth';
 import { getOrCreateDeviceFingerprint } from '../services/deviceFingerprint';
+import { removeRegisteredPushToken } from '../hooks/usePushNotifications';
 
 const ACCESS_TOKEN_KEY = 'kinetic_access_token';
 const REFRESH_TOKEN_KEY = 'kinetic_refresh_token';
@@ -56,7 +57,17 @@ interface AuthContextValue extends AuthState {
   verifyCode: (email: string, code: string) => Promise<boolean>;
   resetPassword: (email: string, code: string, newPassword: string) => Promise<void>;
   logout: () => Promise<void>;
-  refreshProfile: () => Promise<void>;
+  /**
+   * Refresh the cached user. Two modes:
+   * • No args → fetch /auth/me and replace `state.user` with the result.
+   * • With `patch` → merge the partial into `state.user` synchronously,
+   *   skipping the network call. Use this when the caller just hit a
+   *   PATCH endpoint that returned the affected slice (e.g. the favorite-
+   *   teams editor passes `{ favoriteTeams }` from the response). Saves
+   *   a roundtrip and closes the window where a failed GET could leave
+   *   the UI desynced from what the user just saved.
+   */
+  refreshProfile: (patch?: Partial<User>) => Promise<void>;
   updateProfile: (data: UpdateProfileData) => Promise<User>;
   updatePreferences: (prefs: UpdatePreferencesData) => Promise<User>;
   uploadAvatar: (fileUri: string, fileName: string, mimeType: string) => Promise<User>;
@@ -312,6 +323,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const token = tokensRef.current?.accessToken;
       const refreshToken = tokensRef.current?.refreshToken;
       if (token) {
+        // Unregister the device's push token BEFORE the session is
+        // dropped. If a different user logs in on this device next,
+        // their notifications would otherwise still be addressed to
+        // the previous user's `expoPushTokens` array. We do this
+        // first because removePushToken requires a valid access
+        // token — once we clearAuth() below, the token is gone.
+        // Network failures are swallowed inside removeRegisteredPushToken
+        // so logout itself can never block on them.
+        await removeRegisteredPushToken(token);
         // Pass refresh token so the backend drops ONLY this device's
         // session. Without it, the server treats the call as a no-op
         // (the pre-fix behaviour of mass-logout is gone).
@@ -332,7 +352,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearAnalyticsUser();
   }, [clearAuth]);
 
-  const refreshProfile = useCallback(async () => {
+  const refreshProfile = useCallback(async (patch?: Partial<User>) => {
+    if (patch) {
+      // Synchronous merge — the caller already has the authoritative
+      // server response, no need to hit /auth/me. Guards against the
+      // null-user case by no-op'ing rather than constructing a partial
+      // user from scratch.
+      setState((s) => (s.user ? { ...s, user: { ...s.user, ...patch } } : s));
+      return;
+    }
     const token = tokensRef.current?.accessToken;
     if (!token) return;
     const { user } = await authApi.getProfile(token);

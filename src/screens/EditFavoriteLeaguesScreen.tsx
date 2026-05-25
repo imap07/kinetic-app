@@ -301,7 +301,16 @@ export function EditFavoriteLeaguesScreen() {
           setFootballByRegion(regionMap);
           setLeagueCache((prev) => ({ ...prev, football: unified }));
         } else {
-          const leagues = await sportsApi.getLeagues(tokens.accessToken, sport as SportKey);
+          // Request the FULL active catalog so users can browse the
+          // long tail of leagues per sport, not just the curated
+          // featured set. Mirrors what the football branch already
+          // does via getGlobalLeagues. Without `all: true` users
+          // could only follow the ~5-10 featured leagues per sport.
+          const leagues = await sportsApi.getLeagues(
+            tokens.accessToken,
+            sport as SportKey,
+            { all: true },
+          );
           const unified = leagues.map((l) => sportLeagueToUnified(l, sport));
           setLeagueCache((prev) => ({ ...prev, [sport]: unified }));
         }
@@ -434,24 +443,41 @@ export function EditFavoriteLeaguesScreen() {
     });
   }, [currentLeagues, footballByRegion, isFootball, activeRegion, search, selected]);
 
-  const toggleLeague = useCallback((apiId: number) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(apiId)) {
-        next.delete(apiId);
-      } else if (next.size < MAX_LEAGUES) {
-        next.add(apiId);
-      }
-      return next;
-    });
-  }, []);
+  const toggleLeague = useCallback(
+    (apiId: number) => {
+      setSelected((prev) => {
+        const next = new Set(prev);
+        if (next.has(apiId)) {
+          next.delete(apiId);
+        } else if (next.size < MAX_LEAGUES) {
+          next.add(apiId);
+        } else {
+          // Cap hit — tell the user instead of silently no-op'ing.
+          // Previously the tap registered as "nothing happened" which
+          // looked like a broken button. The alert fires only on the
+          // attempt past the cap, not on the cap-th selection itself.
+          Alert.alert(
+            t('common.error'),
+            t(
+              'editFavorites.tooManyLeagues',
+              `You can follow up to ${MAX_LEAGUES} leagues. Remove one before adding another.`,
+              { count: MAX_LEAGUES },
+            ),
+          );
+        }
+        return next;
+      });
+    },
+    [t],
+  );
 
   const handleSave = useCallback(async () => {
     if (!tokens?.accessToken) return;
     setSaving(true);
     try {
-      await footballLeaguesApi.setFavoriteLeagues(tokens.accessToken, Array.from(selected));
-      await refreshProfile();
+      const res = await footballLeaguesApi.setFavoriteLeagues(tokens.accessToken, Array.from(selected));
+      // Patch-only refresh — see AuthContext.refreshProfile docstring.
+      await refreshProfile({ favoriteLeagues: res.favoriteLeagues as any });
       navigation.goBack();
     } catch {
       Alert.alert(t('common.error'), t('editFavorites.errorLeagues'));
@@ -477,6 +503,31 @@ export function EditFavoriteLeaguesScreen() {
 
   const canSave = hasChanges;
   const sportLoading = !leagueCache[activeSport];
+
+  // Guard against accidental loss — see EditFavoriteTeamsScreen for
+  // the rationale and the same pattern.
+  useEffect(() => {
+    const unsub = navigation.addListener('beforeRemove', (e) => {
+      if (!hasChanges || saving) return;
+      e.preventDefault();
+      Alert.alert(
+        t('editFavorites.discardTitle', 'Discard changes?'),
+        t(
+          'editFavorites.discardLeaguesBody',
+          'You have unsaved league selections. Leave without saving?',
+        ),
+        [
+          { text: t('common.cancel', 'Cancel'), style: 'cancel' },
+          {
+            text: t('common.discard', 'Discard'),
+            style: 'destructive',
+            onPress: () => navigation.dispatch(e.data.action),
+          },
+        ],
+      );
+    });
+    return unsub;
+  }, [navigation, hasChanges, saving, t]);
 
   const regionLabel = isFootball
     ? activeRegion === 'all'

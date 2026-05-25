@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -152,22 +152,36 @@ export function EditFavoriteSportsScreen() {
       setSelected((prev) => {
         const next = new Set(prev);
         if (next.has(key)) {
-          if (next.size > MIN_SPORTS) next.delete(key);
+          if (next.size > MIN_SPORTS) {
+            next.delete(key);
+          } else {
+            // At MIN_SPORTS — surface why the tap didn't deselect.
+            // Without this the user just sees a non-responsive
+            // chip and assumes the UI is broken.
+            Alert.alert(
+              t('editFavoriteSports.minTitle', 'Pick at least one sport'),
+              t(
+                'editFavoriteSports.minBody',
+                'You need to keep at least one favorite sport. Add another before removing this one.',
+              ),
+            );
+          }
         } else {
           next.add(key);
         }
         return next;
       });
     },
-    [],
+    [t],
   );
 
   const handleSave = useCallback(async () => {
     if (!tokens?.accessToken || selected.size < MIN_SPORTS) return;
     setSaving(true);
     try {
-      await authApi.setFavoriteSports(tokens.accessToken, Array.from(selected));
-      await refreshProfile();
+      const res = await authApi.setFavoriteSports(tokens.accessToken, Array.from(selected));
+      // Patch-only refresh — see AuthContext.refreshProfile docstring.
+      await refreshProfile({ favoriteSports: res.favoriteSports });
       navigation.goBack();
     } catch {
       Alert.alert(t('common.error'), t('editFavorites.errorSports'));
@@ -181,6 +195,31 @@ export function EditFavoriteSportsScreen() {
   const hasChanges =
     selected.size !== currentSports.size ||
     Array.from(selected).some((s) => !currentSports.has(s));
+
+  // Guard against accidental loss — see EditFavoriteTeamsScreen for
+  // the rationale and the same pattern.
+  useEffect(() => {
+    const unsub = navigation.addListener('beforeRemove', (e) => {
+      if (!hasChanges || saving) return;
+      e.preventDefault();
+      Alert.alert(
+        t('editFavorites.discardTitle', 'Discard changes?'),
+        t(
+          'editFavorites.discardSportsBody',
+          'You have unsaved sport selections. Leave without saving?',
+        ),
+        [
+          { text: t('common.cancel', 'Cancel'), style: 'cancel' },
+          {
+            text: t('common.discard', 'Discard'),
+            style: 'destructive',
+            onPress: () => navigation.dispatch(e.data.action),
+          },
+        ],
+      );
+    });
+    return unsub;
+  }, [navigation, hasChanges, saving, t]);
 
   return (
     <View style={styles.container}>

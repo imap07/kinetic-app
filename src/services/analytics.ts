@@ -101,14 +101,78 @@ export async function identifyForAnalytics(userId: string): Promise<void> {
 }
 
 // ─── Screen tracking ───────────────────────────────────────
-export async function logScreenView(screenName: string, screenClass?: string) {
+
+export interface ScreenContext {
+  /** Sport key when the screen is sport-scoped (Dashboard tabs,
+   *  MatchPrediction, LeagueDetail, etc.). Omit for sport-agnostic
+   *  screens like Profile or Settings. */
+  sport?: string;
+  /** League / competition / tournament id when relevant. */
+  leagueApiId?: number;
+  /** Game / fixture / race id when relevant. */
+  gameApiId?: number;
+  /** Free-form short label for non-id context (e.g. paywall trigger). */
+  variant?: string;
+}
+
+/**
+ * Emit screen_view. `screenName` stays the base route ("MatchPrediction")
+ * for Firebase Analytics' built-in Screens report, but we ALSO send the
+ * sport/ids as event properties so dashboards can segment by sport
+ * ("show me MatchPrediction views, football only").
+ *
+ * `screen_name_full` is a derived label that appends the sport when
+ * present, so the raw event list reads as "MatchPrediction_football"
+ * instead of a sea of identical "MatchPrediction" rows — easier to
+ * eyeball in PostHog's Live Events.
+ */
+export async function logScreenView(
+  screenName: string,
+  screenClass?: string,
+  context?: ScreenContext,
+) {
+  const params: Record<string, string | number> = {
+    screen_name: screenName,
+    screen_class: screenClass ?? screenName,
+  };
+  if (context?.sport) params.sport = context.sport;
+  if (context?.leagueApiId) params.league_api_id = context.leagueApiId;
+  if (context?.gameApiId) params.game_api_id = context.gameApiId;
+  if (context?.variant) params.variant = context.variant;
+  // Derived full label — useful in PostHog Live Events / Firebase
+  // DebugView where stacked identical screen_names are unreadable.
+  // Max 100 chars to stay within Firebase's screen_name limit.
+  const suffix = [context?.sport, context?.variant].filter(Boolean).join('_');
+  params.screen_name_full = (suffix ? `${screenName}_${suffix}` : screenName).slice(0, 100);
+
   try {
-    await logEvent(ga(), 'screen_view', {
-      screen_name: screenName,
-      screen_class: screenClass ?? screenName,
-    });
+    await logEvent(ga(), 'screen_view', params);
   } catch (_) {
     // analytics unavailable (e.g. Expo Go)
+  }
+
+  // Mirror to PostHog so funnels / cohorts can use the same context.
+  if (!POSTHOG_API_KEY) return;
+  const distinctId = currentDistinctId ?? `anon-${Date.now()}`;
+  try {
+    await fetch(`${POSTHOG_HOST.replace(/\/$/, '')}/capture/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        api_key: POSTHOG_API_KEY,
+        event: '$screen',
+        distinct_id: distinctId,
+        properties: {
+          $screen_name: params.screen_name_full,
+          ...params,
+          $lib: 'kinetic-mobile',
+          appVersion: Constants.expoConfig?.version,
+        },
+        timestamp: new Date().toISOString(),
+      }),
+    });
+  } catch {
+    /* posthog optional */
   }
 }
 

@@ -16,7 +16,7 @@ import RevenueCatUI, { PAYWALL_RESULT } from 'react-native-purchases-ui';
 import Toast from 'react-native-toast-message';
 import i18n from '../i18n';
 import { useAuth } from './AuthContext';
-import { logSubscriptionStart } from '../services/analytics';
+import { logSubscriptionStart, track } from '../services/analytics';
 
 // RevenueCat requires platform-specific public SDK keys.
 // - iOS  → appl_...  (rejected on Android)
@@ -181,6 +181,40 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
       const { customerInfo } = await Purchases.purchasePackage(pkg);
       updateFromCustomerInfo(customerInfo);
       logSubscriptionStart(pkg.identifier);
+      // Typed paywall_converted event for the Monetization funnel.
+      // We classify subscriptions vs coin packs by `productCategory`
+      // (RevenueCat exposes 'SUBSCRIPTION' for autorenewing plans and
+      // 'NON_SUBSCRIPTION' for consumables like coin packs). Plan
+      // shape is `monthly | annual` from the package's period type.
+      // Trial detection: RevenueCat returns the active entitlement
+      // with `periodType` of `intro`/`trial` on first conversion.
+      if (pkg.product.productCategory === 'SUBSCRIPTION') {
+        const isAnnual =
+          pkg.identifier.includes('annual') ||
+          pkg.identifier.includes('year') ||
+          pkg.product.identifier.includes('annual');
+        const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
+        const trialUsed = entitlement?.periodType === 'TRIAL' || entitlement?.periodType === 'INTRO';
+        track({
+          event: 'paywall_converted',
+          plan: isAnnual ? 'annual' : 'monthly',
+          trialUsed,
+          // Static "purchase" trigger here because the caller (Paywall
+          // or CoinStore) doesn't pass the original CTA. The
+          // paywall_shown event already carries the trigger so the
+          // funnel can stitch on user+timestamp.
+          trigger: 'purchase',
+        }).catch(() => {});
+      } else {
+        // Non-subscription = coin pack. Use the existing coin_purchase
+        // event so the monetization dashboard captures both paths.
+        const priceUsd = typeof pkg.product.price === 'number' ? pkg.product.price : 0;
+        track({
+          event: 'coin_purchase',
+          pack: pkg.product.identifier,
+          priceUsd,
+        }).catch(() => {});
+      }
       return true;
     } catch (e: any) {
       if (!e.userCancelled) {

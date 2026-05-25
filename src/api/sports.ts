@@ -276,8 +276,12 @@ export const sportsApi = {
     return apiClient.get<any>(`/sports/${sport}/drivers/${driverApiId}`, { token });
   },
 
-  getLeagues(token: string, sport: SportKey) {
-    return apiClient.get<SportLeague[]>(`/sports/${sport}/leagues`, { token });
+  getLeagues(token: string, sport: SportKey, opts: { all?: boolean } = {}) {
+    // `all: true` requests the full active catalog instead of the
+    // small featured set — used by the profile "add another league"
+    // picker so users can browse past the curated default.
+    const qs = opts.all ? '?all=true' : '';
+    return apiClient.get<SportLeague[]>(`/sports/${sport}/leagues${qs}`, { token });
   },
 
   getF1Teams(token: string, search?: string): Promise<F1TeamsResponse> {

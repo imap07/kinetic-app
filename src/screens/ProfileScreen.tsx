@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -19,7 +19,7 @@ import {
   MaterialCommunityIcons,
   Feather,
 } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme';
 import { AdBanner } from '../components/AdBanner';
@@ -202,7 +202,29 @@ export function ProfileScreen() {
   const { t } = useTranslation();
   const profileNav = useNavigation<NativeStackNavigationProp<ProfileStackParamList>>();
   const rootNav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { logout, user, tokens } = useAuth();
+  const { logout, user, tokens, refreshProfile } = useAuth();
+
+  // Safety-net refresh on focus. Most updates flow through
+  // refreshProfile({patch}) from the Edit* screens, so the user object
+  // is already in sync when we get here — but this catches:
+  //   • Backgrounded app where coin/tier/achievement state changed
+  //     server-side via cron (no local trigger).
+  //   • Coming back from a flow that didn't patch the user (e.g.
+  //     paywall after a successful purchase).
+  // Throttled to once per 30s to avoid hammering /auth/me when the
+  // user is bouncing between tabs.
+  const lastRefreshRef = useRef<number>(0);
+  useFocusEffect(
+    useCallback(() => {
+      const now = Date.now();
+      if (now - lastRefreshRef.current < 30_000) return;
+      lastRefreshRef.current = now;
+      refreshProfile().catch(() => {
+        // Swallow — stale data is acceptable here, error surfaces
+        // on the next user-initiated action.
+      });
+    }, [refreshProfile]),
+  );
   const { isProMember } = usePurchases();
 
   const [history, setHistory] = useState<PredictionData[]>([]);

@@ -19,6 +19,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { useDailyOpenCheckIn } from '../hooks/useDailyOpenCheckIn';
+import { useSessionTracking } from '../hooks/useSessionTracking';
 import { colors } from '../theme';
 import { ONBOARDING_COMPLETE_KEY } from '../screens/OnboardingScreen';
 import { SportSelectionScreen } from '../screens/SportSelectionScreen';
@@ -340,6 +341,23 @@ function getActiveRouteName(state: NavigationState | undefined): string | undefi
   return route.name;
 }
 
+/**
+ * Walk the nav state to the leaf route and return its params so the
+ * screen_view event can carry sport/league/game context. Many of our
+ * screens already pass `{ sport, gameApiId, leagueApiId }` via
+ * navigation.navigate(...) — this just plumbs that through to the
+ * analytics sink so dashboards can segment per-sport without needing
+ * a code change at every screen.
+ */
+function getActiveRouteParams(
+  state: NavigationState | undefined,
+): Record<string, any> | undefined {
+  if (!state) return undefined;
+  const route = state.routes[state.index];
+  if (route.state) return getActiveRouteParams(route.state as NavigationState);
+  return (route.params as Record<string, any> | undefined) ?? undefined;
+}
+
 export function AppNavigator() {
   const { isAuthenticated, isLoading, user } = useAuth();
   // Daily app-open check-in fires on mount + every foreground.
@@ -347,13 +365,32 @@ export function AppNavigator() {
   // both AuthContext and CoinContext, and both are providers
   // wrapping AppNavigator.
   useDailyOpenCheckIn();
+  // Session + lifecycle telemetry. Gated on isAuthenticated so we
+  // don't double-track the "logged out" launch as a real session.
+  useSessionTracking(!!user);
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
   const routeNameRef = useRef<string | undefined>(undefined);
 
   const onNavigationStateChange = useCallback((state: NavigationState | undefined) => {
     const currentRouteName = getActiveRouteName(state);
     if (currentRouteName && currentRouteName !== routeNameRef.current) {
-      logScreenView(currentRouteName);
+      // Extract optional sport/league/game from the leaf route's params
+      // (e.g. MatchPrediction is navigated with { sport, gameApiId }).
+      // Unknown shapes pass through harmlessly — logScreenView strips
+      // anything that isn't a primitive.
+      const params = getActiveRouteParams(state);
+      const sport = typeof params?.sport === 'string' ? params.sport : undefined;
+      const leagueApiId =
+        typeof params?.leagueApiId === 'number' ? params.leagueApiId : undefined;
+      const gameApiId =
+        typeof params?.gameApiId === 'number'
+          ? params.gameApiId
+          : typeof params?.fixtureApiId === 'number'
+            ? params.fixtureApiId
+            : typeof params?.raceApiId === 'number'
+              ? params.raceApiId
+              : undefined;
+      logScreenView(currentRouteName, undefined, { sport, leagueApiId, gameApiId });
     }
     routeNameRef.current = currentRouteName;
   }, []);

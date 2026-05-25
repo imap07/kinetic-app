@@ -295,10 +295,18 @@ export function CoinStoreScreen() {
                         {isAnnual ? t('coinStore.proAnnualDesc') : t('coinStore.proMonthlyDesc')}
                       </Text>
                       <View style={styles.proFeatures}>
+                        {/* Feature list aligned to what Pro ACTUALLY does
+                           per CLAUDE.md: ads off, monthly coin bonus,
+                           cosmetic badge + support. NEVER list a gameplay
+                           feature here — it's intentionally absent from
+                           Pro to keep the app fully open. The old copy
+                           ("all sports unlocked", "detailed stats")
+                           overstated benefits that don't exist and
+                           risked Apple §3.1 review pushback. */}
                         {([
-                          t('coinStore.allSportsUnlocked'),
-                          t('coinStore.coinsPerMonth'),
-                          t('coinStore.detailedStats'),
+                          t('coinStore.adFreeFeature'),
+                          isAnnual ? t('coinStore.coinsPerYear') : t('coinStore.coinsPerMonth'),
+                          t('coinStore.supportDevFeature'),
                         ] as string[]).map((f) => (
                           <View key={f} style={styles.proFeatureRow}>
                             <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
@@ -311,7 +319,14 @@ export function CoinStoreScreen() {
                 );
               })
             ) : (
-              /* Fallback Pro cards when RevenueCat isn't configured */
+              // Fallback Pro cards when RevenueCat isn't loaded yet.
+              // Prices come from the same fallback constants used by
+              // PaywallScreen so the user never sees two different
+              // values for the same product in the same session. If you
+              // change these, update PaywallScreen.tsx too. The real
+              // price always comes from `pkg.product.priceString` once
+              // the offering loads — these are only visible during a
+              // network hiccup or before bootstrap completes.
               <>
                 <TouchableOpacity activeOpacity={0.7} onPress={() => handleSubscribe(null)}>
                   <LinearGradient
@@ -323,15 +338,15 @@ export function CoinStoreScreen() {
                         <Ionicons name="diamond" size={14} color={colors.primary} />
                         <Text style={styles.proBadgeText}>{t('coinStore.pro')}</Text>
                       </View>
-                      <Text style={styles.proPrice}>$5.99/mo</Text>
+                      <Text style={styles.proPrice}>$3.99/mo</Text>
                     </View>
                     <Text style={styles.proTitle}>{t('coinStore.proMonthly')}</Text>
                     <Text style={styles.proDesc}>{t('coinStore.proMonthlyDesc')}</Text>
                     <View style={styles.proFeatures}>
                       {([
-                        t('coinStore.allSportsUnlocked'),
+                        t('coinStore.adFreeFeature'),
                         t('coinStore.coinsPerMonth'),
-                        t('coinStore.detailedStats'),
+                        t('coinStore.supportDevFeature'),
                       ] as string[]).map((f) => (
                         <View key={f} style={styles.proFeatureRow}>
                           <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
@@ -353,17 +368,17 @@ export function CoinStoreScreen() {
                         <Text style={styles.proBadgeText}>{t('coinStore.pro')}</Text>
                       </View>
                       <View style={styles.saveBadge}>
-                        <Text style={styles.saveBadgeText}>{t('coinStore.save44')}</Text>
+                        <Text style={styles.saveBadgeText}>{t('coinStore.save48')}</Text>
                       </View>
-                      <Text style={styles.proPrice}>$39.99/yr</Text>
+                      <Text style={styles.proPrice}>$24.99/yr</Text>
                     </View>
                     <Text style={styles.proTitle}>{t('coinStore.proAnnual')}</Text>
                     <Text style={styles.proDesc}>{t('coinStore.proAnnualDesc')}</Text>
                     <View style={styles.proFeatures}>
                       {([
-                        t('coinStore.allSportsUnlocked'),
+                        t('coinStore.adFreeFeature'),
                         t('coinStore.coinsPerYear'),
-                        t('coinStore.detailedStats'),
+                        t('coinStore.supportDevFeature'),
                       ] as string[]).map((f) => (
                         <View key={f} style={styles.proFeatureRow}>
                           <Ionicons name="checkmark-circle" size={16} color={colors.primary} />

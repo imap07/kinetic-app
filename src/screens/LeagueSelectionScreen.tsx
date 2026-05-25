@@ -364,7 +364,14 @@ export function LeagueSelectionScreen({ onComplete, selectedSports }: Props) {
           setFootballByRegion(regionMap);
           setLeagueCache((prev) => ({ ...prev, football: unified }));
         } else {
-          const leagues = await sportsApi.getLeagues(tokens.accessToken, sport as SportKey);
+          // Onboarding league selection — request full active catalog
+          // so users can pick beyond the small featured set. Mirrors
+          // the football branch above which uses getGlobalLeagues.
+          const leagues = await sportsApi.getLeagues(
+            tokens.accessToken,
+            sport as SportKey,
+            { all: true },
+          );
           const unified = leagues.map((l) => sportLeagueToUnified(l, sport));
           setLeagueCache((prev) => ({ ...prev, [sport]: unified }));
         }

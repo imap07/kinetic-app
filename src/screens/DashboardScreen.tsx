@@ -40,7 +40,7 @@ import { useLiveGames } from '../contexts/LiveGamesContext';
 import { useStatsSSE, AchievementSSEData } from '../hooks/useStatsSSE';
 import { useWinCelebration } from '../hooks/useWinCelebration';
 import { WinCelebrationModal } from '../components/WinCelebrationModal';
-import { logSportTabViewed } from '../services/analytics';
+import { logSportTabViewed, track } from '../services/analytics';
 import { AdBanner } from '../components/AdBanner';
 import { RewardedAdButton } from '../components/RewardedAdButton';
 import { useAds } from '../contexts/AdContext';
@@ -349,7 +349,13 @@ export function DashboardScreen({ navigation }: Props) {
     if (sport === activeSport) return;
     setActiveSport(sport);
     setData(null);
+    // Legacy ad-hoc helper stays for backwards-compat with existing
+    // Firebase dashboards. The typed `sport_tab_viewed` event flows
+    // to PostHog with the `surface` discriminator so funnels can tell
+    // apart "explore on dashboard" vs "explore on leagues/live" vs
+    // "explore on leaderboard" — same key, different intent.
     logSportTabViewed(sport);
+    track({ event: 'sport_tab_viewed', sport, surface: 'dashboard' }).catch(() => {});
   }, [activeSport]);
 
   const handleMatchPress = useCallback((game: any) => {

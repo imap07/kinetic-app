@@ -21,6 +21,7 @@ import { useAds } from '../contexts/AdContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useCoins } from '../contexts/CoinContext';
 import { leaguesApi } from '../api/leagues';
+import { track } from '../services/analytics';
 import type { CoinLeague, LeaderboardEntry } from '../api/leagues';
 import { SPORT_TABS, sportsApi } from '../api/sports';
 import type { SportGame, SportKey } from '../api/sports';
@@ -223,6 +224,23 @@ export function CoinLeagueDetailScreen() {
             setActionLoading(true);
             try {
               await leaguesApi.join(tokens!.accessToken, leagueId);
+              // Split paid vs free events so the monetization funnel
+              // can isolate the high-intent cohort (paid joiners) from
+              // the much larger free-join base. Both carry leagueType
+              // so we can correlate format (weekly/matchday/race_weekend)
+              // with downstream activation.
+              if (league.entryFee > 0) {
+                track({
+                  event: 'league_joined_paid',
+                  entryFeeCoins: league.entryFee,
+                  leagueType: league.leagueType ?? 'unknown',
+                }).catch(() => {});
+              } else {
+                track({
+                  event: 'league_joined_free',
+                  leagueType: league.leagueType ?? 'unknown',
+                }).catch(() => {});
+              }
               await Promise.all([fetchData(), refreshBalance()]);
             } catch (e: any) {
               Alert.alert(t('common.error'), e.message || t('leagues.couldNotJoin'));
@@ -244,7 +262,9 @@ export function CoinLeagueDetailScreen() {
         onPress: async () => {
           setActionLoading(true);
           try {
+            const wasPaid = (league?.entryFee ?? 0) > 0;
             await leaguesApi.leave(tokens!.accessToken, leagueId);
+            track({ event: 'league_left', isPaid: wasPaid }).catch(() => {});
             await Promise.all([fetchData(), refreshBalance()]);
           } catch (e: any) {
             Alert.alert(t('common.error'), e.message || t('leagues.couldNotLeave'));

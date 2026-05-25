@@ -182,6 +182,8 @@ export const ANALYTICS_EVENTS = [
   'pick_resolved',
   // Retention
   'session_started',
+  'app_foregrounded',
+  'app_backgrounded',
   'streak_extended',
   'streak_broken',
   'achievement_unlocked',
@@ -190,6 +192,10 @@ export const ANALYTICS_EVENTS = [
   'paywall_converted',
   'coin_purchase',
   'league_joined_paid',
+  'league_joined_free',
+  'league_created',
+  'league_left',
+  'giftcard_redeemed',
   // Growth
   'share_generated',
   'referral_invited',
@@ -198,6 +204,9 @@ export const ANALYTICS_EVENTS = [
   'win_celebration_shared',
   'win_celebration_dismissed',
   'push_opened',
+  'comment_posted',
+  'reaction_toggled',
+  'sport_tab_viewed',
   // Ads
   'rewarded_ad_completed',
 ] as const;

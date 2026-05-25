@@ -24,7 +24,8 @@ import { footballApi, sportsApi, predictionsApi } from '../api';
 import { streaksApi } from '../api/streaks';
 import type { Fixture, FixtureEvent, FixtureStatistic, SportGame, PredictionData } from '../api';
 import Toast from 'react-native-toast-message';
-import { logPickAttempted, logPickCompleted } from '../services/analytics';
+import { logPickAttempted, logPickCompleted, track } from '../services/analytics';
+import type { SportKey, PredictionType as ContractPredictionType } from '../shared/domain';
 import { FootballPitch } from '../components/FootballPitch';
 import { MatchInsightsCard } from '../components/MatchInsightsCard';
 import { useAds } from '../contexts/AdContext';
@@ -825,8 +826,33 @@ export function MatchPredictionScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const route = useRoute<any>();
   const { fixtureApiId, sport = 'football' } = route.params as { fixtureApiId: number; sport?: string };
-  const { tokens } = useAuth();
+  const navSource = (route.params as any)?.source as
+    | 'dashboard'
+    | 'deeplink'
+    | 'notification'
+    | 'search'
+    | 'league'
+    | undefined;
+  const { tokens, user } = useAuth();
   const { trackAction } = useAds();
+
+  // Fire pick_screen_opened once per mount (per fixtureApiId/sport).
+  // The Activation funnel needs this as the entry point — without it
+  // we can only see pick_submitted, missing the drop-off between
+  // "user landed on the prediction screen" and "user actually picked".
+  // `source` is read from nav params so callers (Dashboard list, deep
+  // link handler, push notification opener) get attributed correctly;
+  // unknown source defaults to 'dashboard' since that's the dominant
+  // entry path.
+  useEffect(() => {
+    track({
+      event: 'pick_screen_opened',
+      sport: sport as SportKey,
+      gameApiId: fixtureApiId,
+      source: navSource ?? 'dashboard',
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fixtureApiId, sport]);
 
   const [fixture, setFixture] = useState<Fixture | null>(null);
   const [genericGame, setGenericGame] = useState<SportGame | null>(null);
@@ -1204,6 +1230,19 @@ export function MatchPredictionScreen({ navigation }: Props) {
       const result = await predictionsApi.create(payload, tokens.accessToken);
       setExistingPrediction(result);
       logPickCompleted(sport, leagueApiId ?? 0, predType);
+      // Typed `pick_submitted` event for the Activation funnel.
+      // isFirstPick: we check user.totalPredictions BEFORE the user
+      // state refreshes (the create endpoint increments server-side,
+      // but our local `user` object hasn't been refetched yet, so the
+      // cached value still reflects pre-submit count). Falls back to
+      // `false` if the field is missing for some legacy reason.
+      track({
+        event: 'pick_submitted',
+        sport: sport as SportKey,
+        predictionType: predType as ContractPredictionType,
+        oddsMultiplier: (result as any)?.oddsMultiplier ?? 1,
+        isFirstPick: (user?.totalPredictions ?? 1) === 0,
+      }).catch(() => {});
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       trackAction();
 

@@ -32,6 +32,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { commentsApi, type PickComment } from '../api/comments';
 import { colors } from '../theme';
+import { track } from '../services/analytics';
 
 const MAX_CHARS = 50;
 
@@ -39,12 +40,22 @@ interface Props {
   predictionId: string | null;
   onClose: () => void;
   onCountChanged?: (predictionId: string, delta: number) => void;
+  /**
+   * Set to true when the open pick belongs to a different user.
+   * Drives the `onOthersPick` field on the comment_posted event so
+   * the social-engagement funnel can split "annotating my own pick"
+   * (low signal) from "commenting on someone else's" (high signal).
+   * Default false to keep callers that haven't been migrated yet
+   * from skewing the metric toward self-comments.
+   */
+  isOthersPick?: boolean;
 }
 
 export function PickCommentsSheet({
   predictionId,
   onClose,
   onCountChanged,
+  isOthersPick = false,
 }: Props) {
   const { tokens } = useAuth();
   const { t } = useTranslation();
@@ -111,6 +122,11 @@ export function PickCommentsSheet({
       setItems((prev) => [created, ...prev]);
       setBody('');
       onCountChanged?.(predictionId, +1);
+      track({
+        event: 'comment_posted',
+        length: trimmed.length,
+        onOthersPick: isOthersPick,
+      }).catch(() => {});
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     } catch (e: any) {
       const raw = typeof e?.message === 'string' ? e.message : '';
