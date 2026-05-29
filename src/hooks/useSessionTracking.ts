@@ -30,8 +30,10 @@ import { useEffect, useRef } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { track } from '../services/analytics';
+import { trackAppOpened } from '../utils/analytics';
 
 const INSTALL_DATE_KEY = 'kinetic.installDate';
+const LAST_OPEN_KEY = 'kinetic.lastOpenAt';
 
 async function getDaysSinceInstall(): Promise<number> {
   try {
@@ -46,6 +48,32 @@ async function getDaysSinceInstall(): Promise<number> {
     return Math.max(0, Math.floor((now - installed) / 86_400_000));
   } catch {
     return 0;
+  }
+}
+
+/**
+ * Reads the previous app-open timestamp and refreshes it to `now`.
+ * Returns the day-delta and whether the user is returning (i.e. had
+ * a previous open recorded). First-ever open returns
+ * { daysSinceLastOpen: 0, isReturningUser: false }.
+ */
+async function rotateLastOpen(): Promise<{
+  daysSinceLastOpen: number;
+  isReturningUser: boolean;
+}> {
+  try {
+    const raw = await AsyncStorage.getItem(LAST_OPEN_KEY);
+    const now = Date.now();
+    await AsyncStorage.setItem(LAST_OPEN_KEY, String(now));
+    if (!raw) return { daysSinceLastOpen: 0, isReturningUser: false };
+    const prev = Number(raw);
+    if (!Number.isFinite(prev) || prev <= 0) {
+      return { daysSinceLastOpen: 0, isReturningUser: false };
+    }
+    const days = Math.max(0, Math.floor((now - prev) / 86_400_000));
+    return { daysSinceLastOpen: days, isReturningUser: true };
+  } catch {
+    return { daysSinceLastOpen: 0, isReturningUser: false };
   }
 }
 
@@ -72,6 +100,11 @@ export function useSessionTracking(isAuthenticated: boolean): void {
     (async () => {
       const days = await getDaysSinceInstall();
       track({ event: 'session_started', daysSinceInstall: days }).catch(() => {});
+      // GA4 retention event — separate from session_started so dashboards
+      // can build day-of-return cohorts without re-deriving from the
+      // install date. Fires once per cold launch.
+      const last = await rotateLastOpen();
+      trackAppOpened(last);
     })();
 
     const sub = AppState.addEventListener('change', (state: AppStateStatus) => {

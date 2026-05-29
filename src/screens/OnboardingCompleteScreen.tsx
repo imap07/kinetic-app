@@ -11,6 +11,7 @@ import {
   Share,
 } from 'react-native';
 import { track } from '../services/analytics';
+import { trackOnboardingStep } from '../utils/analytics';
 import { referralsApi, buildReferralUrl, type ReferralStatus } from '../api/referrals';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -181,6 +182,10 @@ export function OnboardingCompleteScreen({
 
     try { await refreshProfile(); } catch {}
     setSaving(false);
+
+    if (onboardingSuccess) {
+      trackOnboardingStep('onboarding_finished');
+    }
 
     // If the onboarding POST failed the user's preferences never persisted.
     // Previously this error was swallowed and the user landed inside the

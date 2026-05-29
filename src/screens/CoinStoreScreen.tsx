@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,8 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import type { ProfileStackParamList } from '../navigation/types';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { colors, spacing, borderRadius } from '../theme';
@@ -19,6 +20,11 @@ import { useCoins } from '../contexts/CoinContext';
 import { useAuth } from '../contexts/AuthContext';
 import { usePurchases } from '../contexts/PurchasesContext';
 import { RewardedAdButton } from '../components/RewardedAdButton';
+import {
+  trackCoinStoreOpened,
+  trackCoinPackageTapped,
+  trackSubscriptionTapped,
+} from '../utils/analytics';
 
 /** Local fallback packages — shown when RevenueCat offerings aren't configured yet */
 const LOCAL_PACKAGES = [
@@ -61,7 +67,30 @@ export function CoinStoreScreen() {
   // Use RevenueCat packages if available, otherwise show local fallback
   const hasRCPackages = rcCoinPackages.length > 0;
 
+  // GA4 funnel: entry into the coin store. Source is read from nav
+  // params so contextual entries (paywall buy-coins, league join
+  // gate, low-balance toast) get attributed correctly. Falls back
+  // to `menu` for the Profile → Wallet → Buy Coins path that doesn't
+  // need a more specific label.
+  const route = useRoute<RouteProp<ProfileStackParamList, 'CoinStore'>>();
+  const source = route.params?.source ?? 'menu';
+  useEffect(() => {
+    trackCoinStoreOpened(source);
+  }, [source]);
+
   const handleBuyCoins = async (pkg: any) => {
+    // GA4: capture tap intent BEFORE the SDK call so we count every
+    // attempt, including the ones that bail at the store sheet.
+    // Numbers are best-effort — RC packages expose `product.price`
+    // and `product.identifier`, the fallback list has its own shape.
+    trackCoinPackageTapped({
+      packageId: pkg?.product?.identifier ?? pkg?.id ?? 'unknown',
+      coins: pkg?.coins ?? 0,
+      price:
+        typeof pkg?.product?.price === 'number'
+          ? pkg.product.price
+          : 0,
+    });
     if (!hasRCPackages) {
       Alert.alert(t('coinStore.comingSoon'), t('coinStore.comingSoonDesc'));
       return;
@@ -85,6 +114,12 @@ export function CoinStoreScreen() {
       Alert.alert(t('coinStore.comingSoon'), t('coinStore.comingSoonDesc'));
       return;
     }
+    // Distinguish monthly vs annual by RC product identifier so the
+    // GA4 funnel can compare plan-level intent within the coin store
+    // entry point (separate from PaywallScreen taps).
+    trackSubscriptionTapped(
+      pkg?.product?.identifier?.includes('annual') ? 'annual' : 'monthly',
+    );
     setPurchasing(pkg.identifier);
     try {
       const success = await purchasePackage(pkg);
@@ -276,7 +311,7 @@ export function CoinStoreScreen() {
                         </View>
                         {isAnnual && (
                           <View style={styles.saveBadge}>
-                            <Text style={styles.saveBadgeText}>{t('coinStore.save44')}</Text>
+                            <Text style={styles.saveBadgeText}>{t('coinStore.saveAnnual')}</Text>
                           </View>
                         )}
                         {isPurchasing ? (
@@ -338,7 +373,7 @@ export function CoinStoreScreen() {
                         <Ionicons name="diamond" size={14} color={colors.primary} />
                         <Text style={styles.proBadgeText}>{t('coinStore.pro')}</Text>
                       </View>
-                      <Text style={styles.proPrice}>$3.99/mo</Text>
+                      <Text style={styles.proPrice}>$1.99/mo</Text>
                     </View>
                     <Text style={styles.proTitle}>{t('coinStore.proMonthly')}</Text>
                     <Text style={styles.proDesc}>{t('coinStore.proMonthlyDesc')}</Text>
@@ -368,9 +403,9 @@ export function CoinStoreScreen() {
                         <Text style={styles.proBadgeText}>{t('coinStore.pro')}</Text>
                       </View>
                       <View style={styles.saveBadge}>
-                        <Text style={styles.saveBadgeText}>{t('coinStore.save48')}</Text>
+                        <Text style={styles.saveBadgeText}>{t('coinStore.saveAnnual')}</Text>
                       </View>
-                      <Text style={styles.proPrice}>$24.99/yr</Text>
+                      <Text style={styles.proPrice}>$14.99/yr</Text>
                     </View>
                     <Text style={styles.proTitle}>{t('coinStore.proAnnual')}</Text>
                     <Text style={styles.proDesc}>{t('coinStore.proAnnualDesc')}</Text>

@@ -92,6 +92,13 @@ export interface MyStatsResponse {
   totalPoints: number;
   currentStreak: number;
   bestStreak: number;
+  /**
+   * Number of CoinLeagues the user is currently in that aren't
+   * settled yet (status ∈ {OPEN, IN_PROGRESS}). Used by the GA4
+   * `dashboard_viewed` event and could feed a "your leagues" badge
+   * on the dashboard in the future.
+   */
+  activeLeaguesCount: number;
   sportBreakdown: {
     sport: string;
     total: number;
@@ -169,9 +176,35 @@ export async function fetchPickedGameIds(token: string): Promise<Set<number>> {
   return new Set(res.predictions.map((p) => p.gameApiId));
 }
 
+/**
+ * Mutable subset of CreatePredictionPayload, used by `update()`. The
+ * sport / gameApiId / team / league metadata is anchored on the
+ * server-stored prediction — only the pick-value fields move.
+ */
+export interface UpdatePredictionPayload {
+  predictionType: CreatePredictionPayload['predictionType'];
+  predictedOutcome?: CreatePredictionPayload['predictedOutcome'];
+  predictedHomeScore?: number | null;
+  predictedAwayScore?: number | null;
+  threshold?: number;
+  side?: 'over' | 'under';
+  bttsAnswer?: 'yes' | 'no';
+  methodOfVictory?: 'ko_tko' | 'submission' | 'decision';
+  podiumAnswer?: 'yes' | 'no';
+  distanceAnswer?: 'yes' | 'no';
+}
+
 export const predictionsApi = {
   create: (payload: CreatePredictionPayload, token: string) =>
     apiClient.post<PredictionData>('/predictions', payload, { token }),
+
+  /**
+   * Edit an existing pending prediction. Server rejects (400) if the
+   * game has already started; surface that to the user as "kickoff
+   * passed" rather than retrying.
+   */
+  update: (id: string, payload: UpdatePredictionPayload, token: string) =>
+    apiClient.patch<PredictionData>(`/predictions/${id}`, payload, { token }),
 
   getMyPicks: (
     token: string,

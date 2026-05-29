@@ -17,6 +17,7 @@ import {
   OnboardingFavoriteLeague,
 } from './types';
 import { useAuth } from '../contexts/AuthContext';
+import { BirthdateReminderModal } from '../components/BirthdateReminderModal';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { useDailyOpenCheckIn } from '../hooks/useDailyOpenCheckIn';
 import { useSessionTracking } from '../hooks/useSessionTracking';
@@ -570,6 +571,7 @@ export function AppNavigator() {
           <RootStack.Screen name="Auth" component={AuthNavigator} />
         )}
       </RootStack.Navigator>
+      {isAuthenticated && <BirthdateReminderModal />}
     </NavigationContainer>
   );
 }

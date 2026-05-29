@@ -49,6 +49,14 @@ interface AuthResponse {
   message: string;
   user: User;
   tokens: AuthTokens;
+  /**
+   * Only present on social-login responses. `true` when the backend
+   * created a new user document during this call (vs. a returning
+   * login). Used by analytics to fire `registration_completed` only
+   * on actual signups. Undefined on email login/register because
+   * those flows already distinguish themselves at the call site.
+   */
+  isNew?: boolean;
 }
 
 interface TokensResponse {
@@ -67,6 +75,12 @@ interface VerifyCodeResponse {
 interface ProfileResponse {
   message: string;
   user: User;
+  /**
+   * Server signal that the user's birthdate is missing and the soft
+   * prompt modal should be shown on this app open. Only present on
+   * GET /auth/me — mutating endpoints don't return it.
+   */
+  needsBirthdatePrompt?: boolean;
 }
 
 export interface UpdateProfileData {
@@ -237,6 +251,29 @@ export const authApi = {
 
   getProfile(token: string) {
     return apiClient.get<ProfileResponse>('/auth/me', { token });
+  },
+
+  /**
+   * One-time DOB capture for social-login / grandfathered accounts.
+   * Server enforces 18+ and refuses to overwrite an existing birthdate.
+   */
+  setBirthdate(token: string, birthdate: string) {
+    return apiClient.post<ProfileResponse>(
+      '/auth/birthdate',
+      { birthdate },
+      { token },
+    );
+  },
+
+  /**
+   * "Later" tap on the DOB prompt. Snoozes the modal for 3 days.
+   */
+  dismissBirthdatePrompt(token: string) {
+    return apiClient.post<MessageResponse>(
+      '/auth/birthdate/dismiss',
+      {},
+      { token },
+    );
   },
 
   // PIPEDA / Quebec Law 25 access surface. Backend throttle is

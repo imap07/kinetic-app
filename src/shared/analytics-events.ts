@@ -178,7 +178,105 @@ export type AnalyticsProps =
       surface: 'dashboard' | 'live' | 'leagues' | 'leaderboard';
     }
   // ─── Ads ──────────────────────────────────────────────────
-  | { event: 'rewarded_ad_completed'; coinsAwarded: number };
+  | { event: 'rewarded_ad_completed'; coinsAwarded: number }
+  // ─── Birthdate soft-prompt (social-login / grandfathered) ─
+  | { event: 'birthdate_prompt_shown' }
+  | { event: 'birthdate_prompt_confirmed' }
+  | { event: 'birthdate_prompt_dismissed' }
+  | { event: 'birthdate_prompt_error' }
+  // ─── GA4 funnel events ──────────────────────────────────
+  // String literals (not enums) because GA4 stores them verbatim
+  // and a typo in a screen file shouldn't break compilation in an
+  // unrelated module. The tagged union is enough to catch typos
+  // at the call site that matters.
+  | {
+      event: 'onboarding_step';
+      step:
+        | 'welcome_seen'
+        | 'auth_screen_opened'
+        | 'google_signin_tapped'
+        | 'apple_signin_tapped'
+        | 'email_signin_tapped'
+        | 'email_form_submitted'
+        | 'registration_completed'
+        | 'team_selected'
+        | 'onboarding_finished';
+    }
+  | { event: 'onboarding_abandoned'; lastStep: string }
+  | {
+      event: 'prediction_started';
+      sport: SportKey;
+      matchId: string;
+      // Entry surface so the GA4 funnel can split usage by tab.
+      // `home` = Dashboard → MatchPrediction; `live` = Live screen
+      // route; `league` = inside a CoinLeague detail. Optional —
+      // older clients still emit without it.
+      surface?: 'home' | 'live' | 'league';
+    }
+  | {
+      event: 'prediction_made';
+      sport: SportKey;
+      matchId: string;
+      leagueType: 'free' | 'paid';
+      isExactScore: boolean;
+      surface?: 'home' | 'live' | 'league';
+    }
+  | {
+      event: 'prediction_abandoned';
+      sport: SportKey;
+      step: 'team_selection' | 'score_input' | 'confirmation';
+    }
+  | { event: 'prediction_edited'; sport: SportKey }
+  | { event: 'league_viewed'; leagueType: 'free' | 'paid'; leagueId: string }
+  | {
+      event: 'league_join_attempted';
+      leagueType: 'free' | 'paid';
+      entryFee: number;
+    }
+  | {
+      event: 'league_joined';
+      leagueType: 'free' | 'paid';
+      entryFee: number;
+    }
+  | {
+      event: 'league_join_abandoned';
+      reason: 'insufficient_coins' | 'back_pressed' | 'error';
+    }
+  | {
+      event: 'paywall_seen';
+      source: 'remove_ads_banner' | 'coin_store' | 'profile' | 'organic';
+    }
+  | {
+      event: 'paywall_dismissed';
+      source: string;
+      timeSpentSeconds: number;
+    }
+  | {
+      event: 'coin_store_opened';
+      source: 'league_join_gate' | 'low_balance_warning' | 'menu' | 'profile';
+    }
+  | {
+      event: 'coin_package_tapped';
+      packageId: string;
+      coins: number;
+      price: number;
+    }
+  | { event: 'subscription_tapped'; plan: 'monthly' | 'annual' }
+  | {
+      event: 'app_opened';
+      isReturningUser: boolean;
+      daysSinceLastOpen: number;
+    }
+  | {
+      event: 'dashboard_viewed';
+      hasActivePredictions: boolean;
+      activeLeaguesCount: number;
+    }
+  | { event: 'notification_tapped'; type: string }
+  | {
+      event: 'share_tapped';
+      context: 'league_invite' | 'prediction_result';
+    };
 
 /**
  * Extract just the event name from a tagged-union member.

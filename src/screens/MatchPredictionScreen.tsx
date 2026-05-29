@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -25,6 +25,13 @@ import { streaksApi } from '../api/streaks';
 import type { Fixture, FixtureEvent, FixtureStatistic, SportGame, PredictionData } from '../api';
 import Toast from 'react-native-toast-message';
 import { logPickAttempted, logPickCompleted, track } from '../services/analytics';
+import {
+  trackPredictionStarted,
+  trackPredictionMade,
+  trackPredictionAbandoned,
+  trackPredictionEdited,
+} from '../utils/analytics';
+import type { UpdatePredictionPayload } from '../api/predictions';
 import type { SportKey, PredictionType as ContractPredictionType } from '../shared/domain';
 import { FootballPitch } from '../components/FootballPitch';
 import { MatchInsightsCard } from '../components/MatchInsightsCard';
@@ -833,6 +840,15 @@ export function MatchPredictionScreen({ navigation }: Props) {
     | 'search'
     | 'league'
     | undefined;
+  // The same MatchPredictionScreen is mounted from three stacks
+  // (Home/Live/Leagues) under different route names. Map the route
+  // name to the GA4 `surface` enum so funnels can split by entry tab.
+  const surface: 'home' | 'live' | 'league' =
+    route.name === 'LiveMatchPrediction'
+      ? 'live'
+      : route.name === 'LeagueMatchPrediction'
+        ? 'league'
+        : 'home';
   const { tokens, user } = useAuth();
   const { trackAction } = useAds();
 
@@ -851,8 +867,29 @@ export function MatchPredictionScreen({ navigation }: Props) {
       gameApiId: fixtureApiId,
       source: navSource ?? 'dashboard',
     }).catch(() => {});
+    // GA4 funnel counterpart — same intent, different aggregation
+    // (GA4 reads `prediction_started`; PostHog dashboards still
+    // consume `pick_screen_opened` so we keep both).
+    trackPredictionStarted(sport as SportKey, String(fixtureApiId), surface);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fixtureApiId, sport]);
+
+  // Abandonment tracking: set to true when the user actually submits
+  // a prediction. If they leave the screen without ever submitting
+  // (back press, swipe close, navigate to a sibling), the unmount
+  // effect fires `prediction_abandoned` with a `step` derived from
+  // how far through the form the user got at the moment they left.
+  const submittedRef = useRef(false);
+  const abandonStepRef = useRef<'team_selection' | 'score_input' | 'confirmation'>(
+    'team_selection',
+  );
+  useEffect(() => {
+    return () => {
+      if (submittedRef.current) return;
+      trackPredictionAbandoned(sport as SportKey, abandonStepRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [fixture, setFixture] = useState<Fixture | null>(null);
   const [genericGame, setGenericGame] = useState<SportGame | null>(null);
@@ -860,6 +897,12 @@ export function MatchPredictionScreen({ navigation }: Props) {
   const [refreshing, setRefreshing] = useState(false);
 
   const [existingPrediction, setExistingPrediction] = useState<PredictionData | null>(null);
+  // When true, the user has tapped "Edit pick" on an existing pending
+  // prediction. The form is shown pre-filled with the current values
+  // and submit will PATCH instead of POST. Allowed only before kickoff
+  // — the server enforces the same gate, the UI just hides the entry
+  // point once `gameDate <= now`.
+  const [isEditing, setIsEditing] = useState(false);
   const [selectedOutcome, setSelectedOutcome] = useState<OutcomeChoice | null>(null);
   const [predType, setPredType] = useState<PredictionType>('result');
   const [homeScoreInput, setHomeScoreInput] = useState('');
@@ -872,6 +915,68 @@ export function MatchPredictionScreen({ navigation }: Props) {
   const [distanceAnswer, setDistanceAnswer] = useState<YesNoChoice | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [milestoneData, setMilestoneData] = useState<{ streak: number; coins: number } | null>(null);
+
+  // Keep `abandonStepRef` in sync with form progress. Read on unmount
+  // (above) to attribute drop-off to the right funnel step. The
+  // classification is intentionally coarse: GA4 funnels care about
+  // bucket, not pixel-level UX.
+  useEffect(() => {
+    const hasOutcome = !!selectedOutcome;
+    const hasExactScore =
+      predType === 'exact_score' &&
+      homeScoreInput !== '' &&
+      awayScoreInput !== '';
+    const hasOverUnder =
+      predType === 'over_under' && ouSide !== null && ouThreshold !== null;
+    const hasBtts = predType === 'btts' && bttsAnswer !== null;
+    const hasMethod = predType === 'method_of_victory' && methodOfVictory !== null;
+    const hasPodium = predType === 'podium_finish' && podiumAnswer !== null;
+    const hasDistance = predType === 'goes_the_distance' && distanceAnswer !== null;
+
+    const readyToSubmit =
+      hasExactScore ||
+      hasOverUnder ||
+      hasBtts ||
+      hasMethod ||
+      hasPodium ||
+      hasDistance ||
+      (predType !== 'exact_score' &&
+        predType !== 'over_under' &&
+        predType !== 'btts' &&
+        predType !== 'method_of_victory' &&
+        predType !== 'podium_finish' &&
+        predType !== 'goes_the_distance' &&
+        hasOutcome);
+
+    if (readyToSubmit) {
+      abandonStepRef.current = 'confirmation';
+    } else if (
+      hasOutcome ||
+      ouSide !== null ||
+      ouThreshold !== null ||
+      bttsAnswer !== null ||
+      methodOfVictory !== null ||
+      podiumAnswer !== null ||
+      distanceAnswer !== null ||
+      homeScoreInput !== '' ||
+      awayScoreInput !== ''
+    ) {
+      abandonStepRef.current = 'score_input';
+    } else {
+      abandonStepRef.current = 'team_selection';
+    }
+  }, [
+    predType,
+    selectedOutcome,
+    homeScoreInput,
+    awayScoreInput,
+    ouSide,
+    ouThreshold,
+    bttsAnswer,
+    methodOfVictory,
+    podiumAnswer,
+    distanceAnswer,
+  ]);
 
   const [h2hFixtures, setH2hFixtures] = useState<Fixture[]>([]);
   const [h2hLoading, setH2hLoading] = useState(false);
@@ -1193,42 +1298,73 @@ export function MatchPredictionScreen({ navigation }: Props) {
 
     setSubmitting(true);
     try {
-      const payload: any = {
-        sport,
-        gameApiId: fixtureApiId,
-        leagueApiId,
-        gameDate,
-        homeTeamName,
-        homeTeamLogo,
-        awayTeamName,
-        awayTeamLogo,
-        leagueName,
-        leagueLogo,
+      // Branch: edit mode hits PATCH /:id with the mutable subset; new
+      // pick hits POST with the full create payload. The pick-value
+      // fields are identical between the two, so we build them once
+      // and pick the right call below.
+      const valueFields = {
         predictionType: predType,
-        predictedOutcome: needsOutcome ? selectedOutcome : undefined,
-        predictedHomeScore: predType === 'exact_score' ? parseInt(homeScoreInput, 10) : null,
-        predictedAwayScore: predType === 'exact_score' ? parseInt(awayScoreInput, 10) : null,
+        predictedOutcome: needsOutcome ? (selectedOutcome ?? undefined) : undefined,
+        predictedHomeScore:
+          predType === 'exact_score' ? parseInt(homeScoreInput, 10) : null,
+        predictedAwayScore:
+          predType === 'exact_score' ? parseInt(awayScoreInput, 10) : null,
+        ...(predType === 'over_under'
+          ? { threshold: ouThreshold ?? undefined, side: ouSide ?? undefined }
+          : {}),
+        ...(predType === 'btts' ? { bttsAnswer: bttsAnswer ?? undefined } : {}),
+        ...(predType === 'method_of_victory'
+          ? { methodOfVictory: methodOfVictory ?? undefined }
+          : {}),
+        ...(predType === 'podium_finish'
+          ? { podiumAnswer: podiumAnswer ?? undefined }
+          : {}),
+        ...(predType === 'goes_the_distance'
+          ? { distanceAnswer: distanceAnswer ?? undefined }
+          : {}),
       };
 
-      if (predType === 'over_under') {
-        payload.threshold = ouThreshold;
-        payload.side = ouSide;
+      let result: PredictionData;
+      const editing = isEditing && existingPrediction;
+      if (editing) {
+        result = await predictionsApi.update(
+          existingPrediction._id,
+          valueFields as UpdatePredictionPayload,
+          tokens.accessToken,
+        );
+      } else {
+        const payload: any = {
+          sport,
+          gameApiId: fixtureApiId,
+          leagueApiId,
+          gameDate,
+          homeTeamName,
+          homeTeamLogo,
+          awayTeamName,
+          awayTeamLogo,
+          leagueName,
+          leagueLogo,
+          ...valueFields,
+        };
+        result = await predictionsApi.create(payload, tokens.accessToken);
       }
-      if (predType === 'btts') {
-        payload.bttsAnswer = bttsAnswer;
-      }
-      if (predType === 'method_of_victory') {
-        payload.methodOfVictory = methodOfVictory;
-      }
-      if (predType === 'podium_finish') {
-        payload.podiumAnswer = podiumAnswer;
-      }
-      if (predType === 'goes_the_distance') {
-        payload.distanceAnswer = distanceAnswer;
-      }
-
-      const result = await predictionsApi.create(payload, tokens.accessToken);
       setExistingPrediction(result);
+      setIsEditing(false);
+      if (editing) {
+        // GA4 funnel event for edit flow. Skip `pick_submitted` /
+        // streak / first-pick path since those fired on the original
+        // create and shouldn't double-count.
+        trackPredictionEdited(sport as SportKey);
+        submittedRef.current = true;
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Toast.show({
+          type: 'success',
+          text1: t('matchPrediction.predictionUpdated', {
+            defaultValue: 'Pick updated',
+          }),
+        });
+        return;
+      }
       logPickCompleted(sport, leagueApiId ?? 0, predType);
       // Typed `pick_submitted` event for the Activation funnel.
       // isFirstPick: we check user.totalPredictions BEFORE the user
@@ -1243,6 +1379,21 @@ export function MatchPredictionScreen({ navigation }: Props) {
         oddsMultiplier: (result as any)?.oddsMultiplier ?? 1,
         isFirstPick: (user?.totalPredictions ?? 1) === 0,
       }).catch(() => {});
+      // GA4 funnel: distinguish paid vs free league context so the
+      // monetization team can isolate paid-league pick rate. Read
+      // leagueType from nav params when available, otherwise treat
+      // as `free` (default for picks from the dashboard).
+      trackPredictionMade({
+        sport: sport as SportKey,
+        matchId: String(fixtureApiId),
+        leagueType:
+          (route.params as any)?.entryFee && (route.params as any).entryFee > 0
+            ? 'paid'
+            : 'free',
+        isExactScore: predType === 'exact_score',
+        surface,
+      });
+      submittedRef.current = true;
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       trackAction();
 
@@ -1278,6 +1429,53 @@ export function MatchPredictionScreen({ navigation }: Props) {
       setSubmitting(false);
     }
   };
+
+  /**
+   * Pre-kickoff editing: pre-fills the form with the existing pick's
+   * values and flips the screen into edit mode. The user can then
+   * change predictionType / outcome / scores and submit again. The
+   * Submit handler routes to update() when `isEditing` is true.
+   */
+  const handleStartEdit = useCallback(() => {
+    if (!existingPrediction) return;
+    setPredType(existingPrediction.predictionType as PredictionType);
+    setSelectedOutcome((existingPrediction.predictedOutcome as OutcomeChoice) ?? null);
+    setHomeScoreInput(
+      existingPrediction.predictedHomeScore != null
+        ? String(existingPrediction.predictedHomeScore)
+        : '',
+    );
+    setAwayScoreInput(
+      existingPrediction.predictedAwayScore != null
+        ? String(existingPrediction.predictedAwayScore)
+        : '',
+    );
+    setOuSide((existingPrediction.side as 'over' | 'under' | null) ?? null);
+    setOuThreshold(existingPrediction.threshold ?? null);
+    setBttsAnswer((existingPrediction.bttsAnswer as 'yes' | 'no' | null) ?? null);
+    setMethodOfVictory(
+      (existingPrediction.methodOfVictory as MethodOfVictoryChoice | null) ?? null,
+    );
+    setPodiumAnswer((existingPrediction.podiumAnswer as YesNoChoice | null) ?? null);
+    setDistanceAnswer(
+      (existingPrediction.distanceAnswer as YesNoChoice | null) ?? null,
+    );
+    setIsEditing(true);
+  }, [existingPrediction]);
+
+  /** Bail out of edit mode without saving — restores the read-only card. */
+  const handleCancelEdit = useCallback(() => {
+    setIsEditing(false);
+    setSelectedOutcome(null);
+    setHomeScoreInput('');
+    setAwayScoreInput('');
+    setOuSide(null);
+    setOuThreshold(null);
+    setBttsAnswer(null);
+    setMethodOfVictory(null);
+    setPodiumAnswer(null);
+    setDistanceAnswer(null);
+  }, []);
 
   const handleDeletePrediction = async () => {
     if (!tokens?.accessToken || !existingPrediction) return;
@@ -1954,7 +2152,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
                     </Text>
                   )}
                 </View>
-              ) : existingPrediction ? (
+              ) : existingPrediction && !isEditing ? (
                 <View style={styles.existingPredContainer}>
                   <View style={styles.existingPredBadge}>
                     <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
@@ -1984,10 +2182,24 @@ export function MatchPredictionScreen({ navigation }: Props) {
                   <Text style={styles.existingPredMultiplier}>
                     x{existingPrediction.oddsMultiplier.toFixed(1)} {t('matchPrediction.multiplier')}
                   </Text>
-                  <TouchableOpacity style={styles.deleteBtn} onPress={handleDeletePrediction}>
-                    <Ionicons name="close-circle-outline" size={16} color="#DC2626" />
-                    <Text style={styles.deleteBtnText}>{t('matchPrediction.cancelPick')}</Text>
-                  </TouchableOpacity>
+                  <View style={styles.existingPredActions}>
+                    {/* Edit is only offered while kickoff is still in the
+                        future. After kickoff the server rejects the PATCH
+                        with 400, so hiding the button keeps the UI honest
+                        (no fake hope of being able to change a locked pick). */}
+                    {new Date(gameDate).getTime() > Date.now() && (
+                      <TouchableOpacity style={styles.editBtn} onPress={handleStartEdit}>
+                        <Ionicons name="create-outline" size={16} color={colors.primary} />
+                        <Text style={styles.editBtnText}>
+                          {t('matchPrediction.editPick', { defaultValue: 'Edit pick' })}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    <TouchableOpacity style={styles.deleteBtn} onPress={handleDeletePrediction}>
+                      <Ionicons name="close-circle-outline" size={16} color="#DC2626" />
+                      <Text style={styles.deleteBtnText}>{t('matchPrediction.cancelPick')}</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               ) : (
                 <>
@@ -2468,9 +2680,26 @@ export function MatchPredictionScreen({ navigation }: Props) {
                     {submitting ? (
                       <ActivityIndicator size="small" color={colors.onPrimary} />
                     ) : (
-                      <Text style={styles.submitButtonText}>{t('matchPrediction.submitPrediction')}</Text>
+                      <Text style={styles.submitButtonText}>
+                        {isEditing
+                          ? t('matchPrediction.updatePrediction', {
+                              defaultValue: 'Update pick',
+                            })
+                          : t('matchPrediction.submitPrediction')}
+                      </Text>
                     )}
                   </TouchableOpacity>
+                  {isEditing && (
+                    <TouchableOpacity
+                      style={styles.cancelEditBtn}
+                      onPress={handleCancelEdit}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.cancelEditBtnText}>
+                        {t('common.cancel')}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                   {predType === 'exact_score' && (
                     <Text style={styles.bonusHint}>{t('matchPrediction.bonusHint')}</Text>
                   )}
@@ -3588,12 +3817,27 @@ const styles = StyleSheet.create({
   existingPredMultiplier: {
     fontFamily: 'Inter_700Bold', fontSize: 12, color: colors.primary, letterSpacing: 0.5,
   },
+  existingPredActions: {
+    flexDirection: 'row', gap: 8, marginTop: 8,
+  },
+  editBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8,
+    borderWidth: 1, borderColor: 'rgba(202,253,0,0.3)',
+  },
+  editBtnText: { fontFamily: 'Inter_700Bold', fontSize: 12, color: colors.primary },
   deleteBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8,
     borderWidth: 1, borderColor: 'rgba(220,38,38,0.3)',
   },
   deleteBtnText: { fontFamily: 'Inter_700Bold', fontSize: 12, color: '#DC2626' },
+  cancelEditBtn: {
+    marginTop: 8, alignItems: 'center', paddingVertical: 8,
+  },
+  cancelEditBtnText: {
+    fontFamily: 'Inter_600SemiBold', fontSize: 13, color: colors.onSurfaceVariant,
+  },
 
   resolvedContainer: { gap: 8, alignItems: 'center', paddingVertical: 12 },
   resolvedBadge: {

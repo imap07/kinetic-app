@@ -20,6 +20,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { predictionsApi } from '../api/predictions';
 import type { PredictionData } from '../api/predictions';
 import Toast from 'react-native-toast-message';
+import { trackShareTapped } from '../utils/analytics';
 
 type Props = {
   navigation: NativeStackNavigationProp<HomeStackParamList, 'PickSummary'>;
@@ -111,6 +112,7 @@ export function PickSummaryScreen({ navigation }: Props) {
       .map((p) => `${p.homeTeamName} vs ${p.awayTeamName} -- ${formatOutcome(p, t)}`)
       .join('\n');
     try {
+      trackShareTapped('prediction_result');
       await Share.share({
         message: t('pickSummary.shareMessage', { picks: picksText }),
       });

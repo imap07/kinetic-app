@@ -22,6 +22,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { sportsApi } from '../api/sports';
 import type { SportKey, LeagueFilter, SportLeague } from '../api/sports';
 import type { OnboardingFavoriteTeam, OnboardingFavoriteLeague } from '../navigation/types';
+import { trackOnboardingStep } from '../utils/analytics';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_GAP = 10;
@@ -357,6 +358,10 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
       if (next.has(key)) {
         next.delete(key);
       } else {
+        // Onboarding funnel: only track the first time a team is added,
+        // not toggle-off. Multiple selections within the same screen
+        // still get tracked since each add is a meaningful step.
+        trackOnboardingStep('team_selected');
         next.set(key, {
           apiId: team.apiId,
           sport: team.sport,

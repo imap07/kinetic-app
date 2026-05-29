@@ -154,8 +154,7 @@
     "coinsPerMonth": "50 coins/month",
     "detailedStats": "Detailed stats & analytics",
     "pro": "PRO",
-    "save44": "SAVE 44%",
-    "save48": "SAVE 48%",
+    "saveAnnual": "SAVE 37%",
     "subscribed": "Subscribed!",
     "subscribedDesc": "Welcome to Kinetic Pro! You will receive monthly coins.",
     "subscriptionFailed": "Subscription Failed",
@@ -490,7 +489,7 @@
     "enhanceExperienceDesc": "Remove ads, earn monthly coins, and support Kinetic.",
     "headlineAdFree": "Enjoy Kinetic, Ad-Free",
     "socialProof": "Enjoy Kinetic without interruptions",
-    "save48": "SAVE 48%",
+    "saveAnnual": "SAVE 37%",
     "savePercent": "SAVE {{percent}}%"
   },
   "quests": {
@@ -892,6 +891,9 @@
     "draw": "Draw",
     "win": "Win",
     "submitPrediction": "SUBMIT PREDICTION",
+    "updatePrediction": "UPDATE PICK",
+    "editPick": "Edit pick",
+    "predictionUpdated": "Pick updated",
     "predictionSubmitted": "Prediction Submitted",
     "predictionSubmittedDesc": "Your prediction has been recorded. Good luck!",
     "cancelPrediction": "Cancel Prediction",
@@ -1508,5 +1510,15 @@
     "diamondDesc": "You earned a $10 gift card!",
     "legendTitle": "LEGEND UNLOCKED!",
     "legendDesc": "You earned a $25 gift card!"
+  },
+  "birthdatePrompt": {
+    "title": "Confirm your date of birth",
+    "subtitle": "Kinetic is 18+. We use this only to verify eligibility and to let you redeem gift cards. We never share it.",
+    "placeholder": "Tap to select",
+    "required": "Please tap above to select your date of birth.",
+    "confirm": "Confirm",
+    "later": "Remind me later",
+    "redeemBlockedTitle": "Date of birth required",
+    "redeemBlockedMessage": "Before you can redeem a gift card we need to confirm you are at least 18. Tap below to add your date of birth."
   }
 }

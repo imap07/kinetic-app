@@ -22,6 +22,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { useCoins } from '../contexts/CoinContext';
 import { leaguesApi } from '../api/leagues';
 import { track } from '../services/analytics';
+import {
+  trackLeagueViewed,
+  trackLeagueJoinAttempted,
+  trackLeagueJoined,
+  trackLeagueJoinAbandoned,
+  trackShareTapped,
+} from '../utils/analytics';
 import type { CoinLeague, LeaderboardEntry } from '../api/leagues';
 import { SPORT_TABS, sportsApi } from '../api/sports';
 import type { SportGame, SportKey } from '../api/sports';
@@ -69,6 +76,15 @@ export function CoinLeagueDetailScreen() {
       ]);
       setLeague(leagueRes);
       if (lbRes) setLeaderboard(lbRes.leaderboard);
+      // GA4 funnel: league_viewed fires once we have the league
+      // hydrated (so leagueType is accurate). Re-fire on hydration
+      // changes is fine — GA4 dedupes by event_id internally when
+      // configured and the data point we care about is "user saw
+      // this league this session", not "user re-fetched the doc".
+      trackLeagueViewed(
+        (leagueRes.entryFee ?? 0) > 0 ? 'paid' : 'free',
+        leagueId,
+      );
 
       // Fetch matches for this league's sport
       if (leagueRes?.sport) {
@@ -207,7 +223,10 @@ export function CoinLeagueDetailScreen() {
 
   const handleJoin = async () => {
     if (!league) return;
+    const leagueType: 'free' | 'paid' = league.entryFee > 0 ? 'paid' : 'free';
+    trackLeagueJoinAttempted(leagueType, league.entryFee);
     if (available < league.entryFee) {
+      trackLeagueJoinAbandoned('insufficient_coins');
       Alert.alert(t('leagues.insufficientCoins'), t('leagues.insufficientCoinsDesc', { fee: league.entryFee, available }));
       return;
     }
@@ -217,7 +236,11 @@ export function CoinLeagueDetailScreen() {
         ? t('leagueDetail.joinEntryFee', { fee: league.entryFee })
         : t('leagueDetail.joinFree'),
       [
-        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.cancel'),
+          style: 'cancel',
+          onPress: () => trackLeagueJoinAbandoned('back_pressed'),
+        },
         {
           text: t('leagueDetail.join'),
           onPress: async () => {
@@ -241,8 +264,10 @@ export function CoinLeagueDetailScreen() {
                   leagueType: league.leagueType ?? 'unknown',
                 }).catch(() => {});
               }
+              trackLeagueJoined(leagueType, league.entryFee);
               await Promise.all([fetchData(), refreshBalance()]);
             } catch (e: any) {
+              trackLeagueJoinAbandoned('error');
               Alert.alert(t('common.error'), e.message || t('leagues.couldNotJoin'));
             } finally {
               setActionLoading(false);
@@ -311,6 +336,7 @@ export function CoinLeagueDetailScreen() {
       ? `https://kineticapp.ca/join/${league.inviteCode}`
       : Linking.createURL(`/league/${leagueId}`);
     try {
+      trackShareTapped('league_invite');
       await Share.share({
         message: t('leagues.shareMessage', {
           name: league.name,

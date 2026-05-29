@@ -27,6 +27,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { SESSION_EXPIRED_FLAG_KEY } from '../contexts/AuthContext';
 import { ApiError } from '../api';
 import type { SocialProvider } from '../api';
+import { trackOnboardingStep } from '../utils/analytics';
 import { signInWithGoogle, isGoogleSignInCancelled } from '../services/googleAuth';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { isBiometricLoginEnabled, getBiometricLabel } from '../services/biometricAuth';
@@ -161,6 +162,12 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
     }
   }, []);
 
+  // Onboarding funnel: this screen is the public entry point for
+  // unauthenticated users, so a mount = "welcome_seen".
+  useEffect(() => {
+    trackOnboardingStep('welcome_seen');
+  }, []);
+
   // Check if biometric login is available and auto-prompt
   useEffect(() => {
     (async () => {
@@ -219,20 +226,23 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
   }, []);
 
   const handleEmailContinue = () => {
+    trackOnboardingStep('email_signin_tapped');
     navigation.navigate('EmailAuth');
   };
 
   const handleGoogleLogin = async () => {
     if (socialLoading) return; // prevent double-tap
+    trackOnboardingStep('google_signin_tapped');
     setSocialLoading('google');
     try {
       const result = await signInWithGoogle();
-      await loginWithSocial('google', result.idToken, {
+      const { isNew } = await loginWithSocial('google', result.idToken, {
         idToken: result.idToken,
         email: result.email,
         displayName: result.displayName,
         avatar: result.avatar,
       });
+      if (isNew) trackOnboardingStep('registration_completed');
     } catch (err: any) {
       if (isGoogleSignInCancelled(err)) return;
       if (err?.message === 'SIGN_IN_IN_PROGRESS') return;
@@ -247,6 +257,7 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
   };
 
   const handleAppleLogin = async () => {
+    trackOnboardingStep('apple_signin_tapped');
     setSocialLoading('apple');
     try {
       const credential = await AppleAuthentication.signInAsync({
@@ -265,11 +276,12 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
         .filter(Boolean)
         .join(' ');
 
-      await loginWithSocial('apple', credential.identityToken, {
+      const { isNew } = await loginWithSocial('apple', credential.identityToken, {
         idToken: credential.identityToken,
         email: credential.email ?? undefined,
         displayName: fullName || undefined,
       });
+      if (isNew) trackOnboardingStep('registration_completed');
     } catch (err: any) {
       if (err?.code === 'ERR_REQUEST_CANCELED') return;
       const message =

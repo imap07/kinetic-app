@@ -154,8 +154,7 @@
     "coinsPerMonth": "50 monedas/mes",
     "detailedStats": "Estadísticas detalladas",
     "pro": "PRO",
-    "save44": "AHORRA 44%",
-    "save48": "AHORRA 48%",
+    "saveAnnual": "AHORRA 37%",
     "subscribed": "¡Suscrito!",
     "subscribedDesc": "¡Bienvenido a Kinetic Pro! Recibirás monedas mensuales.",
     "subscriptionFailed": "Error de Suscripción",
@@ -490,7 +489,7 @@
     "enhanceExperienceDesc": "Elimina anuncios, gana monedas mensuales y apoya a Kinetic.",
     "headlineAdFree": "Disfruta Kinetic, Sin Anuncios",
     "socialProof": "Disfruta Kinetic sin interrupciones",
-    "save48": "AHORRA 48%",
+    "saveAnnual": "AHORRA 37%",
     "savePercent": "AHORRA {{percent}}%"
   },
   "quests": {
@@ -892,6 +891,9 @@
     "draw": "Empate",
     "win": "Victoria",
     "submitPrediction": "ENVIAR PREDICCIÓN",
+    "updatePrediction": "ACTUALIZAR PICK",
+    "editPick": "Editar pick",
+    "predictionUpdated": "Pick actualizado",
     "predictionSubmitted": "Predicción Enviada",
     "predictionSubmittedDesc": "Tu predicción ha sido registrada. ¡Buena suerte!",
     "cancelPrediction": "Cancelar Predicción",
@@ -1508,5 +1510,15 @@
     "diamondDesc": "¡Ganaste una gift card de $10!",
     "legendTitle": "¡LEYENDA DESBLOQUEADA!",
     "legendDesc": "¡Ganaste una gift card de $25!"
+  },
+  "birthdatePrompt": {
+    "title": "Confirma tu fecha de nacimiento",
+    "subtitle": "Kinetic es 18+. Usamos este dato solo para verificar elegibilidad y permitir el canje de gift cards. Nunca lo compartimos.",
+    "placeholder": "Toca para seleccionar",
+    "required": "Toca arriba para seleccionar tu fecha de nacimiento.",
+    "confirm": "Confirmar",
+    "later": "Recordarme luego",
+    "redeemBlockedTitle": "Fecha de nacimiento requerida",
+    "redeemBlockedMessage": "Antes de canjear una gift card necesitamos confirmar que tienes al menos 18 años. Toca abajo para añadir tu fecha de nacimiento."
   }
 }

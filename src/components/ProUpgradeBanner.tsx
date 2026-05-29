@@ -18,7 +18,7 @@ export function ProUpgradeBanner() {
 
   // Pull the monthly price live from RevenueCat so the badge stays in
   // sync with whatever App Store Connect has configured. Falls back to
-  // the spec'd $3.99 only when the offering hasn't loaded yet — same
+  // the spec'd $1.99 only when the offering hasn't loaded yet — same
   // strategy as PaywallScreen.tsx so the user never sees two different
   // prices for the same product in the same session.
   const monthlyPkg =
@@ -29,7 +29,7 @@ export function ProUpgradeBanner() {
     null;
   const monthlyPriceLabel = monthlyPkg?.product?.priceString
     ? `${monthlyPkg.product.priceString}/mo`
-    : '$3.99/mo';
+    : '$1.99/mo';
 
   return (
     <TouchableOpacity

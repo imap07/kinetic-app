@@ -34,7 +34,7 @@ const TYPE_ICONS: Record<string, string> = {
 export function GiftcardRedeemScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
-  const { tokens } = useAuth();
+  const { tokens, requestBirthdatePrompt } = useAuth();
   const { trackAction } = useAds();
   // For gift card redemption, only earned coins can be used. We still track
   // `available` for general display but gate redemption on `earnedCoins`.
@@ -136,6 +136,24 @@ export function GiftcardRedeemScreen() {
               );
             } catch (e: any) {
               const raw = typeof e?.message === 'string' ? e.message : '';
+              // Server-side DOB gate. When the user's birthdate is null
+              // we hard-block redemption — surface the modal here instead
+              // of the generic error so they have a one-tap path to
+              // unblock themselves.
+              if (raw.startsWith('BIRTHDATE_REQUIRED')) {
+                Alert.alert(
+                  t('birthdatePrompt.redeemBlockedTitle'),
+                  t('birthdatePrompt.redeemBlockedMessage'),
+                  [
+                    {
+                      text: t('birthdatePrompt.confirm'),
+                      onPress: () => requestBirthdatePrompt(),
+                    },
+                    { text: t('common.cancel'), style: 'cancel' },
+                  ],
+                );
+                return;
+              }
               const safeBody =
                 raw && raw.length < 200 && /\s/.test(raw)
                   ? raw

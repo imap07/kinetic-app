@@ -209,6 +209,35 @@ export const ANALYTICS_EVENTS = [
   'sport_tab_viewed',
   // Ads
   'rewarded_ad_completed',
+  // Birthdate soft-prompt (social-login / grandfathered users)
+  'birthdate_prompt_shown',
+  'birthdate_prompt_confirmed',
+  'birthdate_prompt_dismissed',
+  'birthdate_prompt_error',
+  // ─── GA4 funnel events (added 2026-05-28) ─────────────────
+  // The set below mirrors the funnels we want to see in GA4:
+  // onboarding → first pick → first league → first paywall view →
+  // subscription / coin pack purchase. Existing events above are
+  // kept for backwards compat but new wiring goes through these.
+  'onboarding_step',
+  'onboarding_abandoned',
+  'prediction_started',
+  'prediction_made',
+  'prediction_abandoned',
+  'prediction_edited',
+  'league_viewed',
+  'league_join_attempted',
+  'league_joined',
+  'league_join_abandoned',
+  'paywall_seen',
+  'paywall_dismissed',
+  'coin_store_opened',
+  'coin_package_tapped',
+  'subscription_tapped',
+  'app_opened',
+  'dashboard_viewed',
+  'notification_tapped',
+  'share_tapped',
 ] as const;
 
 export type AnalyticsEvent = typeof ANALYTICS_EVENTS[number];

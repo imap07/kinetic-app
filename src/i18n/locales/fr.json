@@ -154,8 +154,7 @@
     "coinsPerMonth": "50 pièces/mois",
     "detailedStats": "Stats détaillées",
     "pro": "PRO",
-    "save44": "ÉCONOMISE 44%",
-    "save48": "ÉCONOMISE 48%",
+    "saveAnnual": "ÉCONOMISE 37%",
     "subscribed": "Abonné !",
     "subscribedDesc": "Bienvenue dans Kinetic Pro ! Tu recevras des pièces mensuelles.",
     "subscriptionFailed": "Erreur d'Abonnement",
@@ -490,7 +489,7 @@
     "enhanceExperienceDesc": "Supprime les pubs, gagne des pièces mensuelles et soutiens Kinetic.",
     "headlineAdFree": "Profite de Kinetic, Sans Pub",
     "socialProof": "Profite de Kinetic sans interruptions",
-    "save48": "ÉCONOMISE 48%",
+    "saveAnnual": "ÉCONOMISE 37%",
     "savePercent": "ÉCONOMISE {{percent}}%"
   },
   "quests": {
@@ -892,6 +891,9 @@
     "draw": "Match Nul",
     "win": "Victoire",
     "submitPrediction": "ENVOYER PRÉDICTION",
+    "updatePrediction": "METTRE À JOUR",
+    "editPick": "Modifier le pick",
+    "predictionUpdated": "Pick mis à jour",
     "predictionSubmitted": "Prédiction Envoyée",
     "predictionSubmittedDesc": "Ta prédiction a été enregistrée. Bonne chance !",
     "cancelPrediction": "Annuler la Prédiction",
@@ -1508,5 +1510,15 @@
     "diamondDesc": "Tu as gagné une carte-cadeau de 10 $ !",
     "legendTitle": "LÉGENDE DÉBLOQUÉE !",
     "legendDesc": "Tu as gagné une carte-cadeau de 25 $ !"
+  },
+  "birthdatePrompt": {
+    "title": "Confirme ta date de naissance",
+    "subtitle": "Kinetic est réservé aux 18 ans et plus. Nous l'utilisons uniquement pour vérifier ton éligibilité et permettre l'échange de cartes-cadeaux. Nous ne la partageons jamais.",
+    "placeholder": "Touche pour sélectionner",
+    "required": "Touche ci-dessus pour sélectionner ta date de naissance.",
+    "confirm": "Confirmer",
+    "later": "Me le rappeler plus tard",
+    "redeemBlockedTitle": "Date de naissance requise",
+    "redeemBlockedMessage": "Avant d'échanger une carte-cadeau, nous devons vérifier que tu as au moins 18 ans. Touche ci-dessous pour ajouter ta date de naissance."
   }
 }

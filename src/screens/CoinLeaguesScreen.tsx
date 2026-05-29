@@ -40,6 +40,7 @@ import { useCoins } from '../contexts/CoinContext';
 import { useAuth } from '../contexts/AuthContext';
 import { leaguesApi } from '../api/leagues';
 import { track } from '../services/analytics';
+import { trackShareTapped } from '../utils/analytics';
 import type { CoinLeague, CreateLeagueDto } from '../api/leagues';
 import { SPORT_TABS } from '../api/sports';
 import { AdBanner } from '../components/AdBanner';
@@ -244,6 +245,7 @@ export function CoinLeaguesScreen() {
     const code = league.inviteCode;
     if (!code) return;
     try {
+      trackShareTapped('league_invite');
       await Share.share({
         message: t('leagues.shareMessage', { name: league.name, code, url: `https://kineticapp.ca/join/${code}` }),
       });

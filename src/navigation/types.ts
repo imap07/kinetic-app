@@ -52,7 +52,14 @@ export type ProfileStackParamList = {
   SportNotificationPreferences: { sport: string; sportName: string };
   SecurityPrivacy: undefined;
   WalletRewards: undefined;
-  CoinStore: undefined;
+  /**
+   * `source` is the GA4 attribution for `coin_store_opened`. Optional
+   * — callers that don't pass one will be reported as `menu` (the
+   * dominant entry path from the Profile menu). Pass an explicit
+   * value from contextual entry points (paywall upsell, league join
+   * gate, low-balance toast) so the funnel reflects intent.
+   */
+  CoinStore: { source?: 'league_join_gate' | 'low_balance_warning' | 'menu' | 'profile' } | undefined;
   GiftcardRedeem: undefined;
   StreakLeaderboard: undefined;
   FriendsLeaderboard: undefined;

@@ -28,6 +28,7 @@ import { sportsApi } from '../api/sports';
 import { useAds } from '../contexts/AdContext';
 import { AdBanner } from '../components/AdBanner';
 import { track } from '../services/analytics';
+import { trackPredictionMade } from '../utils/analytics';
 import type { PredictionType as ContractPredictionType } from '../shared/domain';
 
 type TabKey = 'winner' | 'podium' | 'h2h' | 'fastest' | 'points' | 'pitstops';
@@ -72,6 +73,15 @@ export default function F1RacePredictionScreen() {
   const { t } = useTranslation();
   const { tokens, user } = useAuth();
   const { trackAction } = useAds();
+
+  // Three route names mount this screen (Home/Live/Leagues stacks);
+  // map to the GA4 `surface` for funnel attribution.
+  const surface: 'home' | 'live' | 'league' =
+    route.name === 'LiveF1RacePrediction'
+      ? 'live'
+      : route.name === 'LeagueF1RacePrediction'
+        ? 'league'
+        : 'home';
 
   const { raceApiId, competitionName, circuitName } = route.params as {
     raceApiId: number;
@@ -186,6 +196,13 @@ export default function F1RacePredictionScreen() {
         oddsMultiplier: (result as any)?.oddsMultiplier ?? 1,
         isFirstPick: (user?.totalPredictions ?? 1) === 0,
       }).catch(() => {});
+      trackPredictionMade({
+        sport: 'formula-1',
+        matchId: String(raceApiId),
+        leagueType: 'free',
+        isExactScore: false,
+        surface,
+      });
       Alert.alert(t('f1Prediction.predictionSaved'), t('f1Prediction.pickLockedIn'));
       fetchData(); // Refresh picks
     } catch (e: any) {
@@ -216,6 +233,13 @@ export default function F1RacePredictionScreen() {
         oddsMultiplier: (result as any)?.oddsMultiplier ?? 1,
         isFirstPick: (user?.totalPredictions ?? 1) === 0,
       }).catch(() => {});
+      trackPredictionMade({
+        sport: 'formula-1',
+        matchId: String(raceApiId),
+        leagueType: 'free',
+        isExactScore: false,
+        surface,
+      });
       Alert.alert(t('f1Prediction.h2hPickSaved'));
       fetchData();
     } catch (e: any) {

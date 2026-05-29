@@ -41,6 +41,7 @@ import { useStatsSSE, AchievementSSEData } from '../hooks/useStatsSSE';
 import { useWinCelebration } from '../hooks/useWinCelebration';
 import { WinCelebrationModal } from '../components/WinCelebrationModal';
 import { logSportTabViewed, track } from '../services/analytics';
+import { trackDashboardViewed } from '../utils/analytics';
 import { AdBanner } from '../components/AdBanner';
 import { RewardedAdButton } from '../components/RewardedAdButton';
 import { useAds } from '../contexts/AdContext';
@@ -149,6 +150,21 @@ export function DashboardScreen({ navigation }: Props) {
   const [dailyStatus, setDailyStatus] = useState<DailyStatusResponse | null>(null);
   const [userStats, setUserStats] = useState<MyStatsResponse | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
+  // Fire `dashboard_viewed` once per session per mount, after userStats
+  // hydrates so `hasActivePredictions` is accurate. activeLeaguesCount
+  // is best-effort — the dashboard doesn't currently hold the league
+  // list, so we report 0 here and let the LeaguesHome screen emit its
+  // own granular events when the user actually opens that surface.
+  const dashboardViewedRef = useRef(false);
+  useEffect(() => {
+    if (dashboardViewedRef.current) return;
+    if (!userStats) return;
+    dashboardViewedRef.current = true;
+    trackDashboardViewed({
+      hasActivePredictions: (userStats.pending ?? 0) > 0,
+      activeLeaguesCount: userStats.activeLeaguesCount ?? 0,
+    });
+  }, [userStats]);
   const [pickedGameIds, setPickedGameIds] = useState<Set<number>>(new Set());
   const [streakInfo, setStreakInfo] = useState<StreakInfo | null>(null);
   const [showStreakModal, setShowStreakModal] = useState(false);

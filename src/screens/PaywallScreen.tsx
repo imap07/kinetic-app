@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,27 @@ import { ModalCloseButton } from '../components';
 import { usePurchases } from '../contexts/PurchasesContext';
 import { useTranslation } from 'react-i18next';
 import type { RootStackParamList, PaywallTrigger } from '../navigation/types';
+import {
+  trackPaywallSeen,
+  trackPaywallDismissed,
+  trackSubscriptionTapped,
+  secondsSince,
+} from '../utils/analytics';
+
+// Map nav-level PaywallTrigger to the GA4 `paywall_seen.source` union.
+// Keeping this here (and not in utils/analytics) so future trigger
+// additions stay co-located with where the paywall actually opens.
+function triggerToSource(
+  trigger: PaywallTrigger,
+): 'remove_ads_banner' | 'coin_store' | 'profile' | 'organic' {
+  switch (trigger) {
+    case 'remove_ads':
+      return 'remove_ads_banner';
+    case 'general':
+    default:
+      return 'organic';
+  }
+}
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Paywall'>;
 
@@ -58,6 +79,23 @@ export function PaywallScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
   const context = getContextCard(trigger, t);
 
+  const source = triggerToSource(trigger);
+  const openedAtRef = useRef(Date.now());
+  const purchasedRef = useRef(false);
+
+  useEffect(() => {
+    trackPaywallSeen(source);
+    return () => {
+      // RevenueCat handles `purchase_completed` itself, so on unmount
+      // we only fire `paywall_dismissed` when the user left WITHOUT
+      // purchasing. Distinguishing this lets the funnel cleanly show
+      // "saw → converted" vs "saw → dismissed".
+      if (!purchasedRef.current) {
+        trackPaywallDismissed(source, secondsSince(openedAtRef.current));
+      }
+    };
+  }, [source]);
+
   // Try SDK convenience accessors first, then search availablePackages by lookup_key
   const monthlyPkg =
     currentOffering?.monthly ??
@@ -72,8 +110,8 @@ export function PaywallScreen({ navigation, route }: Props) {
     ) ??
     null;
 
-  const monthlyPrice = monthlyPkg?.product?.priceString ?? '$3.99';
-  const annualPrice = annualPkg?.product?.priceString ?? '$24.99';
+  const monthlyPrice = monthlyPkg?.product?.priceString ?? '$1.99';
+  const annualPrice = annualPkg?.product?.priceString ?? '$14.99';
 
   // Compute the actual savings of annual vs 12× monthly. Hardcoding
   // "SAVE 48%" would lie if App Store Connect ever changes the
@@ -92,7 +130,7 @@ export function PaywallScreen({ navigation, route }: Props) {
   }, [monthlyPkg?.product?.price, annualPkg?.product?.price]);
   const savingsLabel = savingsPercent != null
     ? t('paywall.savePercent', { percent: savingsPercent })
-    : t('paywall.save48'); // fallback to old hardcoded copy if prices unavailable
+    : t('paywall.saveAnnual'); // fallback to old hardcoded copy if prices unavailable
 
   // Apple grants a free trial only once per Apple ID. If the user has
   // already consumed it, showing "7-day free trial" on the card would
@@ -130,6 +168,7 @@ export function PaywallScreen({ navigation, route }: Props) {
   }
 
   const handlePurchase = useCallback(async (type: 'monthly' | 'annual') => {
+    trackSubscriptionTapped(type);
     const pkg = type === 'monthly' ? monthlyPkg : annualPkg;
     if (!pkg) {
       Alert.alert(t('paywall.notAvailable'), t('paywall.notAvailableDesc'));
@@ -137,6 +176,9 @@ export function PaywallScreen({ navigation, route }: Props) {
     }
     const success = await purchasePackage(pkg);
     if (success) {
+      // Suppress the dismissed event from the unmount effect — we
+      // closed because the user purchased, not because they bailed.
+      purchasedRef.current = true;
       navigation.goBack();
     }
   }, [monthlyPkg, annualPkg, purchasePackage, navigation, t]);

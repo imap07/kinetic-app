@@ -7,6 +7,7 @@ import { authApi } from '../api/auth';
 import { notificationsApi } from '../api/notifications';
 import { navigate } from '../navigation/navigationRef';
 import { track } from '../services/analytics';
+import { trackNotificationTapped } from '../utils/analytics';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -148,6 +149,11 @@ export function usePushNotifications(authToken: string | null | undefined) {
         const { type } = data as Record<string, unknown>;
         if (typeof type === 'string') {
           track({ event: 'push_opened', type });
+          // GA4 funnel mirror of push_opened — distinct event name so
+          // GA4 dashboards (which can't ingest the legacy `push_opened`
+          // schema retroactively) can build "open → action" funnels
+          // from a clean event family.
+          trackNotificationTapped(type);
           if (authToken && /^[a-z_]{1,40}$/.test(type)) {
             notificationsApi.trackOpen(type, authToken).catch(() => {});
           }

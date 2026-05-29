@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -26,6 +26,10 @@ import {
 } from '../services/passwordPolicy';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { MIN_AGE_YEARS } from '../shared/domain';
+import {
+  trackOnboardingStep,
+  trackOnboardingAbandoned,
+} from '../utils/analytics';
 
 // Bound for the date picker — anything after this point can't be
 // 18+, so the picker won't let users land there at all.
@@ -66,6 +70,21 @@ export function EmailAuthScreen({ navigation }: Props) {
   const [birthdate, setBirthdate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
+  // Track whether the user successfully submitted the form. If they
+  // leave the screen without ever submitting, fire `onboarding_abandoned`
+  // on unmount — distinct from "submitted but failed", which we'd want
+  // to debug separately (those still set this ref to false).
+  const submittedRef = useRef(false);
+
+  useEffect(() => {
+    trackOnboardingStep('auth_screen_opened');
+    return () => {
+      if (!submittedRef.current) {
+        trackOnboardingAbandoned('auth_screen_opened');
+      }
+    };
+  }, []);
+
   const isLogin = mode === 'login';
 
   // Login accepts any non-empty password — the server decides. We do NOT
@@ -89,6 +108,10 @@ export function EmailAuthScreen({ navigation }: Props) {
     setLoading(true);
 
     try {
+      // Fire the submit event up-front so we capture intent even
+      // when the call later fails — drop-off between submit and
+      // registration_completed is then a known signal.
+      trackOnboardingStep('email_form_submitted');
       if (isLogin) {
         await loginWithEmail(email.trim(), password);
       } else {
@@ -104,7 +127,9 @@ export function EmailAuthScreen({ navigation }: Props) {
         // Backend re-validates — this is a UX guard, not the gate.
         const iso = birthdate.toISOString().slice(0, 10);
         await register(email.trim(), password, displayName.trim(), iso);
+        trackOnboardingStep('registration_completed');
       }
+      submittedRef.current = true;
     } catch (err) {
       const message =
         err instanceof ApiError

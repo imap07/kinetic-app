@@ -37,6 +37,13 @@ interface AuthState {
   tokens: AuthTokens | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  /**
+   * Server-driven flag: true when the user has no birthdate on file
+   * (social login or grandfathered pre-v1.6) AND it's been ≥3 days
+   * since the last dismissal. The BirthdateReminderModal subscribes
+   * to this and renders itself when true.
+   */
+  needsBirthdatePrompt: boolean;
 }
 
 interface AuthContextValue extends AuthState {
@@ -51,7 +58,7 @@ interface AuthContextValue extends AuthState {
     provider: SocialProvider,
     accessToken: string,
     extra?: { idToken?: string; email?: string; displayName?: string; avatar?: string },
-  ) => Promise<void>;
+  ) => Promise<{ isNew: boolean }>;
   loginWithBiometric: () => Promise<boolean>;
   forgotPassword: (email: string) => Promise<string>;
   verifyCode: (email: string, code: string) => Promise<boolean>;
@@ -72,6 +79,24 @@ interface AuthContextValue extends AuthState {
   updatePreferences: (prefs: UpdatePreferencesData) => Promise<User>;
   uploadAvatar: (fileUri: string, fileName: string, mimeType: string) => Promise<User>;
   deleteAccount: () => Promise<void>;
+  /**
+   * One-time DOB capture for social-login / grandfathered users. The
+   * server enforces 18+ and refuses to overwrite an existing value.
+   * On success, clears `needsBirthdatePrompt`.
+   */
+  setBirthdate: (birthdateIso: string) => Promise<void>;
+  /**
+   * "Later" — clears `needsBirthdatePrompt` locally and tells the
+   * server to snooze the prompt for 3 days.
+   */
+  dismissBirthdatePrompt: () => Promise<void>;
+  /**
+   * Force-show the birthdate modal regardless of the 3-day throttle.
+   * Called when a server action (e.g. gift card redeem) was rejected
+   * with BIRTHDATE_REQUIRED — the user must see the modal now so
+   * they can unblock the action, not wait for the next 3-day window.
+   */
+  requestBirthdatePrompt: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -101,17 +126,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     tokens: null,
     isAuthenticated: false,
     isLoading: true,
+    needsBirthdatePrompt: false,
   });
   const tokensRef = useRef<AuthTokens | null>(null);
 
-  const setAuth = useCallback((user: User, tokens: AuthTokens) => {
-    tokensRef.current = tokens;
-    setState({ user, tokens, isAuthenticated: true, isLoading: false });
-  }, []);
+  const setAuth = useCallback(
+    (user: User, tokens: AuthTokens, needsBirthdatePrompt = false) => {
+      tokensRef.current = tokens;
+      setState({
+        user,
+        tokens,
+        isAuthenticated: true,
+        isLoading: false,
+        needsBirthdatePrompt,
+      });
+    },
+    [],
+  );
 
   const clearAuth = useCallback(() => {
     tokensRef.current = null;
-    setState({ user: null, tokens: null, isAuthenticated: false, isLoading: false });
+    setState({
+      user: null,
+      tokens: null,
+      isAuthenticated: false,
+      isLoading: false,
+      needsBirthdatePrompt: false,
+    });
   }, []);
 
   // ─── Wire token provider so apiClient can auto-refresh on 401 ───
@@ -159,12 +200,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         tokensRef.current = stored;
 
         try {
-          const { user } = await authApi.getProfile(stored.accessToken);
+          const { user, needsBirthdatePrompt } = await authApi.getProfile(
+            stored.accessToken,
+          );
           // The apiClient interceptor may have silently refreshed the
           // token pair on a 401 during this call, updating tokensRef
           // via the registered tokenProvider. Always use the latest
           // ref — falling back to `stored` only if nothing changed.
-          setAuth(user, tokensRef.current ?? stored);
+          setAuth(
+            user,
+            tokensRef.current ?? stored,
+            !!needsBirthdatePrompt,
+          );
           identifyUser(user);
         } catch (err) {
           if (err instanceof ApiError && err.status === 401) {
@@ -179,8 +226,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               // interceptor (and tokenProvider) see the rotated pair.
               tokensRef.current = newTokens;
               await persistTokens(newTokens);
-              const { user } = await authApi.getProfile(newTokens.accessToken);
-              setAuth(user, newTokens);
+              const { user, needsBirthdatePrompt } = await authApi.getProfile(
+                newTokens.accessToken,
+              );
+              setAuth(user, newTokens, !!needsBirthdatePrompt);
               identifyUser(user);
             } catch (refreshErr) {
               if (
@@ -263,14 +312,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       extra?: { idToken?: string; email?: string; displayName?: string; avatar?: string },
     ) => {
       const preferredLanguage = normalizeBackendLanguage(i18n.language);
-      const { user, tokens } = await authApi.loginWithSocial(provider, accessToken, {
-        ...extra,
-        preferredLanguage,
-      });
+      const { user, tokens, isNew } = await authApi.loginWithSocial(
+        provider,
+        accessToken,
+        { ...extra, preferredLanguage },
+      );
       await persistTokens(tokens);
       setAuth(user, tokens);
       logLogin(provider as 'google' | 'apple');
       identifyUser(user);
+      return { isNew: !!isNew };
     },
     [setAuth],
   );
@@ -284,8 +335,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         result.refreshToken,
       );
       await persistTokens(newTokens);
-      const { user } = await authApi.getProfile(newTokens.accessToken);
-      setAuth(user, newTokens);
+      const { user, needsBirthdatePrompt } = await authApi.getProfile(
+        newTokens.accessToken,
+      );
+      setAuth(user, newTokens, !!needsBirthdatePrompt);
       // Update stored biometric token with the fresh one
       await enableBiometricLogin(result.email!, newTokens.refreshToken);
       logLogin('biometric');
@@ -363,8 +416,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     const token = tokensRef.current?.accessToken;
     if (!token) return;
-    const { user } = await authApi.getProfile(token);
-    setState((s) => ({ ...s, user }));
+    const { user, needsBirthdatePrompt } = await authApi.getProfile(token);
+    setState((s) => ({
+      ...s,
+      user,
+      needsBirthdatePrompt: !!needsBirthdatePrompt,
+    }));
   }, []);
 
   const updateProfile = useCallback(
@@ -408,6 +465,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearAuth();
   }, [clearAuth]);
 
+  const setBirthdate = useCallback(async (birthdateIso: string) => {
+    const token = tokensRef.current?.accessToken;
+    if (!token) throw new Error('Not authenticated');
+    const { user } = await authApi.setBirthdate(token, birthdateIso);
+    setState((s) => ({ ...s, user, needsBirthdatePrompt: false }));
+  }, []);
+
+  const requestBirthdatePrompt = useCallback(() => {
+    setState((s) => ({ ...s, needsBirthdatePrompt: true }));
+  }, []);
+
+  const dismissBirthdatePrompt = useCallback(async () => {
+    // Optimistically hide the modal — the server call is fire-and-forget.
+    // Worst case the modal re-opens on the next /auth/me, which is the
+    // exact behavior we want (3-day re-prompt).
+    setState((s) => ({ ...s, needsBirthdatePrompt: false }));
+    const token = tokensRef.current?.accessToken;
+    if (!token) return;
+    try {
+      await authApi.dismissBirthdatePrompt(token);
+    } catch {
+      // Network error here is non-fatal: the user already saw the
+      // dismissal in the UI, and the next /auth/me will re-set the
+      // flag if the server didn't record the dismissal.
+    }
+  }, []);
+
   const value: AuthContextValue = {
     ...state,
     loginWithEmail,
@@ -423,6 +507,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     updatePreferences,
     uploadAvatar,
     deleteAccount,
+    setBirthdate,
+    dismissBirthdatePrompt,
+    requestBirthdatePrompt,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

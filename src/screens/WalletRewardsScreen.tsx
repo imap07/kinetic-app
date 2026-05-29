@@ -177,7 +177,7 @@ export function WalletRewardsScreen() {
         <View style={styles.quickActions}>
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={() => navigation.navigate('CoinStore')}
+            onPress={() => navigation.navigate('CoinStore', { source: 'profile' })}
             activeOpacity={0.7}
           >
             <View style={[styles.actionIconWrap, { backgroundColor: 'rgba(202,253,0,0.1)' }]}>
