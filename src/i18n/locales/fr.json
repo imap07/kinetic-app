@@ -402,7 +402,7 @@
   },
   "friendsRank": {
     "inviteTitle": "Invite des amis, gagne des pièces",
-    "inviteBody": "+50 pièces pour chaque ami qui s'inscrit et pronostique.",
+    "inviteBody": "+150 pièces pour chaque ami qui s'inscrit et pronostique.",
     "rankTitle": "Tu es #{{rank}} sur {{total}}",
     "rankLead": "Tu mènes face à tes amis. Garde la série vivante.",
     "rankBehind": "Touche pour voir qui te précède."

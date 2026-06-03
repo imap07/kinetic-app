@@ -402,7 +402,7 @@
   },
   "friendsRank": {
     "inviteTitle": "Convide amigos, ganhe moedas",
-    "inviteBody": "+50 moedas para cada amigo que entrar e fizer um palpite.",
+    "inviteBody": "+150 moedas para cada amigo que entrar e fizer um palpite.",
     "rankTitle": "Você está em #{{rank}} de {{total}}",
     "rankLead": "Você lidera entre seus amigos. Mantenha a sequência viva.",
     "rankBehind": "Toque para ver quem está acima."

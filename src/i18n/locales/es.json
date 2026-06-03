@@ -402,7 +402,7 @@
   },
   "friendsRank": {
     "inviteTitle": "Invita amigos, gana monedas",
-    "inviteBody": "+50 monedas por cada amigo que se una y haga su pick.",
+    "inviteBody": "+150 monedas por cada amigo que se una y haga su pick.",
     "rankTitle": "Estás #{{rank}} de {{total}}",
     "rankLead": "Lideras entre tus amigos. Mantén la racha viva.",
     "rankBehind": "Toca para ver quién está arriba."

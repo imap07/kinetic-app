@@ -5,10 +5,15 @@ import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 import { useAds } from '../contexts/AdContext';
 import { colors } from '../theme';
+import { REWARDED_AD_COINS } from '../shared/domain';
 
 /**
- * "Watch ad → Earn 20 coins" button.
+ * "Watch ad → Earn N coins" button.
  * Auto-hides for Pro users and when daily limit is reached.
+ *
+ * Coin amount is sourced from shared/domain.ts so the button label can't
+ * drift from the actual server-granted reward (an earlier "+20" badge
+ * while the backend granted 30 surfaced in three independent audits).
  */
 export function RewardedAdButton() {
   const { t } = useTranslation();
@@ -91,7 +96,7 @@ export function RewardedAdButton() {
       ) : (
         <View style={styles.coinBadge}>
           <MaterialCommunityIcons name="circle-multiple" size={14} color={colors.primary} />
-          <Text style={styles.coinText}>+20</Text>
+          <Text style={styles.coinText}>+{REWARDED_AD_COINS}</Text>
         </View>
       )}
     </TouchableOpacity>

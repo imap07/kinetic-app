@@ -402,7 +402,7 @@
   },
   "friendsRank": {
     "inviteTitle": "Invite friends, earn coins",
-    "inviteBody": "+50 coins for every friend who joins and picks.",
+    "inviteBody": "+150 coins for every friend who joins and picks.",
     "rankTitle": "You're #{{rank}} of {{total}}",
     "rankLead": "You're leading your friends. Keep the streak alive.",
     "rankBehind": "Tap to see who's above you."

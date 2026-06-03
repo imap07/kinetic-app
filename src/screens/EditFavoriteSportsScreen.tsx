@@ -29,7 +29,6 @@ interface SportOption {
   iconFamily: 'ionicons' | 'mci';
   color: string;
   description: string;
-  isFree: boolean;
 }
 
 const SPORTS: SportOption[] = [
@@ -40,7 +39,6 @@ const SPORTS: SportOption[] = [
     icon: 'football',
     color: '#5BEF90',
     description: 'Premier League, La Liga, Champions League & more',
-    isFree: true,
   },
   {
     key: 'basketball',
@@ -49,7 +47,6 @@ const SPORTS: SportOption[] = [
     icon: 'basketball',
     color: '#FF7351',
     description: 'NBA, EuroLeague & international',
-    isFree: false,
   },
   {
     key: 'hockey',
@@ -58,7 +55,6 @@ const SPORTS: SportOption[] = [
     icon: 'hockey-puck',
     color: '#4FC3F7',
     description: 'NHL, KHL & world championships',
-    isFree: false,
   },
   {
     key: 'american-football',
@@ -67,7 +63,6 @@ const SPORTS: SportOption[] = [
     icon: 'american-football',
     color: '#A78BFA',
     description: 'NFL, college football & more',
-    isFree: false,
   },
   {
     key: 'baseball',
@@ -76,7 +71,6 @@ const SPORTS: SportOption[] = [
     icon: 'baseball',
     color: '#FBBF24',
     description: 'MLB, NPB & world series',
-    isFree: false,
   },
   {
     key: 'formula-1',
@@ -85,7 +79,6 @@ const SPORTS: SportOption[] = [
     icon: 'racing-helmet',
     color: '#FF4444',
     description: 'Grand Prix, qualifying & race predictions',
-    isFree: false,
   },
   {
     key: 'afl',
@@ -94,7 +87,6 @@ const SPORTS: SportOption[] = [
     icon: 'american-football',
     color: '#00BCD4',
     description: 'Australian Football League',
-    isFree: false,
   },
   {
     key: 'handball',
@@ -103,7 +95,6 @@ const SPORTS: SportOption[] = [
     icon: 'handball',
     color: '#FF9800',
     description: 'Champions League, World Championship & more',
-    isFree: false,
   },
   {
     key: 'rugby',
@@ -112,7 +103,6 @@ const SPORTS: SportOption[] = [
     icon: 'rugby',
     color: '#8BC34A',
     description: 'Six Nations, World Cup & international',
-    isFree: false,
   },
   {
     key: 'volleyball',
@@ -121,7 +111,6 @@ const SPORTS: SportOption[] = [
     icon: 'volleyball',
     color: '#E040FB',
     description: 'Nations League, Champions League & more',
-    isFree: false,
   },
   {
     key: 'mma',
@@ -130,7 +119,6 @@ const SPORTS: SportOption[] = [
     icon: 'karate',
     color: '#F44336',
     description: 'UFC events & fight predictions',
-    isFree: false,
   },
 ];
 

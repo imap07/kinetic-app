@@ -13,12 +13,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 import { colors } from '../theme';
 import { pendingReferral } from '../services/referralPending';
+import { REFERRAL_REWARD_COINS } from '../shared/domain';
 
 // Keep in sync with backend REFERRAL_CODE_ALPHABET + REFERRAL_CODE_LENGTH.
 // Allow 4–12 chars to be forgiving of typos / future length changes without
 // blocking submit here — the server re-validates on apply.
 const REFERRAL_INPUT_RE = /^[A-Z0-9]{4,12}$/;
-const REFERRAL_REWARD_COINS = 50;
 const REFERRAL_QUALIFY_PICKS = 3;
 
 /**

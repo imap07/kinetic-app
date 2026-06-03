@@ -271,6 +271,15 @@ export const PICK_REACTION_GLYPHS: Record<PickReactionKey, string> = {
 export const REFERRAL_REWARD_COINS = 150;
 export const REFERRAL_QUALIFY_RESOLVED_PICKS = 3;
 
+// ─── Ad rewards ──────────────────────────────────────────────────
+// Coins granted per rewarded ad watched (opt-in only). Pro members
+// see no rewarded ads — they trade the income stream for the perk.
+// Backend authoritative value: coins.service.ts:AD_REWARD_COINS.
+// Mobile UI imports this so the "+N" badge can't drift from the
+// actual server grant (3 audits flagged the previous "+20" copy
+// while the server granted 30 → broken trust).
+export const REWARDED_AD_COINS = 30;
+
 // 8-char short code. Alphabet excludes O/0/I/1/L to avoid OCR
 // confusion when users read the code from a screenshot. Mongo index
 // is unique+sparse on users.referralCode (see user.schema.ts).
