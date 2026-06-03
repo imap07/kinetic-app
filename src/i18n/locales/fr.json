@@ -191,6 +191,18 @@
     "ends": "Fin",
     "joinLeague": "Rejoindre la Ligue",
     "joinLeagueDesc": "Frais d'entrée : {{fee}} pièces. Elles seront bloquées de ton solde.",
+    "joiningLeague": "Ouverture de la ligue…",
+    "inviteLoadError": "Invitation introuvable",
+    "invitePreviewLabel": "Tu es invité",
+    "inviteErrorTitle": "Impossible d'ouvrir cette invitation",
+    "inviteErrorBody": "Le code a peut-être expiré ou été annulé.",
+    "inviteStatusWarn": "Cette ligue est {{status}}",
+    "inviteFullWarn": "La ligue est complète",
+    "members": "membres",
+    "viewLeague": "Voir la ligue",
+    "viewDetails": "Voir les détails",
+    "notNow": "Pas maintenant",
+    "browseLeagues": "Parcourir les ligues",
     "cancel": "Annuler",
     "join": "Rejoindre",
     "leaveLeague": "Quitter la Ligue",
@@ -1132,10 +1144,20 @@
     "noActivePicksToShare": "Pas de picks actifs à partager",
     "shareMessage": "🔥 Mes pronostics Kinetic sont en feu :\n\n{{picks}}\n\nTu penses pouvoir me battre ? Inscris-toi et gagne 150 coins bonus 👉 https://kineticapp.ca"
   },
+  "streakBadge": {
+    "a11y": "Série : {{count}} jours",
+    "a11yAtRisk": "Série en péril — fais ton pronostic aujourd'hui",
+    "atRisk": "Pronostique !",
+    "toMilestone": "{{days}} → +{{reward}}",
+    "begin": "Démarrer"
+  },
   "winCelebration": {
     "title": "Tu as gagné !",
     "points": "PTS",
-    "subtitle": "Partage ton pronostic — et invite un ami au passage.",
+    "subtitle": "Invite un ami — vous gagnez tous les deux {{coins}} pièces à son 3e pronostic.",
+    "subtitleNoRef": "Partage ton pronostic.",
+    "inviteCta": "Inviter un ami · +{{coins}} pièces",
+    "shareImage": "Partager l'image",
     "later": "Plus tard"
   },
   "common": {
@@ -1493,6 +1515,7 @@
     "dialogTitle": "Partage ton pronostic",
     "pickMessageNoRef": "Je viens de faire mon pronostic sur Kinetic. {{home}} vs {{away}}.",
     "pickMessageWithRef": "Je viens de faire mon pronostic sur Kinetic. {{home}} vs {{away}}. Rejoins-moi avec mon code {{code}} — on gagne tous les deux {{coins}} pièces. {{url}}",
+    "inviteMessage": "Rejoins-moi sur Kinetic — pronostics sportifs, vraies cartes cadeaux. Utilise mon code {{code}} et on gagne tous les deux {{coins}} pièces. {{url}}",
     "leagueMessage": "Rejoins ma ligue « {{name}} » sur Kinetic ! {{url}}"
   },
   "purchases": {

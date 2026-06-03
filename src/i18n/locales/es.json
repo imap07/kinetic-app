@@ -191,6 +191,18 @@
     "ends": "Termina",
     "joinLeague": "Unirse a Liga",
     "joinLeagueDesc": "Costo de entrada: {{fee}} monedas. Se bloquearán de tu saldo.",
+    "joiningLeague": "Abriendo liga…",
+    "inviteLoadError": "Invitación no encontrada",
+    "invitePreviewLabel": "Estás invitado",
+    "inviteErrorTitle": "No pudimos abrir esta invitación",
+    "inviteErrorBody": "Es posible que el código haya expirado o sido cancelado.",
+    "inviteStatusWarn": "Esta liga está {{status}}",
+    "inviteFullWarn": "La liga está llena",
+    "members": "miembros",
+    "viewLeague": "Ver liga",
+    "viewDetails": "Ver detalles",
+    "notNow": "Ahora no",
+    "browseLeagues": "Explorar ligas",
     "cancel": "Cancelar",
     "join": "Unirse",
     "leaveLeague": "Salir de Liga",
@@ -1132,10 +1144,20 @@
     "noActivePicksToShare": "Sin picks activos para compartir",
     "shareMessage": "🔥 Mis predicciones en Kinetic van fuego:\n\n{{picks}}\n\n¿Crees que puedes ganarme? Regístrate y llévate 150 monedas de bonus 👉 https://kineticapp.ca"
   },
+  "streakBadge": {
+    "a11y": "Racha: {{count}} días",
+    "a11yAtRisk": "Racha en peligro — haz tu pick hoy",
+    "atRisk": "¡Pick hoy!",
+    "toMilestone": "{{days}} → +{{reward}}",
+    "begin": "Empezar"
+  },
   "winCelebration": {
     "title": "¡Ganaste!",
     "points": "PTS",
-    "subtitle": "Presume tu predicción — y de paso trae a un amigo.",
+    "subtitle": "Trae a un amigo — ambos ganan {{coins}} monedas en su 3er pick.",
+    "subtitleNoRef": "Presume tu predicción.",
+    "inviteCta": "Invita a un amigo · +{{coins}} monedas",
+    "shareImage": "Compartir imagen",
     "later": "Más tarde"
   },
   "common": {
@@ -1493,6 +1515,7 @@
     "dialogTitle": "Comparte tu predicción",
     "pickMessageNoRef": "Acabo de hacer mi predicción en Kinetic. {{home}} vs {{away}}.",
     "pickMessageWithRef": "Acabo de hacer mi predicción en Kinetic. {{home}} vs {{away}}. Únete con mi código {{code}} — ambos ganamos {{coins}} monedas. {{url}}",
+    "inviteMessage": "Únete a mí en Kinetic — predicciones deportivas, gift cards reales. Usa mi código {{code}} y ambos ganamos {{coins}} monedas. {{url}}",
     "leagueMessage": "¡Únete a mi liga \"{{name}}\" en Kinetic! {{url}}"
   },
   "purchases": {

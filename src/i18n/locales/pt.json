@@ -191,6 +191,18 @@
     "ends": "Termina",
     "joinLeague": "Entrar na Liga",
     "joinLeagueDesc": "Taxa de entrada: {{fee}} moedas. Elas serão travadas do seu saldo.",
+    "joiningLeague": "Abrindo liga…",
+    "inviteLoadError": "Convite não encontrado",
+    "invitePreviewLabel": "Você foi convidado",
+    "inviteErrorTitle": "Não conseguimos abrir este convite",
+    "inviteErrorBody": "O código pode ter expirado ou sido cancelado.",
+    "inviteStatusWarn": "Esta liga está {{status}}",
+    "inviteFullWarn": "A liga está cheia",
+    "members": "membros",
+    "viewLeague": "Ver liga",
+    "viewDetails": "Ver detalhes",
+    "notNow": "Agora não",
+    "browseLeagues": "Explorar ligas",
     "cancel": "Cancelar",
     "join": "Entrar",
     "leaveLeague": "Sair da Liga",
@@ -1132,10 +1144,20 @@
     "noActivePicksToShare": "Sem palpites ativos para compartilhar",
     "shareMessage": "🔥 Meus palpites no Kinetic estão pegando fogo:\n\n{{picks}}\n\nAcha que consegue me vencer? Cadastre-se e leve 150 moedas bônus 👉 https://kineticapp.ca"
   },
+  "streakBadge": {
+    "a11y": "Sequência: {{count}} dias",
+    "a11yAtRisk": "Sequência em risco — faça seu palpite hoje",
+    "atRisk": "Palpite hoje!",
+    "toMilestone": "{{days}} → +{{reward}}",
+    "begin": "Começar"
+  },
   "winCelebration": {
     "title": "Você venceu!",
     "points": "PTS",
-    "subtitle": "Mostre seu palpite — e chame um amigo de quebra.",
+    "subtitle": "Chame um amigo — vocês dois ganham {{coins}} moedas no 3º palpite dele.",
+    "subtitleNoRef": "Mostre seu palpite.",
+    "inviteCta": "Convide um amigo · +{{coins}} moedas",
+    "shareImage": "Compartilhar imagem",
     "later": "Talvez depois"
   },
   "common": {
@@ -1493,6 +1515,7 @@
     "dialogTitle": "Compartilhe seu palpite",
     "pickMessageNoRef": "Acabei de fazer meu palpite no Kinetic. {{home}} vs {{away}}.",
     "pickMessageWithRef": "Acabei de fazer meu palpite no Kinetic. {{home}} vs {{away}}. Entre com meu código {{code}} — nós dois ganhamos {{coins}} moedas. {{url}}",
+    "inviteMessage": "Entra no Kinetic comigo — palpites esportivos, gift cards reais. Use meu código {{code}} e nós dois ganhamos {{coins}} moedas. {{url}}",
     "leagueMessage": "Entre na minha liga \"{{name}}\" no Kinetic! {{url}}"
   },
   "purchases": {

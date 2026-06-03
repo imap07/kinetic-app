@@ -46,6 +46,7 @@ import { AdBanner } from '../components/AdBanner';
 import { RewardedAdButton } from '../components/RewardedAdButton';
 import { useAds } from '../contexts/AdContext';
 import { NextUpHero } from '../components/NextUpHero';
+import { StreakBadge } from '../components/StreakBadge';
 import { GuidedFirstPickOverlay } from '../components/GuidedFirstPickOverlay';
 import { Skeleton } from '../components/Skeleton';
 import { QuestsCard } from '../components/QuestsCard';
@@ -1126,30 +1127,17 @@ export function DashboardScreen({ navigation }: Props) {
                 </Text>
               </View>
 
-              {/* Streak badge */}
-              {streakInfo && (
-                <TouchableOpacity
-                  style={[
-                    styles.streakBadge,
-                    streakInfo.currentStreak > 0 && styles.streakBadgeActive,
-                  ]}
-                  onPress={() => setShowStreakModal(true)}
-                  activeOpacity={0.7}
-                  hitSlop={8}
-                >
-                  <Text style={styles.streakBadgeEmoji}>
-                    {streakInfo.currentStreak > 0 ? '\uD83D\uDD25' : '\uD83D\uDD25'}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.streakBadgeNumber,
-                      streakInfo.currentStreak > 0 && styles.streakBadgeNumberActive,
-                    ]}
-                  >
-                    {streakInfo.currentStreak}
-                  </Text>
-                </TouchableOpacity>
-              )}
+              {/* Streak badge \u2014 forward-looking version: shows the next
+                  milestone inline (e.g. "5 \u2192 +20") so users know what
+                  they're about to earn, and switches to an at-risk visual
+                  after the configured cutoff hour when there's no pick
+                  for today. Was previously a passive count; the retention
+                  audit flagged that as the biggest streak-design miss. */}
+              <StreakBadge
+                streakInfo={streakInfo}
+                hasPickedToday={dailyStatus.picksToday > 0}
+                onPress={() => setShowStreakModal(true)}
+              />
 
               {/* Today's picks counter (informational only — there is no daily limit) */}
               <View style={styles.dailyRing}>

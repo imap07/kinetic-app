@@ -132,12 +132,17 @@ export type AnalyticsProps =
       event: 'share_generated';
       // pick = bare image share; pick_invite = native share sheet
       // with referral message+url; pick_clipboard = user copied the
-      // prefilled invite to paste manually. Keeping these distinct
-      // lets us measure which surface drives conversion.
+      // prefilled invite to paste manually; win_invite = invite CTA
+      // surfaced from WinCelebrationModal (highest-leverage moment);
+      // generic_invite = invite from any non-pick surface (profile,
+      // referrals tab, etc.). Keeping these distinct lets us measure
+      // which surface drives conversion.
       contentType:
         | 'pick'
         | 'pick_invite'
         | 'pick_clipboard'
+        | 'win_invite'
+        | 'generic_invite'
         | 'streak'
         | 'recap';
       destination?: string;

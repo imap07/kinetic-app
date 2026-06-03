@@ -191,6 +191,18 @@
     "ends": "Ends",
     "joinLeague": "Join League",
     "joinLeagueDesc": "Entry fee: {{fee}} coins. This will be locked from your balance.",
+    "joiningLeague": "Opening league…",
+    "inviteLoadError": "Invite not found",
+    "invitePreviewLabel": "You're invited",
+    "inviteErrorTitle": "Couldn't open this invite",
+    "inviteErrorBody": "The code may have expired or been cancelled.",
+    "inviteStatusWarn": "This league is {{status}}",
+    "inviteFullWarn": "League is full",
+    "members": "members",
+    "viewLeague": "View league",
+    "viewDetails": "View details",
+    "notNow": "Not now",
+    "browseLeagues": "Browse leagues",
     "cancel": "Cancel",
     "join": "Join",
     "leaveLeague": "Leave League",
@@ -1132,10 +1144,20 @@
     "noActivePicksToShare": "No active picks to share",
     "shareMessage": "🔥 My Kinetic picks are heating up:\n\n{{picks}}\n\nThink you can beat me? Sign up and grab 150 bonus coins 👉 https://kineticapp.ca"
   },
+  "streakBadge": {
+    "a11y": "Streak: {{count}} days",
+    "a11yAtRisk": "Streak at risk — pick today",
+    "atRisk": "Pick today!",
+    "toMilestone": "{{days}} → +{{reward}}",
+    "begin": "Begin"
+  },
   "winCelebration": {
     "title": "You won!",
     "points": "PTS",
-    "subtitle": "Show off your pick — and bring a friend while you're at it.",
+    "subtitle": "Bring a friend — you both get {{coins}} coins on their 3rd pick.",
+    "subtitleNoRef": "Show off your pick.",
+    "inviteCta": "Invite a friend · +{{coins}} coins",
+    "shareImage": "Share image instead",
     "later": "Maybe later"
   },
   "common": {
@@ -1493,6 +1515,7 @@
     "dialogTitle": "Share your pick",
     "pickMessageNoRef": "Just made my pick on Kinetic. {{home}} vs {{away}}.",
     "pickMessageWithRef": "Just made my pick on Kinetic. {{home}} vs {{away}}. Join with my code {{code}} — we both get {{coins}} coins. {{url}}",
+    "inviteMessage": "Join me on Kinetic — sports predictions, real gift cards. Use my code {{code}} and we both get {{coins}} coins. {{url}}",
     "leagueMessage": "Join my league \"{{name}}\" on Kinetic! {{url}}"
   },
   "purchases": {
