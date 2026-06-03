@@ -28,13 +28,15 @@ import { coinsApi } from '../api/coins';
 import type { CoinTransaction } from '../api/coins';
 import type { ProfileStackParamList } from '../navigation/types';
 
-// Temporary kill-switch for the gift-card redemption feature. The
-// full flow (screen, API, backend cron that fulfills redemptions)
-// stays on disk and in the nav tree — we just hide the entry point
-// from the wallet. Flip to `true` to restore the tile. Paired with
-// a deliberately dormant `GiftcardRedeem` route in AppNavigator so
-// a stale deep link doesn't 404.
-const GIFTCARDS_ENABLED = false;
+// Gift-card redemption feature flag. Currently ON: redemptions are
+// processed manually via the admin dashboard's "Giftcards" tab — when
+// GIFTCARD_API_KEY is unset on the backend, each request lands in
+// PENDING_FULFILLMENT after the 48h hold and the ops team approves
+// payouts by hand. Flip to `false` only if manual ops capacity is
+// exhausted (would silently break the gold/diamond/legend reward
+// tier promise and the wallet's primary CTA — prefer pausing tier
+// claims server-side instead).
+const GIFTCARDS_ENABLED = true;
 
 type Nav = NativeStackNavigationProp<ProfileStackParamList>;
 
