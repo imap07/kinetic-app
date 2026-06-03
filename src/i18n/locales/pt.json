@@ -1144,6 +1144,21 @@
     "noActivePicksToShare": "Sem palpites ativos para compartilhar",
     "shareMessage": "🔥 Meus palpites no Kinetic estão pegando fogo:\n\n{{picks}}\n\nAcha que consegue me vencer? Cadastre-se e leve 150 moedas bônus 👉 https://kineticapp.ca"
   },
+  "today": {
+    "title": "HOJE",
+    "streak": "dias seguidos",
+    "streakHint": "+{{reward}} em {{milestone}}",
+    "picks": "palpites de hoje",
+    "challengeCta": "Aceite o desafio de hoje"
+  },
+  "rivalriesCard": {
+    "title": "Rivalidades",
+    "challengedYou": "te desafiou · {{sport}}",
+    "leading": "à frente",
+    "trailing": "atrás",
+    "tied": "empatado",
+    "moreCount": "+{{count}} mais"
+  },
   "streakBadge": {
     "a11y": "Sequência: {{count}} dias",
     "a11yAtRisk": "Sequência em risco — faça seu palpite hoje",
@@ -1172,6 +1187,9 @@
     "errorLoading": "Não foi possível carregar. Puxe para tentar de novo.",
     "tryAgainLater": "Algo deu errado. Tente novamente em instantes.",
     "done": "Concluído",
+    "seeAll": "Ver tudo",
+    "accept": "Aceitar",
+    "decline": "Recusar",
     "failedToSubmit": "Falha ao enviar",
     "pleaseTryAgain": "Tente novamente",
     "home": "Casa",

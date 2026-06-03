@@ -1144,6 +1144,21 @@
     "noActivePicksToShare": "Sin picks activos para compartir",
     "shareMessage": "🔥 Mis predicciones en Kinetic van fuego:\n\n{{picks}}\n\n¿Crees que puedes ganarme? Regístrate y llévate 150 monedas de bonus 👉 https://kineticapp.ca"
   },
+  "today": {
+    "title": "HOY",
+    "streak": "días de racha",
+    "streakHint": "+{{reward}} en {{milestone}}",
+    "picks": "picks de hoy",
+    "challengeCta": "Acepta el reto de hoy"
+  },
+  "rivalriesCard": {
+    "title": "Rivalidades",
+    "challengedYou": "te retó · {{sport}}",
+    "leading": "ganando",
+    "trailing": "perdiendo",
+    "tied": "empate",
+    "moreCount": "+{{count}} más"
+  },
   "streakBadge": {
     "a11y": "Racha: {{count}} días",
     "a11yAtRisk": "Racha en peligro — haz tu pick hoy",
@@ -1172,6 +1187,9 @@
     "errorLoading": "No se pudo cargar. Desliza para reintentar.",
     "tryAgainLater": "Algo salió mal. Inténtalo en un momento.",
     "done": "Listo",
+    "seeAll": "Ver todo",
+    "accept": "Aceptar",
+    "decline": "Rechazar",
     "failedToSubmit": "No se pudo enviar",
     "pleaseTryAgain": "Inténtalo de nuevo",
     "home": "Local",

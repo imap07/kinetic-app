@@ -52,6 +52,10 @@ import { Skeleton } from '../components/Skeleton';
 import { QuestsCard } from '../components/QuestsCard';
 import { FriendsRankCard } from '../components/FriendsRankCard';
 import { HotMatchesCarousel } from '../components/HotMatchesCarousel';
+import { RivalriesCard } from '../components/RivalriesCard';
+import { TodayHeroCard } from '../components/TodayHeroCard';
+import { rivalriesApi } from '../api/rivalries';
+import type { RivalriesResponse } from '../api/rivalries';
 import { ActivityTicker } from '../components/ActivityTicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -171,6 +175,16 @@ export function DashboardScreen({ navigation }: Props) {
   const [showStreakModal, setShowStreakModal] = useState(false);
   const [todayChallenge, setTodayChallenge] = useState<DailyChallenge | null>(null);
   const [challengeSubmitting, setChallengeSubmitting] = useState(false);
+  // Rivalries live alongside the rest of the dashboard data so pull-to-refresh
+  // picks them up. The card auto-hides when there's nothing to show.
+  const [rivalries, setRivalries] = useState<RivalriesResponse | null>(null);
+  const [rivalryBusy, setRivalryBusy] = useState<Set<string>>(new Set());
+  // Ref so the TodayHero "challenge" CTA can scroll the daily challenge
+  // card into view rather than duplicating the entire challenge UI in
+  // the hero. The challenge layout y-offset is tracked when its container
+  // measures itself (see onLayout below).
+  const scrollRef = React.useRef<ScrollView>(null);
+  const challengeYRef = React.useRef<number>(0);
   const { pendingWin, dismissWin } = useWinCelebration();
 
   // ── In-memory stale-while-revalidate cache per sport ──
@@ -296,6 +310,66 @@ export function DashboardScreen({ navigation }: Props) {
 
   useEffect(() => { fetchTodayChallenge(); }, [fetchTodayChallenge]);
 
+  // Rivalries fetch — silent on error so a failed call never blanks the
+  // dashboard. The card auto-hides when there's nothing to show, so a
+  // null response also resolves to an invisible state.
+  const fetchRivalries = useCallback(async () => {
+    if (!tokens?.accessToken) return;
+    try {
+      const data = await rivalriesApi.list(tokens.accessToken);
+      setRivalries(data);
+    } catch (_) { /* silent */ }
+  }, [tokens?.accessToken]);
+
+  useEffect(() => { fetchRivalries(); }, [fetchRivalries]);
+
+  // Inline accept/decline so the user can resolve incoming challenges
+  // without leaving the dashboard. Optimistic UX: we lock the row via
+  // `rivalryBusy` while the request is in flight, then refetch the full
+  // list on success so the lists rebalance (incoming → active for
+  // accept; incoming → declined for decline, which falls out of the
+  // visible set entirely).
+  const handleRivalryAccept = useCallback(async (rivalryId: string) => {
+    if (!tokens?.accessToken) return;
+    setRivalryBusy((prev) => new Set(prev).add(rivalryId));
+    try {
+      await rivalriesApi.accept(tokens.accessToken, rivalryId);
+      await fetchRivalries();
+    } catch (_) { /* silent — retry by tapping again */ } finally {
+      setRivalryBusy((prev) => {
+        const next = new Set(prev);
+        next.delete(rivalryId);
+        return next;
+      });
+    }
+  }, [tokens?.accessToken, fetchRivalries]);
+
+  const handleRivalryDecline = useCallback(async (rivalryId: string) => {
+    if (!tokens?.accessToken) return;
+    setRivalryBusy((prev) => new Set(prev).add(rivalryId));
+    try {
+      await rivalriesApi.decline(tokens.accessToken, rivalryId);
+      await fetchRivalries();
+    } catch (_) { /* silent */ } finally {
+      setRivalryBusy((prev) => {
+        const next = new Set(prev);
+        next.delete(rivalryId);
+        return next;
+      });
+    }
+  }, [tokens?.accessToken, fetchRivalries]);
+
+  // Rivalries lives in the Profile stack today (per AppNavigator.tsx).
+  // We cross-stack via `Main` (the tab navigator) → `Profile` (the
+  // Profile stack) → `Rivalries`. Same pattern used by the Friends
+  // rank card's "see leaderboard" CTA below.
+  const handleOpenRivalries = useCallback(() => {
+    rootNav.navigate('Main', {
+      screen: 'Profile',
+      params: { screen: 'Rivalries' },
+    } as any);
+  }, [rootNav]);
+
   const handleChallengeSubmit = useCallback(async (answer: string) => {
     if (!tokens?.accessToken || !todayChallenge || challengeSubmitting) return;
     setChallengeSubmitting(true);
@@ -360,7 +434,8 @@ export function DashboardScreen({ navigation }: Props) {
     fetchPickedIds();
     fetchStreakInfo();
     fetchTodayChallenge();
-  }, [fetchDashboard, fetchUserStats, fetchPickedIds, fetchStreakInfo, fetchTodayChallenge]);
+    fetchRivalries();
+  }, [fetchDashboard, fetchUserStats, fetchPickedIds, fetchStreakInfo, fetchTodayChallenge, fetchRivalries]);
 
   const handleSportChange = useCallback((sport: SportKey) => {
     if (sport === activeSport) return;
@@ -670,6 +745,7 @@ export function DashboardScreen({ navigation }: Props) {
 
       {/* Main Content */}
       <ScrollView
+        ref={scrollRef}
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -892,6 +968,25 @@ export function DashboardScreen({ navigation }: Props) {
             ))}
           </View>
         )}
+
+        {/* "Today" hero — answers "why did I open the app right now?"
+            in the first viewport. Surfaces streak status (with the
+            next milestone reward), picks-today count, and a quick
+            CTA to today's challenge. Auto-hides for true cold-start
+            users (no streak / no picks / no challenge) so NextUpHero
+            below stays the primary CTA for them. Per the retention
+            audit, the previous Dashboard buried these signals 5+
+            sections down, letting returning users land on the
+            editorial sport feed before any sign of their daily loop. */}
+        <TodayHeroCard
+          streakInfo={streakInfo}
+          todayChallenge={todayChallenge}
+          picksToday={dailyStatus?.picksToday ?? 0}
+          onOpenStreak={() => setShowStreakModal(true)}
+          onOpenChallenge={() =>
+            scrollRef.current?.scrollTo({ y: challengeYRef.current, animated: true })
+          }
+        />
 
         {/* "Next up for you" hero — surfaces the single most
             relevant upcoming game (favorite team > nearest upcoming).
@@ -1235,6 +1330,20 @@ export function DashboardScreen({ navigation }: Props) {
           }
         />
 
+        {/* Active rivalries — surfaces the strongest social retention
+            loop in the product directly on the home tab so it's not
+            buried under Profile. The card auto-hides when the user
+            has no incoming + no active rivalries, so it stays out of
+            the way for new users until they actually have something
+            to interact with. */}
+        <RivalriesCard
+          data={rivalries}
+          busyIds={rivalryBusy}
+          onAccept={handleRivalryAccept}
+          onDecline={handleRivalryDecline}
+          onOpenAll={handleOpenRivalries}
+        />
+
         {/* Cross-sport "Today's Heat" carousel — auto-hidden when
             the backend returns 0 items, so it stays out of the way
             on quiet days but also surfaces cross-sport discovery
@@ -1243,7 +1352,12 @@ export function DashboardScreen({ navigation }: Props) {
 
         {/* Daily Challenge Card — from /api/challenges/today */}
         {todayChallenge && (
-          <View style={styles.dailyChallengeCard}>
+          <View
+            style={styles.dailyChallengeCard}
+            onLayout={(e) => {
+              challengeYRef.current = e.nativeEvent.layout.y;
+            }}
+          >
             <LinearGradient
               colors={['rgba(255,183,77,0.12)', 'rgba(255,183,77,0.02)']}
               start={{ x: 0, y: 0 }}

@@ -1144,6 +1144,21 @@
     "noActivePicksToShare": "No active picks to share",
     "shareMessage": "🔥 My Kinetic picks are heating up:\n\n{{picks}}\n\nThink you can beat me? Sign up and grab 150 bonus coins 👉 https://kineticapp.ca"
   },
+  "today": {
+    "title": "TODAY",
+    "streak": "day streak",
+    "streakHint": "+{{reward}} at {{milestone}}",
+    "picks": "picks today",
+    "challengeCta": "Take today's challenge"
+  },
+  "rivalriesCard": {
+    "title": "Rivalries",
+    "challengedYou": "challenged you · {{sport}}",
+    "leading": "leading",
+    "trailing": "trailing",
+    "tied": "tied",
+    "moreCount": "+{{count}} more"
+  },
   "streakBadge": {
     "a11y": "Streak: {{count}} days",
     "a11yAtRisk": "Streak at risk — pick today",
@@ -1170,6 +1185,9 @@
     "somethingWrong": "Something went wrong. Please try again.",
     "you": "you",
     "errorLoading": "Could not load. Pull down to retry.",
+    "seeAll": "See all",
+    "accept": "Accept",
+    "decline": "Decline",
     "tryAgainLater": "Something went wrong. Try again in a moment.",
     "done": "Done",
     "failedToSubmit": "Failed to submit",
