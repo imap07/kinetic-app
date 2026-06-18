@@ -17,6 +17,7 @@ import {
   OnboardingFavoriteLeague,
 } from './types';
 import { useAuth } from '../contexts/AuthContext';
+import { usePurchases } from '../contexts/PurchasesContext';
 import { BirthdateReminderModal } from '../components/BirthdateReminderModal';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { useDailyOpenCheckIn } from '../hooks/useDailyOpenCheckIn';
@@ -304,8 +305,15 @@ function AcquisitionSourceWrapper({ navigation, route }: any) {
   return <AcquisitionSourceScreen onComplete={handleComplete} onBack={handleBack} />;
 }
 
+// One-time, dismissible Pro paywall shown the first time a user finishes
+// onboarding. Highest-impression placement per RevenueCat data; kept as a
+// soft offer (never a gate) to stay consistent with Kinetic's fully-open
+// model — the RC paywall always renders its close button.
+const POST_ONBOARDING_PAYWALL_KEY = 'post_onboarding_paywall_shown';
+
 // ─── Onboarding Complete Wrapper ─────────────────────────
 function OnboardingCompleteWrapper({ navigation, route }: any) {
+  const { isProMember } = usePurchases();
   const sports = route?.params?.sports || [];
   const favoriteTeams = route?.params?.favoriteTeams || [];
   const favoriteLeagues: OnboardingFavoriteLeague[] | undefined = route?.params?.favoriteLeagues;
@@ -314,9 +322,22 @@ function OnboardingCompleteWrapper({ navigation, route }: any) {
   const notificationScope = route?.params?.notificationScope;
   const notificationTypes = route?.params?.notificationTypes;
 
-  const handleComplete = useCallback(() => {
+  const handleComplete = useCallback(async () => {
     navigation.replace('Main');
-  }, [navigation]);
+    // Show the post-onboarding paywall once, and never to an existing Pro.
+    // The flag lives in AsyncStorage so it persists across JS reloads and
+    // backgrounding; it only clears on uninstall — and a fresh install is
+    // effectively a new onboarding, so showing it again is intended.
+    try {
+      if (isProMember) return;
+      const alreadyShown = await AsyncStorage.getItem(POST_ONBOARDING_PAYWALL_KEY);
+      if (alreadyShown) return;
+      await AsyncStorage.setItem(POST_ONBOARDING_PAYWALL_KEY, 'true');
+      navigation.navigate('Paywall', { trigger: 'post_onboarding' });
+    } catch {
+      /* best-effort — never block the user from reaching the app */
+    }
+  }, [navigation, isProMember]);
 
   return (
     <OnboardingCompleteScreen

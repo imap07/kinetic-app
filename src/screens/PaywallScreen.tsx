@@ -1,22 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  ActivityIndicator,
-  Alert,
-  Linking,
-} from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, StyleSheet } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import Purchases, { INTRO_ELIGIBILITY_STATUS } from 'react-native-purchases';
-import { colors } from '../theme';
-import { ModalCloseButton } from '../components';
+import RevenueCatUI from 'react-native-purchases-ui';
 import { usePurchases } from '../contexts/PurchasesContext';
-import { useTranslation } from 'react-i18next';
 import type { RootStackParamList, PaywallTrigger } from '../navigation/types';
 import {
   trackPaywallSeen,
@@ -26,14 +12,16 @@ import {
 } from '../utils/analytics';
 
 // Map nav-level PaywallTrigger to the GA4 `paywall_seen.source` union.
-// Keeping this here (and not in utils/analytics) so future trigger
-// additions stay co-located with where the paywall actually opens.
+// Kept here (not in utils/analytics) so future trigger additions stay
+// co-located with where the paywall actually opens.
 function triggerToSource(
   trigger: PaywallTrigger,
-): 'remove_ads_banner' | 'coin_store' | 'profile' | 'organic' {
+): 'remove_ads_banner' | 'coin_store' | 'profile' | 'post_onboarding' | 'organic' {
   switch (trigger) {
     case 'remove_ads':
       return 'remove_ads_banner';
+    case 'post_onboarding':
+      return 'post_onboarding';
     case 'general':
     default:
       return 'organic';
@@ -42,42 +30,24 @@ function triggerToSource(
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Paywall'>;
 
-const FEATURE_KEYS = [
-  'paywall.adFree',
-  'paywall.bonusCoins',
-  'paywall.supportDev',
-  'paywall.proBadge',
-];
-
-function getContextCard(trigger: PaywallTrigger, t: (key: string, opts?: Record<string, unknown>) => string) {
-  switch (trigger) {
-    case 'remove_ads':
-      return {
-        icon: 'eye-off-outline' as const,
-        title: t('paywall.tiredOfAds'),
-        subtitle: t('paywall.tiredOfAdsDesc'),
-      };
-    case 'general':
-    default:
-      return {
-        icon: 'flash-outline' as const,
-        title: t('paywall.enhanceExperience'),
-        subtitle: t('paywall.enhanceExperienceDesc'),
-      };
-  }
-}
-
+/**
+ * Pro paywall — renders the RevenueCat-hosted paywall designed in the
+ * RevenueCat dashboard and attached to the current offering (`default`).
+ *
+ * Why the RC component instead of a hand-built UI: RevenueCat resolves
+ * products, prices, intro/free-trial copy AND trial eligibility straight
+ * from the store, so the paywall can never advertise a trial the product
+ * doesn't actually offer (the bug class the old custom paywall had), and
+ * the design can be updated from the dashboard without an app release.
+ *
+ * NOTE: the paywall's appearance lives entirely in the RevenueCat
+ * dashboard. This screen only hosts it and wires navigation + analytics.
+ * If no paywall is published for the offering, the component falls back
+ * to RevenueCat's default template.
+ */
 export function PaywallScreen({ navigation, route }: Props) {
   const { trigger } = route.params;
-  const {
-    currentOffering,
-    purchasePackage,
-    restorePurchases,
-    isProMember,
-  } = usePurchases();
-
-  const { t } = useTranslation();
-  const context = getContextCard(trigger, t);
+  const { currentOffering, isProMember } = usePurchases();
 
   const source = triggerToSource(trigger);
   const openedAtRef = useRef(Date.now());
@@ -86,433 +56,69 @@ export function PaywallScreen({ navigation, route }: Props) {
   useEffect(() => {
     trackPaywallSeen(source);
     return () => {
-      // RevenueCat handles `purchase_completed` itself, so on unmount
-      // we only fire `paywall_dismissed` when the user left WITHOUT
-      // purchasing. Distinguishing this lets the funnel cleanly show
-      // "saw → converted" vs "saw → dismissed".
+      // RevenueCat fires `purchase_completed` itself; on unmount we only
+      // emit `paywall_dismissed` when the user left WITHOUT purchasing,
+      // so the funnel cleanly separates "saw → converted" vs "saw → left".
       if (!purchasedRef.current) {
         trackPaywallDismissed(source, secondsSince(openedAtRef.current));
       }
     };
   }, [source]);
 
-  // Try SDK convenience accessors first, then search availablePackages by lookup_key
-  const monthlyPkg =
-    currentOffering?.monthly ??
-    currentOffering?.availablePackages?.find(
-      (p) => p.identifier === '$rc_monthly' || p.product?.identifier === 'kinetic_pro_monthly',
-    ) ??
-    null;
-  const annualPkg =
-    currentOffering?.annual ??
-    currentOffering?.availablePackages?.find(
-      (p) => p.identifier === '$rc_annual' || p.product?.identifier === 'kinetic_pro_annual',
-    ) ??
-    null;
-
-  const monthlyPrice = monthlyPkg?.product?.priceString ?? '$1.99';
-  const annualPrice = annualPkg?.product?.priceString ?? '$14.99';
-
-  // Compute the actual savings of annual vs 12× monthly. Hardcoding
-  // "SAVE 48%" would lie if App Store Connect ever changes the
-  // configured price for either tier — and we already had a bug where
-  // the legacy "SAVE 44%" badge referenced stale $5.99/$39.99 pricing.
-  // Numeric `price` is the float in the user's local currency; both
-  // packages are always in the same currency (RevenueCat normalizes
-  // per storefront), so the percentage is locale-safe.
-  const savingsPercent = useMemo(() => {
-    const m = monthlyPkg?.product?.price;
-    const a = annualPkg?.product?.price;
-    if (!m || !a || m <= 0) return null;
-    const yearlyAtMonthlyRate = m * 12;
-    if (a >= yearlyAtMonthlyRate) return null;
-    return Math.round(((yearlyAtMonthlyRate - a) / yearlyAtMonthlyRate) * 100);
-  }, [monthlyPkg?.product?.price, annualPkg?.product?.price]);
-  const savingsLabel = savingsPercent != null
-    ? t('paywall.savePercent', { percent: savingsPercent })
-    : t('paywall.saveAnnual'); // fallback to old hardcoded copy if prices unavailable
-
-  // Apple grants a free trial only once per Apple ID. If the user has
-  // already consumed it, showing "7-day free trial" on the card would
-  // deceive them into a charge — hide the label in that case.
-  // Also drives which legal disclosure we render (trial vs no-trial).
-  const [trialEligible, setTrialEligible] = useState<boolean | null>(null);
+  // Already Pro (e.g. restored on another device, or entitlement granted
+  // while this was open) — there's nothing to sell, so close immediately.
   useEffect(() => {
-    const productId = annualPkg?.product?.identifier;
-    if (!productId) return;
-    let cancelled = false;
-    Purchases.checkTrialOrIntroductoryPriceEligibility([productId])
-      .then((result) => {
-        if (cancelled) return;
-        const status = result[productId]?.status;
-        // Treat UNKNOWN as eligible — safer to show the label than to
-        // hide a real trial from a new user on a flaky network.
-        setTrialEligible(
-          status === INTRO_ELIGIBILITY_STATUS.INTRO_ELIGIBILITY_STATUS_ELIGIBLE ||
-            status === INTRO_ELIGIBILITY_STATUS.INTRO_ELIGIBILITY_STATUS_UNKNOWN,
-        );
-      })
-      .catch(() => {
-        if (!cancelled) setTrialEligible(true);
-      });
-    return () => { cancelled = true; };
-  }, [annualPkg?.product?.identifier]);
-
-  // Debug: log offerings state in dev
-  if (__DEV__) {
-    console.log('[Paywall] offering:', currentOffering?.identifier);
-    console.log('[Paywall] availablePackages:', currentOffering?.availablePackages?.map(
-      (p) => `${p.identifier} → ${p.product?.identifier}`,
-    ));
-    console.log('[Paywall] monthly:', monthlyPkg?.identifier, '| annual:', annualPkg?.identifier);
-  }
-
-  const handlePurchase = useCallback(async (type: 'monthly' | 'annual') => {
-    trackSubscriptionTapped(type);
-    const pkg = type === 'monthly' ? monthlyPkg : annualPkg;
-    if (!pkg) {
-      Alert.alert(t('paywall.notAvailable'), t('paywall.notAvailableDesc'));
-      return;
-    }
-    const success = await purchasePackage(pkg);
-    if (success) {
-      // Suppress the dismissed event from the unmount effect — we
-      // closed because the user purchased, not because they bailed.
-      purchasedRef.current = true;
+    if (isProMember) {
+      purchasedRef.current = true; // not a dismissal — suppress the event
       navigation.goBack();
     }
-  }, [monthlyPkg, annualPkg, purchasePackage, navigation, t]);
+  }, [isProMember, navigation]);
 
-  const handleRestore = useCallback(async () => {
-    const restored = await restorePurchases();
-    if (restored) {
-      Alert.alert(t('paywall.restored'), t('paywall.restoredDesc'));
-      navigation.goBack();
-    } else {
-      Alert.alert(t('paywall.nothingToRestore'), t('paywall.nothingToRestoreDesc'));
-    }
-  }, [restorePurchases, navigation, t]);
+  const handleClose = () => navigation.goBack();
 
-  if (isProMember) {
+  const handlePurchased = () => {
+    // Suppress the dismissed event from the unmount effect — we closed
+    // because the user converted, not because they bailed.
+    purchasedRef.current = true;
     navigation.goBack();
-    return null;
-  }
+  };
 
   return (
     <View style={styles.container}>
-      <ModalCloseButton onClose={() => navigation.goBack()} variant="fullscreen" />
-
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <LinearGradient
-            colors={['rgba(202,253,0,0.15)', 'rgba(202,253,0,0)']}
-            style={styles.headerGlow}
-          />
-          <View style={styles.iconCircle}>
-            <Ionicons name="flash" size={32} color={colors.primary} />
-          </View>
-          <Text style={styles.brandLabel}>KINETIC PRO</Text>
-          <Text style={styles.headline}>{t('paywall.headlineAdFree')}</Text>
-        </View>
-
-        {/* Context Card */}
-        <View style={styles.contextCard}>
-          <Ionicons
-            name={context.icon as any}
-            size={20}
-            color={colors.primary}
-          />
-          <View style={styles.contextTextWrap}>
-            <Text style={styles.contextTitle}>{context.title}</Text>
-            <Text style={styles.contextSubtitle}>{context.subtitle}</Text>
-          </View>
-        </View>
-
-        {/* Features */}
-        <View style={styles.featuresSection}>
-          {FEATURE_KEYS.map((key, i) => (
-            <View key={key} style={styles.featureRow}>
-              <View style={styles.featureCheck}>
-                <Ionicons name="checkmark" size={14} color={colors.background} />
-              </View>
-              <Text style={styles.featureText}>{t(key)}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Social Proof */}
-        <View style={styles.socialProof}>
-          <MaterialCommunityIcons name="account-group" size={16} color={colors.primary} />
-          <Text style={styles.socialProofText}>
-            {t('paywall.socialProof')}
-          </Text>
-        </View>
-
-        {/* Pricing */}
-        <View style={styles.pricingSection}>
-          <TouchableOpacity
-            style={styles.pricingCardPrimary}
-            onPress={() => handlePurchase('annual')}
-            activeOpacity={0.8}
-          >
-            <View style={styles.saveBadge}>
-              <Text style={styles.saveBadgeText}>{savingsLabel}</Text>
-            </View>
-            <Text style={styles.pricingLabel}>{t('paywall.annual')}</Text>
-            <Text style={styles.pricingAmount}>{t('paywall.perYear', { price: annualPrice })}</Text>
-            <Text style={styles.pricingDetail}>
-              {trialEligible === false
-                ? t('paywall.cancelAnytime')
-                : t('paywall.freeTrial')}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.pricingCardSecondary}
-            onPress={() => handlePurchase('monthly')}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.pricingLabel}>{t('paywall.monthly')}</Text>
-            <Text style={styles.pricingAmount}>{t('paywall.perMonth', { price: monthlyPrice })}</Text>
-            <Text style={styles.pricingDetail}>{t('paywall.cancelAnytime')}</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Restore */}
-        <TouchableOpacity style={styles.restoreBtn} onPress={handleRestore}>
-          <Text style={styles.restoreText}>{t('paywall.restore')}</Text>
-        </TouchableOpacity>
-
-        {/* Legal */}
-        <Text style={styles.legalText}>
-          {t(
-            trialEligible === false ? 'paywall.legalNoticeNoTrial' : 'paywall.legalNotice',
-            { annualPrice, monthlyPrice },
-          )}
-          {'\n'}
-          <Text
-            style={styles.legalLink}
-            onPress={() => Linking.openURL('https://kineticapp.ca/terms')}
-          >
-            {t('login.termsLink')}
-          </Text>
-          {'  ·  '}
-          <Text
-            style={styles.legalLink}
-            onPress={() => Linking.openURL('https://kineticapp.ca/privacy')}
-          >
-            {t('login.privacyLink')}
-          </Text>
-        </Text>
-      </ScrollView>
+      <RevenueCatUI.Paywall
+        style={styles.paywall}
+        options={{
+          // Explicitly pin to the current offering when we have it so the
+          // displayed paywall always matches the products this build
+          // expects; falls back to RevenueCat's "current" otherwise.
+          offering: currentOffering ?? undefined,
+          displayCloseButton: true,
+        }}
+        onPurchaseStarted={({ packageBeingPurchased }) => {
+          // Preserve the GA4 `subscription_tapped` funnel event the old
+          // custom paywall fired on plan tap. RC's package types map
+          // 1:1 to our two plans; anything else (shouldn't happen with a
+          // Monthly+Annual-only offering) is ignored.
+          const pkgType = packageBeingPurchased?.packageType;
+          if (pkgType === 'ANNUAL') trackSubscriptionTapped('annual');
+          else if (pkgType === 'MONTHLY') trackSubscriptionTapped('monthly');
+        }}
+        onPurchaseCompleted={handlePurchased}
+        onRestoreCompleted={({ customerInfo }) => {
+          // Only treat a restore as success (and close) if it actually
+          // granted an entitlement; otherwise let RevenueCat show its
+          // built-in "nothing to restore" feedback and keep the paywall.
+          if (Object.keys(customerInfo.entitlements.active).length > 0) {
+            handlePurchased();
+          }
+        }}
+        onDismiss={handleClose}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  scrollContent: {
-    paddingTop: 80,
-    paddingBottom: 40,
-    paddingHorizontal: 24,
-  },
-
-  header: {
-    alignItems: 'center',
-    marginBottom: 28,
-    position: 'relative',
-  },
-  headerGlow: {
-    position: 'absolute',
-    top: -40,
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-  },
-  iconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(202,253,0,0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  brandLabel: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 13,
-    lineHeight: 18,
-    letterSpacing: 3,
-    color: colors.primary,
-    marginBottom: 8,
-  },
-  headline: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 28,
-    lineHeight: 36,
-    color: colors.onSurface,
-    textAlign: 'center',
-    letterSpacing: -0.5,
-  },
-
-  contextCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    backgroundColor: 'rgba(202,253,0,0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(202,253,0,0.15)',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 28,
-  },
-  contextTextWrap: {
-    flex: 1,
-    gap: 4,
-  },
-  contextTitle: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 15,
-    lineHeight: 22,
-    color: colors.onSurface,
-  },
-  contextSubtitle: {
-    fontFamily: 'Inter_400Regular',
-    fontSize: 13,
-    lineHeight: 20,
-    color: colors.onSurfaceVariant,
-  },
-
-  featuresSection: {
-    gap: 14,
-    marginBottom: 24,
-  },
-  featureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  featureCheck: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  featureText: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 15,
-    lineHeight: 22,
-    color: colors.onSurface,
-    flex: 1,
-  },
-
-  socialProof: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: colors.surfaceContainerLow,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 28,
-  },
-  socialProofText: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 13,
-    lineHeight: 20,
-    color: colors.onSurfaceVariant,
-    flex: 1,
-  },
-
-  pricingSection: {
-    gap: 12,
-    marginBottom: 20,
-  },
-  pricingCardPrimary: {
-    backgroundColor: colors.surfaceContainerLow,
-    borderWidth: 2,
-    borderColor: colors.primary,
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
-    gap: 4,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  saveBadge: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    backgroundColor: colors.primary,
-    borderBottomLeftRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  saveBadgeText: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 10,
-    letterSpacing: 1,
-    color: colors.background,
-  },
-  pricingCardSecondary: {
-    backgroundColor: colors.surfaceContainerLow,
-    borderWidth: 1,
-    borderColor: colors.outline,
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
-    gap: 4,
-  },
-  pricingLabel: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 11,
-    lineHeight: 16,
-    letterSpacing: 1.5,
-    color: colors.onSurfaceVariant,
-    textTransform: 'uppercase',
-  },
-  pricingAmount: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 24,
-    lineHeight: 32,
-    color: colors.onSurface,
-  },
-  pricingDetail: {
-    fontFamily: 'Inter_400Regular',
-    fontSize: 12,
-    lineHeight: 18,
-    color: colors.onSurfaceDim,
-  },
-
-  restoreBtn: {
-    alignItems: 'center',
-    paddingVertical: 12,
-    marginBottom: 16,
-  },
-  restoreText: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 14,
-    color: colors.primary,
-    textDecorationLine: 'underline',
-  },
-
-  legalText: {
-    fontFamily: 'Inter_400Regular',
-    fontSize: 11,
-    lineHeight: 16,
-    color: colors.onSurfaceDim,
-    textAlign: 'center',
-  },
-  legalLink: {
-    color: colors.primary,
-    textDecorationLine: 'underline',
-  },
+  container: { flex: 1, backgroundColor: '#000' },
+  paywall: { flex: 1 },
 });

@@ -107,7 +107,7 @@ export function trackLeagueJoinAbandoned(
 // ─── Monetization ────────────────────────────────────────────
 
 export function trackPaywallSeen(
-  source: 'remove_ads_banner' | 'coin_store' | 'profile' | 'organic',
+  source: 'remove_ads_banner' | 'coin_store' | 'profile' | 'post_onboarding' | 'organic',
 ): void {
   fire(track({ event: 'paywall_seen', source }));
 }

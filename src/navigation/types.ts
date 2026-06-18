@@ -88,6 +88,7 @@ export type MainTabParamList = {
 
 export type PaywallTrigger =
   | 'remove_ads'
+  | 'post_onboarding'
   | 'general';
 
 // Self-reported acquisition channel. Must stay in sync with the backend

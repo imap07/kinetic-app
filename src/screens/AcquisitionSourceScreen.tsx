@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -76,12 +76,33 @@ export function AcquisitionSourceScreen({ onComplete, onBack }: Props) {
   const [referralCode, setReferralCode] = useState('');
   const [referralSaved, setReferralSaved] = useState(false);
 
+  // Hydrate from a code already captured by the deep-link path
+  // (kinetic://r/<code>) so a referred user SEES their code here and,
+  // crucially, so `handleContinue` re-stashes it instead of wiping it.
+  // Without this the field starts empty and the empty-string guard below
+  // is the only thing keeping the referral alive.
+  useEffect(() => {
+    pendingReferral
+      .get()
+      .then((c) => {
+        if (c && REFERRAL_INPUT_RE.test(c)) {
+          setReferralCode(c);
+          setReferralSaved(true);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   // Stash the typed code in the same AsyncStorage slot used by the
   // deep-link path. OnboardingCompleteScreen drains it post-submit and
   // calls /referrals/apply — one pipeline, whether the code arrived from
   // a Universal Link or from the user typing it here.
   const stashIfValid = useCallback(async (raw: string) => {
     const normalized = raw.trim().toUpperCase();
+    // Empty input must NOT clear the stash — a referred user who never
+    // typed anything (their code came in via deep link, invisibly) would
+    // otherwise lose the referral the moment they tap Continue.
+    if (!normalized) return;
     if (REFERRAL_INPUT_RE.test(normalized)) {
       await pendingReferral.set(normalized);
       setReferralSaved(true);

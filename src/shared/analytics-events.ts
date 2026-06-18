@@ -249,7 +249,7 @@ export type AnalyticsProps =
     }
   | {
       event: 'paywall_seen';
-      source: 'remove_ads_banner' | 'coin_store' | 'profile' | 'organic';
+      source: 'remove_ads_banner' | 'coin_store' | 'profile' | 'post_onboarding' | 'organic';
     }
   | {
       event: 'paywall_dismissed';
