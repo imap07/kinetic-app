@@ -238,6 +238,13 @@ export const ANALYTICS_EVENTS = [
   'dashboard_viewed',
   'notification_tapped',
   'share_tapped',
+  // ─── Granular interaction events (added 2026-07-03) ───────
+  // ui_tapped is the catch-all for every meaningful touchable in the
+  // app (params: screen + element + optional context). game_opened
+  // fires whenever the user lands on a match/race detail, regardless
+  // of whether they go on to predict.
+  'ui_tapped',
+  'game_opened',
 ] as const;
 
 export type AnalyticsEvent = typeof ANALYTICS_EVENTS[number];

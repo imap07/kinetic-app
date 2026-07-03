@@ -27,6 +27,7 @@ import type {
   SearchMatchResult,
 } from '../api/sports';
 import type { RootStackParamList } from '../navigation/types';
+import { trackTap } from '../utils/analytics';
 
 const RECENT_KEY = '@kinetic_recent_searches';
 const MAX_RECENT = 10;
@@ -149,6 +150,7 @@ export function SearchScreen() {
 
   const handleRecentTap = useCallback(
     (term: string) => {
+      trackTap('Search', 'recent_search_row');
       setQuery(term);
       saveRecent(term);
       doSearch(term);
@@ -157,6 +159,7 @@ export function SearchScreen() {
   );
 
   const handleTeamPress = (team: SearchTeamResult) => {
+    trackTap('Search', 'team_result_row', { sport: 'football', value: team.apiId });
     saveRecent(team.name);
     if (team.leagueApiId) {
       navigation.navigate('Main', {
@@ -167,6 +170,7 @@ export function SearchScreen() {
   };
 
   const handleLeaguePress = (league: SearchLeagueResult) => {
+    trackTap('Search', 'league_result_row', { sport: 'football', value: league.apiId });
     saveRecent(league.name);
     navigation.navigate('Main', {
       screen: 'Home',
@@ -175,6 +179,7 @@ export function SearchScreen() {
   };
 
   const handleMatchPress = (match: SearchMatchResult) => {
+    trackTap('Search', 'match_card', { sport: 'football', matchId: String(match.apiId) });
     saveRecent(`${match.homeTeam.name} vs ${match.awayTeam.name}`);
     navigation.navigate('Main', {
       screen: 'Home',
@@ -281,7 +286,7 @@ export function SearchScreen() {
           >
             <Ionicons name="time-outline" size={18} color={colors.onSurfaceVariant} />
             <Text style={styles.recentText} numberOfLines={1}>{item.data}</Text>
-            <TouchableOpacity onPress={() => removeRecent(item.data)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <TouchableOpacity onPress={() => { trackTap('Search', 'recent_search_remove'); removeRecent(item.data); }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <Ionicons name="close" size={16} color={colors.onSurfaceVariant} />
             </TouchableOpacity>
           </TouchableOpacity>
@@ -316,7 +321,7 @@ export function SearchScreen() {
           />
           {loading && <ActivityIndicator size="small" color={colors.primary} style={{ marginLeft: 4 }} />}
         </View>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.cancelBtn}>
+        <TouchableOpacity onPress={() => { trackTap('Search', 'cancel_button'); navigation.goBack(); }} style={styles.cancelBtn}>
           <Text style={styles.cancelText}>{t('search.cancel')}</Text>
         </TouchableOpacity>
       </View>

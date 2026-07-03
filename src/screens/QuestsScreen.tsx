@@ -20,6 +20,7 @@ import Toast from 'react-native-toast-message';
 import { useTranslation } from 'react-i18next';
 import { AdBanner } from '../components/AdBanner';
 import { useAds } from '../contexts/AdContext';
+import { trackTap } from '../utils/analytics';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'Quests'>;
 
@@ -120,7 +121,10 @@ export function QuestsScreen({ navigation }: Props) {
           name="arrow-back"
           size={24}
           color={colors.onSurface}
-          onPress={() => navigation.goBack()}
+          onPress={() => {
+            trackTap('Quests', 'back_button');
+            navigation.goBack();
+          }}
         />
         <Text style={styles.headerTitle}>{t('quests.title')}</Text>
         <View style={{ width: 24 }} />

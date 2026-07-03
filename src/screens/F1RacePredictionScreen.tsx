@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -28,7 +28,7 @@ import { sportsApi } from '../api/sports';
 import { useAds } from '../contexts/AdContext';
 import { AdBanner } from '../components/AdBanner';
 import { track } from '../services/analytics';
-import { trackPredictionMade } from '../utils/analytics';
+import { trackPredictionMade, trackTap, trackGameOpened } from '../utils/analytics';
 import type { PredictionType as ContractPredictionType } from '../shared/domain';
 
 type TabKey = 'winner' | 'podium' | 'h2h' | 'fastest' | 'points' | 'pitstops';
@@ -127,6 +127,27 @@ export default function F1RacePredictionScreen() {
 
   const token = tokens?.accessToken || '';
 
+  const gameOpenedRef = useRef(false);
+  useEffect(() => {
+    if (gameOpenedRef.current) return;
+    const raceName =
+      competitionName ||
+      (raceDetail as any)?.competitionName ||
+      (raceDetail as any)?.leagueName;
+    if (!raceName && !raceDetail) return;
+    gameOpenedRef.current = true;
+    trackGameOpened({
+      sport: 'formula-1',
+      matchId: String(raceApiId),
+      source:
+        navSource === 'search' || navSource === 'notification' || navSource === 'deeplink'
+          ? navSource
+          : surface,
+      leagueName: raceName || undefined,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [raceDetail]);
+
   const fetchData = useCallback(async () => {
     if (!token) return;
     try {
@@ -156,6 +177,11 @@ export default function F1RacePredictionScreen() {
   const hasPick = (type: F1PredictionType) => existingPicks.some((p) => p.predictionType === type);
 
   const submitPrediction = async (type: F1PredictionType) => {
+    trackTap('F1RacePrediction', 'confirm_pick_button', {
+      sport: 'formula-1',
+      matchId: String(raceApiId),
+      value: type,
+    });
     if (submitting) return;
     setSubmitting(true);
     try {
@@ -213,6 +239,11 @@ export default function F1RacePredictionScreen() {
   };
 
   const submitH2H = async (matchup: F1Matchup, winner: 'A' | 'B') => {
+    trackTap('F1RacePrediction', 'h2h_pick_button', {
+      sport: 'formula-1',
+      matchId: String(raceApiId),
+      value: winner,
+    });
     if (submitting) return;
     setSubmitting(true);
     try {
@@ -265,7 +296,7 @@ export default function F1RacePredictionScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+        <TouchableOpacity onPress={() => { trackTap('F1RacePrediction', 'back_button', { sport: 'formula-1', matchId: String(raceApiId) }); navigation.goBack(); }} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
           <Ionicons name="arrow-back" size={24} color={colors.onSurface} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
@@ -332,7 +363,7 @@ export default function F1RacePredictionScreen() {
             <TouchableOpacity
               key={tab.key}
               style={[styles.tab, isActive && styles.tabActive, picked && styles.tabPicked]}
-              onPress={() => setActiveTab(tab.key)}
+              onPress={() => { trackTap('F1RacePrediction', 'pick_type_selector', { sport: 'formula-1', matchId: String(raceApiId), value: tab.key }); setActiveTab(tab.key); }}
               activeOpacity={0.7}
             >
               <Ionicons name={tab.icon as any} size={16} color={isActive ? colors.background : picked ? colors.primary : colors.onSurfaceVariant} />
@@ -415,7 +446,7 @@ export default function F1RacePredictionScreen() {
               <TouchableOpacity
                 key={driver.driverApiId}
                 style={[styles.driverCard, isSelected && styles.driverCardSelected]}
-                onPress={() => setSelected(isSelected ? null : driver.driverApiId)}
+                onPress={() => { trackTap('F1RacePrediction', 'driver_card', { sport: 'formula-1', matchId: String(raceApiId), value: driver.driverApiId }); setSelected(isSelected ? null : driver.driverApiId); }}
                 activeOpacity={0.7}
                 disabled={alreadyPicked}
               >
@@ -496,6 +527,7 @@ export default function F1RacePredictionScreen() {
                   style={styles.podiumSelected}
                   onPress={() => {
                     if (alreadyPicked) return;
+                    trackTap('F1RacePrediction', 'podium_slot_clear', { sport: 'formula-1', matchId: String(raceApiId), value: idx + 1 });
                     const next = [...podiumPicks];
                     next[idx] = null;
                     setPodiumPicks(next);
@@ -519,6 +551,7 @@ export default function F1RacePredictionScreen() {
                         style={styles.podiumDriverOption}
                         onPress={() => {
                           if (alreadyPicked) return;
+                          trackTap('F1RacePrediction', 'podium_driver_option', { sport: 'formula-1', matchId: String(raceApiId), value: driver.driverApiId });
                           const next = [...podiumPicks];
                           next[idx] = driver.driverApiId;
                           setPodiumPicks(next);
@@ -715,7 +748,7 @@ export default function F1RacePredictionScreen() {
               <TouchableOpacity
                 key={driver.driverApiId}
                 style={[styles.pointsDriverChip, isSelected && styles.pointsDriverChipSelected]}
-                onPress={() => !alreadyPicked && setPointsDriver(isSelected ? null : driver.driverApiId)}
+                onPress={() => { if (alreadyPicked) return; trackTap('F1RacePrediction', 'points_driver_chip', { sport: 'formula-1', matchId: String(raceApiId), value: driver.driverApiId }); setPointsDriver(isSelected ? null : driver.driverApiId); }}
                 activeOpacity={0.7}
                 disabled={alreadyPicked}
               >
@@ -739,13 +772,13 @@ export default function F1RacePredictionScreen() {
             <View style={styles.pointsToggleRow}>
               <TouchableOpacity
                 style={[styles.pointsToggleBtn, pointsPrediction && styles.pointsToggleBtnActive]}
-                onPress={() => setPointsPrediction(true)}
+                onPress={() => { trackTap('F1RacePrediction', 'points_toggle', { sport: 'formula-1', matchId: String(raceApiId), value: 'yes' }); setPointsPrediction(true); }}
               >
                 <Text style={[styles.pointsToggleBtnText, pointsPrediction && styles.pointsToggleBtnTextActive]}>{t('picks.answerYes')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.pointsToggleBtn, !pointsPrediction && styles.pointsToggleBtnActive]}
-                onPress={() => setPointsPrediction(false)}
+                onPress={() => { trackTap('F1RacePrediction', 'points_toggle', { sport: 'formula-1', matchId: String(raceApiId), value: 'no' }); setPointsPrediction(false); }}
               >
                 <Text style={[styles.pointsToggleBtnText, !pointsPrediction && styles.pointsToggleBtnTextActive]}>{t('picks.answerNo')}</Text>
               </TouchableOpacity>

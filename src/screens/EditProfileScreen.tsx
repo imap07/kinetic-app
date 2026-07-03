@@ -22,6 +22,7 @@ import { colors, spacing, borderRadius } from '../theme';
 import { AdBanner } from '../components/AdBanner';
 import { useAuth } from '../contexts/AuthContext';
 import { ApiError } from '../api';
+import { trackTap } from '../utils/analytics';
 
 export function EditProfileScreen() {
   const { t } = useTranslation();
@@ -38,6 +39,7 @@ export function EditProfileScreen() {
   const [deleteText, setDeleteText] = useState('');
 
   const handleSave = async () => {
+    trackTap('EditProfile', 'save_button');
     if (saving) return;
     setSaving(true);
     try {
@@ -59,6 +61,7 @@ export function EditProfileScreen() {
   };
 
   const handleChangePhoto = async () => {
+    trackTap('EditProfile', 'change_avatar_button');
     const permResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permResult.granted) {
       Alert.alert(t('editProfile.permissionRequired'), t('editProfile.permissionDesc'));
@@ -93,6 +96,7 @@ export function EditProfileScreen() {
   };
 
   const handleDeleteAccount = () => {
+    trackTap('EditProfile', 'delete_account_button');
     Alert.alert(
       t('editProfile.deleteAccount'),
       t('editProfile.deleteAccountDesc'),
@@ -111,6 +115,7 @@ export function EditProfileScreen() {
   };
 
   const confirmDeleteAccount = async () => {
+    trackTap('EditProfile', 'delete_account_confirm_button');
     if (deleteText.trim() !== 'DELETE') {
       Alert.alert(t('editProfile.cancelled'), t('editProfile.deleteConfirm'));
       return;
@@ -130,7 +135,13 @@ export function EditProfileScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
+        <TouchableOpacity
+          onPress={() => {
+            trackTap('EditProfile', 'back_button');
+            navigation.goBack();
+          }}
+          hitSlop={12}
+        >
           <Feather name="arrow-left" size={22} color={colors.onSurface} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('editProfile.title')}</Text>
@@ -285,7 +296,10 @@ export function EditProfileScreen() {
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={styles.modalCancelBtn}
-                onPress={() => setShowDeleteConfirm(false)}
+                onPress={() => {
+                  trackTap('EditProfile', 'delete_account_cancel_button');
+                  setShowDeleteConfirm(false);
+                }}
               >
                 <Text style={styles.modalCancelText}>{t('common.cancel').toUpperCase()}</Text>
               </TouchableOpacity>

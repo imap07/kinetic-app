@@ -32,6 +32,7 @@ import type { PredictionData } from '../api/predictions';
 import { achievementsApi } from '../api/achievements';
 import type { Achievement } from '../api/achievements';
 import { RewardsProgressCard } from '../components/RewardsProgressCard';
+import { trackTap } from '../utils/analytics';
 
 // Derived from the shared TIER_LADDER — keeps this screen in lockstep
 // with backend `updateTier()`. `max` is the NEXT tier's minPoints,
@@ -262,9 +263,12 @@ export function ProfileScreen() {
   }, [achievements]);
 
   const toggleLockedExpanded = useCallback(() => {
+    trackTap('Profile', 'locked_achievements_toggle', {
+      value: lockedExpanded ? 'off' : 'on',
+    });
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setLockedExpanded((v) => !v);
-  }, []);
+  }, [lockedExpanded]);
 
   const tierKey = user?.tier ?? 'rookie';
   const tierInfo = TIER_CONFIG[tierKey] ?? TIER_CONFIG.rookie;
@@ -308,10 +312,12 @@ export function ProfileScreen() {
   }, [fetchHistory, fetchAchievements]);
 
   const handleLogout = async () => {
+    trackTap('Profile', 'logout_button');
     await logout();
   };
 
   const handleShare = async () => {
+    trackTap('Profile', 'share_profile_button');
     try {
       await Share.share({
         message: t('profile.shareText', { rate: winRate }),
@@ -372,7 +378,10 @@ export function ProfileScreen() {
               <TouchableOpacity
                 activeOpacity={0.85}
                 style={styles.editBtnWrap}
-                onPress={() => profileNav.navigate('EditProfile')}
+                onPress={() => {
+                  trackTap('Profile', 'edit_profile_button');
+                  profileNav.navigate('EditProfile');
+                }}
               >
                 <LinearGradient
                   colors={['#F3FFCA', '#CAFD00']}
@@ -450,7 +459,10 @@ export function ProfileScreen() {
         {/* ── Active Streak ── */}
         <TouchableOpacity
           style={[styles.statCard, styles.streakCard]}
-          onPress={() => profileNav.navigate('StreakLeaderboard')}
+          onPress={() => {
+            trackTap('Profile', 'streak_card');
+            profileNav.navigate('StreakLeaderboard');
+          }}
           activeOpacity={0.85}
           accessibilityRole="button"
           accessibilityLabel={t('profile.viewStreakBoard', {
@@ -494,7 +506,12 @@ export function ProfileScreen() {
                   Kinetic+
                   <Text style={styles.subPriceUnit}> {t('profile.subscription')}</Text>
                 </Text>
-                <TouchableOpacity onPress={() => manageSubscriptions()}>
+                <TouchableOpacity
+                  onPress={() => {
+                    trackTap('Profile', 'manage_subscription_button');
+                    manageSubscriptions();
+                  }}
+                >
                   <Text style={styles.manageSub}>{t('profile.manageSubscription')}</Text>
                 </TouchableOpacity>
               </>
@@ -506,7 +523,10 @@ export function ProfileScreen() {
                 <TouchableOpacity
                   style={styles.upgradeBtnWrap}
                   activeOpacity={0.85}
-                  onPress={() => presentPaywall('profile')}
+                  onPress={() => {
+                    trackTap('Profile', 'upgrade_pro_button');
+                    presentPaywall('profile');
+                  }}
                 >
                   <LinearGradient
                     colors={['#F3FFCA', '#CAFD00']}
@@ -744,7 +764,10 @@ export function ProfileScreen() {
           <Text style={styles.settingsLabel}>{t('profile.preferences')}</Text>
           <TouchableOpacity
             style={styles.settingsRow}
-            onPress={() => profileNav.navigate('EditFavoriteSports')}
+            onPress={() => {
+              trackTap('Profile', 'menu_favorite_sports_row');
+              profileNav.navigate('EditFavoriteSports');
+            }}
           >
             <View style={styles.settingsRowLeft}>
               <Ionicons name="football" size={18} color={colors.onSurface} />
@@ -761,7 +784,10 @@ export function ProfileScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.settingsRow}
-            onPress={() => profileNav.navigate('EditFavoriteTeams')}
+            onPress={() => {
+              trackTap('Profile', 'menu_favorite_teams_row');
+              profileNav.navigate('EditFavoriteTeams');
+            }}
           >
             <View style={styles.settingsRowLeft}>
               <MaterialCommunityIcons name="shield-outline" size={18} color={colors.onSurface} />
@@ -778,7 +804,10 @@ export function ProfileScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.settingsRow}
-            onPress={() => profileNav.navigate('EditFavoriteLeagues')}
+            onPress={() => {
+              trackTap('Profile', 'menu_favorite_leagues_row');
+              profileNav.navigate('EditFavoriteLeagues');
+            }}
           >
             <View style={styles.settingsRowLeft}>
               <MaterialCommunityIcons name="trophy-outline" size={18} color={colors.onSurface} />
@@ -803,7 +832,10 @@ export function ProfileScreen() {
           <Text style={styles.settingsLabel}>{t('profile.rewardsSocial')}</Text>
           <TouchableOpacity
             style={styles.settingsRow}
-            onPress={() => profileNav.navigate('WalletRewards')}
+            onPress={() => {
+              trackTap('Profile', 'menu_wallet_row');
+              profileNav.navigate('WalletRewards');
+            }}
           >
             <View style={styles.settingsRowLeft}>
               <MaterialCommunityIcons
@@ -817,7 +849,10 @@ export function ProfileScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.settingsRow}
-            onPress={() => profileNav.navigate('Referrals')}
+            onPress={() => {
+              trackTap('Profile', 'menu_referrals_row');
+              profileNav.navigate('Referrals');
+            }}
           >
             <View style={styles.settingsRowLeft}>
               <MaterialCommunityIcons
@@ -834,7 +869,10 @@ export function ProfileScreen() {
               because they share the friends-graph dependency. */}
           <TouchableOpacity
             style={styles.settingsRow}
-            onPress={() => profileNav.navigate('Rivalries')}
+            onPress={() => {
+              trackTap('Profile', 'menu_rivalries_row');
+              profileNav.navigate('Rivalries');
+            }}
           >
             <View style={styles.settingsRowLeft}>
               <Feather name="zap" size={18} color={colors.onSurface} />
@@ -847,7 +885,10 @@ export function ProfileScreen() {
 
           <TouchableOpacity
             style={styles.settingsRow}
-            onPress={() => profileNav.navigate('Seasons')}
+            onPress={() => {
+              trackTap('Profile', 'menu_seasons_row');
+              profileNav.navigate('Seasons');
+            }}
           >
             <View style={styles.settingsRowLeft}>
               <Feather name="award" size={18} color={colors.onSurface} />
@@ -860,7 +901,10 @@ export function ProfileScreen() {
 
           <TouchableOpacity
             style={styles.settingsRow}
-            onPress={() => profileNav.navigate('Cosmetics')}
+            onPress={() => {
+              trackTap('Profile', 'menu_cosmetics_row');
+              profileNav.navigate('Cosmetics');
+            }}
           >
             <View style={styles.settingsRowLeft}>
               <Feather name="star" size={18} color={colors.onSurface} />
@@ -877,7 +921,10 @@ export function ProfileScreen() {
           <Text style={styles.settingsLabel}>{t('profile.securitySettings')}</Text>
           <TouchableOpacity
             style={styles.settingsRow}
-            onPress={() => (profileNav as any).navigate('Notifications')}
+            onPress={() => {
+              trackTap('Profile', 'menu_notifications_row');
+              (profileNav as any).navigate('Notifications');
+            }}
           >
             <View style={styles.settingsRowLeft}>
               <Feather name="bell" size={18} color={colors.onSurface} />
@@ -887,7 +934,10 @@ export function ProfileScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.settingsRow}
-            onPress={() => profileNav.navigate('SecurityPrivacy')}
+            onPress={() => {
+              trackTap('Profile', 'menu_security_privacy_row');
+              profileNav.navigate('SecurityPrivacy');
+            }}
           >
             <View style={styles.settingsRowLeft}>
               <Feather name="shield" size={18} color={colors.onSurface} />

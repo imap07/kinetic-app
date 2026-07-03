@@ -30,6 +30,8 @@ import {
   trackPredictionMade,
   trackPredictionAbandoned,
   trackPredictionEdited,
+  trackTap,
+  trackGameOpened,
 } from '../utils/analytics';
 import type { UpdatePredictionPayload } from '../api/predictions';
 import type { SportKey, PredictionType as ContractPredictionType } from '../shared/domain';
@@ -902,6 +904,25 @@ export function MatchPredictionScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  const gameOpenedRef = useRef(false);
+  useEffect(() => {
+    if (gameOpenedRef.current) return;
+    if (!fixture && !genericGame) return;
+    gameOpenedRef.current = true;
+    trackGameOpened({
+      sport: sport as SportKey,
+      matchId: String(fixtureApiId),
+      source:
+        navSource === 'search' || navSource === 'notification' || navSource === 'deeplink'
+          ? navSource
+          : surface,
+      homeTeam: fixture?.homeTeam?.name || genericGame?.homeTeam?.name,
+      awayTeam: fixture?.awayTeam?.name || genericGame?.awayTeam?.name,
+      leagueName: fixture?.leagueName || genericGame?.leagueName,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fixture, genericGame]);
+
   const [existingPrediction, setExistingPrediction] = useState<PredictionData | null>(null);
   // When true, the user has tapped "Edit pick" on an existing pending
   // prediction. The form is shown pre-filled with the current values
@@ -1025,6 +1046,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
 
   const openDriverProfile = useCallback(async (driverApiId: number) => {
     if (!driverApiId || !tokens?.accessToken) return;
+    trackTap('MatchPrediction', 'driver_row', { sport: 'formula-1', matchId: String(fixtureApiId) });
     setF1DriverLoading(true);
     setF1DriverModal(null);
     try {
@@ -1039,6 +1061,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
 
   const openPlayerProfile = useCallback(async (playerApiId: number) => {
     if (!playerApiId || !tokens?.accessToken) return;
+    trackTap('MatchPrediction', 'player_row', { sport: sport as SportKey, matchId: String(fixtureApiId) });
     setPlayerModalLoading(true);
     setPlayerModal(null);
     try {
@@ -1274,6 +1297,11 @@ export function MatchPredictionScreen({ navigation }: Props) {
   });
 
   const handleFollowPress = useCallback(async () => {
+    trackTap('MatchPrediction', 'follow_match_button', {
+      sport: sport as SportKey,
+      matchId: String(fixtureApiId),
+      value: isSubscribed ? 'unfollow' : 'follow',
+    });
     await toggleSubscription();
     Toast.show({
       type: 'success',
@@ -1287,6 +1315,11 @@ export function MatchPredictionScreen({ navigation }: Props) {
   const statusDisplay = getStatusDisplay(gameStatus, t, statusLong, fixture?.elapsed, fixture?.date || genericGame?.date);
 
   const handleSubmitPrediction = async () => {
+    trackTap('MatchPrediction', 'confirm_pick_button', {
+      sport: sport as SportKey,
+      matchId: String(fixtureApiId),
+      value: predType,
+    });
     const needsOutcome = predType === 'result' || predType === 'exact_score' || predType === 'fastest_lap' || predType === 'podium_finish';
     if (!tokens?.accessToken || (needsOutcome && !selectedOutcome)) return;
     if (predType === 'over_under' && (ouSide === null || ouThreshold === null)) return;
@@ -1447,6 +1480,10 @@ export function MatchPredictionScreen({ navigation }: Props) {
    */
   const handleStartEdit = useCallback(() => {
     if (!existingPrediction) return;
+    trackTap('MatchPrediction', 'edit_pick_button', {
+      sport: sport as SportKey,
+      matchId: String(fixtureApiId),
+    });
     setPredType(existingPrediction.predictionType as PredictionType);
     setSelectedOutcome((existingPrediction.predictedOutcome as OutcomeChoice) ?? null);
     setHomeScoreInput(
@@ -1474,6 +1511,10 @@ export function MatchPredictionScreen({ navigation }: Props) {
 
   /** Bail out of edit mode without saving — restores the read-only card. */
   const handleCancelEdit = useCallback(() => {
+    trackTap('MatchPrediction', 'cancel_edit_button', {
+      sport: sport as SportKey,
+      matchId: String(fixtureApiId),
+    });
     setIsEditing(false);
     setSelectedOutcome(null);
     setHomeScoreInput('');
@@ -1487,6 +1528,10 @@ export function MatchPredictionScreen({ navigation }: Props) {
   }, []);
 
   const handleDeletePrediction = async () => {
+    trackTap('MatchPrediction', 'delete_pick_button', {
+      sport: sport as SportKey,
+      matchId: String(fixtureApiId),
+    });
     if (!tokens?.accessToken || !existingPrediction) return;
     Alert.alert(
       t('matchPrediction.cancelPrediction'),
@@ -1609,7 +1654,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => { trackTap('MatchPrediction', 'back_button', { sport: sport as SportKey, matchId: String(fixtureApiId) }); navigation.goBack(); }} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={22} color={colors.onSurface} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>
@@ -1647,7 +1692,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
 
             {/* Circuit info */}
             {f1CircuitImage ? (
-              <TouchableOpacity activeOpacity={0.85} onPress={() => setF1CircuitFullscreen(true)}>
+              <TouchableOpacity activeOpacity={0.85} onPress={() => { trackTap('MatchPrediction', 'circuit_image', { sport: 'formula-1', matchId: String(fixtureApiId) }); setF1CircuitFullscreen(true); }}>
                 <ExpoImage source={{ uri: f1CircuitImage }} style={styles.f1DetailCircuitImage} contentFit="contain" cachePolicy="memory-disk" />
                 <View style={styles.f1CircuitZoomHint}>
                   <Ionicons name="expand-outline" size={14} color="rgba(255,255,255,0.5)" />
@@ -2017,6 +2062,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
             style={styles.f1PredictCta}
             activeOpacity={0.85}
             onPress={() => {
+              trackTap('MatchPrediction', 'f1_predict_cta', { sport: 'formula-1', matchId: String(fixtureApiId) });
               const raceApiId = f1Race?.apiId || fixtureApiId;
               (navigation as any).navigate(f1PredictionRoute, {
                 raceApiId,
@@ -2231,7 +2277,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
                             <TouchableOpacity
                               key={tab.key}
                               style={[styles.predTypeTab, isActive && styles.predTypeTabActive]}
-                              onPress={() => setPredType(tab.key)}
+                              onPress={() => { trackTap('MatchPrediction', 'pick_type_selector', { sport: sport as SportKey, matchId: String(fixtureApiId), value: tab.key }); setPredType(tab.key); }}
                               activeOpacity={0.7}
                             >
                               <Text style={[styles.predTypeTabText, isActive && styles.predTypeTabTextActive]}>
@@ -2266,6 +2312,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
                               key={opt.key}
                               style={[styles.outcomeBtn, isSelected && styles.outcomeBtnSelected]}
                               onPress={() => {
+                                trackTap('MatchPrediction', 'outcome_selector', { sport: sport as SportKey, matchId: String(fixtureApiId), value: opt.key });
                                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                 setSelectedOutcome(opt.key);
                               }}
@@ -2367,6 +2414,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
                                 key={th}
                                 style={[styles.ouThresholdChip, isActive && styles.ouThresholdChipActive]}
                                 onPress={() => {
+                                  trackTap('MatchPrediction', 'ou_threshold_chip', { sport: sport as SportKey, matchId: String(fixtureApiId), value: th });
                                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                   setOuThreshold(th);
                                 }}
@@ -2383,6 +2431,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
                           <TouchableOpacity
                             style={[styles.ouSideBtn, ouSide === 'over' && styles.ouSideBtnActive]}
                             onPress={() => {
+                              trackTap('MatchPrediction', 'ou_side_selector', { sport: sport as SportKey, matchId: String(fixtureApiId), value: 'over' });
                               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                               setOuSide('over');
                             }}
@@ -2400,6 +2449,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
                           <TouchableOpacity
                             style={[styles.ouSideBtn, ouSide === 'under' && styles.ouSideBtnActive]}
                             onPress={() => {
+                              trackTap('MatchPrediction', 'ou_side_selector', { sport: sport as SportKey, matchId: String(fixtureApiId), value: 'under' });
                               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                               setOuSide('under');
                             }}
@@ -2432,6 +2482,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
                         <TouchableOpacity
                           style={[styles.ouSideBtn, bttsAnswer === 'yes' && styles.ouSideBtnActive]}
                           onPress={() => {
+                            trackTap('MatchPrediction', 'btts_selector', { sport: sport as SportKey, matchId: String(fixtureApiId), value: 'yes' });
                             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                             setBttsAnswer('yes');
                           }}
@@ -2449,6 +2500,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
                         <TouchableOpacity
                           style={[styles.ouSideBtn, bttsAnswer === 'no' && styles.ouSideBtnActive]}
                           onPress={() => {
+                            trackTap('MatchPrediction', 'btts_selector', { sport: sport as SportKey, matchId: String(fixtureApiId), value: 'no' });
                             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                             setBttsAnswer('no');
                           }}
@@ -2477,6 +2529,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
                         <TouchableOpacity
                           style={[styles.ouSideBtn, podiumAnswer === 'yes' && styles.ouSideBtnActive]}
                           onPress={() => {
+                            trackTap('MatchPrediction', 'podium_selector', { sport: sport as SportKey, matchId: String(fixtureApiId), value: 'yes' });
                             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                             setPodiumAnswer('yes');
                           }}
@@ -2494,6 +2547,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
                         <TouchableOpacity
                           style={[styles.ouSideBtn, podiumAnswer === 'no' && styles.ouSideBtnActive]}
                           onPress={() => {
+                            trackTap('MatchPrediction', 'podium_selector', { sport: sport as SportKey, matchId: String(fixtureApiId), value: 'no' });
                             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                             setPodiumAnswer('no');
                           }}
@@ -2567,6 +2621,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
                                 isActive && styles.methodCardActive,
                               ]}
                               onPress={() => {
+                                trackTap('MatchPrediction', 'method_selector', { sport: sport as SportKey, matchId: String(fixtureApiId), value: opt.key });
                                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                                 setMethodOfVictory(opt.key);
                               }}
@@ -2621,6 +2676,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
                         <TouchableOpacity
                           style={[styles.ouSideBtn, distanceAnswer === 'yes' && styles.ouSideBtnActive]}
                           onPress={() => {
+                            trackTap('MatchPrediction', 'distance_selector', { sport: sport as SportKey, matchId: String(fixtureApiId), value: 'yes' });
                             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                             setDistanceAnswer('yes');
                           }}
@@ -2638,6 +2694,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
                         <TouchableOpacity
                           style={[styles.ouSideBtn, distanceAnswer === 'no' && styles.ouSideBtnActive]}
                           onPress={() => {
+                            trackTap('MatchPrediction', 'distance_selector', { sport: sport as SportKey, matchId: String(fixtureApiId), value: 'no' });
                             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                             setDistanceAnswer('no');
                           }}
@@ -2740,7 +2797,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
                   <TouchableOpacity
                     key={tab.key}
                     style={[styles.tabItem, genericActiveTab === tab.key && styles.tabItemActive]}
-                    onPress={() => setGenericActiveTab(tab.key)}
+                    onPress={() => { trackTap('MatchPrediction', 'detail_tab', { sport: sport as SportKey, matchId: String(fixtureApiId), value: tab.key }); setGenericActiveTab(tab.key); }}
                     activeOpacity={0.7}
                   >
                     <Text style={[styles.tabText, genericActiveTab === tab.key && styles.tabTextActive]}>
@@ -2813,7 +2870,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
                 <TouchableOpacity
                   key={tab.key}
                   style={[styles.tabItem, activeTab === tab.key && styles.tabItemActive]}
-                  onPress={() => setActiveTab(tab.key)}
+                  onPress={() => { trackTap('MatchPrediction', 'detail_tab', { sport: sport as SportKey, matchId: String(fixtureApiId), value: tab.key }); setActiveTab(tab.key); }}
                   activeOpacity={0.7}
                 >
                   <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
@@ -3453,6 +3510,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
             <TouchableOpacity
               style={styles.milestoneDismiss}
               onPress={() => {
+                trackTap('MatchPrediction', 'milestone_dismiss_button', { sport: sport as SportKey, matchId: String(fixtureApiId) });
                 setMilestoneData(null);
                 (navigation as any).replace(pickSummaryRoute);
               }}

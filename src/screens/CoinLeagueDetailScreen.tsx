@@ -28,6 +28,7 @@ import {
   trackLeagueJoined,
   trackLeagueJoinAbandoned,
   trackShareTapped,
+  trackTap,
 } from '../utils/analytics';
 import type { CoinLeague, LeaderboardEntry } from '../api/leagues';
 import { SPORT_TABS, sportsApi } from '../api/sports';
@@ -223,6 +224,7 @@ export function CoinLeagueDetailScreen() {
 
   const handleJoin = async () => {
     if (!league) return;
+    trackTap('CoinLeagueDetail', 'join_league_button', { leagueId, value: league.entryFee });
     const leagueType: 'free' | 'paid' = league.entryFee > 0 ? 'paid' : 'free';
     trackLeagueJoinAttempted(leagueType, league.entryFee);
     if (available < league.entryFee) {
@@ -293,6 +295,7 @@ export function CoinLeagueDetailScreen() {
   };
 
   const handleLeave = async () => {
+    trackTap('CoinLeagueDetail', 'leave_league_button', { leagueId });
     Alert.alert(t('leagueDetail.leaveLeague'), t('leagueDetail.leaveCoinsReturned'), [
       { text: t('common.cancel'), style: 'cancel' },
       {
@@ -317,6 +320,11 @@ export function CoinLeagueDetailScreen() {
 
   const handleInlinePredict = async (game: SportGame, outcome: 'home' | 'draw' | 'away') => {
     if (!league || !tokens?.accessToken) return;
+    trackTap('CoinLeagueDetail', 'inline_predict_button', {
+      leagueId,
+      matchId: String(game.apiId),
+      value: outcome,
+    });
     setPredictingGame(game.apiId);
     try {
       const payload = {
@@ -350,6 +358,7 @@ export function CoinLeagueDetailScreen() {
       ? `https://kineticapp.ca/join/${league.inviteCode}`
       : Linking.createURL(`/league/${leagueId}`);
     try {
+      trackTap('CoinLeagueDetail', 'invite_button', { leagueId });
       trackShareTapped('league_invite');
       await Share.share({
         message: t('leagues.shareMessage', {
@@ -403,11 +412,27 @@ export function CoinLeagueDetailScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
+        <TouchableOpacity
+          onPress={() => {
+            trackTap('CoinLeagueDetail', 'back_button', { leagueId });
+            navigation.goBack();
+          }}
+          hitSlop={12}
+        >
           <Feather name="arrow-left" size={22} color={colors.onSurface} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>{league.name}</Text>
-        <TouchableOpacity onPress={() => league.inviteCode ? setShowQR(true) : handleInvite()} hitSlop={12}>
+        <TouchableOpacity
+          onPress={() => {
+            if (league.inviteCode) {
+              trackTap('CoinLeagueDetail', 'qr_share_button', { leagueId });
+              setShowQR(true);
+            } else {
+              handleInvite();
+            }
+          }}
+          hitSlop={12}
+        >
           <Ionicons name="qr-code" size={22} color={colors.primary} />
         </TouchableOpacity>
       </View>
@@ -588,6 +613,7 @@ export function CoinLeagueDetailScreen() {
               style={styles.f1CtaBtn}
               activeOpacity={0.85}
               onPress={() => {
+                trackTap('CoinLeagueDetail', 'f1_make_predictions_button', { leagueId });
                 (navigation as any).navigate('LeagueF1RacePrediction', {
                   raceApiId: league.f1RaceApiId,
                   competitionName: league.f1CompetitionName,
@@ -617,7 +643,10 @@ export function CoinLeagueDetailScreen() {
                   <TouchableOpacity
                     key={tabKey}
                     style={[styles.matchTab, activeMatchTab === tabKey && styles.matchTabActive]}
-                    onPress={() => setActiveMatchTab(tabKey)}
+                    onPress={() => {
+                      trackTap('CoinLeagueDetail', `tab_${tabKey}`, { leagueId });
+                      setActiveMatchTab(tabKey);
+                    }}
                   >
                     <Text style={[styles.matchTabText, activeMatchTab === tabKey && styles.matchTabTextActive]}>
                       {tabKey === 'upcoming' ? t('leagueDetail.upcoming') : tabKey === 'live' ? t('leagueDetail.live') : t('leagueDetail.results')}
@@ -760,12 +789,16 @@ export function CoinLeagueDetailScreen() {
                     {!isPast && (
                       <TouchableOpacity
                         style={styles.statsLink}
-                        onPress={() =>
+                        onPress={() => {
+                          trackTap('CoinLeagueDetail', 'match_stats_link', {
+                            leagueId,
+                            matchId: String(game.apiId),
+                          });
                           (navigation as any).navigate('LeagueMatchPrediction', {
                             fixtureApiId: game.apiId,
                             sport: league.sport,
-                          })
-                        }
+                          });
+                        }}
                       >
                         <Feather name="bar-chart-2" size={12} color={colors.onSurfaceDim} />
                         <Text style={styles.statsLinkText}>{t('leagueDetail.viewStatsH2H')}</Text>
@@ -782,12 +815,13 @@ export function CoinLeagueDetailScreen() {
         {isParticipant && (
           <TouchableOpacity
             style={styles.picksFeedBtn}
-            onPress={() =>
+            onPress={() => {
+              trackTap('CoinLeagueDetail', 'picks_feed_button', { leagueId });
               (navigation as any).navigate('LeaguePicksFeed', {
                 leagueId: league._id,
                 leagueName: league.name,
-              })
-            }
+              });
+            }}
             activeOpacity={0.7}
           >
             <MaterialCommunityIcons name="message-text-outline" size={20} color={colors.primary} />

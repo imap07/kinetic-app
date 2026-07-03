@@ -169,6 +169,49 @@ export function trackShareTapped(
   fire(track({ event: 'share_tapped', context }));
 }
 
+// ─── Granular interactions ───────────────────────────────────
+
+/**
+ * Catch-all tap tracker. Instrument EVERY meaningful touchable with
+ * this — tabs, filters, CTAs, toggles, list rows. `screen` is the
+ * route name, `element` a stable snake_case id for the control.
+ *
+ *   trackTap('CoinStore', 'package_tile', { value: 'coins_650' });
+ *   trackTap('Dashboard', 'sport_tab', { sport: 'basketball' });
+ *
+ * Named business events (trackPredictionMade, trackSubscriptionTapped,
+ * …) still fire alongside — ui_tapped is the raw interaction stream,
+ * the named events are the curated funnel.
+ */
+export function trackTap(
+  screen: string,
+  element: string,
+  context?: {
+    sport?: SportKey;
+    matchId?: string;
+    leagueId?: string;
+    value?: string | number;
+  },
+): void {
+  fire(track({ event: 'ui_tapped', screen, element, ...context }));
+}
+
+/**
+ * User landed on a match/race detail screen — fires on every open,
+ * before any prediction intent. This is the "which games catch
+ * attention" signal; prediction_started remains the intent signal.
+ */
+export function trackGameOpened(params: {
+  sport: SportKey;
+  matchId: string;
+  source: 'home' | 'live' | 'league' | 'search' | 'notification' | 'deeplink' | 'my_picks';
+  homeTeam?: string;
+  awayTeam?: string;
+  leagueName?: string;
+}): void {
+  fire(track({ event: 'game_opened', ...params }));
+}
+
 // ─── Helpers callers will want ───────────────────────────────
 
 /**

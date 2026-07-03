@@ -28,6 +28,7 @@ import {
 } from '../api/footballLeagues';
 import { sportsApi, SPORT_TABS, SportLeague } from '../api/sports';
 import type { SportKey } from '../api/sports';
+import { trackTap } from '../utils/analytics';
 
 const MAX_LEAGUES = 30;
 
@@ -343,6 +344,7 @@ export function EditFavoriteLeaguesScreen() {
 
   const handleSportChange = useCallback(
     (sport: string) => {
+      trackTap('EditFavoriteLeagues', 'sport_tab', { sport: sport as SportKey });
       setActiveSport(sport);
       setSearch('');
       setActiveRegion('all');
@@ -445,6 +447,9 @@ export function EditFavoriteLeaguesScreen() {
 
   const toggleLeague = useCallback(
     (apiId: number) => {
+      trackTap('EditFavoriteLeagues', 'favorite_league_toggle', {
+        leagueId: String(apiId),
+      });
       setSelected((prev) => {
         const next = new Set(prev);
         if (next.has(apiId)) {
@@ -472,6 +477,7 @@ export function EditFavoriteLeaguesScreen() {
   );
 
   const handleSave = useCallback(async () => {
+    trackTap('EditFavoriteLeagues', 'save_button', { value: selected.size });
     if (!tokens?.accessToken) return;
     setSaving(true);
     try {
@@ -548,7 +554,13 @@ export function EditFavoriteLeaguesScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
+        <TouchableOpacity
+          onPress={() => {
+            trackTap('EditFavoriteLeagues', 'back_button');
+            navigation.goBack();
+          }}
+          hitSlop={12}
+        >
           <Feather name="arrow-left" size={22} color={colors.onSurface} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('editFavorites.leaguesTitle')}</Text>
@@ -657,7 +669,10 @@ export function EditFavoriteLeaguesScreen() {
         <RegionPills
           regions={availableRegions}
           active={activeRegion}
-          onSelect={setActiveRegion}
+          onSelect={(r) => {
+            trackTap('EditFavoriteLeagues', 'region_pill', { value: r });
+            setActiveRegion(r);
+          }}
           regionCounts={regionCounts}
         />
       )}
@@ -682,6 +697,9 @@ export function EditFavoriteLeaguesScreen() {
               <TouchableOpacity
                 style={[styles.f1Toggle, f1Following && styles.f1ToggleOn]}
                 onPress={() => {
+                  trackTap('EditFavoriteLeagues', 'f1_season_toggle', {
+                    value: f1Following ? 'off' : 'on',
+                  });
                   const allF1Ids = currentLeagues.map((l) => l.apiId);
                   setSelected((prev) => {
                     const next = new Set(prev);
@@ -747,7 +765,12 @@ export function EditFavoriteLeaguesScreen() {
               <Text style={styles.sectionLabel}>{regionLabel}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 {selected.size > 0 && (
-                  <TouchableOpacity onPress={() => setSelected(new Set())}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      trackTap('EditFavoriteLeagues', 'clear_all_button');
+                      setSelected(new Set());
+                    }}
+                  >
                     <Text style={styles.clearAllText}>{t('editFavorites.clearAll')}</Text>
                   </TouchableOpacity>
                 )}

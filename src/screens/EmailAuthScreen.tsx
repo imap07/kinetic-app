@@ -29,6 +29,7 @@ import { MIN_AGE_YEARS } from '../shared/domain';
 import {
   trackOnboardingStep,
   trackOnboardingAbandoned,
+  trackTap,
 } from '../utils/analytics';
 
 // Bound for the date picker — anything after this point can't be
@@ -104,6 +105,7 @@ export function EmailAuthScreen({ navigation }: Props) {
       ageOk;
 
   const handleSubmit = async () => {
+    trackTap('EmailAuth', 'submit_button', { value: mode });
     if (!canSubmit || loading) return;
     setLoading(true);
 
@@ -149,7 +151,10 @@ export function EmailAuthScreen({ navigation }: Props) {
       <View style={{ paddingTop: insets.top }}>
         <TopAppBar
           showBack
-          onBack={() => navigation.goBack()}
+          onBack={() => {
+            trackTap('EmailAuth', 'back_button');
+            navigation.goBack();
+          }}
           leftLabel={isLogin ? t('emailAuth.signIn') : t('emailAuth.createAccount')}
         />
       </View>
@@ -211,7 +216,10 @@ export function EmailAuthScreen({ navigation }: Props) {
             </Text>
             <TouchableOpacity
               style={styles.inputContainer}
-              onPress={() => setShowDatePicker(true)}
+              onPress={() => {
+                trackTap('EmailAuth', 'birthdate_field');
+                setShowDatePicker(true);
+              }}
               activeOpacity={0.7}
               disabled={loading}
             >
@@ -261,7 +269,10 @@ export function EmailAuthScreen({ navigation }: Props) {
             )}
             {Platform.OS === 'ios' && showDatePicker && (
               <TouchableOpacity
-                onPress={() => setShowDatePicker(false)}
+                onPress={() => {
+                  trackTap('EmailAuth', 'birthdate_done_button');
+                  setShowDatePicker(false);
+                }}
                 style={styles.dateDoneBtn}
               >
                 <Text style={styles.dateDoneText}>
@@ -316,7 +327,10 @@ export function EmailAuthScreen({ navigation }: Props) {
               editable={!loading}
             />
             <TouchableOpacity
-              onPress={() => setShowPassword(!showPassword)}
+              onPress={() => {
+                trackTap('EmailAuth', 'toggle_password_visibility');
+                setShowPassword(!showPassword);
+              }}
               hitSlop={8}
             >
               <Feather
@@ -357,7 +371,10 @@ export function EmailAuthScreen({ navigation }: Props) {
 
         {isLogin && (
           <TouchableOpacity
-            onPress={() => navigation.navigate('RecoverPasswordRequest')}
+            onPress={() => {
+              trackTap('EmailAuth', 'forgot_password_link');
+              navigation.navigate('RecoverPasswordRequest');
+            }}
             style={styles.forgotLink}
           >
             <Text style={styles.forgotText}>{t('emailAuth.forgotPassword')}</Text>
@@ -384,7 +401,12 @@ export function EmailAuthScreen({ navigation }: Props) {
         </View>
 
         <TouchableOpacity
-          onPress={() => setMode(isLogin ? 'register' : 'login')}
+          onPress={() => {
+            trackTap('EmailAuth', 'switch_mode_link', {
+              value: isLogin ? 'register' : 'login',
+            });
+            setMode(isLogin ? 'register' : 'login');
+          }}
           disabled={loading}
         >
           <Text style={styles.switchText}>

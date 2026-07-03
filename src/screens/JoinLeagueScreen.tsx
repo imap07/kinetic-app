@@ -39,6 +39,7 @@ import type { LeaguesStackParamList } from '../navigation/types';
 import { leaguesApi } from '../api/leagues';
 import type { CoinLeague } from '../api/leagues';
 import { useAuth } from '../contexts/AuthContext';
+import { trackTap } from '../utils/analytics';
 import { colors, spacing, borderRadius, typography } from '../theme';
 
 type Props = NativeStackScreenProps<LeaguesStackParamList, 'JoinLeague'>;
@@ -75,10 +76,12 @@ export function JoinLeagueScreen({ route, navigation }: Props) {
 
   const handleView = () => {
     if (!league) return;
+    trackTap('JoinLeague', 'view_league_button', { leagueId: league._id });
     navigation.replace('CoinLeagueDetail', { leagueId: league._id });
   };
 
   const handleDismiss = () => {
+    trackTap('JoinLeague', 'dismiss_button', league ? { leagueId: league._id } : undefined);
     navigation.replace('LeaguesHome');
   };
 
@@ -107,7 +110,13 @@ export function JoinLeagueScreen({ route, navigation }: Props) {
             {error ??
               t('leagues.inviteErrorBody', 'The code may have expired or been cancelled.')}
           </Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={load}>
+          <TouchableOpacity
+            style={styles.retryBtn}
+            onPress={() => {
+              trackTap('JoinLeague', 'retry_button');
+              load();
+            }}
+          >
             <Text style={styles.retryBtnText}>
               {t('common.retry', 'Retry')}
             </Text>

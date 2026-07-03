@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
 import { useTranslation } from 'react-i18next';
 import { colors } from '../theme';
+import { trackTap } from '../utils/analytics';
 
 export type NotificationScope = 'my_teams' | 'all_games';
 
@@ -104,6 +105,7 @@ export function NotificationSetupScreen({ onComplete, onBack, hasFavorites = tru
   }, []);
 
   const requestPermission = useCallback(async () => {
+    trackTap('NotificationSetup', 'enable_notifications_card');
     setRequesting(true);
     try {
       const { status } = await Notifications.requestPermissionsAsync();
@@ -129,6 +131,7 @@ export function NotificationSetupScreen({ onComplete, onBack, hasFavorites = tru
   }, []);
 
   const handleContinue = useCallback(() => {
+    trackTap('NotificationSetup', 'continue_button', { value: scope });
     onComplete({
       permissionGranted,
       scope,
@@ -144,7 +147,13 @@ export function NotificationSetupScreen({ onComplete, onBack, hasFavorites = tru
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <View style={styles.headerRow}>
           {onBack && (
-            <TouchableOpacity onPress={onBack} style={styles.backBtn}>
+            <TouchableOpacity
+              onPress={() => {
+                trackTap('NotificationSetup', 'back_button');
+                onBack();
+              }}
+              style={styles.backBtn}
+            >
               <Ionicons name="arrow-back" size={22} color={colors.onSurface} />
             </TouchableOpacity>
           )}
@@ -210,6 +219,7 @@ export function NotificationSetupScreen({ onComplete, onBack, hasFavorites = tru
               !hasFavorites && styles.scopeCardDisabled,
             ]}
             onPress={() => {
+              trackTap('NotificationSetup', 'scope_option', { value: 'my_teams' });
               if (!hasFavorites) {
                 Alert.alert(
                   t('notificationSetup.noFavoritesAlertTitle', 'No favorites selected'),
@@ -267,7 +277,10 @@ export function NotificationSetupScreen({ onComplete, onBack, hasFavorites = tru
 
           <TouchableOpacity
             style={[styles.scopeCard, scope === 'all_games' && styles.scopeCardActive]}
-            onPress={() => setScope('all_games')}
+            onPress={() => {
+              trackTap('NotificationSetup', 'scope_option', { value: 'all_games' });
+              setScope('all_games');
+            }}
             activeOpacity={0.8}
             accessibilityRole="radio"
             accessibilityState={{ checked: scope === 'all_games' }}
@@ -308,7 +321,10 @@ export function NotificationSetupScreen({ onComplete, onBack, hasFavorites = tru
               </View>
               <Switch
                 value={toggles[toggle.key]}
-                onValueChange={() => toggleValue(toggle.key)}
+                onValueChange={() => {
+                  trackTap('NotificationSetup', 'notification_toggle', { value: toggle.key });
+                  toggleValue(toggle.key);
+                }}
                 trackColor={{ false: '#2A2E34', true: colors.primary + '60' }}
                 thumbColor={toggles[toggle.key] ? colors.primary : '#6B6E73'}
                 ios_backgroundColor="#2A2E34"

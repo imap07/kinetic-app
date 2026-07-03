@@ -22,6 +22,7 @@ import type { CoinLeague } from '../api/leagues';
 import { sportsApi } from '../api/sports';
 import type { SportKey, SportLeagueDetail, SportGame, SportStandingEntry } from '../api/sports';
 import type { HomeStackParamList, RootStackParamList } from '../navigation/types';
+import { trackTap } from '../utils/analytics';
 
 type Nav = NativeStackNavigationProp<HomeStackParamList>;
 
@@ -148,7 +149,7 @@ export function LeagueDetailScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => { trackTap('LeagueDetail', 'back_button', { sport, value: leagueApiId }); navigation.goBack(); }} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.onSurface} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
@@ -182,7 +183,7 @@ export function LeagueDetailScreen() {
           <TouchableOpacity
             key={tab}
             style={[styles.tab, activeTab === tab && styles.tabActive]}
-            onPress={() => setActiveTab(tab)}
+            onPress={() => { trackTap('LeagueDetail', 'detail_tab', { sport, value: tab }); setActiveTab(tab); }}
           >
             <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
               {tab === 'matches'
@@ -206,7 +207,10 @@ export function LeagueDetailScreen() {
             upcoming={upcoming}
             recent={recent}
             sport={sport}
-            onGamePress={(id) => navigation.navigate('MatchPrediction', { fixtureApiId: id, sport })}
+            onGamePress={(id) => {
+              trackTap('LeagueDetail', 'match_card', { sport, matchId: String(id) });
+              navigation.navigate('MatchPrediction', { fixtureApiId: id, sport });
+            }}
           />
         ) : (
           <StandingsTab standings={standings} sport={sport} />
@@ -229,11 +233,12 @@ export function LeagueDetailScreen() {
                 <TouchableOpacity
                   key={cl._id}
                   style={styles.coinLeagueCard}
-                  onPress={() =>
+                  onPress={() => {
+                    trackTap('LeagueDetail', 'coin_league_card', { sport, leagueId: cl._id });
                     rootNav.navigate('Main', {
                       screen: 'Leagues',
-                    } as any)
-                  }
+                    } as any);
+                  }}
                   activeOpacity={0.7}
                 >
                   <Text style={styles.coinLeagueName} numberOfLines={1}>{cl.name}</Text>
@@ -258,6 +263,7 @@ export function LeagueDetailScreen() {
             <TouchableOpacity
               style={styles.coinLeagueCta}
               onPress={() => {
+                trackTap('LeagueDetail', 'create_coin_league_cta', { sport, value: leagueApiId });
                 // Navigate to CoinLeagues tab — the create modal can be opened there
                 rootNav.navigate('Main', {
                   screen: 'Leagues',

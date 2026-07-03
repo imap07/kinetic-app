@@ -27,6 +27,7 @@ import { AdBanner } from '../components/AdBanner';
 import { coinsApi } from '../api/coins';
 import type { CoinTransaction } from '../api/coins';
 import type { ProfileStackParamList } from '../navigation/types';
+import { trackTap } from '../utils/analytics';
 
 // Gift-card redemption feature flag. Currently ON: redemptions are
 // processed manually via the admin dashboard's "Giftcards" tab — when
@@ -106,7 +107,13 @@ export function WalletRewardsScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
+        <TouchableOpacity
+          onPress={() => {
+            trackTap('WalletRewards', 'back_button');
+            navigation.goBack();
+          }}
+          hitSlop={12}
+        >
           <Feather name="arrow-left" size={22} color={colors.onSurface} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('wallet.title')}</Text>
@@ -179,7 +186,10 @@ export function WalletRewardsScreen() {
         <View style={styles.quickActions}>
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={() => navigation.navigate('CoinStore', { source: 'profile' })}
+            onPress={() => {
+              trackTap('WalletRewards', 'buy_coins_card');
+              navigation.navigate('CoinStore', { source: 'profile' });
+            }}
             activeOpacity={0.7}
           >
             <View style={[styles.actionIconWrap, { backgroundColor: 'rgba(202,253,0,0.1)' }]}>
@@ -192,7 +202,10 @@ export function WalletRewardsScreen() {
           {GIFTCARDS_ENABLED && (
             <TouchableOpacity
               style={styles.actionCard}
-              onPress={() => navigation.navigate('GiftcardRedeem')}
+              onPress={() => {
+                trackTap('WalletRewards', 'gift_cards_card');
+                navigation.navigate('GiftcardRedeem');
+              }}
               activeOpacity={0.7}
             >
               <View style={[styles.actionIconWrap, { backgroundColor: 'rgba(252,91,0,0.1)' }]}>
@@ -222,7 +235,10 @@ export function WalletRewardsScreen() {
             </Text>
             <TouchableOpacity
               style={styles.emptyTxCta}
-              onPress={() => (navigation as any).navigate('Main', { screen: 'Home' })}
+              onPress={() => {
+                trackTap('WalletRewards', 'start_earning_button');
+                (navigation as any).navigate('Main', { screen: 'Home' });
+              }}
               activeOpacity={0.85}
             >
               <Text style={styles.emptyTxCtaText}>
@@ -327,6 +343,7 @@ export function WalletRewardsScreen() {
             <TouchableOpacity
               style={styles.modalBtn}
               onPress={() => {
+                trackTap('WalletRewards', 'disclaimer_understand_button');
                 setShowDisclaimer(false);
                 AsyncStorage.setItem('wallet_disclaimer_seen', '1');
               }}

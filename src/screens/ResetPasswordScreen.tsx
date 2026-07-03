@@ -24,6 +24,7 @@ import {
   validatePassword,
   PASSWORD_MIN_LENGTH,
 } from '../services/passwordPolicy';
+import { trackTap } from '../utils/analytics';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'ResetPassword'>;
 
@@ -46,6 +47,7 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
     policyCheck.valid && confirmPassword === password && !loading;
 
   const handleReset = async () => {
+    trackTap('ResetPassword', 'reset_password_button');
     if (!canSubmit) return;
 
     if (password !== confirmPassword) {
@@ -75,7 +77,10 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
       <View style={{ paddingTop: insets.top }}>
         <TopAppBar
           showBack
-          onBack={() => navigation.goBack()}
+          onBack={() => {
+            trackTap('ResetPassword', 'back_button');
+            navigation.goBack();
+          }}
           leftLabel={t('resetPassword.title')}
         />
       </View>
@@ -123,7 +128,10 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
               editable={!loading}
             />
             <TouchableOpacity
-              onPress={() => setShowPassword(!showPassword)}
+              onPress={() => {
+                trackTap('ResetPassword', 'toggle_password_visibility');
+                setShowPassword(!showPassword);
+              }}
               hitSlop={8}
             >
               <Feather

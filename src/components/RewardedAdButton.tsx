@@ -6,6 +6,7 @@ import Toast from 'react-native-toast-message';
 import { useAds } from '../contexts/AdContext';
 import { colors } from '../theme';
 import { REWARDED_AD_COINS } from '../shared/domain';
+import { trackTap } from '../utils/analytics';
 
 /**
  * "Watch ad → Earn N coins" button.
@@ -23,6 +24,7 @@ export function RewardedAdButton() {
   if (!adsEnabled || rewardedAdsRemaining <= 0) return null;
 
   const handlePress = async () => {
+    trackTap('RewardedAdButton', 'watch_ad_button', { value: rewardedAdsRemaining });
     setLoading(true);
     try {
       const result = await showRewardedAd();

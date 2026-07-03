@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { colors } from '../theme';
 import { pendingReferral } from '../services/referralPending';
 import { REFERRAL_REWARD_COINS } from '../shared/domain';
+import { trackTap } from '../utils/analytics';
 
 // Keep in sync with backend REFERRAL_CODE_ALPHABET + REFERRAL_CODE_LENGTH.
 // Allow 4–12 chars to be forgiving of typos / future length changes without
@@ -113,6 +114,7 @@ export function AcquisitionSourceScreen({ onComplete, onBack }: Props) {
   }, []);
 
   const handleContinue = useCallback(() => {
+    trackTap('AcquisitionSource', 'continue_button', { value: selected ?? 'none' });
     Keyboard.dismiss();
     // Fire-and-forget: stash happens before navigation so OnboardingComplete
     // sees it in AsyncStorage. Invalid codes silently clear the stash.
@@ -121,6 +123,7 @@ export function AcquisitionSourceScreen({ onComplete, onBack }: Props) {
   }, [selected, onComplete, referralCode, stashIfValid]);
 
   const handleSkip = useCallback(() => {
+    trackTap('AcquisitionSource', 'skip_button');
     onComplete(null);
   }, [onComplete]);
 
@@ -145,7 +148,14 @@ export function AcquisitionSourceScreen({ onComplete, onBack }: Props) {
       {/* Header */}
       <View style={styles.header}>
         {onBack && (
-          <TouchableOpacity onPress={onBack} style={styles.backButton} hitSlop={12}>
+          <TouchableOpacity
+            onPress={() => {
+              trackTap('AcquisitionSource', 'back_button');
+              onBack();
+            }}
+            style={styles.backButton}
+            hitSlop={12}
+          >
             <Ionicons name="chevron-back" size={24} color={colors.onSurface} />
           </TouchableOpacity>
         )}
@@ -177,7 +187,10 @@ export function AcquisitionSourceScreen({ onComplete, onBack }: Props) {
                 styles.optionRow,
                 isSel && { borderColor: source.color, backgroundColor: source.color + '10' },
               ]}
-              onPress={() => setSelected(source.key)}
+              onPress={() => {
+                trackTap('AcquisitionSource', 'source_option', { value: source.key });
+                setSelected(source.key);
+              }}
               activeOpacity={0.8}
             >
               <View style={[styles.iconWrap, { backgroundColor: source.color + '18' }]}>

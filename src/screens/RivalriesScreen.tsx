@@ -32,6 +32,7 @@ import { colors, spacing } from '../theme';
 import { AdBanner } from '../components/AdBanner';
 import { useAds } from '../contexts/AdContext';
 import { useAuth } from '../contexts/AuthContext';
+import { trackTap } from '../utils/analytics';
 import { rivalriesApi, type Rivalry, type RivalriesResponse } from '../api/rivalries';
 import { streaksApi } from '../api/streaks';
 import { SPORT_TABS } from '../api/sports';
@@ -71,6 +72,7 @@ export function RivalriesScreen() {
   const handleAccept = useCallback(
     async (r: Rivalry) => {
       if (!tokens?.accessToken) return;
+      trackTap('Rivalries', 'accept_challenge_button', { value: r.sport });
       try {
         await rivalriesApi.accept(tokens.accessToken, r.id);
         trackAction();
@@ -85,6 +87,7 @@ export function RivalriesScreen() {
   const handleDecline = useCallback(
     async (r: Rivalry) => {
       if (!tokens?.accessToken) return;
+      trackTap('Rivalries', 'decline_challenge_button', { value: r.sport });
       try {
         await rivalriesApi.decline(tokens.accessToken, r.id);
         await load();
@@ -98,6 +101,7 @@ export function RivalriesScreen() {
   const handleCancel = useCallback(
     async (r: Rivalry) => {
       if (!tokens?.accessToken) return;
+      trackTap('Rivalries', 'cancel_challenge_button', { value: r.sport });
       try {
         await rivalriesApi.cancel(tokens.accessToken, r.id);
         await load();
@@ -127,13 +131,25 @@ export function RivalriesScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
+        <TouchableOpacity
+          onPress={() => {
+            trackTap('Rivalries', 'back_button');
+            navigation.goBack();
+          }}
+          hitSlop={12}
+        >
           <Feather name="arrow-left" size={22} color={colors.onSurface} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
           {t('rivalries.title', { defaultValue: 'Rivalries' })}
         </Text>
-        <TouchableOpacity onPress={() => setChallengeOpen(true)} hitSlop={12}>
+        <TouchableOpacity
+          onPress={() => {
+            trackTap('Rivalries', 'new_challenge_button', { value: 'header' });
+            setChallengeOpen(true);
+          }}
+          hitSlop={12}
+        >
           <Feather name="plus" size={22} color={colors.primary} />
         </TouchableOpacity>
       </View>
@@ -157,7 +173,13 @@ export function RivalriesScreen() {
                     'Challenge a friend to 7 days of head-to-head picks. Higher win rate takes the bragging rights.',
                 })}
               </Text>
-              <TouchableOpacity style={styles.cta} onPress={() => setChallengeOpen(true)}>
+              <TouchableOpacity
+                style={styles.cta}
+                onPress={() => {
+                  trackTap('Rivalries', 'new_challenge_button', { value: 'empty_state' });
+                  setChallengeOpen(true);
+                }}
+              >
                 <Feather name="zap" size={14} color={colors.onPrimary} />
                 <Text style={styles.ctaText}>
                   {t('rivalries.startCta', { defaultValue: 'Start a rivalry' })}
@@ -329,6 +351,7 @@ function ChallengeSheet({
 
   const submit = async (opponentId: string) => {
     if (!tokens?.accessToken) return;
+    trackTap('Rivalries', 'challenge_friend_row', { value: sport });
     setSubmitting(opponentId);
     try {
       await rivalriesApi.challenge(tokens.accessToken, opponentId, sport);
@@ -360,7 +383,10 @@ function ChallengeSheet({
               <TouchableOpacity
                 key={s.key}
                 style={[styles.sportPill, sport === s.key && styles.sportPillActive]}
-                onPress={() => setSport(s.key)}
+                onPress={() => {
+                  trackTap('Rivalries', 'challenge_sport_pill', { value: s.key });
+                  setSport(s.key);
+                }}
               >
                 <Text style={[styles.sportPillText, sport === s.key && styles.sportPillTextActive]}>
                   {s.name}

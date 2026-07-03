@@ -7,6 +7,7 @@ import {
   setUserProperty,
 } from '@react-native-firebase/analytics';
 import Constants from 'expo-constants';
+import * as Localization from 'expo-localization';
 import type { User } from '../api/auth';
 import type { AnalyticsProps } from '../shared/analytics-events';
 
@@ -36,18 +37,37 @@ const POSTHOG_HOST =
   (Constants.expoConfig?.extra?.posthogHost as string | undefined) ||
   'https://app.posthog.com';
 
-function simpleHash(input: string): string {
-  // Not cryptographic — just a stable opaque ID so PostHog can
-  // correlate events per user without storing the raw Mongo _id.
-  let h = 2166136261;
-  for (let i = 0; i < input.length; i++) {
-    h ^= input.charCodeAt(i);
-    h = (h * 16777619) >>> 0;
+// Device-locale context attached to every PostHog event and set as
+// Firebase user properties. Country here is the device REGION setting
+// (not IP geolocation — GA4 already derives city/country from IP);
+// having it as a property lets us segment custom events by market in
+// both sinks. Resolved once per JS runtime — locale changes require
+// an app restart to propagate anyway.
+function resolveDeviceContext(): { country: string; language: string; timezone: string } {
+  try {
+    const locale = Localization.getLocales()[0];
+    const calendar = Localization.getCalendars()[0];
+    return {
+      country: locale?.regionCode ?? 'unknown',
+      language: locale?.languageCode ?? 'unknown',
+      timezone: calendar?.timeZone ?? 'unknown',
+    };
+  } catch {
+    return { country: 'unknown', language: 'unknown', timezone: 'unknown' };
   }
-  return h.toString(16).padStart(8, '0');
 }
+const deviceContext = resolveDeviceContext();
 
+// Distinct ID sent to PostHog. Set to the real internal userId on
+// login/session-restore (decision 2026-07-03: the Mongo _id is an
+// internal identifier, not PII — sending it raw lets us jump from a
+// user in the admin dashboard straight to their event stream). Before
+// auth we use one stable per-runtime anonymous id so pre-login events
+// still group into a single anonymous journey instead of one fake
+// "user" per event.
 let currentDistinctId: string | null = null;
+const anonDistinctId = `anon-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+const distinctId = () => currentDistinctId ?? anonDistinctId;
 
 /**
  * Type-safe event emission. Use this for every new analytics call
@@ -64,7 +84,6 @@ export async function track(props: AnalyticsProps): Promise<void> {
   }
 
   if (!POSTHOG_API_KEY) return;
-  const distinctId = currentDistinctId ?? `anon-${Date.now()}`;
   try {
     await fetch(`${POSTHOG_HOST.replace(/\/$/, '')}/capture/`, {
       method: 'POST',
@@ -72,9 +91,10 @@ export async function track(props: AnalyticsProps): Promise<void> {
       body: JSON.stringify({
         api_key: POSTHOG_API_KEY,
         event,
-        distinct_id: distinctId,
+        distinct_id: distinctId(),
         properties: {
           ...payload,
+          ...deviceContext,
           $lib: 'kinetic-mobile',
           appVersion: Constants.expoConfig?.version,
         },
@@ -83,20 +103,6 @@ export async function track(props: AnalyticsProps): Promise<void> {
     });
   } catch (err: any) {
     if (__DEV__) console.warn('[analytics] posthog', event, err?.message);
-  }
-}
-
-/**
- * Identify the current user for analytics sinks. Called once after
- * login success. We hash the userId so dashboards see a stable
- * opaque ID, never the raw Mongo _id.
- */
-export async function identifyForAnalytics(userId: string): Promise<void> {
-  currentDistinctId = simpleHash(userId);
-  try {
-    await setUserId(ga(), currentDistinctId);
-  } catch {
-    /* Firebase unavailable */
   }
 }
 
@@ -153,7 +159,6 @@ export async function logScreenView(
 
   // Mirror to PostHog so funnels / cohorts can use the same context.
   if (!POSTHOG_API_KEY) return;
-  const distinctId = currentDistinctId ?? `anon-${Date.now()}`;
   try {
     await fetch(`${POSTHOG_HOST.replace(/\/$/, '')}/capture/`, {
       method: 'POST',
@@ -161,10 +166,11 @@ export async function logScreenView(
       body: JSON.stringify({
         api_key: POSTHOG_API_KEY,
         event: '$screen',
-        distinct_id: distinctId,
+        distinct_id: distinctId(),
         properties: {
           $screen_name: params.screen_name_full,
           ...params,
+          ...deviceContext,
           $lib: 'kinetic-mobile',
           appVersion: Constants.expoConfig?.version,
         },
@@ -274,13 +280,21 @@ export async function logSubscriptionCancel() {
 //   - property value <= 36 chars (strings only)
 //   - max 25 user properties per project
 export async function setAnalyticsUser(userId: string, properties?: Record<string, string>) {
+  // PostHog uses the same real userId from here on — this is what
+  // stitches the anonymous pre-login events' journey to the account.
+  currentDistinctId = userId;
   try {
     const a = ga();
     await setUserId(a, userId);
-    if (properties) {
-      for (const [key, value] of Object.entries(properties)) {
-        await setUserProperty(a, key, value);
-      }
+    const allProps = {
+      ...properties,
+      // Device-locale segmentation (country = device region setting).
+      country: deviceContext.country,
+      language: deviceContext.language,
+      timezone: deviceContext.timezone.slice(0, 36),
+    };
+    for (const [key, value] of Object.entries(allProps)) {
+      await setUserProperty(a, key, value);
     }
   } catch (_) {}
 }
@@ -302,6 +316,7 @@ export async function identifyUser(user: Pick<User, 'id' | 'tier' | 'isPremium' 
 }
 
 export async function clearAnalyticsUser() {
+  currentDistinctId = null;
   try {
     await setUserId(ga(), null);
   } catch (_) {}

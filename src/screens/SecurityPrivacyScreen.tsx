@@ -43,6 +43,7 @@ import {
   getLocaleOverride,
   type AppLocale,
 } from '../services/locale';
+import { trackTap } from '../utils/analytics';
 
 type SettingToggle = {
   id: string;
@@ -155,6 +156,7 @@ export function SecurityPrivacyScreen() {
 
   const handlePickLocale = useCallback(
     async (next: AppLocale | null) => {
+      trackTap('SecurityPrivacy', 'language_chip', { value: next ?? 'system' });
       if (localeChanging) return;
       setLocaleChanging(true);
       try {
@@ -189,6 +191,7 @@ export function SecurityPrivacyScreen() {
 
   const handleBiometricToggle = useCallback(
     async (value: boolean) => {
+      trackTap('SecurityPrivacy', 'biometric_toggle', { value: value ? 'on' : 'off' });
       if (value) {
         // Enable: read tokens from AuthContext (the only source of truth) so
         // we always use the freshest pair after a refresh round-trip. Reading
@@ -225,6 +228,7 @@ export function SecurityPrivacyScreen() {
    * able to "take a copy".
    */
   const handleExportData = useCallback(async () => {
+    trackTap('SecurityPrivacy', 'export_data_button');
     if (exporting || !tokens?.accessToken) return;
     setExporting(true);
     try {
@@ -281,6 +285,7 @@ export function SecurityPrivacyScreen() {
   }, [fetchSessions]);
 
   const handleRevokeSession = useCallback(async (sessionId: string) => {
+    trackTap('SecurityPrivacy', 'revoke_session_button');
     Alert.alert(
       t('security.revokeSession'),
       t('security.revokeSessionDesc'),
@@ -384,10 +389,10 @@ export function SecurityPrivacyScreen() {
   ];
 
   const toggleMap: Record<string, (v: boolean) => void> = {
-    public: (v) => { setProfilePublic(v); persistPreference('publicProfile', v); },
-    stats: (v) => { setShowStats(v); persistPreference('showStats', v); },
-    history: (v) => { setShowHistory(v); persistPreference('showHistory', v); },
-    data: (v) => { setDataSharing(v); persistPreference('dataSharing', v); },
+    public: (v) => { trackTap('SecurityPrivacy', 'public_profile_toggle', { value: v ? 'on' : 'off' }); setProfilePublic(v); persistPreference('publicProfile', v); },
+    stats: (v) => { trackTap('SecurityPrivacy', 'show_stats_toggle', { value: v ? 'on' : 'off' }); setShowStats(v); persistPreference('showStats', v); },
+    history: (v) => { trackTap('SecurityPrivacy', 'show_history_toggle', { value: v ? 'on' : 'off' }); setShowHistory(v); persistPreference('showHistory', v); },
+    data: (v) => { trackTap('SecurityPrivacy', 'data_sharing_toggle', { value: v ? 'on' : 'off' }); setDataSharing(v); persistPreference('dataSharing', v); },
   };
 
   function renderToggleRow(t: SettingToggle) {
@@ -414,7 +419,13 @@ export function SecurityPrivacyScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
+        <TouchableOpacity
+          onPress={() => {
+            trackTap('SecurityPrivacy', 'back_button');
+            navigation.goBack();
+          }}
+          hitSlop={12}
+        >
           <Feather name="arrow-left" size={22} color={colors.onSurface} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('security.title')}</Text>
@@ -518,7 +529,10 @@ export function SecurityPrivacyScreen() {
         {/* Change Password */}
         <TouchableOpacity
           style={styles.actionRow}
-          onPress={() => navigation.navigate('ChangePassword')}
+          onPress={() => {
+            trackTap('SecurityPrivacy', 'menu_change_password_row');
+            navigation.navigate('ChangePassword');
+          }}
         >
           <View style={styles.actionLeft}>
             <View style={styles.toggleIcon}>
@@ -535,7 +549,12 @@ export function SecurityPrivacyScreen() {
         {/* Active sessions */}
         <TouchableOpacity
           style={styles.actionRow}
-          onPress={() => setSessionsExpanded((v) => !v)}
+          onPress={() => {
+            trackTap('SecurityPrivacy', 'active_sessions_toggle', {
+              value: sessionsExpanded ? 'off' : 'on',
+            });
+            setSessionsExpanded((v) => !v);
+          }}
         >
           <View style={styles.actionLeft}>
             <View style={styles.toggleIcon}>
@@ -641,13 +660,25 @@ export function SecurityPrivacyScreen() {
         {/* Legal links */}
         <Text style={[styles.sectionLabel, { marginTop: spacing['3xl'] }]}>{t('security.legal')}</Text>
         <View style={styles.card}>
-          <TouchableOpacity style={styles.legalRow} onPress={() => setLegalModal('terms')}>
+          <TouchableOpacity
+            style={styles.legalRow}
+            onPress={() => {
+              trackTap('SecurityPrivacy', 'terms_row');
+              setLegalModal('terms');
+            }}
+          >
             <Feather name="file-text" size={18} color={colors.onSurfaceVariant} />
             <Text style={styles.legalText}>{t('login.termsLink')}</Text>
             <Feather name="chevron-right" size={14} color={colors.onSurfaceDim} />
           </TouchableOpacity>
           <View style={styles.legalDivider} />
-          <TouchableOpacity style={styles.legalRow} onPress={() => setLegalModal('privacy')}>
+          <TouchableOpacity
+            style={styles.legalRow}
+            onPress={() => {
+              trackTap('SecurityPrivacy', 'privacy_row');
+              setLegalModal('privacy');
+            }}
+          >
             <Feather name="shield" size={18} color={colors.onSurfaceVariant} />
             <Text style={styles.legalText}>{t('login.privacyLink')}</Text>
             <Feather name="chevron-right" size={14} color={colors.onSurfaceDim} />

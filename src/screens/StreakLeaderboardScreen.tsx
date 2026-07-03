@@ -36,6 +36,7 @@ import { colors } from '../theme';
 import { streaksApi } from '../api/streaks';
 import type { StreakLeaderboardEntry } from '../api/streaks';
 import { useAuth } from '../contexts/AuthContext';
+import { trackTap } from '../utils/analytics';
 import { Skeleton } from '../components/Skeleton';
 import { AdBanner } from '../components/AdBanner';
 
@@ -110,7 +111,10 @@ export function StreakLeaderboardScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => navigation.goBack()}
+          onPress={() => {
+            trackTap('StreakLeaderboard', 'back_button');
+            navigation.goBack();
+          }}
           hitSlop={8}
           accessibilityRole="button"
           accessibilityLabel="Go back"

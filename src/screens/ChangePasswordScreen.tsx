@@ -24,6 +24,7 @@ import {
   passwordStrength,
   PASSWORD_MIN_LENGTH,
 } from '../services/passwordPolicy';
+import { trackTap } from '../utils/analytics';
 
 export function ChangePasswordScreen() {
   const insets = useSafeAreaInsets();
@@ -54,6 +55,7 @@ export function ChangePasswordScreen() {
   const strength = passwordStrength(newPassword);
 
   const handleSubmit = async () => {
+    trackTap('ChangePassword', 'submit_button');
     if (!canSubmit || !tokens?.accessToken) return;
 
     if (newPassword === currentPassword) {
@@ -100,7 +102,13 @@ export function ChangePasswordScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
+        <TouchableOpacity
+          onPress={() => {
+            trackTap('ChangePassword', 'back_button');
+            navigation.goBack();
+          }}
+          hitSlop={12}
+        >
           <Feather name="arrow-left" size={22} color={colors.onSurface} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('changePassword.title')}</Text>

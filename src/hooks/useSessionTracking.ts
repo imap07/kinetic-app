@@ -27,13 +27,52 @@
  * users who delete and re-add the app.
  */
 import { useEffect, useRef } from 'react';
-import { AppState, type AppStateStatus } from 'react-native';
+import { AppState, Linking, type AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Notifications from 'expo-notifications';
 import { track } from '../services/analytics';
 import { trackAppOpened } from '../utils/analytics';
 
 const INSTALL_DATE_KEY = 'kinetic.installDate';
 const LAST_OPEN_KEY = 'kinetic.lastOpenAt';
+
+// ─── Open-source attribution ─────────────────────────────────
+//
+// What brought the user into the app: a push-notification tap, a deep
+// link, or nothing (icon tap / app switcher = organic). Cold launch is
+// resolved deterministically below (getLastNotificationResponseAsync +
+// getInitialURL run BEFORE session_started emits). Foreground
+// transitions are trickier — the push/deeplink callbacks can fire just
+// after AppState flips to 'active' — so app_foregrounded emission is
+// deferred by a short grace window during which markAppOpenSource()
+// can claim the transition.
+type OpenSource = 'push' | 'deeplink' | 'organic';
+let pendingOpenSource: OpenSource | null = null;
+
+/** Called by usePushNotifications when a notification tap is handled.
+ *  Claims the in-flight (or imminent) foreground transition as
+ *  push-driven. */
+export function markAppOpenSource(source: Exclude<OpenSource, 'organic'>): void {
+  pendingOpenSource = source;
+}
+
+const FOREGROUND_ATTRIBUTION_GRACE_MS = 700;
+
+async function resolveColdLaunchSource(): Promise<OpenSource> {
+  try {
+    const notifResponse = await Notifications.getLastNotificationResponseAsync();
+    if (notifResponse) return 'push';
+  } catch {
+    /* expo-notifications unavailable (Expo Go / simulator edge) */
+  }
+  try {
+    const url = await Linking.getInitialURL();
+    if (url) return 'deeplink';
+  } catch {
+    /* ignore */
+  }
+  return 'organic';
+}
 
 async function getDaysSinceInstall(): Promise<number> {
   try {
@@ -99,13 +138,20 @@ export function useSessionTracking(isAuthenticated: boolean): void {
 
     (async () => {
       const days = await getDaysSinceInstall();
-      track({ event: 'session_started', daysSinceInstall: days }).catch(() => {});
+      const openSource = await resolveColdLaunchSource();
+      track({ event: 'session_started', daysSinceInstall: days, openSource }).catch(() => {});
       // GA4 retention event — separate from session_started so dashboards
       // can build day-of-return cohorts without re-deriving from the
       // install date. Fires once per cold launch.
       const last = await rotateLastOpen();
       trackAppOpened(last);
     })();
+
+    // Deep links arriving while the app is alive (universal links,
+    // kineticapp.ca/r/* and /join/*) claim the foreground transition.
+    const linkSub = Linking.addEventListener('url', () => {
+      pendingOpenSource = 'deeplink';
+    });
 
     const sub = AppState.addEventListener('change', (state: AppStateStatus) => {
       const now = Date.now();
@@ -120,7 +166,16 @@ export function useSessionTracking(isAuthenticated: boolean): void {
             : null;
         lastForegroundAtRef.current = now;
         lastBackgroundAtRef.current = null;
-        track({ event: 'app_foregrounded', secondsAwayFromApp: away }).catch(() => {});
+        // Deferred so a push-tap / deep-link handler racing this
+        // AppState callback can still claim the transition via
+        // markAppOpenSource() (see the attribution note up top).
+        setTimeout(() => {
+          const openSource = pendingOpenSource ?? 'organic';
+          pendingOpenSource = null;
+          track({ event: 'app_foregrounded', secondsAwayFromApp: away, openSource }).catch(
+            () => {},
+          );
+        }, FOREGROUND_ATTRIBUTION_GRACE_MS);
       } else if (state === 'background' || state === 'inactive') {
         // iOS fires `inactive` on incoming-call style interruptions
         // BEFORE going to `background`. Treat both as "leaving" so
@@ -133,7 +188,10 @@ export function useSessionTracking(isAuthenticated: boolean): void {
         track({ event: 'app_backgrounded', sessionDurationSec: duration }).catch(() => {});
       }
     });
-    return () => sub.remove();
+    return () => {
+      sub.remove();
+      linkSub.remove();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 }

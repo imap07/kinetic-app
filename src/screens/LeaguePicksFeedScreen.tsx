@@ -19,6 +19,7 @@ import { leaguesApi, type LeaguePickFeedItem } from '../api/leagues';
 import { reactionsApi } from '../api/reactions';
 import type { ReactionSummary } from '../api/reactions';
 import { track } from '../services/analytics';
+import { trackTap } from '../utils/analytics';
 import type { PickReactionKey } from '../shared/domain';
 import type { LeaguesStackParamList } from '../navigation/types';
 import { ReactionBar } from '../components/ReactionBar';
@@ -81,6 +82,7 @@ export function LeaguePicksFeedScreen() {
   const handleToggle = useCallback(
     async (predictionId: string, emoji: PickReactionKey) => {
       if (!tokens?.accessToken) return;
+      trackTap('LeaguePicksFeed', 'reaction_button', { leagueId, value: emoji });
       // Capture intent BEFORE the optimistic mutation: had=true means
       // the user is removing an existing reaction, had=false means
       // adding. The optimistic update flips it immediately, so we
@@ -120,7 +122,7 @@ export function LeaguePicksFeedScreen() {
         setItems(prevItems);
       }
     },
-    [items, tokens?.accessToken],
+    [items, tokens?.accessToken, leagueId],
   );
 
   const [profileUserId, setProfileUserId] = useState<string | null>(null);
@@ -172,9 +174,17 @@ export function LeaguePicksFeedScreen() {
         // Self-taps are no-ops — there's already a Profile tab for that
         // and tap-on-self would be a confusing back-and-forth.
         onProfilePress={
-          item.isSelf ? undefined : () => setProfileUserId(item.userId)
+          item.isSelf
+            ? undefined
+            : () => {
+                trackTap('LeaguePicksFeed', 'member_row', { leagueId });
+                setProfileUserId(item.userId);
+              }
         }
-        onCommentsPress={() => setCommentsPickId(item.predictionId)}
+        onCommentsPress={() => {
+          trackTap('LeaguePicksFeed', 'comments_button', { leagueId });
+          setCommentsPickId(item.predictionId);
+        }}
       />
     ),
     [handleToggle, commentCounts],
@@ -192,7 +202,10 @@ export function LeaguePicksFeedScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => navigation.goBack()}
+          onPress={() => {
+            trackTap('LeaguePicksFeed', 'back_button', { leagueId });
+            navigation.goBack();
+          }}
           style={styles.backBtn}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >

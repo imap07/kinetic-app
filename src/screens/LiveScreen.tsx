@@ -27,6 +27,7 @@ import { useLiveSSE } from '../hooks/useLiveSSE';
 import { AdBanner } from '../components/AdBanner';
 import { RewardedAdButton } from '../components/RewardedAdButton';
 import { useAds } from '../contexts/AdContext';
+import { trackTap } from '../utils/analytics';
 
 const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'P', 'BT', 'LIVE', 'Q1', 'Q2', 'Q3', 'Q4', 'OT', 'P1', 'P2', 'P3', 'IN1', 'IN2', 'IN3', 'IN4', 'IN5', 'IN6', 'IN7', 'IN8', 'IN9'];
 const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AOT', 'AP', 'POST', 'Completed'];
@@ -249,6 +250,7 @@ export function LiveScreen() {
 
   const handleSportChange = useCallback((sport: SportKey) => {
     if (sport === activeSport) return;
+    trackTap('Live', 'sport_tab', { sport, value: sport });
     setActiveSport(sport);
     setData(null);
   }, [activeSport]);
@@ -290,6 +292,7 @@ export function LiveScreen() {
   const isF1 = activeSport === 'formula-1';
 
   const navigateToGame = (gameApiId: number) => {
+    trackTap('Live', 'match_card', { sport: activeSport, matchId: String(gameApiId) });
     trackAction();
     navigation.navigate('LiveMatchPrediction', { fixtureApiId: gameApiId, sport: activeSport });
   };
@@ -319,7 +322,7 @@ export function LiveScreen() {
           <TouchableOpacity
             key={idx}
             style={[styles.datePill, idx === selectedDateIdx && styles.datePillActive]}
-            onPress={() => setSelectedDateIdx(idx)}
+            onPress={() => { trackTap('Live', 'date_pill', { sport: activeSport, value: idx }); setSelectedDateIdx(idx); }}
             activeOpacity={0.7}
           >
             <Text style={[styles.datePillText, idx === selectedDateIdx && styles.datePillTextActive]}>
@@ -488,12 +491,13 @@ export function LiveScreen() {
               <TouchableOpacity
                 style={styles.emptyActionBtn}
                 activeOpacity={0.7}
-                onPress={() =>
+                onPress={() => {
+                  trackTap('Live', 'manage_teams_button');
                   rootNav.navigate('Main', {
                     screen: 'Profile',
                     params: { screen: 'EditFavoriteTeams' },
-                  } as any)
-                }
+                  } as any);
+                }}
               >
                 <Ionicons name="shield-outline" size={15} color={colors.primary} />
                 <Text style={styles.emptyActionText}>
@@ -503,12 +507,13 @@ export function LiveScreen() {
               <TouchableOpacity
                 style={styles.emptyActionBtn}
                 activeOpacity={0.7}
-                onPress={() =>
+                onPress={() => {
+                  trackTap('Live', 'manage_leagues_button');
                   rootNav.navigate('Main', {
                     screen: 'Profile',
                     params: { screen: 'EditFavoriteLeagues' },
-                  } as any)
-                }
+                  } as any);
+                }}
               >
                 <Ionicons name="trophy-outline" size={15} color={colors.primary} />
                 <Text style={styles.emptyActionText}>

@@ -30,6 +30,7 @@ import { Image as ExpoImage } from 'expo-image';
 import { colors, spacing } from '../theme';
 import { streaksApi } from '../api/streaks';
 import { useAuth } from '../contexts/AuthContext';
+import { trackTap } from '../utils/analytics';
 import { AdBanner } from '../components/AdBanner';
 
 interface Entry {
@@ -78,7 +79,13 @@ export function FriendsLeaderboardScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
+        <TouchableOpacity
+          onPress={() => {
+            trackTap('FriendsLeaderboard', 'back_button');
+            navigation.goBack();
+          }}
+          hitSlop={12}
+        >
           <Feather name="arrow-left" size={22} color={colors.onSurface} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
@@ -162,7 +169,10 @@ export function FriendsLeaderboardScreen() {
                 </Text>
                 <TouchableOpacity
                   style={styles.cta}
-                  onPress={() => navigation.navigate('Referrals')}
+                  onPress={() => {
+                    trackTap('FriendsLeaderboard', 'invite_button');
+                    navigation.navigate('Referrals');
+                  }}
                   activeOpacity={0.85}
                 >
                   <Feather name="gift" size={14} color={colors.onPrimary} />

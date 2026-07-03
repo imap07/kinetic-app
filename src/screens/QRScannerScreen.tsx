@@ -13,6 +13,7 @@ import { colors, spacing, borderRadius } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import { leaguesApi } from '../api/leagues';
 import { useTranslation } from 'react-i18next';
+import { trackTap } from '../utils/analytics';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { LeaguesStackParamList } from '../navigation/types';
@@ -72,10 +73,12 @@ export function QRScannerScreen({ navigation }: Props) {
   );
 
   const handleBack = useCallback(() => {
+    trackTap('QRScanner', 'back_button');
     navigation.goBack();
   }, [navigation]);
 
   const requestPermission = useCallback(async () => {
+    trackTap('QRScanner', 'request_camera_permission_button');
     await requestCameraPermission();
   }, [requestCameraPermission]);
 

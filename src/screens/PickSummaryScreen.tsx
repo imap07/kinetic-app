@@ -20,7 +20,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { predictionsApi } from '../api/predictions';
 import type { PredictionData } from '../api/predictions';
 import Toast from 'react-native-toast-message';
-import { trackShareTapped } from '../utils/analytics';
+import { trackShareTapped, trackTap } from '../utils/analytics';
 
 type Props = {
   navigation: NativeStackNavigationProp<HomeStackParamList, 'PickSummary'>;
@@ -104,6 +104,7 @@ export function PickSummaryScreen({ navigation }: Props) {
   const wonCount = picks.filter((p) => p.status === 'won').length;
 
   const handleShare = async () => {
+    trackTap('PickSummary', 'share_button', { value: pendingPicks.length });
     if (pendingPicks.length === 0) {
       Toast.show({ type: 'info', text1: t('pickSummary.noActivePicksToShare') });
       return;
@@ -124,7 +125,7 @@ export function PickSummaryScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => { trackTap('PickSummary', 'back_button'); navigation.goBack(); }} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={22} color={colors.onSurface} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('pickSummary.title')}</Text>
@@ -154,7 +155,7 @@ export function PickSummaryScreen({ navigation }: Props) {
           <View style={styles.tabRow}>
             <TouchableOpacity
               style={activeTab === 'current' ? styles.tabActive : styles.tabInactive}
-              onPress={() => setActiveTab('current')}
+              onPress={() => { trackTap('PickSummary', 'picks_tab', { value: 'current' }); setActiveTab('current'); }}
             >
               <Text style={activeTab === 'current' ? styles.tabActiveText : styles.tabInactiveText}>
                 {t('pickSummary.currentPicks', { count: pendingPicks.length })}
@@ -162,7 +163,7 @@ export function PickSummaryScreen({ navigation }: Props) {
             </TouchableOpacity>
             <TouchableOpacity
               style={activeTab === 'history' ? styles.tabActive : styles.tabInactive}
-              onPress={() => setActiveTab('history')}
+              onPress={() => { trackTap('PickSummary', 'picks_tab', { value: 'history' }); setActiveTab('history'); }}
             >
               <Text style={activeTab === 'history' ? styles.tabActiveText : styles.tabInactiveText}>
                 {t('pickSummary.historyTab', { count: resolvedPicks.length })}

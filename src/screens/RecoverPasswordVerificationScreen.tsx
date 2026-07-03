@@ -20,6 +20,7 @@ import { colors, typography, spacing, borderRadius } from '../theme';
 import { AuthStackParamList } from '../navigation/types';
 import { useAuth } from '../contexts/AuthContext';
 import { ApiError } from '../api';
+import { trackTap } from '../utils/analytics';
 
 const CODE_LENGTH = 6;
 
@@ -52,6 +53,7 @@ export function RecoverPasswordVerificationScreen({ navigation, route }: Props) 
   };
 
   const handleVerify = async () => {
+    trackTap('RecoverPasswordVerification', 'verify_button');
     const codeStr = code.join('');
     if (codeStr.length !== CODE_LENGTH || loading) return;
 
@@ -71,6 +73,7 @@ export function RecoverPasswordVerificationScreen({ navigation, route }: Props) 
   };
 
   const handleResend = async () => {
+    trackTap('RecoverPasswordVerification', 'resend_code_button');
     if (resending) return;
     setResending(true);
     try {
@@ -91,7 +94,10 @@ export function RecoverPasswordVerificationScreen({ navigation, route }: Props) 
       <View style={{ paddingTop: insets.top }}>
         <TopAppBar
           showBack
-          onBack={() => navigation.goBack()}
+          onBack={() => {
+            trackTap('RecoverPasswordVerification', 'back_button');
+            navigation.goBack();
+          }}
           leftLabel={t('recoverPassword.screenTitle')}
         />
       </View>

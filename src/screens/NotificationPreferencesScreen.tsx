@@ -17,6 +17,8 @@ import { colors, spacing, borderRadius } from '../theme';
 import { AdBanner } from '../components/AdBanner';
 import { useAuth } from '../contexts/AuthContext';
 import { notificationsApi, NotificationTypes } from '../api/notifications';
+import { trackTap } from '../utils/analytics';
+import type { SportKey } from '../api/sports';
 
 const SPORT_LABELS: Record<string, string> = {
   football: 'Football',
@@ -165,6 +167,9 @@ export function NotificationPreferencesScreen() {
    */
   const handleToggle = useCallback(
     async (key: PrefKey, value: boolean) => {
+      trackTap('NotificationPreferences', 'notif_toggle', {
+        value: `${key}_${value ? 'on' : 'off'}`,
+      });
       if (!tokens?.accessToken) return;
       const prev = prefs;
       setPrefs((p) => ({ ...p, [key]: value }));
@@ -225,7 +230,13 @@ export function NotificationPreferencesScreen() {
     return (
       <View style={styles.container}>
         <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
+          <TouchableOpacity
+            onPress={() => {
+              trackTap('NotificationPreferences', 'back_button');
+              navigation.goBack();
+            }}
+            hitSlop={12}
+          >
             <Feather name="arrow-left" size={22} color={colors.onSurface} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{t('notificationPrefs.title')}</Text>
@@ -241,7 +252,13 @@ export function NotificationPreferencesScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
+        <TouchableOpacity
+          onPress={() => {
+            trackTap('NotificationPreferences', 'back_button');
+            navigation.goBack();
+          }}
+          hitSlop={12}
+        >
           <Feather name="arrow-left" size={22} color={colors.onSurface} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('notificationPrefs.title')}</Text>
@@ -381,12 +398,15 @@ export function NotificationPreferencesScreen() {
                       style={styles.row}
                       activeOpacity={0.7}
                       disabled={typesDisabled}
-                      onPress={() =>
+                      onPress={() => {
+                        trackTap('NotificationPreferences', 'sport_notif_row', {
+                          sport: sport as SportKey,
+                        });
                         navigation.navigate('SportNotificationPreferences', {
                           sport,
                           sportName,
-                        })
-                      }
+                        });
+                      }}
                     >
                       <Text style={styles.sportIcon}>{icon}</Text>
                       <View style={{ flex: 1 }}>

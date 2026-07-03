@@ -21,6 +21,7 @@ import {
 } from '../api/cosmetics';
 import { colors, spacing } from '../theme';
 import { AdBanner } from '../components/AdBanner';
+import { trackTap } from '../utils/analytics';
 
 // Category list. Labels are resolved at render time via
 // `t('cosmetics.frames')` / `t('cosmetics.badges')` — see usage below.
@@ -107,7 +108,13 @@ export function CosmeticsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
+        <TouchableOpacity
+          onPress={() => {
+            trackTap('Cosmetics', 'back_button');
+            navigation.goBack();
+          }}
+          hitSlop={12}
+        >
           <Ionicons name="chevron-back" size={26} color={colors.onSurface} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
@@ -123,7 +130,10 @@ export function CosmeticsScreen() {
             <TouchableOpacity
               key={c.key}
               style={[styles.tab, active && styles.tabActive]}
-              onPress={() => setCategory(c.key)}
+              onPress={() => {
+                trackTap('Cosmetics', 'category_tab', { value: c.key });
+                setCategory(c.key);
+              }}
             >
               <Text style={[styles.tabText, active && styles.tabTextActive]}>
                 {t(`cosmetics.${c.key}s`)}
@@ -158,7 +168,10 @@ export function CosmeticsScreen() {
               {owned ? (
                 <TouchableOpacity
                   style={[styles.equipBtn, isEquipped && styles.equipBtnActive]}
-                  onPress={() => onEquip(def.key, def.category)}
+                  onPress={() => {
+                    trackTap('Cosmetics', 'equip_button', { value: def.key });
+                    onEquip(def.key, def.category);
+                  }}
                   disabled={equipping === def.key}
                   activeOpacity={0.85}
                 >

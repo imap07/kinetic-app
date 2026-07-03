@@ -15,6 +15,7 @@ import { colors, borderRadius } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import { authApi } from '../api';
 import type { SportKey } from '../api/sports';
+import { trackTap } from '../utils/analytics';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const NUM_COLUMNS = 2;
@@ -69,6 +70,7 @@ export function SportSelectionScreen({ onComplete }: Props) {
   }, []);
 
   const handleContinue = useCallback(async () => {
+    trackTap('SportSelection', 'continue_button', { value: selected.size });
     if (!tokens?.accessToken || selected.size < MIN_SPORTS) return;
     setSaving(true);
     try {
@@ -104,7 +106,10 @@ export function SportSelectionScreen({ onComplete }: Props) {
             <TouchableOpacity
               key={sport.key}
               style={[styles.sportCard, isSel && { borderColor: sport.color }]}
-              onPress={() => toggleSport(sport.key)}
+              onPress={() => {
+                trackTap('SportSelection', 'sport_card', { sport: sport.key });
+                toggleSport(sport.key);
+              }}
               activeOpacity={0.7}
             >
               {/* Selection indicator */}

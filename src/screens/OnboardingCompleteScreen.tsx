@@ -11,7 +11,7 @@ import {
   Share,
 } from 'react-native';
 import { track } from '../services/analytics';
-import { trackOnboardingStep } from '../utils/analytics';
+import { trackOnboardingStep, trackTap } from '../utils/analytics';
 import { referralsApi, buildReferralUrl, type ReferralStatus } from '../api/referrals';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -81,6 +81,7 @@ export function OnboardingCompleteScreen({
   }, [tokens?.accessToken]);
 
   const handleInvite = useCallback(async () => {
+    trackTap('OnboardingComplete', 'invite_friend_button');
     if (!referral?.code) return;
     const url = buildReferralUrl(referral.code);
     const message = t('referrals.shareMessage', {
@@ -97,6 +98,7 @@ export function OnboardingCompleteScreen({
   }, [referral, t]);
 
   const handleLetsGo = useCallback(async () => {
+    trackTap('OnboardingComplete', 'lets_go_button');
     if (!tokens?.accessToken) return;
     setSaving(true);
 

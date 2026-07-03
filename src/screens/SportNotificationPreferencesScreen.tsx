@@ -17,6 +17,8 @@ import { colors, spacing, borderRadius } from '../theme';
 import { AdBanner } from '../components/AdBanner';
 import { useAuth } from '../contexts/AuthContext';
 import { notificationsApi, NotificationTypes } from '../api/notifications';
+import { trackTap } from '../utils/analytics';
+import type { SportKey } from '../api/sports';
 
 type SportPrefsRouteParams = { sport: string; sportName: string };
 
@@ -72,6 +74,10 @@ export function SportNotificationPreferencesScreen() {
 
   const handleToggle = useCallback(
     async (key: ToggleKey, value: boolean) => {
+      trackTap('SportNotificationPreferences', 'notif_toggle', {
+        sport: sport as SportKey,
+        value: `${key}_${value ? 'on' : 'off'}`,
+      });
       if (!tokens?.accessToken || saving) return;
       const prev = override;
       const next = { ...override, [key]: value };
@@ -96,6 +102,9 @@ export function SportNotificationPreferencesScreen() {
   );
 
   const handleReset = useCallback(() => {
+    trackTap('SportNotificationPreferences', 'reset_overrides_button', {
+      sport: sport as SportKey,
+    });
     Alert.alert(
       t('notificationPrefs.sportPrefsReset'),
       t('notificationPrefs.sportPrefsResetConfirm', { sportName }),
@@ -144,7 +153,15 @@ export function SportNotificationPreferencesScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
+        <TouchableOpacity
+          onPress={() => {
+            trackTap('SportNotificationPreferences', 'back_button', {
+              sport: sport as SportKey,
+            });
+            navigation.goBack();
+          }}
+          hitSlop={12}
+        >
           <Feather name="arrow-left" size={22} color={colors.onSurface} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>

@@ -40,7 +40,7 @@ import { useCoins } from '../contexts/CoinContext';
 import { useAuth } from '../contexts/AuthContext';
 import { leaguesApi } from '../api/leagues';
 import { track } from '../services/analytics';
-import { trackShareTapped } from '../utils/analytics';
+import { trackShareTapped, trackTap } from '../utils/analytics';
 import type { CoinLeague, CreateLeagueDto } from '../api/leagues';
 import { SPORT_TABS } from '../api/sports';
 import { AdBanner } from '../components/AdBanner';
@@ -109,6 +109,7 @@ export function CoinLeaguesScreen() {
   }, [fetchLeagues, refreshBalance]);
 
   const handleJoin = async (league: CoinLeague) => {
+    trackTap('CoinLeagues', 'join_league_button', { leagueId: league._id, value: league.entryFee });
     if (available < league.entryFee) {
       // Instead of a dead-end alert, offer the user a rewarded ad right
       // here. A user blocked from joining a paid league is the highest-
@@ -190,6 +191,7 @@ export function CoinLeaguesScreen() {
   };
 
   const handleLeave = async (league: CoinLeague) => {
+    trackTap('CoinLeagues', 'leave_league_button', { leagueId: league._id });
     const isCreator = String(league.creatorId) === user?.id && !league.isSystemLeague;
     Alert.alert(
       isCreator ? t('leagues.deleteLeague') : t('leagues.leaveLeague'),
@@ -269,6 +271,7 @@ export function CoinLeaguesScreen() {
     const code = league.inviteCode;
     if (!code) return;
     try {
+      trackTap('CoinLeagues', 'share_button', { leagueId: league._id });
       trackShareTapped('league_invite');
       await Share.share({
         message: t('leagues.shareMessage', { name: league.name, code, url: `https://kineticapp.ca/join/${code}` }),
@@ -336,6 +339,7 @@ export function CoinLeaguesScreen() {
   };
 
   const handleScanQR = () => {
+    trackTap('CoinLeagues', 'qr_scan_button');
     (navigation as any).navigate('QRScanner');
   };
 
@@ -357,7 +361,10 @@ export function CoinLeaguesScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.headerCreateBtn}
-            onPress={() => setShowCreate(true)}
+            onPress={() => {
+              trackTap('CoinLeagues', 'create_league_button', { value: 'header' });
+              setShowCreate(true);
+            }}
             hitSlop={12}
           >
             <Feather name="plus" size={18} color={colors.onPrimary} />
@@ -371,6 +378,7 @@ export function CoinLeaguesScreen() {
             key={tabKey}
             style={[styles.tab, tab === tabKey && styles.tabActive]}
             onPress={() => {
+              trackTap('CoinLeagues', `tab_${tabKey}`);
               if (tabKey === 'rankings') {
                 (navigation as any).navigate('Leaderboard');
                 return;
@@ -398,7 +406,10 @@ export function CoinLeaguesScreen() {
             <TouchableOpacity
               key={s.key}
               style={[styles.sportFilterChip, isActive && styles.sportFilterChipActive]}
-              onPress={() => setActiveSport(s.key)}
+              onPress={() => {
+                trackTap('CoinLeagues', 'sport_filter', { value: s.key });
+                setActiveSport(s.key);
+              }}
             >
               <Text style={[styles.sportFilterText, isActive && styles.sportFilterTextActive]}>
                 {s.name}
@@ -442,7 +453,10 @@ export function CoinLeaguesScreen() {
               {tab === 'open' ? (
                 <TouchableOpacity
                   style={styles.createBtn}
-                  onPress={() => setShowCreate(true)}
+                  onPress={() => {
+                    trackTap('CoinLeagues', 'create_league_button', { value: 'empty_state' });
+                    setShowCreate(true);
+                  }}
                 >
                   <Feather name="plus" size={16} color={colors.onPrimary} />
                   <Text style={styles.createBtnText}>{t('leagues.createLeague')}</Text>
@@ -454,7 +468,10 @@ export function CoinLeaguesScreen() {
                 <View style={styles.emptyCtaRow}>
                   <TouchableOpacity
                     style={styles.createBtn}
-                    onPress={() => setTab('open')}
+                    onPress={() => {
+                      trackTap('CoinLeagues', 'browse_leagues_button');
+                      setTab('open');
+                    }}
                   >
                     <Feather name="search" size={16} color={colors.onPrimary} />
                     <Text style={styles.createBtnText}>
@@ -463,7 +480,10 @@ export function CoinLeaguesScreen() {
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.emptySecondaryBtn}
-                    onPress={() => (navigation as any).navigate('QRScanner')}
+                    onPress={() => {
+                      trackTap('CoinLeagues', 'qr_scan_button', { value: 'empty_state' });
+                      (navigation as any).navigate('QRScanner');
+                    }}
                   >
                     <Feather name="camera" size={16} color={colors.primary} />
                     <Text style={styles.emptySecondaryBtnText}>
@@ -492,7 +512,10 @@ export function CoinLeaguesScreen() {
             <TouchableOpacity
               style={styles.leagueCard}
               activeOpacity={0.7}
-              onPress={() => (navigation as any).navigate('CoinLeagueDetail', { leagueId: league._id })}
+              onPress={() => {
+                trackTap('CoinLeagues', 'league_card', { leagueId: league._id });
+                (navigation as any).navigate('CoinLeagueDetail', { leagueId: league._id });
+              }}
             >
               {/* Accent bar */}
               <View style={[styles.accentBar, { backgroundColor: accentColor }]} />
@@ -779,6 +802,7 @@ function CreateLeagueModal({
   ];
 
   const handleSubmit = () => {
+    trackTap('CoinLeagues', 'create_modal_submit_button', { value: entryFee });
     if (!name.trim()) {
       Alert.alert(t('common.error'), t('leagues.leagueNameRequired'));
       return;
@@ -824,7 +848,10 @@ function CreateLeagueModal({
               <TouchableOpacity
                 key={s.key}
                 style={[modalStyles.sportChip, sport === s.key && modalStyles.sportChipActive]}
-                onPress={() => setSport(s.key)}
+                onPress={() => {
+                  trackTap('CoinLeagues', 'create_modal_sport_chip', { value: s.key });
+                  setSport(s.key);
+                }}
               >
                 <Text
                   style={[modalStyles.sportChipText, sport === s.key && modalStyles.sportChipTextActive]}
@@ -841,7 +868,10 @@ function CreateLeagueModal({
               <TouchableOpacity
                 key={t.fee}
                 style={[modalStyles.tierChip, entryFee === t.fee && modalStyles.tierChipActive]}
-                onPress={() => setEntryFee(t.fee)}
+                onPress={() => {
+                  trackTap('CoinLeagues', 'create_modal_entry_fee_chip', { value: t.fee });
+                  setEntryFee(t.fee);
+                }}
               >
                 <Text style={[modalStyles.tierChipText, entryFee === t.fee && modalStyles.tierChipTextActive]}>
                   {t.fee === 0 ? 'FREE' : `${t.fee}`}

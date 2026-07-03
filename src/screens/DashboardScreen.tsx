@@ -41,7 +41,7 @@ import { useStatsSSE, AchievementSSEData } from '../hooks/useStatsSSE';
 import { useWinCelebration } from '../hooks/useWinCelebration';
 import { WinCelebrationModal } from '../components/WinCelebrationModal';
 import { logSportTabViewed, track } from '../services/analytics';
-import { trackDashboardViewed } from '../utils/analytics';
+import { trackDashboardViewed, trackTap } from '../utils/analytics';
 import { AdBanner } from '../components/AdBanner';
 import { RewardedAdButton } from '../components/RewardedAdButton';
 import { useAds } from '../contexts/AdContext';
@@ -364,6 +364,7 @@ export function DashboardScreen({ navigation }: Props) {
   // Profile stack) → `Rivalries`. Same pattern used by the Friends
   // rank card's "see leaderboard" CTA below.
   const handleOpenRivalries = useCallback(() => {
+    trackTap('Dashboard', 'rivalries_card');
     rootNav.navigate('Main', {
       screen: 'Profile',
       params: { screen: 'Rivalries' },
@@ -371,6 +372,7 @@ export function DashboardScreen({ navigation }: Props) {
   }, [rootNav]);
 
   const handleChallengeSubmit = useCallback(async (answer: string) => {
+    trackTap('Dashboard', 'challenge_option_button', { value: answer });
     if (!tokens?.accessToken || !todayChallenge || challengeSubmitting) return;
     setChallengeSubmitting(true);
     try {
@@ -439,6 +441,7 @@ export function DashboardScreen({ navigation }: Props) {
 
   const handleSportChange = useCallback((sport: SportKey) => {
     if (sport === activeSport) return;
+    trackTap('Dashboard', 'sport_tab', { sport, value: sport });
     setActiveSport(sport);
     setData(null);
     // Legacy ad-hoc helper stays for backwards-compat with existing
@@ -454,6 +457,7 @@ export function DashboardScreen({ navigation }: Props) {
     // Cancelled games are not clickable
     if (['Cancelled', 'Abandoned', 'WO'].includes(game.status)) return;
 
+    trackTap('Dashboard', 'match_card', { sport: activeSport, matchId: String(game.apiId) });
     trackAction();
     const isFinished = ['FT', 'AET', 'AP', 'Completed', 'Ended'].includes(game.status);
     if (activeSport === 'formula-1' && !isFinished) {
@@ -683,7 +687,10 @@ export function DashboardScreen({ navigation }: Props) {
             styles.leagueFilterPillFirst,
             activeLeagueFilter === null && styles.leagueFilterPillActive,
           ]}
-          onPress={() => setActiveLeagueFilter(null)}
+          onPress={() => {
+            trackTap('Dashboard', 'league_filter_all', { sport: activeSport });
+            setActiveLeagueFilter(null);
+          }}
           activeOpacity={0.7}
         >
           <Ionicons
@@ -707,7 +714,7 @@ export function DashboardScreen({ navigation }: Props) {
             styles.leagueDropdownBtn,
             activeLeagueFilter !== null && styles.leagueDropdownBtnActive,
           ]}
-          onPress={() => { setLeagueSearch(''); setShowLeagueSheet(true); }}
+          onPress={() => { trackTap('Dashboard', 'league_filter_dropdown', { sport: activeSport }); setLeagueSearch(''); setShowLeagueSheet(true); }}
           activeOpacity={0.7}
         >
           {activeLeagueFilter !== null && (() => {
@@ -771,7 +778,7 @@ export function DashboardScreen({ navigation }: Props) {
             <View style={styles.f1StandingsTabs}>
               <TouchableOpacity
                 style={[styles.f1StandingsTab, f1StandingsTab === 'drivers' && styles.f1StandingsTabActive]}
-                onPress={() => { setF1StandingsTab('drivers'); setF1StandingsExpanded(false); }}
+                onPress={() => { trackTap('Dashboard', 'f1_standings_tab', { sport: 'formula-1', value: 'drivers' }); setF1StandingsTab('drivers'); setF1StandingsExpanded(false); }}
                 activeOpacity={0.7}
               >
                 <Ionicons name="person" size={14} color={f1StandingsTab === 'drivers' ? colors.background : colors.onSurfaceVariant} />
@@ -781,7 +788,7 @@ export function DashboardScreen({ navigation }: Props) {
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.f1StandingsTab, f1StandingsTab === 'constructors' && styles.f1StandingsTabActive]}
-                onPress={() => { setF1StandingsTab('constructors'); setF1StandingsExpanded(false); }}
+                onPress={() => { trackTap('Dashboard', 'f1_standings_tab', { sport: 'formula-1', value: 'constructors' }); setF1StandingsTab('constructors'); setF1StandingsExpanded(false); }}
                 activeOpacity={0.7}
               >
                 <Ionicons name="car-sport" size={14} color={f1StandingsTab === 'constructors' ? colors.background : colors.onSurfaceVariant} />
@@ -836,7 +843,7 @@ export function DashboardScreen({ navigation }: Props) {
               <TouchableOpacity
                 style={styles.f1StandingsToggle}
                 activeOpacity={0.7}
-                onPress={() => setF1StandingsExpanded(!f1StandingsExpanded)}
+                onPress={() => { trackTap('Dashboard', 'f1_standings_toggle', { sport: 'formula-1', value: f1StandingsExpanded ? 'collapse' : 'expand' }); setF1StandingsExpanded(!f1StandingsExpanded); }}
               >
                 <Text style={styles.f1StandingsToggleText}>
                   {f1StandingsExpanded ? t('dashboard.showLess') : t('dashboard.viewFullStandings')}
@@ -1211,7 +1218,10 @@ export function DashboardScreen({ navigation }: Props) {
           <TouchableOpacity
             style={styles.predictorCard}
             activeOpacity={0.8}
-            onPress={() => rootNav.navigate('Main', { screen: 'MyPicks' } as any)}
+            onPress={() => {
+              trackTap('Dashboard', 'stats_card');
+              rootNav.navigate('Main', { screen: 'MyPicks' } as any);
+            }}
           >
             {/* Top row: title + streak badge + daily picks ring */}
             <View style={styles.statsTopRow}>
@@ -1231,7 +1241,7 @@ export function DashboardScreen({ navigation }: Props) {
               <StreakBadge
                 streakInfo={streakInfo}
                 hasPickedToday={dailyStatus.picksToday > 0}
-                onPress={() => setShowStreakModal(true)}
+                onPress={() => { trackTap('Dashboard', 'streak_badge'); setShowStreakModal(true); }}
               />
 
               {/* Today's picks counter (informational only — there is no daily limit) */}
@@ -1292,7 +1302,7 @@ export function DashboardScreen({ navigation }: Props) {
                   ]}
                 />
               </View>
-              <TouchableOpacity onPress={() => navigation.navigate('Quests')} hitSlop={8}>
+              <TouchableOpacity onPress={() => { trackTap('Dashboard', 'quests_link'); navigation.navigate('Quests'); }} hitSlop={8}>
                 <Text style={styles.questsLink}>{t('dashboard.questsLink')}</Text>
               </TouchableOpacity>
             </View>
@@ -1306,7 +1316,7 @@ export function DashboardScreen({ navigation }: Props) {
         {dailyStatus?.quests && (
           <QuestsCard
             quests={dailyStatus.quests}
-            onPress={() => navigation.navigate('Quests')}
+            onPress={() => { trackTap('Dashboard', 'quests_card'); navigation.navigate('Quests'); }}
           />
         )}
 
@@ -1316,18 +1326,20 @@ export function DashboardScreen({ navigation }: Props) {
             states share the same component (invite-first vs ranked)
             so we only ever take one card slot. */}
         <FriendsRankCard
-          onPressInvite={() =>
+          onPressInvite={() => {
+            trackTap('Dashboard', 'invite_friends_button');
             rootNav.navigate('Main', {
               screen: 'Profile',
               params: { screen: 'Referrals' },
-            } as any)
-          }
-          onPressLeaderboard={() =>
+            } as any);
+          }}
+          onPressLeaderboard={() => {
+            trackTap('Dashboard', 'friends_leaderboard_button');
             rootNav.navigate('Main', {
               screen: 'Profile',
               params: { screen: 'FriendsLeaderboard' },
-            } as any)
-          }
+            } as any);
+          }}
         />
 
         {/* Active rivalries — surfaces the strongest social retention
@@ -1513,6 +1525,7 @@ export function DashboardScreen({ navigation }: Props) {
                     activeOpacity={0.8}
                     style={styles.submitWrap}
                     onPress={() => {
+                      trackTap('Dashboard', 'quest_cta_button', { value: 'multi_sport' });
                       if (uncovered && uncovered.key !== activeSport) {
                         setActiveSport(uncovered.key);
                       }
@@ -1545,6 +1558,7 @@ export function DashboardScreen({ navigation }: Props) {
                     activeOpacity={0.8}
                     style={styles.submitWrap}
                     onPress={() => {
+                      trackTap('Dashboard', 'quest_cta_button', { value: 'pick3' });
                       if (next) {
                         handleMatchPress(next);
                       }
@@ -1579,11 +1593,12 @@ export function DashboardScreen({ navigation }: Props) {
         <TouchableOpacity
           style={styles.leaguesPromo}
           activeOpacity={0.7}
-          onPress={() =>
+          onPress={() => {
+            trackTap('Dashboard', 'coin_leagues_promo');
             rootNav.navigate('Main', {
               screen: 'Leagues',
-            } as any)
-          }
+            } as any);
+          }}
         >
           <MaterialCommunityIcons name="trophy" size={18} color="#4FC3F7" />
           <View style={{ flex: 1 }}>
@@ -1765,7 +1780,7 @@ export function DashboardScreen({ navigation }: Props) {
             <ScrollView style={styles.sheetScroll} showsVerticalScrollIndicator={false}>
               <TouchableOpacity
                 style={[styles.sheetLeagueRow, activeLeagueFilter === null && styles.sheetLeagueRowActive]}
-                onPress={() => { setActiveLeagueFilter(null); setShowLeagueSheet(false); }}
+                onPress={() => { trackTap('Dashboard', 'league_filter_option', { sport: activeSport, value: 'all' }); setActiveLeagueFilter(null); setShowLeagueSheet(false); }}
               >
                 <Ionicons name="globe-outline" size={20} color={activeLeagueFilter === null ? colors.primary : colors.onSurfaceVariant} />
                 <Text style={[styles.sheetLeagueName, activeLeagueFilter === null && styles.sheetLeagueNameActive]}>
@@ -1787,6 +1802,7 @@ export function DashboardScreen({ navigation }: Props) {
                         key={league.apiId}
                         style={[styles.sheetLeagueRow, isActive && styles.sheetLeagueRowActive]}
                         onPress={() => {
+                          trackTap('Dashboard', 'league_filter_option', { sport: activeSport, value: league.apiId });
                           setActiveLeagueFilter(isActive ? null : league.apiId);
                           setShowLeagueSheet(false);
                         }}
@@ -1824,6 +1840,7 @@ export function DashboardScreen({ navigation }: Props) {
                         key={league.apiId}
                         style={[styles.sheetLeagueRow, isActive && styles.sheetLeagueRowActive]}
                         onPress={() => {
+                          trackTap('Dashboard', 'league_filter_option', { sport: activeSport, value: league.apiId });
                           setActiveLeagueFilter(isActive ? null : league.apiId);
                           setShowLeagueSheet(false);
                         }}
@@ -1858,6 +1875,7 @@ export function DashboardScreen({ navigation }: Props) {
                         key={league.apiId}
                         style={[styles.sheetLeagueRow, isActive && styles.sheetLeagueRowActive]}
                         onPress={() => {
+                          trackTap('Dashboard', 'league_filter_option', { sport: activeSport, value: league.apiId });
                           setActiveLeagueFilter(isActive ? null : league.apiId);
                           setShowLeagueSheet(false);
                         }}
@@ -1948,6 +1966,7 @@ export function DashboardScreen({ navigation }: Props) {
                 style={styles.streakModalShieldBtn}
                 activeOpacity={0.85}
                 onPress={async () => {
+                  trackTap('Dashboard', 'use_shield_button');
                   try {
                     await streaksApi.useStreakShield(tokens!.accessToken);
                     const fresh = await streaksApi.getStreakInfo(tokens!.accessToken);
@@ -1974,6 +1993,7 @@ export function DashboardScreen({ navigation }: Props) {
             <TouchableOpacity
               style={styles.streakModalFriends}
               onPress={() => {
+                trackTap('Dashboard', 'streak_friends_link');
                 setShowStreakModal(false);
                 // Cross-stack jump — friends board lives in the
                 // Profile stack alongside the public streak board.
@@ -1994,7 +2014,7 @@ export function DashboardScreen({ navigation }: Props) {
 
             <TouchableOpacity
               style={styles.streakModalDismiss}
-              onPress={() => setShowStreakModal(false)}
+              onPress={() => { trackTap('Dashboard', 'streak_modal_dismiss'); setShowStreakModal(false); }}
               activeOpacity={0.7}
             >
               <Text style={styles.streakModalDismissText}>OK</Text>

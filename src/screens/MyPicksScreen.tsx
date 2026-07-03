@@ -25,6 +25,7 @@ import type { PredictionData, MyStatsResponse, DetailedStatsResponse } from '../
 import type { RootStackParamList } from '../navigation/types';
 import { AdBanner } from '../components/AdBanner';
 import { SharePickCard } from '../components/SharePickCard';
+import { trackTap } from '../utils/analytics';
 
 const TABS = ['active', 'history'] as const;
 
@@ -642,7 +643,7 @@ export function MyPicksScreen() {
                 styles.sportFilterPill,
                 sportFilter === null && styles.sportFilterPillActive,
               ]}
-              onPress={() => setSportFilter(null)}
+              onPress={() => { trackTap('MyPicks', 'sport_filter', { value: 'all' }); setSportFilter(null); }}
               activeOpacity={0.7}
             >
               <Text
@@ -664,7 +665,7 @@ export function MyPicksScreen() {
                     styles.sportFilterPill,
                     isActive && styles.sportFilterPillActive,
                   ]}
-                  onPress={() => setSportFilter(isActive ? null : sport.key)}
+                  onPress={() => { trackTap('MyPicks', 'sport_filter', { value: sport.key }); setSportFilter(isActive ? null : sport.key); }}
                   activeOpacity={0.7}
                 >
                   <Text
@@ -689,7 +690,7 @@ export function MyPicksScreen() {
           <TouchableOpacity
             key={tab}
             style={[styles.tabBtn, activeTab === idx && styles.tabBtnActive]}
-            onPress={() => setActiveTab(idx)}
+            onPress={() => { trackTap('MyPicks', 'picks_tab', { value: idx === 0 ? 'active' : 'history' }); setActiveTab(idx); }}
             activeOpacity={0.7}
           >
             <Text style={[styles.tabBtnText, activeTab === idx && styles.tabBtnTextActive]}>
@@ -719,7 +720,7 @@ export function MyPicksScreen() {
               Previously this empty state was a true dead end. */}
           <TouchableOpacity
             style={styles.emptyCta}
-            onPress={() => rootNav.navigate('Main' as any, { screen: 'Home' } as any)}
+            onPress={() => { trackTap('MyPicks', 'make_picks_cta'); rootNav.navigate('Main' as any, { screen: 'Home' } as any); }}
             activeOpacity={0.85}
           >
             <Text style={styles.emptyCtaText}>

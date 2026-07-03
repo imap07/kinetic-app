@@ -8,6 +8,7 @@ import { notificationsApi } from '../api/notifications';
 import { navigate } from '../navigation/navigationRef';
 import { track } from '../services/analytics';
 import { trackNotificationTapped } from '../utils/analytics';
+import { markAppOpenSource } from './useSessionTracking';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -144,6 +145,9 @@ export function usePushNotifications(authToken: string | null | undefined) {
     responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data;
       devLog('Notification tapped:', data);
+      // Attribute the in-flight foreground transition to this push tap
+      // (session/foreground events defer briefly to allow this claim).
+      markAppOpenSource('push');
 
       if (data && typeof data === 'object') {
         const { type } = data as Record<string, unknown>;

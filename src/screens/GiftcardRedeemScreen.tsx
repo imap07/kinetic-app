@@ -20,6 +20,7 @@ import { useCoins } from '../contexts/CoinContext';
 import { useAuth } from '../contexts/AuthContext';
 import { giftcardsApi } from '../api/giftcards';
 import { track } from '../services/analytics';
+import { trackTap } from '../utils/analytics';
 import type { GiftcardCatalog, GiftcardCatalogItem, GiftcardRedemption } from '../api/giftcards';
 
 type TabFilter = 'catalog' | 'history';
@@ -74,6 +75,9 @@ export function GiftcardRedeemScreen() {
   }, [fetchData, refreshBalance]);
 
   const handleRedeem = (card: GiftcardCatalogItem, denomination: { coins: number; dollarValue: number }) => {
+    trackTap('GiftcardRedeem', 'denomination_tile', {
+      value: `${card.type}_${denomination.coins}`,
+    });
     if (earnedCoins < denomination.coins) {
       const deficit = denomination.coins - earnedCoins;
       Alert.alert(
@@ -96,6 +100,9 @@ export function GiftcardRedeemScreen() {
         {
           text: t('giftcard.redeem'),
           onPress: async () => {
+            trackTap('GiftcardRedeem', 'redeem_button', {
+              value: `${card.type}_${denomination.coins}`,
+            });
             setRedeeming(`${card.type}-${denomination.coins}`);
             try {
               await giftcardsApi.redeem(tokens!.accessToken, {
@@ -182,7 +189,13 @@ export function GiftcardRedeemScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
+        <TouchableOpacity
+          onPress={() => {
+            trackTap('GiftcardRedeem', 'back_button');
+            navigation.goBack();
+          }}
+          hitSlop={12}
+        >
           <Feather name="arrow-left" size={22} color={colors.onSurface} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('giftcard.title')}</Text>
@@ -204,7 +217,10 @@ export function GiftcardRedeemScreen() {
           <TouchableOpacity
             key={tabKey}
             style={[styles.tab, tab === tabKey && styles.tabActive]}
-            onPress={() => setTab(tabKey)}
+            onPress={() => {
+              trackTap('GiftcardRedeem', 'tab', { value: tabKey });
+              setTab(tabKey);
+            }}
           >
             <Text style={[styles.tabText, tab === tabKey && styles.tabTextActive]}>
               {tabKey === 'catalog' ? t('giftcard.catalog') : t('giftcard.myRedemptions')}

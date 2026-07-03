@@ -60,6 +60,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { favoriteTeamsApi, FavoriteTeam } from '../api/favoriteTeams';
 import { ApiError } from '../api';
 import { sportsApi, SPORT_TABS, PopularTeam, SportLeague, SportKey } from '../api/sports';
+import { trackTap } from '../utils/analytics';
 
 // ─── Sport colors (match EditFavoriteLeaguesScreen) ──────
 
@@ -235,7 +236,14 @@ function LeagueSection({
           opens/closes when the user actually hits the header area. */}
       <TouchableOpacity
         style={styles.leagueSectionHeader}
-        onPress={onToggleExpand}
+        onPress={() => {
+          trackTap('EditFavoriteTeams', 'league_section_toggle', {
+            sport: sport as SportKey,
+            leagueId: leagueApiId != null ? String(leagueApiId) : undefined,
+            value: expanded ? 'off' : 'on',
+          });
+          onToggleExpand();
+        }}
         activeOpacity={0.7}
       >
         <Feather
@@ -271,9 +279,18 @@ function LeagueSection({
         </View>
         {teams.length > 0 && (
           <TouchableOpacity
-            onPress={() =>
-              allSelected ? onDeselectAll(sport, teams) : onSelectAll(sport, teams)
-            }
+            onPress={() => {
+              trackTap(
+                'EditFavoriteTeams',
+                allSelected ? 'league_deselect_all_button' : 'league_select_all_button',
+                {
+                  sport: sport as SportKey,
+                  leagueId: leagueApiId != null ? String(leagueApiId) : undefined,
+                },
+              );
+              if (allSelected) onDeselectAll(sport, teams);
+              else onSelectAll(sport, teams);
+            }}
             style={[
               styles.selectAllBtn,
               { borderColor: accent, backgroundColor: allSelected ? 'transparent' : accent },
@@ -294,7 +311,13 @@ function LeagueSection({
         )}
         {onRemoveSection && (
           <TouchableOpacity
-            onPress={onRemoveSection}
+            onPress={() => {
+              trackTap('EditFavoriteTeams', 'hide_league_section_button', {
+                sport: sport as SportKey,
+                leagueId: leagueApiId != null ? String(leagueApiId) : undefined,
+              });
+              onRemoveSection?.();
+            }}
             style={styles.removeSectionBtn}
             hitSlop={8}
             accessibilityLabel={t(
@@ -411,7 +434,13 @@ function AddLeagueModal({
             <Text style={styles.modalTitle}>
               {t('editFavoriteTeams.addLeagueTitle', 'Add a league')}
             </Text>
-            <TouchableOpacity onPress={onClose} hitSlop={8}>
+            <TouchableOpacity
+              onPress={() => {
+                trackTap('EditFavoriteTeams', 'add_league_modal_close');
+                onClose();
+              }}
+              hitSlop={8}
+            >
               <Feather name="x" size={22} color={colors.onSurface} />
             </TouchableOpacity>
           </View>
@@ -446,6 +475,10 @@ function AddLeagueModal({
                     style={styles.modalLeagueRow}
                     activeOpacity={0.7}
                     onPress={() => {
+                      trackTap('EditFavoriteTeams', 'add_league_pick', {
+                        sport: sport as SportKey,
+                        leagueId: String(lg.apiId),
+                      });
                       onPick(lg);
                       onClose();
                     }}
@@ -753,6 +786,10 @@ export function EditFavoriteTeamsScreen() {
 
   const toggleTeam = useCallback(
     (sport: string, team: PopularTeam) => {
+      trackTap('EditFavoriteTeams', 'favorite_team_toggle', {
+        sport: sport as SportKey,
+        value: team.apiId,
+      });
       setSelected((prev) => {
         const next = new Map(prev);
         const key = teamKey(sport, team.apiId);
@@ -843,6 +880,7 @@ export function EditFavoriteTeamsScreen() {
   );
 
   const handleSave = useCallback(async () => {
+    trackTap('EditFavoriteTeams', 'save_button', { value: selected.size });
     if (!tokens?.accessToken) return;
     // Client-side cap that mirrors the backend's ArrayMaxSize(500) on
     // FavoriteTeamsDto. Without this the user gets a generic
@@ -985,7 +1023,13 @@ export function EditFavoriteTeamsScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
+        <TouchableOpacity
+          onPress={() => {
+            trackTap('EditFavoriteTeams', 'back_button');
+            navigation.goBack();
+          }}
+          hitSlop={12}
+        >
           <Feather name="arrow-left" size={22} color={colors.onSurface} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
@@ -1005,7 +1049,10 @@ export function EditFavoriteTeamsScreen() {
       <SportTabBar
         sports={sports}
         active={activeSport}
-        onSelect={setActiveSport}
+        onSelect={(s) => {
+          trackTap('EditFavoriteTeams', 'sport_tab', { sport: s as SportKey });
+          setActiveSport(s);
+        }}
         teamCounts={teamCounts}
       />
 
@@ -1019,6 +1066,11 @@ export function EditFavoriteTeamsScreen() {
               onPress={() => {
                 const anyExpanded = visiblePins.some(
                   (p) => !collapsed.has(`${activeSport}:${p.leagueApiId}`),
+                );
+                trackTap(
+                  'EditFavoriteTeams',
+                  anyExpanded ? 'collapse_all_button' : 'expand_all_button',
+                  { sport: activeSport as SportKey },
                 );
                 if (anyExpanded) collapseAll(activeSport);
                 else expandAll(activeSport);
@@ -1095,7 +1147,12 @@ export function EditFavoriteTeamsScreen() {
         <TouchableOpacity
           style={styles.addLeagueBtn}
           activeOpacity={0.7}
-          onPress={() => setAddLeagueOpen(true)}
+          onPress={() => {
+            trackTap('EditFavoriteTeams', 'add_league_button', {
+              sport: activeSport as SportKey,
+            });
+            setAddLeagueOpen(true);
+          }}
         >
           <Feather name="plus-circle" size={18} color={colors.primary} />
           <Text style={styles.addLeagueText}>

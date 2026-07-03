@@ -19,6 +19,7 @@ import { colors, spacing } from '../theme';
 import { AdBanner } from '../components/AdBanner';
 import { useAds } from '../contexts/AdContext';
 import { usePurchases } from '../contexts/PurchasesContext';
+import { trackTap } from '../utils/analytics';
 
 export function SeasonsScreen() {
   const { t } = useTranslation();
@@ -56,6 +57,7 @@ export function SeasonsScreen() {
 
   const onClaim = useCallback(
     async (tier: number) => {
+      trackTap('Seasons', 'claim_tier_button', { value: tier });
       if (!accessToken) return;
       setClaiming(tier);
       try {
@@ -96,7 +98,7 @@ export function SeasonsScreen() {
   if (!status || !status.season) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <Header onBack={() => navigation.goBack()} title={t('seasons.title', { defaultValue: 'Season Pass' })} />
+        <Header onBack={() => { trackTap('Seasons', 'back_button'); navigation.goBack(); }} title={t('seasons.title', { defaultValue: 'Season Pass' })} />
         <Text style={styles.empty}>{t('seasons.none', { defaultValue: 'No active season right now. Check back soon.' })}</Text>
       </SafeAreaView>
     );
@@ -114,7 +116,7 @@ export function SeasonsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <Header onBack={() => navigation.goBack()} title={status.season.title} />
+      <Header onBack={() => { trackTap('Seasons', 'back_button'); navigation.goBack(); }} title={status.season.title} />
       <ScrollView
         contentContainerStyle={styles.scroll}
         refreshControl={
@@ -153,7 +155,7 @@ export function SeasonsScreen() {
         {!status.isPro && (
           <TouchableOpacity
             style={styles.upsell}
-            onPress={() => presentPaywall('organic')}
+            onPress={() => { trackTap('Seasons', 'pro_upsell_banner'); presentPaywall('organic'); }}
             activeOpacity={0.85}
           >
             <Ionicons name="star" size={16} color={colors.onPrimary} />

@@ -17,6 +17,7 @@ import { AdBanner } from '../components/AdBanner';
 import { useAuth } from '../contexts/AuthContext';
 import { notificationsApi } from '../api/notifications';
 import type { NotificationLog } from '../api/notifications';
+import { trackTap } from '../utils/analytics';
 
 function getNotifIcon(type: string, read: boolean) {
   const iconColor = read ? colors.onSurfaceDim : colors.primary;
@@ -142,6 +143,7 @@ export function NotificationsScreen() {
       key={n._id}
       activeOpacity={0.7}
       onPress={() => {
+        trackTap('Notifications', 'notification_row', { value: n.type });
         if (!n.read) handleMarkRead(n._id);
       }}
       style={[styles.notifCard, isUnread && styles.notifCardUnread]}
@@ -181,7 +183,10 @@ export function NotificationsScreen() {
           </Text>
           <TouchableOpacity
             style={styles.emptyCta}
-            onPress={() => (navigation as any).navigate('NotificationPreferences')}
+            onPress={() => {
+              trackTap('Notifications', 'tune_preferences_button');
+              (navigation as any).navigate('NotificationPreferences');
+            }}
             activeOpacity={0.85}
           >
             <Feather name="settings" size={14} color={colors.primary} />
@@ -200,7 +205,12 @@ export function NotificationsScreen() {
           <>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionLabel}>{t('notifications.new')}</Text>
-              <TouchableOpacity onPress={handleMarkAllRead}>
+              <TouchableOpacity
+                onPress={() => {
+                  trackTap('Notifications', 'mark_all_read_button');
+                  handleMarkAllRead();
+                }}
+              >
                 <Text style={styles.markRead}>{t('notifications.markAllRead')}</Text>
               </TouchableOpacity>
             </View>
@@ -228,11 +238,23 @@ export function NotificationsScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
+        <TouchableOpacity
+          onPress={() => {
+            trackTap('Notifications', 'back_button');
+            navigation.goBack();
+          }}
+          hitSlop={12}
+        >
           <Feather name="arrow-left" size={22} color={colors.onSurface} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('notifications.title')}</Text>
-        <TouchableOpacity onPress={() => (navigation as any).navigate('NotificationPreferences')} hitSlop={12}>
+        <TouchableOpacity
+          onPress={() => {
+            trackTap('Notifications', 'preferences_button');
+            (navigation as any).navigate('NotificationPreferences');
+          }}
+          hitSlop={12}
+        >
           <Feather name="settings" size={20} color={colors.onSurfaceVariant} />
         </TouchableOpacity>
       </View>

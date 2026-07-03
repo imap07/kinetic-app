@@ -27,7 +27,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { SESSION_EXPIRED_FLAG_KEY } from '../contexts/AuthContext';
 import { ApiError } from '../api';
 import type { SocialProvider } from '../api';
-import { trackOnboardingStep } from '../utils/analytics';
+import { trackOnboardingStep, trackTap } from '../utils/analytics';
 import { signInWithGoogle, isGoogleSignInCancelled } from '../services/googleAuth';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { isBiometricLoginEnabled, getBiometricLabel } from '../services/biometricAuth';
@@ -109,7 +109,10 @@ function LegalModal({ visible, type, onClose }: LegalModalProps) {
 
           <TouchableOpacity
             style={modalStyles.closeBtn}
-            onPress={onClose}
+            onPress={() => {
+              trackTap('Login', 'legal_modal_close_button', { value: type });
+              onClose();
+            }}
             activeOpacity={0.8}
           >
             <Text style={modalStyles.closeBtnText}>{t('security.close')}</Text>
@@ -192,6 +195,7 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
   }, [loginWithBiometric]);
 
   const handleBiometricLogin = async () => {
+    trackTap('Login', 'biometric_signin_button');
     setBiometricLoading(true);
     const success = await loginWithBiometric();
     setBiometricLoading(false);
@@ -226,12 +230,14 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
   }, []);
 
   const handleEmailContinue = () => {
+    trackTap('Login', 'email_continue_button');
     trackOnboardingStep('email_signin_tapped');
     navigation.navigate('EmailAuth');
   };
 
   const handleGoogleLogin = async () => {
     if (socialLoading) return; // prevent double-tap
+    trackTap('Login', 'google_signin_button');
     trackOnboardingStep('google_signin_tapped');
     setSocialLoading('google');
     try {
@@ -257,6 +263,7 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
   };
 
   const handleAppleLogin = async () => {
+    trackTap('Login', 'apple_signin_button');
     trackOnboardingStep('apple_signin_tapped');
     setSocialLoading('apple');
     try {
@@ -445,14 +452,20 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
             {t('login.terms')}{' '}
             <Text
               style={styles.termsLink}
-              onPress={() => setLegalModal('terms')}
+              onPress={() => {
+                trackTap('Login', 'terms_link');
+                setLegalModal('terms');
+              }}
             >
               {t('login.termsLink')}
             </Text>{' '}
             {t('login.and')}{' '}
             <Text
               style={styles.termsLink}
-              onPress={() => setLegalModal('privacy')}
+              onPress={() => {
+                trackTap('Login', 'privacy_link');
+                setLegalModal('privacy');
+              }}
             >
               {t('login.privacyLink')}
             </Text>

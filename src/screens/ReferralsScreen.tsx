@@ -18,6 +18,7 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { colors, spacing, borderRadius } from '../theme';
 import { track } from '../services/analytics';
+import { trackTap } from '../utils/analytics';
 import { useAuth } from '../contexts/AuthContext';
 import {
   referralsApi,
@@ -68,6 +69,7 @@ export function ReferralsScreen() {
   }, [load]);
 
   const handleCopy = useCallback(async () => {
+    trackTap('Referrals', 'copy_referral_code');
     if (!status?.code) return;
     await Clipboard.setStringAsync(status.code);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
@@ -76,6 +78,7 @@ export function ReferralsScreen() {
   }, [status?.code]);
 
   const handleShare = useCallback(async () => {
+    trackTap('Referrals', 'share_referral_button');
     if (!status?.code) return;
     const url = buildReferralUrl(status.code);
     const message = t('referrals.shareMessage', {
@@ -105,7 +108,10 @@ export function ReferralsScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => navigation.goBack()}
+          onPress={() => {
+            trackTap('Referrals', 'back_button');
+            navigation.goBack();
+          }}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Feather name="arrow-left" size={22} color={colors.onSurface} />

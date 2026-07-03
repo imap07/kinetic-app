@@ -22,7 +22,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { sportsApi } from '../api/sports';
 import type { SportKey, LeagueFilter, SportLeague } from '../api/sports';
 import type { OnboardingFavoriteTeam, OnboardingFavoriteLeague } from '../navigation/types';
-import { trackOnboardingStep } from '../utils/analytics';
+import { trackOnboardingStep, trackTap } from '../utils/analytics';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_GAP = 10;
@@ -332,6 +332,7 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
 
   const toggleLeague = useCallback(
     (league: SportLeague, sport: SportKey) => {
+      trackTap('TeamSelection', 'league_card', { sport, value: league.apiId });
       setSelectedLeagues((prev) => {
         const next = new Map(prev);
         const key = selectionKey(sport, league.apiId);
@@ -352,6 +353,7 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
   );
 
   const toggleTeam = useCallback((team: PopularTeam) => {
+    trackTap('TeamSelection', 'team_card', { sport: team.sport, value: team.apiId });
     setSelectedTeams(prev => {
       const next = new Map(prev);
       const key = selectionKey(team.sport, team.apiId);
@@ -379,11 +381,13 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
   }, []);
 
   const applyDraft = useCallback(() => {
+    trackTap('TeamSelection', 'apply_filters_button');
     resetAndReload(activeSport, draftFilters);
     setShowFilterSheet(false);
   }, [activeSport, draftFilters, resetAndReload]);
 
   const clearFilters = useCallback(() => {
+    trackTap('TeamSelection', 'clear_filters_button');
     resetAndReload(activeSport, { countries: [], leagueIds: [], leagueNames: [] });
     setDraftFilters({ countries: [], leagueIds: [], leagueNames: [] });
     setShowFilterSheet(false);
@@ -449,7 +453,14 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
       <View style={styles.header}>
         <View style={styles.headerRow}>
           {onBack && (
-            <TouchableOpacity onPress={onBack} style={styles.backBtn} hitSlop={12}>
+            <TouchableOpacity
+              onPress={() => {
+                trackTap('TeamSelection', 'back_button');
+                onBack();
+              }}
+              style={styles.backBtn}
+              hitSlop={12}
+            >
               <Ionicons name="arrow-back" size={22} color={colors.onSurface} />
             </TouchableOpacity>
           )}
@@ -478,7 +489,7 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
             <TouchableOpacity
               key={sport}
               style={[styles.tab, isActive && { backgroundColor: color + '22', borderColor: color }]}
-              onPress={() => { setActiveSport(sport); setSearchQuery(''); }}
+              onPress={() => { trackTap('TeamSelection', 'sport_tab', { sport }); setActiveSport(sport); setSearchQuery(''); }}
               activeOpacity={0.7}
             >
               <Text style={[styles.tabText, isActive && { color }]}>
@@ -496,7 +507,10 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
         <View style={styles.modeTabs}>
           <TouchableOpacity
             style={styles.modeTab}
-            onPress={() => setMode('teams')}
+            onPress={() => {
+              trackTap('TeamSelection', 'mode_tab', { value: 'teams' });
+              setMode('teams');
+            }}
             activeOpacity={0.7}
           >
             <View style={styles.modeTabInner}>
@@ -520,7 +534,10 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.modeTab}
-            onPress={() => setMode('leagues')}
+            onPress={() => {
+              trackTap('TeamSelection', 'mode_tab', { value: 'leagues' });
+              setMode('leagues');
+            }}
             activeOpacity={0.7}
           >
             <View style={styles.modeTabInner}>
@@ -568,6 +585,7 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
           {(activeSport === 'formula-1' ? f1Search : activeSport === 'mma' ? mmaSearch : searchQuery).length > 0 && (
             <TouchableOpacity
               onPress={() => {
+                trackTap('TeamSelection', 'clear_search_button');
                 if (activeSport === 'formula-1') setF1Search('');
                 else if (activeSport === 'mma') setMmaSearch('');
                 else setSearchQuery('');
@@ -582,7 +600,7 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
         {activeSport !== 'formula-1' && activeSport !== 'mma' && (
           <TouchableOpacity
             style={[styles.filterBtn, hasActiveFilters && styles.filterBtnActive]}
-            onPress={() => { setFilterTab('country'); setFilterSearch(''); setDraftFilters(state.filters); setShowFilterSheet(true); }}
+            onPress={() => { trackTap('TeamSelection', 'filter_button'); setFilterTab('country'); setFilterSearch(''); setDraftFilters(state.filters); setShowFilterSheet(true); }}
             activeOpacity={0.7}
           >
             <Ionicons
@@ -605,6 +623,7 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
             <TouchableOpacity
               key={`c-${c}`} style={styles.chip}
               onPress={() => {
+                trackTap('TeamSelection', 'country_chip_remove', { value: c });
                 const newCountries = state.filters.countries.filter(x => x !== c);
                 resetAndReload(activeSport, { countries: newCountries });
               }}
@@ -617,6 +636,7 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
             <TouchableOpacity
               key={`l-${state.filters.leagueIds[i]}`} style={styles.chip}
               onPress={() => {
+                trackTap('TeamSelection', 'league_chip_remove', { value: state.filters.leagueIds[i] });
                 const newIds = state.filters.leagueIds.filter((_, j) => j !== i);
                 const newNames = state.filters.leagueNames.filter((_, j) => j !== i);
                 resetAndReload(activeSport, { leagueIds: newIds, leagueNames: newNames });
@@ -745,7 +765,7 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
             contentContainerStyle={styles.teamsGrid}
             showsVerticalScrollIndicator={false}
             ListHeaderComponent={
-              <TouchableOpacity style={styles.f1DriverBtn} onPress={() => setF1DriverSheet(true)} activeOpacity={0.8}>
+              <TouchableOpacity style={styles.f1DriverBtn} onPress={() => { trackTap('TeamSelection', 'follow_driver_button'); setF1DriverSheet(true); }} activeOpacity={0.8}>
                 <Ionicons name="person-circle-outline" size={18} color={selectedDriverId ? sportColor : colors.onSurfaceVariant} />
                 <Text style={[styles.f1DriverBtnText, selectedDriverId ? { color: sportColor } : null]}>
                   {selectedDriverId ? `Following: ${selectedDriverName}` : 'Follow a driver (optional)'}
@@ -860,13 +880,13 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
       {/* ─── F1 Driver Sheet ─── */}
       <Modal visible={f1DriverSheet} animationType="slide" transparent onRequestClose={() => setF1DriverSheet(false)}>
         <View style={styles.modalOverlay}>
-          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setF1DriverSheet(false)} />
+          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => { trackTap('TeamSelection', 'driver_sheet_dismiss'); setF1DriverSheet(false); }} />
           <View style={styles.modalSheet}>
             <View style={styles.modalHandle} />
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>{t('teamSelection.followDriverTitle')}</Text>
               {selectedDriverId && (
-                <TouchableOpacity onPress={() => { setSelectedDriverId(null); setSelectedDriverName(null); setSelectedDriverImage(null); setF1DriverSheet(false); }}>
+                <TouchableOpacity onPress={() => { trackTap('TeamSelection', 'remove_driver_button'); setSelectedDriverId(null); setSelectedDriverName(null); setSelectedDriverImage(null); setF1DriverSheet(false); }}>
                   <Text style={styles.sheetClear}>{t('teamSelection.remove')}</Text>
                 </TouchableOpacity>
               )}
@@ -882,6 +902,7 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
                       key={driver.apiId}
                       style={[styles.optionRow, isSelected && styles.optionRowActive]}
                       onPress={() => {
+                        trackTap('TeamSelection', 'driver_row', { sport: 'formula-1', value: driver.apiId });
                         setSelectedDriverId(driver.apiId);
                         setSelectedDriverName(driver.name);
                         setSelectedDriverImage(driver.image || '');
@@ -915,7 +936,7 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
       {/* ─── Filter Bottom Sheet ─── */}
       <Modal visible={showFilterSheet} animationType="slide" transparent onRequestClose={() => setShowFilterSheet(false)}>
         <View style={styles.modalOverlay}>
-          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowFilterSheet(false)} />
+          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => { trackTap('TeamSelection', 'filter_sheet_dismiss'); setShowFilterSheet(false); }} />
           <View style={styles.modalSheet}>
             <View style={styles.modalHandle} />
 
@@ -923,7 +944,7 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>{t('teamSelection.filterTeams')}</Text>
               {(draftFilters.countries.length > 0 || draftFilters.leagueIds.length > 0) && (
-                <TouchableOpacity onPress={() => setDraftFilters({ countries: [], leagueIds: [], leagueNames: [] })}>
+                <TouchableOpacity onPress={() => { trackTap('TeamSelection', 'filter_sheet_clear_button'); setDraftFilters({ countries: [], leagueIds: [], leagueNames: [] }); }}>
                   <Text style={styles.sheetClear}>{t('teamSelection.clearAll')}</Text>
                 </TouchableOpacity>
               )}
@@ -933,7 +954,7 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
             <View style={styles.sheetTabs}>
               <TouchableOpacity
                 style={[styles.sheetTab, filterTab === 'country' && styles.sheetTabActive]}
-                onPress={() => { setFilterTab('country'); setFilterSearch(''); }}
+                onPress={() => { trackTap('TeamSelection', 'filter_tab', { value: 'country' }); setFilterTab('country'); setFilterSearch(''); }}
               >
                 <Text style={[styles.sheetTabText, filterTab === 'country' && styles.sheetTabTextActive]}>
                   Country
@@ -941,7 +962,7 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.sheetTab, filterTab === 'league' && styles.sheetTabActive]}
-                onPress={() => { setFilterTab('league'); setFilterSearch(''); }}
+                onPress={() => { trackTap('TeamSelection', 'filter_tab', { value: 'league' }); setFilterTab('league'); setFilterSearch(''); }}
               >
                 <Text style={[styles.sheetTabText, filterTab === 'league' && styles.sheetTabTextActive]}>
                   League
@@ -962,7 +983,7 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
                 autoCorrect={false}
               />
               {filterSearch.length > 0 && (
-                <TouchableOpacity onPress={() => setFilterSearch('')} hitSlop={8}>
+                <TouchableOpacity onPress={() => { trackTap('TeamSelection', 'filter_search_clear_button'); setFilterSearch(''); }} hitSlop={8}>
                   <Ionicons name="close-circle" size={15} color={colors.onSurfaceDim} />
                 </TouchableOpacity>
               )}
@@ -978,6 +999,7 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
                         key={c}
                         style={[styles.optionRow, isSelected && styles.optionRowActive]}
                         onPress={() => {
+                          trackTap('TeamSelection', 'country_filter_option', { value: c });
                           const next = isSelected
                             ? draftFilters.countries.filter(x => x !== c)
                             : [...draftFilters.countries, c];
@@ -1006,6 +1028,7 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
                         key={lg.apiId}
                         style={[styles.optionRow, isSelected && styles.optionRowActive]}
                         onPress={() => {
+                          trackTap('TeamSelection', 'league_filter_option', { value: lg.apiId });
                           if (isSelected) {
                             const idx = draftFilters.leagueIds.indexOf(lg.apiId);
                             setDraftFilters(d => ({
@@ -1089,6 +1112,7 @@ export function TeamSelectionScreen({ selectedSports, onComplete, onBack }: Prop
         </View>
         <TouchableOpacity
           activeOpacity={0.85} onPress={() => {
+            trackTap('TeamSelection', totalSelected === 0 ? 'skip_button' : 'continue_button', { value: totalSelected });
             const favoriteTeams: OnboardingFavoriteTeam[] = Array.from(selectedTeams.values()).map(info => ({
               teamApiId: info.apiId,
               sport: info.sport,

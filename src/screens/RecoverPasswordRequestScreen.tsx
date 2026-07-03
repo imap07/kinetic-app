@@ -20,6 +20,7 @@ import { colors, typography, spacing, borderRadius } from '../theme';
 import { AuthStackParamList } from '../navigation/types';
 import { useAuth } from '../contexts/AuthContext';
 import { ApiError } from '../api';
+import { trackTap } from '../utils/analytics';
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'RecoverPasswordRequest'>;
@@ -40,7 +41,10 @@ export function RecoverPasswordRequestScreen({ navigation }: Props) {
       <View style={{ paddingTop: insets.top }}>
         <TopAppBar
           showBack
-          onBack={() => navigation.goBack()}
+          onBack={() => {
+            trackTap('RecoverPasswordRequest', 'back_button');
+            navigation.goBack();
+          }}
           leftLabel={t('recoverPassword.title')}
         />
       </View>
@@ -88,6 +92,7 @@ export function RecoverPasswordRequestScreen({ navigation }: Props) {
         <PrimaryButton
           title={loading ? '' : t('recoverPassword.sendCode')}
           onPress={async () => {
+            trackTap('RecoverPasswordRequest', 'send_code_button');
             if (!email.trim() || loading) return;
             setLoading(true);
             try {
@@ -119,7 +124,12 @@ export function RecoverPasswordRequestScreen({ navigation }: Props) {
           <View style={styles.dividerLine} />
         </View>
 
-        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+        <TouchableOpacity
+          onPress={() => {
+            trackTap('RecoverPasswordRequest', 'return_to_signin_link');
+            navigation.navigate('Login');
+          }}
+        >
           <Text style={styles.returnText}>{t('recoverPassword.returnToSignIn')}</Text>
         </TouchableOpacity>
 

@@ -24,6 +24,7 @@ import {
   trackCoinStoreOpened,
   trackCoinPackageTapped,
   trackSubscriptionTapped,
+  trackTap,
 } from '../utils/analytics';
 
 /** Local fallback packages — shown when RevenueCat offerings aren't configured yet */
@@ -79,6 +80,9 @@ export function CoinStoreScreen() {
   }, [source]);
 
   const handleBuyCoins = async (pkg: any) => {
+    trackTap('CoinStore', 'coin_package_tile', {
+      value: pkg?.product?.identifier ?? pkg?.id ?? 'unknown',
+    });
     // GA4: capture tap intent BEFORE the SDK call so we count every
     // attempt, including the ones that bail at the store sheet.
     // Numbers are best-effort — RC packages expose `product.price`
@@ -110,6 +114,9 @@ export function CoinStoreScreen() {
   };
 
   const handleSubscribe = async (pkg: any) => {
+    trackTap('CoinStore', 'subscribe_button', {
+      value: pkg?.product?.identifier ?? 'unavailable',
+    });
     if (!pkg) {
       Alert.alert(t('coinStore.comingSoon'), t('coinStore.comingSoonDesc'));
       return;
@@ -138,7 +145,13 @@ export function CoinStoreScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
+        <TouchableOpacity
+          onPress={() => {
+            trackTap('CoinStore', 'back_button');
+            navigation.goBack();
+          }}
+          hitSlop={12}
+        >
           <Feather name="arrow-left" size={22} color={colors.onSurface} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('coinStore.title')}</Text>
@@ -444,14 +457,20 @@ export function CoinStoreScreen() {
         <Text style={styles.legalLinks}>
           <Text
             style={styles.legalLink}
-            onPress={() => Linking.openURL('https://kineticapp.ca/terms')}
+            onPress={() => {
+              trackTap('CoinStore', 'terms_link');
+              Linking.openURL('https://kineticapp.ca/terms');
+            }}
           >
             {t('login.termsLink')}
           </Text>
           {'  ·  '}
           <Text
             style={styles.legalLink}
-            onPress={() => Linking.openURL('https://kineticapp.ca/privacy')}
+            onPress={() => {
+              trackTap('CoinStore', 'privacy_link');
+              Linking.openURL('https://kineticapp.ca/privacy');
+            }}
           >
             {t('login.privacyLink')}
           </Text>

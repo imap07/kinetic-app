@@ -21,6 +21,7 @@ import { authApi } from '../api';
 import type { SportKey } from '../api/sports';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
+import { trackTap } from '../utils/analytics';
 
 interface SportOption {
   key: SportKey;
@@ -164,6 +165,7 @@ export function EditFavoriteSportsScreen() {
   );
 
   const handleSave = useCallback(async () => {
+    trackTap('EditFavoriteSports', 'save_button', { value: selected.size });
     if (!tokens?.accessToken || selected.size < MIN_SPORTS) return;
     setSaving(true);
     try {
@@ -213,7 +215,13 @@ export function EditFavoriteSportsScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
+        <TouchableOpacity
+          onPress={() => {
+            trackTap('EditFavoriteSports', 'back_button');
+            navigation.goBack();
+          }}
+          hitSlop={12}
+        >
           <Feather name="arrow-left" size={22} color={colors.onSurface} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('editFavorites.sportsTitle')}</Text>
@@ -248,7 +256,13 @@ export function EditFavoriteSportsScreen() {
                 styles.sportCard,
                 isSel && { borderColor: sport.color },
               ]}
-              onPress={() => toggleSport(sport.key)}
+              onPress={() => {
+                trackTap('EditFavoriteSports', 'favorite_sport_toggle', {
+                  sport: sport.key,
+                  value: isSel ? 'off' : 'on',
+                });
+                toggleSport(sport.key);
+              }}
               activeOpacity={0.7}
             >
               {/* Selection indicator */}

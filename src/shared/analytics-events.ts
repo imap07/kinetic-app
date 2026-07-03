@@ -16,7 +16,8 @@
  * PII policy
  * ----------
  * Never include:
- *   - raw email / displayName (userId only, server-hashed downstream)
+ *   - raw email / displayName (the internal userId is allowed — it is
+ *     an internal identifier, not PII)
  *   - device identifiers
  *   - free-form user text
  * Sport keys, sport-agnostic counts, and monetary amounts are fine.
@@ -57,7 +58,13 @@ export type AnalyticsProps =
       hoursToResolve: number;
     }
   // ─── Retention ────────────────────────────────────────────
-  | { event: 'session_started'; daysSinceInstall: number }
+  | {
+      event: 'session_started';
+      daysSinceInstall: number;
+      // What brought the user in on this cold launch: a push-notification
+      // tap, a deep link (kineticapp.ca/r/* or /join/*), or the app icon.
+      openSource?: 'push' | 'deeplink' | 'organic';
+    }
   | {
       // Emitted every time the app comes to the foreground (cold launch
       // OR returning from background). Lets us measure true sessions
@@ -67,6 +74,8 @@ export type AnalyticsProps =
       // launch. Useful for "session length" and "abandoned without
       // killing" cohorts.
       secondsAwayFromApp: number | null;
+      // Same semantics as session_started.openSource, per foreground.
+      openSource?: 'push' | 'deeplink' | 'organic';
     }
   | {
       event: 'app_backgrounded';
@@ -281,6 +290,36 @@ export type AnalyticsProps =
   | {
       event: 'share_tapped';
       context: 'league_invite' | 'prediction_result';
+    }
+  // ─── Granular interaction events (added 2026-07-03) ───────
+  | {
+      // Catch-all tap event for every meaningful touchable in the app.
+      // `screen` is the route name ("Dashboard", "CoinStore"); `element`
+      // is a stable snake_case id for the control ("join_league_button",
+      // "sport_tab_football"). Optional context lets dashboards answer
+      // "which match / league / sport was on screen when they tapped".
+      event: 'ui_tapped';
+      screen: string;
+      element: string;
+      sport?: SportKey;
+      matchId?: string;
+      leagueId?: string;
+      // Small scalar payload when the tap carries a value (selected
+      // filter, package id, toggle state). Never free-form user text.
+      value?: string | number;
+    }
+  | {
+      // User landed on a match/race detail — fires on every open, even
+      // if they never start a prediction. Complements prediction_started
+      // (intent) with pure curiosity signal: which games draw attention.
+      event: 'game_opened';
+      sport: SportKey;
+      matchId: string;
+      source: 'home' | 'live' | 'league' | 'search' | 'notification' | 'deeplink' | 'my_picks';
+      // Team/competition labels are public sports data, not PII.
+      homeTeam?: string;
+      awayTeam?: string;
+      leagueName?: string;
     };
 
 /**
