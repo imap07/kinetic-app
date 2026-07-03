@@ -18,6 +18,7 @@ import { seasonsApi, SeasonStatus, SeasonTierView } from '../api/seasons';
 import { colors, spacing } from '../theme';
 import { AdBanner } from '../components/AdBanner';
 import { useAds } from '../contexts/AdContext';
+import { usePurchases } from '../contexts/PurchasesContext';
 
 export function SeasonsScreen() {
   const { t } = useTranslation();
@@ -25,6 +26,7 @@ export function SeasonsScreen() {
   const { tokens } = useAuth();
   const accessToken = tokens?.accessToken;
   const { trackAction, showRewardedInterstitial } = useAds();
+  const { presentPaywall } = usePurchases();
 
   const [status, setStatus] = useState<SeasonStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -151,7 +153,7 @@ export function SeasonsScreen() {
         {!status.isPro && (
           <TouchableOpacity
             style={styles.upsell}
-            onPress={() => navigation.navigate('Paywall', { trigger: 'season_pass' })}
+            onPress={() => presentPaywall('organic')}
             activeOpacity={0.85}
           >
             <Ionicons name="star" size={16} color={colors.onPrimary} />

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { API_BASE_URL } from '../api/config';
+import { getAppCheckToken } from '../services/appCheck';
 import type { SportGame, SportKey } from '../api/sports';
 
 interface LiveSSEData {
@@ -32,7 +33,7 @@ export function useLiveSSE({ sport, token, enabled = true }: UseLiveSSEOptions) 
   const reconnectAttempts = useRef(0);
   const MAX_RECONNECT_DELAY = 30_000; // 30s max
 
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     if (!token || !enabled) return;
 
     if (eventSourceRef.current) {
@@ -47,7 +48,11 @@ export function useLiveSSE({ sport, token, enabled = true }: UseLiveSSEOptions) 
       //   2. Backend applies ThrottlerGuard on the SSE endpoint.
       //   3. The backend should avoid logging full query strings.
       // A future improvement would be a short-lived ticket exchange endpoint.
-      const url = `${API_BASE_URL}/sports/live/stream?sport=${sport}&token=${token}`;
+      // App Check token also goes in the query (same EventSource header
+      // limitation) so the global AppCheckGuard accepts the stream.
+      const appCheckToken = await getAppCheckToken();
+      const acParam = appCheckToken ? `&acToken=${encodeURIComponent(appCheckToken)}` : '';
+      const url = `${API_BASE_URL}/sports/live/stream?sport=${sport}&token=${token}${acParam}`;
       const es = new EventSource(url);
 
       es.addEventListener('live-update', (event: any) => {

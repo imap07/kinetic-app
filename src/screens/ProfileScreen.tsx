@@ -24,7 +24,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme';
 import { AdBanner } from '../components/AdBanner';
 import { AppHeader } from '../components/AppHeader';
-import { ProfileStackParamList, RootStackParamList } from '../navigation/types';
+import { ProfileStackParamList } from '../navigation/types';
 import { useAuth } from '../contexts/AuthContext';
 import { usePurchases } from '../contexts/PurchasesContext';
 import { predictionsApi } from '../api/predictions';
@@ -201,7 +201,6 @@ function AchievementFullCard({
 export function ProfileScreen() {
   const { t } = useTranslation();
   const profileNav = useNavigation<NativeStackNavigationProp<ProfileStackParamList>>();
-  const rootNav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { logout, user, tokens, refreshProfile } = useAuth();
 
   // Safety-net refresh on focus. Most updates flow through
@@ -225,7 +224,7 @@ export function ProfileScreen() {
       });
     }, [refreshProfile]),
   );
-  const { isProMember } = usePurchases();
+  const { isProMember, presentPaywall, manageSubscriptions } = usePurchases();
 
   const [history, setHistory] = useState<PredictionData[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
@@ -495,7 +494,7 @@ export function ProfileScreen() {
                   Kinetic+
                   <Text style={styles.subPriceUnit}> {t('profile.subscription')}</Text>
                 </Text>
-                <TouchableOpacity onPress={() => rootNav.navigate('Paywall', { trigger: 'general' })}>
+                <TouchableOpacity onPress={() => manageSubscriptions()}>
                   <Text style={styles.manageSub}>{t('profile.manageSubscription')}</Text>
                 </TouchableOpacity>
               </>
@@ -507,7 +506,7 @@ export function ProfileScreen() {
                 <TouchableOpacity
                   style={styles.upgradeBtnWrap}
                   activeOpacity={0.85}
-                  onPress={() => rootNav.navigate('Paywall', { trigger: 'general' })}
+                  onPress={() => presentPaywall('profile')}
                 >
                   <LinearGradient
                     colors={['#F3FFCA', '#CAFD00']}

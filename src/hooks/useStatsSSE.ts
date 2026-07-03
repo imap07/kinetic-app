@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { API_BASE_URL } from '../api/config';
+import { getAppCheckToken } from '../services/appCheck';
 import type { DailyStatusResponse, MyStatsResponse } from '../api/predictions';
 
 interface StatsSSEData {
@@ -42,7 +43,7 @@ export function useStatsSSE({ token, enabled = true, onUpdate, onAchievement }: 
 
   const MAX_RECONNECT_DELAY = 30_000;
 
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     if (!token || !enabled) return;
 
     if (eventSourceRef.current) {
@@ -57,7 +58,11 @@ export function useStatsSSE({ token, enabled = true, onUpdate, onAchievement }: 
       //   2. Backend applies ThrottlerGuard on the SSE endpoint.
       //   3. The backend should avoid logging full query strings.
       // A future improvement would be a short-lived ticket exchange endpoint.
-      const url = `${API_BASE_URL}/predictions/stats-stream?token=${token}`;
+      // App Check token also goes in the query (EventSource header limit)
+      // so the global AppCheckGuard accepts the stream.
+      const appCheckToken = await getAppCheckToken();
+      const acParam = appCheckToken ? `&acToken=${encodeURIComponent(appCheckToken)}` : '';
+      const url = `${API_BASE_URL}/predictions/stats-stream?token=${token}${acParam}`;
       const es = new EventSource(url);
 
       es.addEventListener('stats-update', (event: any) => {

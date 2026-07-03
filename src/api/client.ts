@@ -1,5 +1,6 @@
 import { API_BASE_URL } from './config';
 import { getCachedDeviceFingerprint } from '../services/deviceFingerprint';
+import { getAppCheckToken } from '../services/appCheck';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
@@ -99,6 +100,16 @@ async function request<T>(
   // leave them alone. See the mass-logout incident notes in
   // `session.schema.ts`.
   reqHeaders['x-device-type'] = 'mobile';
+
+  // App Check attestation token — proves this is our genuine binary on a
+  // genuine device (Play Integrity / App Attest). The backend rejects
+  // requests without a valid token when `app_check_enforced` is on.
+  // RNFirebase caches the token, so this await is cheap; fail-soft to no
+  // header if attestation is unavailable (server decides whether to block).
+  const appCheckToken = await getAppCheckToken();
+  if (appCheckToken) {
+    reqHeaders['X-Firebase-AppCheck'] = appCheckToken;
+  }
 
   const res = await fetch(`${API_BASE_URL}${path}`, {
     method,

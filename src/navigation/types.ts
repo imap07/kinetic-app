@@ -86,11 +86,6 @@ export type MainTabParamList = {
   Profile: NavigatorScreenParams<ProfileStackParamList>;
 };
 
-export type PaywallTrigger =
-  | 'remove_ads'
-  | 'post_onboarding'
-  | 'general';
-
 // Self-reported acquisition channel. Must stay in sync with the backend
 // AcquisitionSource enum in src/users/schemas/user.schema.ts.
 export type AcquisitionSourceKey =
@@ -174,8 +169,5 @@ export type RootStackParamList = {
   Notifications: undefined;
   NotificationPreferences: undefined;
   SportNotificationPreferences: { sport: string; sportName: string };
-  Paywall: {
-    trigger: PaywallTrigger;
-  };
   Search: undefined;
 };

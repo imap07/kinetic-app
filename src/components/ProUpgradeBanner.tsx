@@ -2,25 +2,21 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { colors, borderRadius } from '../theme';
 import { usePurchases } from '../contexts/PurchasesContext';
-import type { RootStackParamList } from '../navigation/types';
 
 export function ProUpgradeBanner() {
-  const { isProMember, currentOffering } = usePurchases();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { isProMember, currentOffering, presentPaywall } = usePurchases();
   const { t } = useTranslation();
 
   if (isProMember) return null;
 
   // Pull the monthly price live from RevenueCat so the badge stays in
   // sync with whatever App Store Connect has configured. Falls back to
-  // the spec'd $1.99 only when the offering hasn't loaded yet — same
-  // strategy as PaywallScreen.tsx so the user never sees two different
-  // prices for the same product in the same session.
+  // the spec'd $1.99 only when the offering hasn't loaded yet, so this
+  // badge and RevenueCat's own paywall never show two different prices
+  // for the same product in the same session.
   const monthlyPkg =
     currentOffering?.monthly ??
     currentOffering?.availablePackages?.find(
@@ -35,7 +31,7 @@ export function ProUpgradeBanner() {
     <TouchableOpacity
       style={styles.container}
       activeOpacity={0.85}
-      onPress={() => navigation.navigate('Paywall', { trigger: 'remove_ads' })}
+      onPress={() => presentPaywall('remove_ads_banner')}
     >
       <LinearGradient
         colors={['rgba(202,253,0,0.08)', 'rgba(202,253,0,0.02)']}

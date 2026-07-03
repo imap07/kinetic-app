@@ -11,6 +11,7 @@ import { ONBOARDING_COMPLETE_KEY } from '../screens/OnboardingScreen';
 import { logLogin, logSignUp, logLogout, identifyUser, clearAnalyticsUser } from '../services/analytics';
 import { attemptBiometricLogin, isBiometricLoginEnabled, enableBiometricLogin, disableBiometricLogin } from '../services/biometricAuth';
 import { getOrCreateDeviceFingerprint } from '../services/deviceFingerprint';
+import { initAppCheck } from '../services/appCheck';
 import { removeRegisteredPushToken } from '../hooks/usePushNotifications';
 
 const ACCESS_TOKEN_KEY = 'kinetic_access_token';
@@ -190,6 +191,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // so the x-device-fingerprint header is populated from request #1.
         // This is a single SecureStore read; cached in memory thereafter.
         await getOrCreateDeviceFingerprint();
+
+        // Initialize Firebase App Check so the X-Firebase-AppCheck header
+        // can be attached to requests. Fails soft — never blocks boot.
+        await initAppCheck();
 
         const stored = await loadTokens();
         if (!stored) {

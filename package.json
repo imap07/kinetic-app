@@ -55,6 +55,7 @@
     "@react-native-community/datetimepicker": "8.6.0",
     "@react-native-firebase/analytics": "^23.8.8",
     "@react-native-firebase/app": "^23.8.8",
+    "@react-native-firebase/app-check": "^23.8.8",
     "@react-native-google-signin/google-signin": "^16.1.2",
     "@react-navigation/bottom-tabs": "^7.15.7",
     "@react-navigation/native": "^7.2.0",

@@ -116,7 +116,8 @@ export function CoinStoreScreen() {
     }
     // Distinguish monthly vs annual by RC product identifier so the
     // GA4 funnel can compare plan-level intent within the coin store
-    // entry point (separate from PaywallScreen taps).
+    // entry point (the RevenueCat-hosted paywall reports its own
+    // conversion analytics separately).
     trackSubscriptionTapped(
       pkg?.product?.identifier?.includes('annual') ? 'annual' : 'monthly',
     );
@@ -355,13 +356,12 @@ export function CoinStoreScreen() {
               })
             ) : (
               // Fallback Pro cards when RevenueCat isn't loaded yet.
-              // Prices come from the same fallback constants used by
-              // PaywallScreen so the user never sees two different
-              // values for the same product in the same session. If you
-              // change these, update PaywallScreen.tsx too. The real
-              // price always comes from `pkg.product.priceString` once
-              // the offering loads — these are only visible during a
-              // network hiccup or before bootstrap completes.
+              // Keep these prices in sync with the spec'd Pro pricing so
+              // the user never sees two different values for the same
+              // product in the same session. The real price always comes
+              // from `pkg.product.priceString` once the offering loads —
+              // these are only visible during a network hiccup or before
+              // bootstrap completes.
               <>
                 <TouchableOpacity activeOpacity={0.7} onPress={() => handleSubscribe(null)}>
                   <LinearGradient

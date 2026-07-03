@@ -17,6 +17,21 @@ import Toast from 'react-native-toast-message';
 import i18n from '../i18n';
 import { useAuth } from './AuthContext';
 import { logSubscriptionStart, track } from '../services/analytics';
+import {
+  trackPaywallSeen,
+  trackPaywallDismissed,
+  secondsSince,
+} from '../utils/analytics';
+
+// Where the paywall was opened from — drives the GA4 `paywall_seen.source`
+// funnel. RevenueCat itself owns the paywall UI (layout, insets, products);
+// these are only our analytics labels for the entry point.
+export type PaywallSource =
+  | 'remove_ads_banner'
+  | 'coin_store'
+  | 'profile'
+  | 'post_onboarding'
+  | 'organic';
 
 // RevenueCat requires platform-specific public SDK keys.
 // - iOS  → appl_...  (rejected on Android)
@@ -41,7 +56,8 @@ interface PurchasesState {
 }
 
 interface PurchasesContextValue extends PurchasesState {
-  presentPaywall: () => Promise<boolean>;
+  presentPaywall: (source?: PaywallSource) => Promise<boolean>;
+  manageSubscriptions: () => Promise<void>;
   purchasePackage: (pkg: PurchasesPackage) => Promise<boolean>;
   restorePurchases: () => Promise<boolean>;
   refreshCustomerInfo: () => Promise<void>;
@@ -151,30 +167,60 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
-  const presentPaywall = useCallback(async (): Promise<boolean> => {
-    try {
-      const paywallResult: PAYWALL_RESULT =
-        await RevenueCatUI.presentPaywall();
+  const presentPaywall = useCallback(
+    async (source: PaywallSource = 'organic'): Promise<boolean> => {
+      // Present RevenueCat's own native paywall modal. RC controls the entire
+      // UI — products, prices, trial copy, layout AND system-bar insets — so
+      // it never descuadra on Android edge-to-edge and never advertises a
+      // trial the product doesn't offer. We only wrap it with the funnel
+      // analytics (seen → converted | dismissed) the old embedded screen had.
+      const startedAt = Date.now();
+      trackPaywallSeen(source);
+      try {
+        const paywallResult: PAYWALL_RESULT = await RevenueCatUI.presentPaywall({
+          // Pin to the current offering so the paywall always matches the
+          // products this build expects; falls back to RC's "current".
+          offering: state.currentOffering ?? undefined,
+          displayCloseButton: true,
+        });
 
-      switch (paywallResult) {
-        case PAYWALL_RESULT.PURCHASED:
-        case PAYWALL_RESULT.RESTORED: {
-          const info = await Purchases.getCustomerInfo();
-          updateFromCustomerInfo(info);
-          logSubscriptionStart(paywallResult === PAYWALL_RESULT.PURCHASED ? 'new' : 'restored');
-          return true;
+        switch (paywallResult) {
+          case PAYWALL_RESULT.PURCHASED:
+          case PAYWALL_RESULT.RESTORED: {
+            const info = await Purchases.getCustomerInfo();
+            updateFromCustomerInfo(info);
+            logSubscriptionStart(paywallResult === PAYWALL_RESULT.PURCHASED ? 'new' : 'restored');
+            return true;
+          }
+          case PAYWALL_RESULT.NOT_PRESENTED:
+          case PAYWALL_RESULT.ERROR:
+          case PAYWALL_RESULT.CANCELLED:
+          default:
+            // Left without converting — close the funnel with a dismissal so
+            // "saw → converted" vs "saw → left" stays clean.
+            trackPaywallDismissed(source, secondsSince(startedAt));
+            return false;
         }
-        case PAYWALL_RESULT.NOT_PRESENTED:
-        case PAYWALL_RESULT.ERROR:
-        case PAYWALL_RESULT.CANCELLED:
-          return false;
-        default:
-          return false;
+      } catch {
+        trackPaywallDismissed(source, secondsSince(startedAt));
+        return false;
       }
-    } catch {
-      return false;
+    },
+    [updateFromCustomerInfo, state.currentOffering],
+  );
+
+  // Open the store's native subscription-management screen (App Store /
+  // Google Play). This is what an existing Pro should get when they tap
+  // "Manage subscription" — RevenueCat routes to the correct store so we
+  // never build or maintain our own cancel/upgrade UI. Best-effort: on
+  // failure (e.g. nothing to manage) we swallow rather than crash.
+  const manageSubscriptions = useCallback(async (): Promise<void> => {
+    try {
+      await Purchases.showManageSubscriptions();
+    } catch (error) {
+      console.warn('[RevenueCat] showManageSubscriptions failed:', error);
     }
-  }, [updateFromCustomerInfo]);
+  }, []);
 
   const purchasePackage = useCallback(async (pkg: PurchasesPackage): Promise<boolean> => {
     try {
@@ -250,6 +296,7 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
   const value: PurchasesContextValue = {
     ...state,
     presentPaywall,
+    manageSubscriptions,
     purchasePackage,
     restorePurchases,
     refreshCustomerInfo,

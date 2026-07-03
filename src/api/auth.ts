@@ -1,5 +1,6 @@
 import { apiClient, refreshTokensOnce } from './client';
 import { API_BASE_URL } from './config';
+import { getAppCheckToken } from '../services/appCheck';
 
 export interface AuthTokens {
   accessToken: string;
@@ -315,12 +316,21 @@ export const authApi = {
         type: mimeType,
       } as any);
 
+      // This raw-fetch path bypasses apiClient, so attach the App Check
+      // token here too — otherwise the upload is rejected once
+      // app_check_enforced is on.
+      const appCheckToken = await getAppCheckToken();
+      const uploadHeaders: Record<string, string> = {
+        Authorization: `Bearer ${authToken}`,
+        // Let fetch set Content-Type with boundary for multipart
+      };
+      if (appCheckToken) {
+        uploadHeaders['X-Firebase-AppCheck'] = appCheckToken;
+      }
+
       const res = await fetch(`${API_BASE_URL}/auth/avatar`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${authToken}`,
-          // Let fetch set Content-Type with boundary for multipart
-        },
+        headers: uploadHeaders,
         body: formData,
       });
 

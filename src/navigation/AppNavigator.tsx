@@ -313,7 +313,7 @@ const POST_ONBOARDING_PAYWALL_KEY = 'post_onboarding_paywall_shown';
 
 // ─── Onboarding Complete Wrapper ─────────────────────────
 function OnboardingCompleteWrapper({ navigation, route }: any) {
-  const { isProMember } = usePurchases();
+  const { isProMember, presentPaywall } = usePurchases();
   const sports = route?.params?.sports || [];
   const favoriteTeams = route?.params?.favoriteTeams || [];
   const favoriteLeagues: OnboardingFavoriteLeague[] | undefined = route?.params?.favoriteLeagues;
@@ -333,11 +333,11 @@ function OnboardingCompleteWrapper({ navigation, route }: any) {
       const alreadyShown = await AsyncStorage.getItem(POST_ONBOARDING_PAYWALL_KEY);
       if (alreadyShown) return;
       await AsyncStorage.setItem(POST_ONBOARDING_PAYWALL_KEY, 'true');
-      navigation.navigate('Paywall', { trigger: 'post_onboarding' });
+      await presentPaywall('post_onboarding');
     } catch {
       /* best-effort — never block the user from reaching the app */
     }
-  }, [navigation, isProMember]);
+  }, [navigation, isProMember, presentPaywall]);
 
   return (
     <OnboardingCompleteScreen
@@ -519,11 +519,6 @@ export function AppNavigator() {
                 options={{ animation: 'slide_from_right' }}
               />
               <RootStack.Screen
-                name="Paywall"
-                getComponent={() => require('../screens/PaywallScreen').PaywallScreen}
-                options={{ animation: 'slide_from_bottom', presentation: 'modal' }}
-              />
-              <RootStack.Screen
                 name="Search"
                 component={SearchScreen}
                 options={{ animation: 'slide_from_bottom', presentation: 'modal', headerShown: false }}
@@ -575,11 +570,6 @@ export function AppNavigator() {
                 name="SportNotificationPreferences"
                 getComponent={() => require('../screens/SportNotificationPreferencesScreen').SportNotificationPreferencesScreen}
                 options={{ animation: 'slide_from_right' }}
-              />
-              <RootStack.Screen
-                name="Paywall"
-                getComponent={() => require('../screens/PaywallScreen').PaywallScreen}
-                options={{ animation: 'slide_from_bottom', presentation: 'modal' }}
               />
               <RootStack.Screen
                 name="Search"
