@@ -849,6 +849,12 @@ export function MatchPredictionScreen({ navigation }: Props) {
       : route.name === 'LeagueMatchPrediction'
         ? 'league'
         : 'home';
+  // Sibling routes must also be stack-relative: hardcoding the Home
+  // stack names ('F1RacePrediction' / 'PickSummary') breaks navigation
+  // when this screen is mounted from the Live or Leagues stack.
+  const stackPrefix = surface === 'live' ? 'Live' : surface === 'league' ? 'League' : '';
+  const f1PredictionRoute = `${stackPrefix}F1RacePrediction`;
+  const pickSummaryRoute = `${stackPrefix}PickSummary`;
   const { tokens, user } = useAuth();
   const { trackAction } = useAds();
 
@@ -1407,11 +1413,14 @@ export function MatchPredictionScreen({ navigation }: Props) {
             coins: streakInfo.nextMilestoneReward,
           });
         } else {
-          Alert.alert(t('matchPrediction.predictionSubmitted'), t('matchPrediction.predictionSubmittedDesc'));
+          // Land on the pick summary (recent picks + share) instead of a
+          // dead-end alert. `replace` so back returns to the game list,
+          // not to the already-submitted prediction form.
+          (navigation as any).replace(pickSummaryRoute);
         }
       } catch (_) {
-        // Streak check failed silently, show normal alert
-        Alert.alert(t('matchPrediction.predictionSubmitted'), t('matchPrediction.predictionSubmittedDesc'));
+        // Streak check failed silently, go to summary as usual
+        (navigation as any).replace(pickSummaryRoute);
       }
     } catch (err: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -2009,7 +2018,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
             activeOpacity={0.85}
             onPress={() => {
               const raceApiId = f1Race?.apiId || fixtureApiId;
-              navigation.navigate('F1RacePrediction', {
+              (navigation as any).navigate(f1PredictionRoute, {
                 raceApiId,
                 competitionName: f1GpName,
                 circuitName: f1CircuitName,
@@ -3427,7 +3436,10 @@ export function MatchPredictionScreen({ navigation }: Props) {
         visible={milestoneData !== null}
         transparent
         animationType="fade"
-        onRequestClose={() => setMilestoneData(null)}
+        onRequestClose={() => {
+          setMilestoneData(null);
+          (navigation as any).replace(pickSummaryRoute);
+        }}
       >
         <View style={styles.milestoneOverlay}>
           <View style={styles.milestoneContent}>
@@ -3440,7 +3452,10 @@ export function MatchPredictionScreen({ navigation }: Props) {
             </Text>
             <TouchableOpacity
               style={styles.milestoneDismiss}
-              onPress={() => setMilestoneData(null)}
+              onPress={() => {
+                setMilestoneData(null);
+                (navigation as any).replace(pickSummaryRoute);
+              }}
               activeOpacity={0.7}
             >
               <LinearGradient

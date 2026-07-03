@@ -227,7 +227,21 @@ export function CoinLeagueDetailScreen() {
     trackLeagueJoinAttempted(leagueType, league.entryFee);
     if (available < league.entryFee) {
       trackLeagueJoinAbandoned('insufficient_coins');
-      Alert.alert(t('leagues.insufficientCoins'), t('leagues.insufficientCoinsDesc', { fee: league.entryFee, available }));
+      Alert.alert(
+        t('leagues.insufficientCoins'),
+        t('leagues.insufficientCoinsDesc', { fee: league.entryFee, available }),
+        [
+          { text: t('common.cancel'), style: 'cancel' },
+          {
+            text: t('wallet.buyCoinsTitle'),
+            onPress: () =>
+              (navigation as any).navigate('Profile', {
+                screen: 'CoinStore',
+                params: { source: 'league_join_gate' },
+              }),
+          },
+        ],
+      );
       return;
     }
     Alert.alert(

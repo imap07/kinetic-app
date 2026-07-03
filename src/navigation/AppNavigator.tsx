@@ -13,6 +13,7 @@ import {
   LiveStackParamList,
   LeaguesStackParamList,
   ProfileStackParamList,
+  MyPicksStackParamList,
   OnboardingFavoriteTeam,
   OnboardingFavoriteLeague,
 } from './types';
@@ -23,7 +24,7 @@ import { usePushNotifications } from '../hooks/usePushNotifications';
 import { useDailyOpenCheckIn } from '../hooks/useDailyOpenCheckIn';
 import { useSessionTracking } from '../hooks/useSessionTracking';
 import { colors } from '../theme';
-import { ONBOARDING_COMPLETE_KEY } from '../screens/OnboardingScreen';
+import { ONBOARDING_COMPLETE_KEY } from '../utils/onboarding';
 import { SportSelectionScreen } from '../screens/SportSelectionScreen';
 import { TeamSelectionScreen } from '../screens/TeamSelectionScreen';
 import { AcquisitionSourceScreen, AcquisitionSourceKey } from '../screens/AcquisitionSourceScreen';
@@ -136,9 +137,8 @@ function ProfileNavigator() {
       <ProfileStack.Screen name="EditFavoriteLeagues" getComponent={() => require('../screens/EditFavoriteLeaguesScreen').EditFavoriteLeaguesScreen} />
       <ProfileStack.Screen name="EditFavoriteTeams" getComponent={() => require('../screens/EditFavoriteTeamsScreen').EditFavoriteTeamsScreen} />
       <ProfileStack.Screen name="ChangePassword" getComponent={() => require('../screens/ChangePasswordScreen').ChangePasswordScreen} />
-      <ProfileStack.Screen name="Notifications" component={NotificationsScreen} />
-      <ProfileStack.Screen name="NotificationPreferences" getComponent={() => require('../screens/NotificationPreferencesScreen').NotificationPreferencesScreen} />
-      <ProfileStack.Screen name="SportNotificationPreferences" getComponent={() => require('../screens/SportNotificationPreferencesScreen').SportNotificationPreferencesScreen} />
+      {/* Notifications screens live ONLY in the root stack (bell icon reaches
+          them from any tab); navigate() calls from Profile climb up to it. */}
       <ProfileStack.Screen name="SecurityPrivacy" getComponent={() => require('../screens/SecurityPrivacyScreen').SecurityPrivacyScreen} />
       <ProfileStack.Screen name="WalletRewards" component={WalletRewardsScreen} />
       <ProfileStack.Screen name="CoinStore" getComponent={() => require('../screens/CoinStoreScreen').CoinStoreScreen} />
@@ -153,6 +153,17 @@ function ProfileNavigator() {
   );
 }
 
+// ─── MyPicks Stack (MyPicks tab) ──────────────────────────
+const MyPicksStack = createNativeStackNavigator<MyPicksStackParamList>();
+
+function MyPicksNavigator() {
+  return (
+    <MyPicksStack.Navigator screenOptions={darkScreenOptions}>
+      <MyPicksStack.Screen name="MyPicksHome" component={MyPicksScreen} />
+    </MyPicksStack.Navigator>
+  );
+}
+
 // ─── Error-boundary-wrapped navigators for main tabs ────
 function HomeWithBoundary() {
   return <ScreenErrorBoundary><HomeNavigator /></ScreenErrorBoundary>;
@@ -164,7 +175,7 @@ function LeaguesWithBoundary() {
   return <ScreenErrorBoundary><LeaguesNavigator /></ScreenErrorBoundary>;
 }
 function MyPicksWithBoundary() {
-  return <ScreenErrorBoundary><MyPicksScreen /></ScreenErrorBoundary>;
+  return <ScreenErrorBoundary><MyPicksNavigator /></ScreenErrorBoundary>;
 }
 function ProfileWithBoundary() {
   return <ScreenErrorBoundary><ProfileNavigator /></ScreenErrorBoundary>;

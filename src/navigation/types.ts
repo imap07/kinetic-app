@@ -47,9 +47,6 @@ export type ProfileStackParamList = {
   EditFavoriteLeagues: undefined;
   EditFavoriteTeams: undefined;
   ChangePassword: undefined;
-  Notifications: undefined;
-  NotificationPreferences: undefined;
-  SportNotificationPreferences: { sport: string; sportName: string };
   SecurityPrivacy: undefined;
   WalletRewards: undefined;
   /**
@@ -69,6 +66,11 @@ export type ProfileStackParamList = {
   Referrals: undefined;
 };
 
+// MyPicks tab nested stack
+export type MyPicksStackParamList = {
+  MyPicksHome: undefined;
+};
+
 // Live tab nested stack
 export type LiveStackParamList = {
   LiveHome: undefined;
@@ -82,7 +84,7 @@ export type MainTabParamList = {
   Home: NavigatorScreenParams<HomeStackParamList>;
   Live: NavigatorScreenParams<LiveStackParamList>;
   Leagues: NavigatorScreenParams<LeaguesStackParamList>;
-  MyPicks: undefined;
+  MyPicks: NavigatorScreenParams<MyPicksStackParamList> | undefined;
   Profile: NavigatorScreenParams<ProfileStackParamList>;
 };
 
@@ -164,7 +166,6 @@ export type RootStackParamList = {
       predictionResults: boolean;
     };
   };
-  LeagueSelection: { selectedSports?: string[] };
   Main: NavigatorScreenParams<MainTabParamList>;
   Notifications: undefined;
   NotificationPreferences: undefined;

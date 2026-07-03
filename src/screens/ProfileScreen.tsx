@@ -798,29 +798,9 @@ export function ProfileScreen() {
         {/* ── Rewards Progress ── */}
         <RewardsProgressCard />
 
-        {/* ── Security & Settings ── */}
+        {/* ── Rewards & Social ── */}
         <View style={styles.settingsSection}>
-          <Text style={styles.settingsLabel}>{t('profile.securitySettings')}</Text>
-          <TouchableOpacity
-            style={styles.settingsRow}
-            onPress={() => profileNav.navigate('Notifications')}
-          >
-            <View style={styles.settingsRowLeft}>
-              <Feather name="bell" size={18} color={colors.onSurface} />
-              <Text style={styles.settingsRowText}>{t('notifications.title')}</Text>
-            </View>
-            <Feather name="chevron-right" size={16} color={colors.onSurfaceVariant} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.settingsRow}
-            onPress={() => profileNav.navigate('SecurityPrivacy')}
-          >
-            <View style={styles.settingsRowLeft}>
-              <Feather name="shield" size={18} color={colors.onSurface} />
-              <Text style={styles.settingsRowText}>{t('security.title')}</Text>
-            </View>
-            <Feather name="chevron-right" size={16} color={colors.onSurfaceVariant} />
-          </TouchableOpacity>
+          <Text style={styles.settingsLabel}>{t('profile.rewardsSocial')}</Text>
           <TouchableOpacity
             style={styles.settingsRow}
             onPress={() => profileNav.navigate('WalletRewards')}
@@ -887,6 +867,31 @@ export function ProfileScreen() {
               <Text style={styles.settingsRowText}>
                 {t('cosmetics.title', { defaultValue: 'Cosmetics' })}
               </Text>
+            </View>
+            <Feather name="chevron-right" size={16} color={colors.onSurfaceVariant} />
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Security & Settings ── */}
+        <View style={styles.settingsSection}>
+          <Text style={styles.settingsLabel}>{t('profile.securitySettings')}</Text>
+          <TouchableOpacity
+            style={styles.settingsRow}
+            onPress={() => (profileNav as any).navigate('Notifications')}
+          >
+            <View style={styles.settingsRowLeft}>
+              <Feather name="bell" size={18} color={colors.onSurface} />
+              <Text style={styles.settingsRowText}>{t('notifications.title')}</Text>
+            </View>
+            <Feather name="chevron-right" size={16} color={colors.onSurfaceVariant} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.settingsRow}
+            onPress={() => profileNav.navigate('SecurityPrivacy')}
+          >
+            <View style={styles.settingsRowLeft}>
+              <Feather name="shield" size={18} color={colors.onSurface} />
+              <Text style={styles.settingsRowText}>{t('security.title')}</Text>
             </View>
             <Feather name="chevron-right" size={16} color={colors.onSurfaceVariant} />
           </TouchableOpacity>

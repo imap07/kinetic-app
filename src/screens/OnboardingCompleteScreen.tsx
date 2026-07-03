@@ -21,7 +21,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { authApi, notificationsApi } from '../api';
 import type { SportKey } from '../api/sports';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ONBOARDING_COMPLETE_KEY } from './OnboardingScreen';
+import { ONBOARDING_COMPLETE_KEY } from '../utils/onboarding';
 import type { AcquisitionSourceKey } from './AcquisitionSourceScreen';
 import type { OnboardingFavoriteTeam, OnboardingFavoriteLeague } from '../navigation/types';
 

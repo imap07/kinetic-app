@@ -7,7 +7,7 @@ import { normalizeBackendLanguage } from '../api/auth';
 import { registerTokenProvider } from '../api/client';
 import type { AuthTokens, User, SocialProvider, UpdateProfileData, UpdatePreferencesData } from '../api';
 import { signOutFromGoogle } from '../services/googleAuth';
-import { ONBOARDING_COMPLETE_KEY } from '../screens/OnboardingScreen';
+import { ONBOARDING_COMPLETE_KEY } from '../utils/onboarding';
 import { logLogin, logSignUp, logLogout, identifyUser, clearAnalyticsUser } from '../services/analytics';
 import { attemptBiometricLogin, isBiometricLoginEnabled, enableBiometricLogin, disableBiometricLogin } from '../services/biometricAuth';
 import { getOrCreateDeviceFingerprint } from '../services/deviceFingerprint';

@@ -132,6 +132,16 @@ export function CoinLeaguesScreen() {
           },
         });
       }
+      // Second escape hatch: buy coins. The CoinStore already accepts
+      // `source: 'league_join_gate'` for attribution — this wires it up.
+      buttons.push({
+        text: t('wallet.buyCoinsTitle'),
+        onPress: () =>
+          (navigation as any).navigate('Profile', {
+            screen: 'CoinStore',
+            params: { source: 'league_join_gate' },
+          }),
+      });
       Alert.alert(
         t('leagues.insufficientCoins'),
         t('leagues.insufficientCoinsDesc', { fee: league.entryFee, available }),
@@ -208,7 +218,21 @@ export function CoinLeaguesScreen() {
 
   const handleCreate = async (dto: CreateLeagueDto) => {
     if (available < dto.entryFee) {
-      Alert.alert(t('leagues.insufficientCoins'), t('leagues.insufficientCoinsDesc', { fee: dto.entryFee, available }));
+      Alert.alert(
+        t('leagues.insufficientCoins'),
+        t('leagues.insufficientCoinsDesc', { fee: dto.entryFee, available }),
+        [
+          { text: t('leagues.cancel'), style: 'cancel' },
+          {
+            text: t('wallet.buyCoinsTitle'),
+            onPress: () =>
+              (navigation as any).navigate('Profile', {
+                screen: 'CoinStore',
+                params: { source: 'league_join_gate' },
+              }),
+          },
+        ],
+      );
       return;
     }
     setActionLoading('create');
