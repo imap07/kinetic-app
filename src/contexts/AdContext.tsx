@@ -22,28 +22,28 @@ import { apiClient, ApiError } from '../api';
 // ── Ad Unit IDs ─────────────────────────────────────────────
 const AD_UNITS = {
   banner: __DEV__ ? TestIds.BANNER : Platform.select({
-    ios: 'ca-app-pub-9821496555610524/1510973543',
-    android: 'ca-app-pub-9821496555610524/2053899021',
+    ios: 'ca-app-pub-5196092523720338/5114649318',
+    android: 'ca-app-pub-5196092523720338/3462390367',
   }) ?? TestIds.BANNER,
   interstitial: __DEV__ ? TestIds.INTERSTITIAL : Platform.select({
-    ios: 'ca-app-pub-9821496555610524/8072512461',
-    android: 'ca-app-pub-9821496555610524/2820185783',
+    ios: 'ca-app-pub-5196092523720338/5445821809',
+    android: 'ca-app-pub-5196092523720338/3418424265',
   }) ?? TestIds.INTERSTITIAL,
   rewarded: __DEV__ ? TestIds.REWARDED : Platform.select({
-    ios: 'ca-app-pub-9821496555610524/8209633862',
-    android: 'ca-app-pub-9821496555610524/2957307180',
+    ios: 'ca-app-pub-5196092523720338/4775472039',
+    android: 'ca-app-pub-5196092523720338/5980742499',
   }) ?? TestIds.REWARDED,
   appOpen: __DEV__ ? TestIds.APP_OPEN : Platform.select({
-    ios: 'ca-app-pub-9821496555610524/7807546288',
-    android: 'ca-app-pub-9821496555610524/5146786981',
+    ios: 'ca-app-pub-5196092523720338/9983832610',
+    android: 'ca-app-pub-5196092523720338/4667660820',
   }) ?? TestIds.APP_OPEN,
   // Rewarded interstitial: hybrid format — pops between actions like an
   // interstitial but offers a skip + reward path during the first 5s.
   // Higher eCPM than the regular interstitial. The SDK uses the same
   // TestIds.REWARDED_INTERSTITIAL constant for dev.
   rewardedInterstitial: __DEV__ ? TestIds.REWARDED_INTERSTITIAL : Platform.select({
-    ios: 'ca-app-pub-9821496555610524/7306225702',
-    android: 'ca-app-pub-9821496555610524/8071243544',
+    ios: 'ca-app-pub-5196092523720338/6044587601',
+    android: 'ca-app-pub-5196092523720338/3270818679',
   }) ?? TestIds.REWARDED_INTERSTITIAL,
 };
 
@@ -121,7 +121,7 @@ const AdContext = createContext<AdContextType>({
 export const useAds = () => useContext(AdContext);
 
 export function AdProvider({ children }: { children: React.ReactNode }) {
-  const { isProMember } = usePurchases();
+  const { isProMember, isProResolved } = usePurchases();
   const { tokens } = useAuth();
   // Gate every ad surface on (a) user being signed in and (b) not Pro.
   // Without the auth gate we'd serve App Open / banners on Login,
@@ -131,7 +131,12 @@ export function AdProvider({ children }: { children: React.ReactNode }) {
   // interstitial already needed an access token to redeem nonces, so
   // this just brings App Open + banners in line.
   const isAuthenticated = !!tokens?.accessToken;
-  const adsEnabled = isAuthenticated && !isProMember;
+  // Treat "Pro status not yet resolved" as ads-off. On cold start `isProMember`
+  // is false until RevenueCat's async logIn() resolves, so gating only on
+  // `!isProMember` flashes ads (and can fire an interstitial) at a paying Pro
+  // on every launch. Waiting for `isProResolved` costs free users a sub-second
+  // ad delay — a trade worth making to never break the ad-free promise.
+  const adsEnabled = isAuthenticated && isProResolved && !isProMember;
 
   const { t } = useTranslation();
   const [trackingRequested, setTrackingRequested] = useState(false);

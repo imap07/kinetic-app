@@ -5,7 +5,7 @@ import React, {
   useEffect,
   useCallback,
 } from 'react';
-import { Platform } from 'react-native';
+import { Platform, AppState } from 'react-native';
 import Purchases, {
   LOG_LEVEL,
   CustomerInfo,
@@ -50,6 +50,12 @@ const ENTITLEMENT_ID = 'Kinetic App Pro';
 
 interface PurchasesState {
   isProMember: boolean;
+  // Whether we've actually resolved Pro status for the CURRENT auth identity
+  // (via RevenueCat) yet. Starts false and flips true only once customerInfo
+  // arrives (or we know the user is signed out). Ad surfaces must treat
+  // "unknown" as "suppress ads" — otherwise a returning Pro sees ads flash on
+  // every cold start during the async logIn() window.
+  isProResolved: boolean;
   customerInfo: CustomerInfo | null;
   currentOffering: PurchasesOffering | null;
   isReady: boolean;
@@ -69,6 +75,7 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated } = useAuth();
   const [state, setState] = useState<PurchasesState>({
     isProMember: false,
+    isProResolved: false,
     customerInfo: null,
     currentOffering: null,
     isReady: false,
@@ -102,9 +109,18 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
     if (!state.isReady) return;
 
     if (isAuthenticated && user?.id) {
+      // New identity → Pro status is unknown again until RC answers. Re-gate
+      // (isProResolved=false) so ads stay suppressed during the async window
+      // instead of flashing for a Pro who's still logging in.
+      setState((s) => ({ ...s, isProResolved: false }));
       Purchases.logIn(user.id).then(({ customerInfo }) => {
         updateFromCustomerInfo(customerInfo);
-      }).catch(() => {});
+      }).catch(() => {
+        // RC unreachable — resolve as non-Pro so free users aren't stuck
+        // ad-free forever on a transient failure. A real Pro gets corrected
+        // on the next customerInfo update (listener / foreground refresh).
+        setState((s) => ({ ...s, isProResolved: true }));
+      });
     } else {
       Purchases.isAnonymous().then((isAnon) => {
         if (!isAnon) {
@@ -114,6 +130,8 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
       setState((s) => ({
         ...s,
         isProMember: false,
+        // Signed out → definitively not Pro, so this IS resolved.
+        isProResolved: true,
         customerInfo: null,
       }));
     }
@@ -164,6 +182,7 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
       ...s,
       customerInfo: info,
       isProMember: isPro,
+      isProResolved: true,
     }));
   }, []);
 
@@ -292,6 +311,21 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
       // Error fetching customer info
     }
   }, [updateFromCustomerInfo]);
+
+  // Re-sync entitlements every time the app returns to the foreground. Without
+  // this, a subscription that lapses while the app is backgrounded keeps Pro
+  // (ad-free + no renewals showing) until RevenueCat happens to push an update
+  // — a revenue leak. This is the previously-missing caller for
+  // refreshCustomerInfo; the update listener stays as the push-based path.
+  useEffect(() => {
+    if (!state.isReady) return;
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active') {
+        refreshCustomerInfo();
+      }
+    });
+    return () => sub.remove();
+  }, [state.isReady, refreshCustomerInfo]);
 
   const value: PurchasesContextValue = {
     ...state,

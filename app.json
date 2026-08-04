@@ -16,7 +16,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "buildNumber": "102",
+      "buildNumber": "106",
       "bundleIdentifier": "io.kinetic.app",
       "googleServicesFile": "./GoogleService-Info.plist",
       "usesAppleSignIn": true,
@@ -70,7 +70,7 @@
           ]
         }
       ],
-      "versionCode": 102
+      "versionCode": 106
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -113,8 +113,8 @@
       [
         "react-native-google-mobile-ads",
         {
-          "androidAppId": "ca-app-pub-9821496555610524~8593987728",
-          "iosAppId": "ca-app-pub-9821496555610524~9907069395",
+          "androidAppId": "ca-app-pub-5196092523720338~7074332310",
+          "iosAppId": "ca-app-pub-5196092523720338~8060110924",
           "userTrackingUsageDescription": "Kinetic uses this to show you relevant ads and improve your experience.",
           "delayAppMeasurementInit": true
         }

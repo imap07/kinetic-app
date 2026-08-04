@@ -57,7 +57,7 @@ export function CoinLeaguesScreen() {
   // the only number that can correctly gate join/create. `balance` would be
   // misleading because it includes locked entry fees the user can't spend.
   const { available, refreshBalance } = useCoins();
-  const { trackAction, showRewardedAd, rewardedAdsRemaining } = useAds();
+  const { trackAction, showRewardedAd, rewardedAdsRemaining, adsEnabled } = useAds();
   const { t } = useTranslation();
 
   const [tab, setTab] = useState<TabFilter>('open');
@@ -116,7 +116,10 @@ export function CoinLeaguesScreen() {
       // intent moment to monetize via rewarded video — they have a
       // concrete goal that 30 coins gets them closer to.
       const buttons: any[] = [{ text: t('leagues.cancel'), style: 'cancel' }];
-      if (rewardedAdsRemaining > 0) {
+      // Only offer the rewarded ad to users who actually see ads. Pro
+      // members paid to remove them — showing a "Watch ad" button that
+      // dead-ends in "ad not ready" breaks the ad-free promise.
+      if (adsEnabled && rewardedAdsRemaining > 0) {
         buttons.push({
           text: t('ads.watchAd'),
           onPress: async () => {
