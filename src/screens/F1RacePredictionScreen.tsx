@@ -64,8 +64,12 @@ interface F1RaceDetail {
   laps?: number | null;
   isLive?: boolean;
   status?: string;
+  date?: string;
+  type?: string;
   pitstops?: F1Pitstop[];
 }
+
+const F1_CLOSED_STATUSES = ['Completed', 'FT', 'Finished', 'Cancelled', 'Postponed', 'Abandoned'];
 
 export default function F1RacePredictionScreen() {
   const navigation = useNavigation();
@@ -176,6 +180,14 @@ export default function F1RacePredictionScreen() {
   // Check if user already has a pick for a type
   const hasPick = (type: F1PredictionType) => existingPicks.some((p) => p.predictionType === type);
 
+  // Picks close at lights-out. The server rejects late picks anyway; this
+  // keeps the UI honest instead of surfacing a raw 400 after a tap.
+  const picksClosed = !!raceDetail && (
+    raceDetail.isLive === true ||
+    F1_CLOSED_STATUSES.includes(raceDetail.status || '') ||
+    (!!raceDetail.date && new Date(raceDetail.date).getTime() <= Date.now())
+  );
+
   const submitPrediction = async (type: F1PredictionType) => {
     trackTap('F1RacePrediction', 'confirm_pick_button', {
       sport: 'formula-1',
@@ -183,6 +195,7 @@ export default function F1RacePredictionScreen() {
       value: type,
     });
     if (submitting) return;
+    if (picksClosed) { Alert.alert(t('f1Prediction.picksClosed')); return; }
     setSubmitting(true);
     try {
       let payload: any = { raceApiId, predictionType: type };
@@ -347,6 +360,14 @@ export default function F1RacePredictionScreen() {
               <Text style={styles.liveWeatherText} numberOfLines={1}>{raceDetail.weather}</Text>
             </View>
           ) : null}
+        </View>
+      ) : null}
+
+      {/* Picks closed banner */}
+      {picksClosed ? (
+        <View style={styles.closedBanner}>
+          <Ionicons name="lock-closed" size={14} color={colors.onSurfaceVariant} />
+          <Text style={styles.closedBannerText}>{t('f1Prediction.picksClosed')}</Text>
         </View>
       ) : null}
 
@@ -1105,4 +1126,21 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(255,255,255,0.03)',
   },
   pitstopsCell: { fontFamily: 'Inter_500Medium', fontSize: 12, color: colors.onSurface },
+  closedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginHorizontal: 16,
+    marginTop: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: colors.surfaceVariant,
+  },
+  closedBannerText: {
+    color: colors.onSurfaceVariant,
+    fontSize: 13,
+    fontWeight: '600',
+    flex: 1,
+  },
 });

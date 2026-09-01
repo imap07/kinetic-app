@@ -22,6 +22,8 @@ import { Skeleton } from '../components/Skeleton';
 import { useAuth } from '../contexts/AuthContext';
 import { predictionsApi, SPORT_TABS } from '../api';
 import type { PredictionData, MyStatsResponse, DetailedStatsResponse } from '../api';
+import { f1PredictionsApi } from '../api/predictions';
+import type { F1PredictionData } from '../api/predictions';
 import type { RootStackParamList } from '../navigation/types';
 import { AdBanner } from '../components/AdBanner';
 import { SharePickCard } from '../components/SharePickCard';
@@ -199,6 +201,100 @@ function WeeklyTrendChart({ weeklyTrend }: { weeklyTrend: DetailedStatsResponse[
   );
 }
 
+/** Pending pick whose game already started: the result is being awaited, not the game. */
+function isAwaitingResult(status: string, dateIso?: string | null): boolean {
+  return status === 'pending' && !!dateIso && new Date(dateIso).getTime() <= Date.now();
+}
+
+function AwaitingResultBadge() {
+  const { t } = useTranslation();
+  return (
+    <View style={cardStyles.awaitingRow}>
+      <Ionicons name="time-outline" size={13} color={colors.onSurfaceVariant} />
+      <Text style={cardStyles.awaitingText}>{t('picks.awaitingResult')}</Text>
+    </View>
+  );
+}
+
+const F1_TYPE_LABEL_KEY: Record<string, string> = {
+  race_winner: 'f1Prediction.tabWinner',
+  podium: 'f1Prediction.tabPodium',
+  head_to_head: 'f1Prediction.tabH2H',
+  fastest_lap: 'f1Prediction.tabFastest',
+  points_finish: 'f1Prediction.tabPoints',
+  qualifying_pole: 'f1Prediction.tabPole',
+};
+
+function f1PickValue(p: F1PredictionData, t: (k: string) => string): string {
+  switch (p.predictionType) {
+    case 'podium':
+      return (p.podiumPicks || []).map((x) => `P${x.position} ${x.driverName}`).join(' · ');
+    case 'head_to_head': {
+      const winner = p.predictedWinner === 'A' ? p.driverA?.name : p.driverB?.name;
+      return `${winner ?? '?'} (${p.driverA?.name ?? '?'} vs ${p.driverB?.name ?? '?'})`;
+    }
+    case 'points_finish':
+      return `${p.pointsFinishDriverName ?? '?'} — ${p.pointsFinishPrediction ? t('picks.answerYes') : t('picks.answerNo')}`;
+    default:
+      return p.predictedDriverName ?? '';
+  }
+}
+
+/**
+ * F1 picks live in their own collection with a different shape (driver /
+ * podium / head-to-head), so they get their own card. Before this they were
+ * never fetched here at all — a user with only F1 picks saw an empty list.
+ */
+function F1PickCard({ prediction }: { prediction: F1PredictionData }) {
+  const { t } = useTranslation();
+  const status = prediction.status;
+  const isResolved = status !== 'pending';
+  const isVoid = status === 'void' || status === 'cancelled';
+  const isWin = status === 'won' || status === 'partial';
+  const badgeColor = isVoid ? colors.onSurfaceVariant : isWin ? '#16A34A' : status === 'pending' ? colors.primary : '#DC2626';
+  const badgeBg = isVoid ? 'rgba(150,150,150,0.15)' : isWin ? 'rgba(22,163,74,0.15)' : 'rgba(220,38,38,0.15)';
+  return (
+    <View style={[cardStyles.card, status === 'won' && cardStyles.cardWon]}>
+      <View style={cardStyles.topRow}>
+        <View style={cardStyles.sportBadge}>
+          <Text style={cardStyles.sportBadgeText}>{getSportLabel('formula-1')}</Text>
+        </View>
+        <Text style={cardStyles.leagueName} numberOfLines={1}>
+          {prediction.competitionName}{prediction.circuitName ? ` — ${prediction.circuitName}` : ''}
+        </Text>
+      </View>
+      <View style={cardStyles.predRow}>
+        <View style={cardStyles.predInfo}>
+          <Text style={cardStyles.predLabel}>{t(F1_TYPE_LABEL_KEY[prediction.predictionType] ?? 'picks.yourPick')}</Text>
+          <Text style={cardStyles.predValue} numberOfLines={2}>{f1PickValue(prediction, t)}</Text>
+          {prediction.predictedDriverTeam ? (
+            <Text style={cardStyles.predScore}>{prediction.predictedDriverTeam}</Text>
+          ) : null}
+        </View>
+        <View style={cardStyles.multiplierBox}>
+          <Text style={cardStyles.multiplierLabel}>{t('picks.multiplier')}</Text>
+          <Text style={cardStyles.multiplierValue}>x{(prediction.oddsMultiplier ?? 1).toFixed(1)}</Text>
+        </View>
+      </View>
+      {isResolved ? (
+        <View style={cardStyles.resultRow}>
+          <View style={[cardStyles.resultBadge, { backgroundColor: badgeBg }]}>
+            <Ionicons name={isVoid ? 'ban-outline' : isWin ? 'checkmark-circle' : 'close-circle'} size={14} color={badgeColor} />
+            <Text style={[cardStyles.resultBadgeText, { color: badgeColor }]}>
+              {status === 'partial' ? t('picks.partial') : status.toUpperCase()}
+            </Text>
+          </View>
+          {isWin && prediction.pointsAwarded > 0 ? (
+            <Text style={cardStyles.pointsText}>{t('picks.points', { pts: prediction.pointsAwarded })}</Text>
+          ) : null}
+        </View>
+      ) : isAwaitingResult(status, prediction.raceDate) ? (
+        <AwaitingResultBadge />
+      ) : null}
+    </View>
+  );
+}
+
 function PredictionCard({ prediction }: { prediction: PredictionData }) {
   const { t } = useTranslation();
   const isResolved = prediction.status !== 'pending';
@@ -260,6 +356,7 @@ function PredictionCard({ prediction }: { prediction: PredictionData }) {
       </View>
 
       {/* Result / Status */}
+      {!isResolved && isAwaitingResult(prediction.status, prediction.gameDate) ? <AwaitingResultBadge /> : null}
       {isResolved ? (
         <View style={cardStyles.resultRow}>
           <View style={[cardStyles.resultBadge, {
@@ -451,6 +548,7 @@ export function MyPicksScreen() {
   const [activeTab, setActiveTab] = useState(0);
   const [sportFilter, setSportFilter] = useState<string | null>(null);
   const [predictions, setPredictions] = useState<PredictionData[]>([]);
+  const [f1Predictions, setF1Predictions] = useState<F1PredictionData[]>([]);
   const [stats, setStats] = useState<MyStatsResponse | null>(null);
   const [detailedStats, setDetailedStats] = useState<DetailedStatsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -501,8 +599,15 @@ export function MyPicksScreen() {
         const pickParams: { status: 'pending' | 'resolved'; sport?: string } = { status };
         if (sportFilter) pickParams.sport = sportFilter;
         promises.push(predictionsApi.getMyPicks(tokens.accessToken, pickParams));
+        // F1 picks come from their own endpoint; only relevant with no
+        // sport filter or the F1 filter. Never let it break the main list.
+        promises.push(
+          !sportFilter || sportFilter === 'formula-1'
+            ? f1PredictionsApi.getMyPicks(tokens.accessToken, { status, limit: 100 }).catch(() => null)
+            : Promise.resolve({ predictions: [] }),
+        );
       } else {
-        promises.push(Promise.resolve(null));
+        promises.push(Promise.resolve(null), Promise.resolve(null));
       }
 
       if (statsStale) {
@@ -515,12 +620,13 @@ export function MyPicksScreen() {
       const results = await Promise.all(promises);
 
       if (results[0]) {
-        setPredictions(results[0].predictions);
+        setPredictions(sportFilter === 'formula-1' ? [] : results[0].predictions);
+        setF1Predictions(results[1]?.predictions ?? []);
         picksFetchedAt.current[cacheKey] = Date.now();
       }
-      if (results[1]) {
-        setStats(results[1]);
-        if (results[2]) setDetailedStats(results[2]);
+      if (results[2]) {
+        setStats(results[2]);
+        if (results[3]) setDetailedStats(results[3]);
         statsFetchedAt.current = Date.now();
       }
     } catch (err) {
@@ -732,6 +838,13 @@ export function MyPicksScreen() {
     </>
   );
 
+  // One list, newest event first, both collections together.
+  const listItems = useMemo<(PredictionData | F1PredictionData)[]>(() => {
+    const all: (PredictionData | F1PredictionData)[] = [...predictions, ...f1Predictions];
+    const dateOf = (x: PredictionData | F1PredictionData) => new Date('raceApiId' in x ? x.raceDate : x.gameDate).getTime();
+    return all.sort((a, b) => dateOf(b) - dateOf(a));
+  }, [predictions, f1Predictions]);
+
   return (
     <View style={styles.container}>
       <AppHeader showSearch={false} />
@@ -752,14 +865,14 @@ export function MyPicksScreen() {
         </View>
       ) : (
         <FlatList
-          data={predictions}
+          data={listItems}
           keyExtractor={(item) => item._id}
           renderItem={({ item, index }) => (
             // In-feed banner cada 4 picks. La FlatList ya virtualiza,
             // así que los banners fuera de viewport no se cargan hasta
             // que el user scrollea — sin penalty de bandwidth.
             <>
-              <PredictionCard prediction={item} />
+              {'raceApiId' in item ? <F1PickCard prediction={item} /> : <PredictionCard prediction={item} />}
               {(index + 1) % 4 === 0 && (
                 <AdBanner placement="my_picks_inline" />
               )}
@@ -892,6 +1005,17 @@ const styles = StyleSheet.create({
 });
 
 const cardStyles = StyleSheet.create({
+  awaitingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 10,
+  },
+  awaitingText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 12,
+    color: colors.onSurfaceVariant,
+  },
   card: {
     backgroundColor: colors.surfaceContainerLow, borderRadius: 8,
     padding: 16, marginBottom: 12, marginHorizontal: 16, gap: 12,

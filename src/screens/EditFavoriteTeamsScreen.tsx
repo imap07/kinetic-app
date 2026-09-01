@@ -624,10 +624,23 @@ export function EditFavoriteTeamsScreen() {
     [pinnedLeagues],
   );
 
-  // Seed `pinnedLeagues` from user.favoriteTeams once.
+  // Seed `pinnedLeagues` from the user's favorite LEAGUES first (so the
+  // teams editor is consistent with the leagues editor: "pick the leagues,
+  // then pick which teams in them you want"), then from the leagues of any
+  // teams already followed. Favorite leagues are sport-scoped; legacy
+  // entries without a sport are skipped here (they normalize on the next
+  // leagues save).
   useEffect(() => {
     const bySport: Record<string, LeaguePin[]> = {};
     const seen: Record<string, Set<number>> = {};
+    for (const fl of (user?.favoriteLeagues || []) as { leagueApiId: number; sport?: string }[]) {
+      if (!fl.sport || !fl.leagueApiId) continue;
+      seen[fl.sport] = seen[fl.sport] || new Set<number>();
+      if (seen[fl.sport].has(fl.leagueApiId)) continue;
+      seen[fl.sport].add(fl.leagueApiId);
+      bySport[fl.sport] = bySport[fl.sport] || [];
+      bySport[fl.sport].push({ leagueApiId: fl.leagueApiId, name: `League #${fl.leagueApiId}`, logo: undefined });
+    }
     for (const ft of user?.favoriteTeams || []) {
       if (!ft.leagueApiId) continue;
       const key = String(ft.leagueApiId);
@@ -655,7 +668,7 @@ export function EditFavoriteTeamsScreen() {
       }
       return next;
     });
-  }, [user?.favoriteTeams]);
+  }, [user?.favoriteTeams, user?.favoriteLeagues]);
 
   // Per-sport totals for the SportTabBar badges.
   const teamCounts = useMemo(() => {
@@ -1056,6 +1069,11 @@ export function EditFavoriteTeamsScreen() {
         teamCounts={teamCounts}
       />
 
+      {/* Why this screen matters for pushes — mirrors the backend rule. */}
+      {activeSport !== 'formula-1' && (
+        <Text style={styles.notifHint}>{t('editFavoriteTeams.notifHint')}</Text>
+      )}
+
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingBottom: 32 + insets.bottom }}
@@ -1184,6 +1202,14 @@ interface LeaguePin {
 // ─── Styles ──────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+  notifHint: {
+    color: colors.onSurfaceVariant,
+    fontSize: 12,
+    lineHeight: 16,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
   container: { flex: 1, backgroundColor: colors.background },
 
   header: {

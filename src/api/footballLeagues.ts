@@ -53,13 +53,34 @@ export const footballLeaguesApi = {
     );
   },
 
-  /** Set all favorite leagues at once (onboarding) */
-  setFavoriteLeagues(token: string, leagueApiIds: number[]) {
-    return apiClient.patch<{ message: string; favoriteLeagues: any[] }>(
-      '/auth/favorite-leagues',
-      { leagueApiIds },
-      { token },
-    );
+  /**
+   * Replace the full favorites list. Each entry carries its sport — league
+   * ids collide across API-Sports hosts (id 1 = NFL = MLB = AFL = Australian
+   * GP), so a bare id list cannot express "the NBA but not the Australian GP".
+   * Entries without `sport` are legacy favorites the client could not attribute.
+   */
+  async setFavoriteLeagues(token: string, leagues: { leagueApiId: number; sport?: string }[]) {
+    try {
+      return await apiClient.patch<{ message: string; favoriteLeagues: any[] }>(
+        '/auth/favorite-leagues',
+        { leagues },
+        { token },
+      );
+    } catch (err: any) {
+      // A backend older than 2026-09-01 whitelists `leagueApiIds` only and
+      // answers 400 "property leagues should not exist". Fall back to the
+      // legacy shape (sport dropped) instead of failing the save.
+      const msgs: string[] = Array.isArray(err?.data?.message) ? err.data.message : [String(err?.data?.message ?? '')];
+      if (err?.status === 400 && msgs.some((m) => /property leagues should not exist/i.test(m))) {
+        const leagueApiIds = Array.from(new Set(leagues.map((l) => l.leagueApiId)));
+        return apiClient.patch<{ message: string; favoriteLeagues: any[] }>(
+          '/auth/favorite-leagues',
+          { leagueApiIds },
+          { token },
+        );
+      }
+      throw err;
+    }
   },
 
   /** Add a single favorite league */

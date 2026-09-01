@@ -172,8 +172,17 @@ export interface MyRankResponse {
 
 /** Fetch the set of gameApiIds the user has already predicted on (pending + resolved). */
 export async function fetchPickedGameIds(token: string): Promise<Set<number>> {
-  const res = await apiClient.get<MyPicksResponse>('/predictions/my-picks?limit=500', { token });
-  return new Set(res.predictions.map((p) => p.gameApiId));
+  const [res, f1] = await Promise.all([
+    apiClient.get<MyPicksResponse>('/predictions/my-picks?limit=500', { token }),
+    // F1 picks live in their own collection (keyed by the Race session's
+    // apiId); without them no F1 row ever showed the "picked" badge.
+    apiClient
+      .get<{ predictions: { raceApiId: number }[] }>('/predictions/f1/my-picks?limit=500', { token })
+      .catch(() => ({ predictions: [] as { raceApiId: number }[] })),
+  ]);
+  const ids = new Set(res.predictions.map((p) => p.gameApiId));
+  for (const p of f1.predictions || []) ids.add(p.raceApiId);
+  return ids;
 }
 
 /**

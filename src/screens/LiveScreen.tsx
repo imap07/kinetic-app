@@ -28,9 +28,11 @@ import { AdBanner } from '../components/AdBanner';
 import { RewardedAdButton } from '../components/RewardedAdButton';
 import { useAds } from '../contexts/AdContext';
 import { trackTap } from '../utils/analytics';
+import i18next from 'i18next';
+import { formatLiveClock, isLiveStatus } from '../utils/liveClock';
 
 const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'P', 'BT', 'LIVE', 'Q1', 'Q2', 'Q3', 'Q4', 'OT', 'P1', 'P2', 'P3', 'IN1', 'IN2', 'IN3', 'IN4', 'IN5', 'IN6', 'IN7', 'IN8', 'IN9'];
-const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AOT', 'AP', 'POST', 'Completed'];
+const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AOT', 'AP', 'POST', 'Completed', 'Cancelled'];
 const POLLING_FALLBACK_INTERVAL = 60_000;
 
 type DateOption = { label: string; date: Date };
@@ -44,11 +46,11 @@ function isSameDay(d1: Date, d2: Date): boolean {
 }
 
 function getGameStatusLabel(game: SportGame): string {
-  if (LIVE_STATUSES.includes(game.status)) {
-    return game.timer ? `${game.timer}'` : 'LIVE';
+  if (isLiveStatus(game.status) || game.isLive) {
+    return formatLiveClock(game.status, game.timer, i18next.t.bind(i18next));
   }
   if (FINISHED_STATUSES.includes(game.status)) return game.status === 'Completed' ? 'FIN' : game.status;
-  if (game.status === 'NS' || game.status === 'TBD') {
+  if (game.status === 'NS' || game.status === 'TBD' || game.status === 'Scheduled') {
     return new Date(game.date).toLocaleTimeString([], {
       hour: '2-digit',
       minute: '2-digit',
@@ -58,7 +60,9 @@ function getGameStatusLabel(game: SportGame): string {
 }
 
 function getStatusType(game: SportGame): 'live' | 'finished' | 'upcoming' {
-  if (LIVE_STATUSES.includes(game.status)) return 'live';
+  // Formula-1 sessions keep status 'Scheduled' while running; the backend
+  // marks them with `isLive` instead.
+  if (isLiveStatus(game.status) || game.isLive) return 'live';
   if (FINISHED_STATUSES.includes(game.status)) return 'finished';
   return 'upcoming';
 }
@@ -116,8 +120,8 @@ function groupByLeague(games: SportGame[]): LeagueGroup[] {
   // Sort: leagues with live games first, then by game time
   const groups = Array.from(map.values());
   groups.sort((a, b) => {
-    const aHasLive = a.games.some((g) => LIVE_STATUSES.includes(g.status)) ? 0 : 1;
-    const bHasLive = b.games.some((g) => LIVE_STATUSES.includes(g.status)) ? 0 : 1;
+    const aHasLive = a.games.some((g) => isLiveStatus(g.status) || g.isLive) ? 0 : 1;
+    const bHasLive = b.games.some((g) => isLiveStatus(g.status) || g.isLive) ? 0 : 1;
     if (aHasLive !== bHasLive) return aHasLive - bHasLive;
     const aFirst = new Date(a.games[0].date).getTime();
     const bFirst = new Date(b.games[0].date).getTime();
@@ -309,7 +313,7 @@ export function LiveScreen() {
     );
   }
 
-  const liveCount = todayGames.filter((g) => LIVE_STATUSES.includes(g.status)).length;
+  const liveCount = todayGames.filter((g) => isLiveStatus(g.status) || g.isLive).length;
 
   return (
     <View style={styles.container}>

@@ -215,17 +215,20 @@ const DEFAULT_PREDICTION_CONFIG: SportPredictionConfig = {
 };
 
 const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'P', 'BT', 'LIVE', 'Q1', 'Q2', 'Q3', 'Q4', 'OT', 'P1', 'P2', 'P3', 'S1', 'S2', 'S3', 'S4', 'S5', 'R1', 'R2', 'R3', 'R4', 'R5', 'IN1', 'IN2', 'IN3', 'IN4', 'IN5', 'IN6', 'IN7', 'IN8', 'IN9'];
-const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AOT', 'AP', 'POST', 'CANC'];
+// 'Completed' / 'Cancelled' are the API-Sports Formula-1 vocabulary; without
+// them a finished Grand Prix rendered as upcoming with a live "Predict" CTA.
+const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AOT', 'AP', 'POST', 'CANC', 'Completed', 'Cancelled', 'Ended'];
 // Sourced from the canonical shared domain file. Drift is impossible
 // because CI re-runs sync-shared.sh and fails if the mirror doesn't
 // match the backend canonical. See kinetic-app/src/shared/domain.ts.
 import { NO_DRAW_SPORTS as SHARED_NO_DRAW_SPORTS } from '../shared/domain';
+import { formatLiveClock, isLiveStatus } from '../utils/liveClock';
 const NO_DRAW_SPORTS: readonly string[] = SHARED_NO_DRAW_SPORTS;
 
 function getStatusDisplay(status: string, t: (key: string) => string, statusLong?: string, elapsed?: number | string | null, date?: string): { label: string; isLive: boolean; isUpcoming: boolean } {
-  if (LIVE_STATUSES.includes(status)) {
+  if (isLiveStatus(status)) {
     return {
-      label: elapsed ? `${t('dashboard.live')} · ${elapsed}'` : t('dashboard.live'),
+      label: formatLiveClock(status, elapsed, t as any),
       isLive: true,
       isUpcoming: false,
     };
@@ -606,7 +609,7 @@ function BaseballInningTable({ homeScore, awayScore, homeTeamName, awayTeamName,
           {hasExtra && <Text style={[styles.periodScoreHome, { width: 22, textAlign: 'center', fontSize: 13 }]}>{cell(row.inn?.extra)}</Text>}
           <Text style={[styles.periodScoreHome, { width: 26, textAlign: 'center', fontSize: 14, color: colors.primary }]}>{cell(row.score?.total)}</Text>
           <Text style={[styles.periodScoreHome, { width: 24, textAlign: 'center', fontSize: 13 }]}>{cell(row.score?.hits)}</Text>
-          <Text style={[styles.periodScoreHome, { width: 24, textAlign: 'center', fontSize: 13 }]}>{cell(row.score?.errors)}</Text>
+          <Text style={[styles.periodScoreHome, { width: 24, textAlign: 'center', fontSize: 13 }]}>{cell(row.score?.fieldErrors ?? row.score?.errors)}</Text>
         </View>
       ))}
     </View>
@@ -1284,7 +1287,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
   const statusLong = fixture?.statusLong || genericGame?.statusLong || '';
 
   const isFinished = FINISHED_STATUSES.includes(gameStatus);
-  const isLive = LIVE_STATUSES.includes(gameStatus);
+  const isLive = isLiveStatus(gameStatus) || !!(genericGame as any)?.isLive;
 
   // ── Follow match (game subscription) ──────────────────────────────────────
   const { isSubscribed, toggle: toggleSubscription } = useGameSubscription({
@@ -1312,7 +1315,7 @@ export function MatchPredictionScreen({ navigation }: Props) {
     });
   }, [toggleSubscription, isSubscribed, t]);
 
-  const statusDisplay = getStatusDisplay(gameStatus, t, statusLong, fixture?.elapsed, fixture?.date || genericGame?.date);
+  const statusDisplay = getStatusDisplay(gameStatus, t, statusLong, fixture?.elapsed ?? genericGame?.timer, fixture?.date || genericGame?.date);
 
   const handleSubmitPrediction = async () => {
     trackTap('MatchPrediction', 'confirm_pick_button', {
@@ -2713,6 +2716,16 @@ export function MatchPredictionScreen({ navigation }: Props) {
                     </>
                   )}
 
+                  {/* Settlement rule — mirrors Terms §6.1 */}
+                  {(predType === 'result' || predType === 'exact_score') && !isF1 && (
+                    <View style={styles.settlementNote}>
+                      <Ionicons name="information-circle-outline" size={13} color={colors.onSurfaceDim} />
+                      <Text style={styles.settlementNoteText}>
+                        {hasDraw ? t('matchPrediction.settlementRuleDraw') : t('matchPrediction.settlementRuleNoDraw')}
+                      </Text>
+                    </View>
+                  )}
+
                   {/* Submit */}
                   <TouchableOpacity
                     style={[
@@ -3852,6 +3865,19 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceGrotesk_700Bold', fontSize: 24, color: colors.onSurfaceVariant, marginTop: 20,
   },
 
+  settlementNote: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    marginHorizontal: 16,
+    marginBottom: 10,
+  },
+  settlementNoteText: {
+    flex: 1,
+    color: colors.onSurfaceDim,
+    fontSize: 11,
+    lineHeight: 15,
+  },
   submitButton: {
     backgroundColor: colors.primary, borderRadius: borderRadius.sm, paddingVertical: 14,
     alignItems: 'center', marginTop: 8,

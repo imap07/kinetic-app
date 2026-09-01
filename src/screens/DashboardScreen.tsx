@@ -42,6 +42,7 @@ import { useWinCelebration } from '../hooks/useWinCelebration';
 import { WinCelebrationModal } from '../components/WinCelebrationModal';
 import { logSportTabViewed, track } from '../services/analytics';
 import { trackDashboardViewed, trackTap } from '../utils/analytics';
+import { formatLiveClock, isLiveStatus } from '../utils/liveClock';
 import { AdBanner } from '../components/AdBanner';
 import { RewardedAdButton } from '../components/RewardedAdButton';
 import { useAds } from '../contexts/AdContext';
@@ -81,8 +82,8 @@ function formatGameTime(dateStr: string, t: (key: string) => string): string {
 }
 
 function getGameStatusLabel(game: SportGame, t: (key: string) => string): string {
-  if (LIVE_STATUSES.includes(game.status)) {
-    return game.timer ? `${t('dashboard.live')} ${game.timer}'` : t('dashboard.live');
+  if (isLiveStatus(game.status) || (game as any).isLive) {
+    return formatLiveClock(game.status, game.timer, t as any);
   }
   if (['FT', 'AET', 'PEN', 'AOT', 'AP', 'POST', 'Completed'].includes(game.status)) {
     return t('dashboard.ft');
@@ -628,9 +629,16 @@ export function DashboardScreen({ navigation }: Props) {
   // F1: Group upcoming sessions by GP (competitionName) — shows full race weekend schedule
   const f1NextGpSessions = useMemo(() => {
     if (!isF1 || upcomingGames.length === 0) return [];
-    const gpName = upcomingGames[0]?.competitionName || upcomingGames[0]?.leagueName || '';
-    if (!gpName) return upcomingGames.slice(0, 7);
-    return upcomingGames.filter((g) => (g.competitionName || g.leagueName) === gpName);
+    const sorted = [...upcomingGames].sort((a, b) => +new Date(a.date) - +new Date(b.date));
+    const gpKeyOf = (g: any) => g.competitionApiId ?? g.competitionName ?? g.leagueName ?? '';
+    // Anchor on the next Race that has not started — leftover practice rows
+    // of a weekend whose race already ran must not hijack "Next Grand Prix".
+    const now = Date.now();
+    const anchor =
+      sorted.find((g: any) => (g.type || 'Race') === 'Race' && +new Date(g.date) > now) ?? sorted[0];
+    const gpKey = gpKeyOf(anchor);
+    if (!gpKey) return sorted.slice(0, 7);
+    return sorted.filter((g) => gpKeyOf(g) === gpKey);
   }, [isF1, upcomingGames]);
 
   const f1NextGpName = f1NextGpSessions[0]?.competitionName || f1NextGpSessions[0]?.leagueName || '';
@@ -883,7 +891,14 @@ export function DashboardScreen({ navigation }: Props) {
                     <TouchableOpacity
                       key={session.apiId}
                       style={styles.f1SessionRow}
-                      onPress={() => handleMatchPress(session)}
+                      onPress={() => {
+                        // Picks are attached to the Race (the server remaps
+                        // anyway); open the weekend's Race so the picked
+                        // badge, existing picks and lock state line up.
+                        const isFinishedSession = ['FT', 'Completed', 'Cancelled'].includes(session.status);
+                        const race = f1NextGpSessions.find((s) => (s.type || 'Race') === 'Race');
+                        handleMatchPress(!isFinishedSession && race ? race : session);
+                      }}
                       activeOpacity={0.7}
                     >
                       {pickedGameIds.has(session.apiId) && <PickedBadge />}

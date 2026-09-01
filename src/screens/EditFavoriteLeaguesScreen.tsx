@@ -32,6 +32,14 @@ import { trackTap } from '../utils/analytics';
 
 const MAX_LEAGUES = 30;
 
+/** Selection key: sport-scoped so equal ids across sports never collide. */
+const favKey = (sport: string | undefined | null, apiId: number) => `${sport || '?'}:${apiId}`;
+const parseFavKey = (key: string): { sport: string | undefined; apiId: number } => {
+  const i = key.indexOf(':');
+  const sport = key.slice(0, i);
+  return { sport: sport === '?' ? undefined : sport, apiId: Number(key.slice(i + 1)) };
+};
+
 // Unified league shape
 interface UnifiedLeague {
   apiId: number;
@@ -271,16 +279,32 @@ export function EditFavoriteLeaguesScreen() {
   const [activeRegion, setActiveRegion] = useState('all');
   const [searchFocused, setSearchFocused] = useState(false);
 
-  // Pre-populate with user's current favorite leagues
-  const [selected, setSelected] = useState<Set<number>>(() => {
-    const ids = new Set<number>();
+  // Selection is keyed by SPORT + league id. League ids are only unique
+  // within one API-Sports host: id 1 is the NFL, MLB, the AFL Premiership
+  // AND the Australian GP at the same time, 12 is the NBA… A flat
+  // Set<number> (the previous model) made the F1 season switch "select"
+  // NFL/NBA/MLB, and "Clear all" on one tab wiped every sport.
+  // Legacy favorites saved before the backend stored `sport` get the
+  // wildcard prefix `?:` and match on any tab until re-saved.
+  const [selected, setSelected] = useState<Set<string>>(() => {
+    const keys = new Set<string>();
     if (user?.favoriteLeagues) {
-      for (const league of user.favoriteLeagues) {
-        ids.add(league.leagueApiId);
-      }
+      for (const league of user.favoriteLeagues) keys.add(favKey((league as any).sport, league.leagueApiId));
     }
-    return ids;
+    return keys;
   });
+  const isSelected = useCallback(
+    (sport: string, apiId: number) => selected.has(favKey(sport, apiId)) || selected.has(favKey(undefined, apiId)),
+    [selected],
+  );
+  // F1 is followed as ONE thing ("F1 Season 2026"), even though it is
+  // stored as one entry per Grand Prix: it counts as a single favorite in
+  // the strip, the footer and against MAX_LEAGUES. Otherwise flipping the
+  // season switch jumped "Your favorites" from 19 to 43 and ate the cap.
+  const F1_KEY_PREFIX = 'formula-1:';
+  const nonF1Count = (keys: Set<string>) => Array.from(keys).filter((k) => !k.startsWith(F1_KEY_PREFIX)).length;
+  const hasF1 = Array.from(selected).some((k) => k.startsWith(F1_KEY_PREFIX));
+  const selectedCount = nonF1Count(selected) + (hasF1 ? 1 : 0);
 
   // Cache per sport
   const [leagueCache, setLeagueCache] = useState<Record<string, UnifiedLeague[]>>({});
@@ -365,34 +389,66 @@ export function EditFavoriteLeaguesScreen() {
    * regions flattened) to catch any user-selected id that isn't in the
    * featured set.
    */
-  const allLoadedLeaguesById = useMemo(() => {
-    const map = new Map<number, UnifiedLeague>();
-    for (const leagues of Object.values(leagueCache)) {
-      for (const lg of leagues) if (!map.has(lg.apiId)) map.set(lg.apiId, lg);
+  const allLoadedLeaguesByKey = useMemo(() => {
+    const map = new Map<string, UnifiedLeague>();
+    for (const [sport, leagues] of Object.entries(leagueCache)) {
+      for (const lg of leagues) if (!map.has(favKey(sport, lg.apiId))) map.set(favKey(sport, lg.apiId), lg);
     }
     for (const leagues of Object.values(footballByRegion)) {
-      for (const lg of leagues) if (!map.has(lg.apiId)) map.set(lg.apiId, lg);
+      for (const lg of leagues) if (!map.has(favKey('football', lg.apiId))) map.set(favKey('football', lg.apiId), lg);
     }
     return map;
   }, [leagueCache, footballByRegion]);
 
+  const lookupMeta = useCallback(
+    (key: string): UnifiedLeague | undefined => {
+      const direct = allLoadedLeaguesByKey.get(key);
+      if (direct) return direct;
+      // Legacy wildcard key: first loaded sport that knows the id.
+      const { sport, apiId } = parseFavKey(key);
+      if (sport !== undefined) return undefined;
+      for (const [k, lg] of allLoadedLeaguesByKey) if (parseFavKey(k).apiId === apiId) return lg;
+      return undefined;
+    },
+    [allLoadedLeaguesByKey],
+  );
+
   const selectedChips = useMemo(() => {
     // Order is stable: follow the user's current `favoriteLeagues` order
     // so adding/removing doesn't shuffle what the user sees.
-    const base = user?.favoriteLeagues?.map((l) => l.leagueApiId) ?? [];
-    const extras = Array.from(selected).filter((id) => !base.includes(id));
-    const order = [...base.filter((id) => selected.has(id)), ...extras];
-    return order.map((id) => ({
-      apiId: id,
-      meta: allLoadedLeaguesById.get(id),
-    }));
-  }, [selected, user?.favoriteLeagues, allLoadedLeaguesById]);
+    const base = user?.favoriteLeagues?.map((l) => favKey((l as any).sport, l.leagueApiId)) ?? [];
+    const extras = Array.from(selected).filter((k) => !base.includes(k));
+    const order = [...base.filter((k) => selected.has(k)), ...extras];
+    const chips: { key: string; sport: string | undefined; apiId: number; meta: UnifiedLeague | undefined }[] = [];
+    let f1Chip = false;
+    for (const key of order) {
+      if (key.startsWith(F1_KEY_PREFIX)) {
+        if (f1Chip) continue;
+        f1Chip = true;
+        chips.push({
+          key: `${F1_KEY_PREFIX}*`,
+          sport: 'formula-1',
+          apiId: -1,
+          meta: { apiId: -1, name: t('editFavorites.f1SeasonTitle', { season: new Date().getFullYear() }), logo: '', countryName: '', isFeatured: true } as UnifiedLeague,
+        });
+        continue;
+      }
+      chips.push({ key, ...parseFavKey(key), meta: lookupMeta(key) });
+    }
+    return chips;
+  }, [selected, user?.favoriteLeagues, lookupMeta, t]);
+
+  /** Drop every Grand Prix entry at once (the season chip's ×). */
+  const clearF1 = useCallback(() => {
+    trackTap('EditFavoriteLeagues', 'f1_season_toggle', { value: 'off' });
+    setSelected((prev) => new Set(Array.from(prev).filter((k) => !k.startsWith(F1_KEY_PREFIX))));
+  }, []);
 
   // F1: check if user is following the full season (any F1 competition selected)
   const f1Following = useMemo(() => {
     if (!isF1) return false;
-    return currentLeagues.some((l) => selected.has(l.apiId));
-  }, [isF1, currentLeagues, selected]);
+    return currentLeagues.some((l) => isSelected('formula-1', l.apiId));
+  }, [isF1, currentLeagues, isSelected]);
 
   const availableRegions = useMemo(() => {
     if (!isFootball) return [];
@@ -436,26 +492,31 @@ export function EditFavoriteLeaguesScreen() {
 
     return [...list].sort((a, b) => {
       // Selected first
-      const aSel = selected.has(a.apiId) ? 0 : 1;
-      const bSel = selected.has(b.apiId) ? 0 : 1;
+      const aSel = isSelected(activeSport, a.apiId) ? 0 : 1;
+      const bSel = isSelected(activeSport, b.apiId) ? 0 : 1;
       if (aSel !== bSel) return aSel - bSel;
       if (a.isFeatured !== b.isFeatured) return a.isFeatured ? -1 : 1;
       if (a.priority !== b.priority) return a.priority - b.priority;
       return a.name.localeCompare(b.name);
     });
-  }, [currentLeagues, footballByRegion, isFootball, activeRegion, search, selected]);
+  }, [currentLeagues, footballByRegion, isFootball, activeRegion, search, isSelected, activeSport]);
 
   const toggleLeague = useCallback(
-    (apiId: number) => {
+    (apiId: number, sportOverride?: string) => {
+      const sport = sportOverride ?? activeSport;
       trackTap('EditFavoriteLeagues', 'favorite_league_toggle', {
         leagueId: String(apiId),
+        sport: sport as SportKey,
       });
       setSelected((prev) => {
         const next = new Set(prev);
-        if (next.has(apiId)) {
-          next.delete(apiId);
-        } else if (next.size < MAX_LEAGUES) {
-          next.add(apiId);
+        const key = favKey(sport, apiId);
+        const legacyKey = favKey(undefined, apiId);
+        if (next.has(key) || next.has(legacyKey)) {
+          next.delete(key);
+          next.delete(legacyKey);
+        } else if (nonF1Count(next) < MAX_LEAGUES) {
+          next.add(key);
         } else {
           // Cap hit — tell the user instead of silently no-op'ing.
           // Previously the tap registered as "nothing happened" which
@@ -473,15 +534,36 @@ export function EditFavoriteLeaguesScreen() {
         return next;
       });
     },
-    [t],
+    [t, activeSport],
   );
+
+  /** Clear only the tab in front of the user — never the other sports. */
+  const clearActiveSport = useCallback(() => {
+    trackTap('EditFavoriteLeagues', 'clear_all_button', { sport: activeSport as SportKey });
+    const idsOnThisTab = new Set<number>(currentLeagues.map((l) => l.apiId));
+    if (isFootball) for (const leagues of Object.values(footballByRegion)) for (const l of leagues) idsOnThisTab.add(l.apiId);
+    setSelected((prev) => {
+      const next = new Set<string>();
+      for (const key of prev) {
+        const { sport, apiId } = parseFavKey(key);
+        if (sport === activeSport) continue;
+        if (sport === undefined && idsOnThisTab.has(apiId)) continue; // legacy entry shown on this tab
+        next.add(key);
+      }
+      return next;
+    });
+  }, [activeSport, currentLeagues, isFootball, footballByRegion]);
 
   const handleSave = useCallback(async () => {
     trackTap('EditFavoriteLeagues', 'save_button', { value: selected.size });
+    const leagues = Array.from(selected).map((key) => {
+      const { sport, apiId } = parseFavKey(key);
+      return sport ? { leagueApiId: apiId, sport } : { leagueApiId: apiId };
+    });
     if (!tokens?.accessToken) return;
     setSaving(true);
     try {
-      const res = await footballLeaguesApi.setFavoriteLeagues(tokens.accessToken, Array.from(selected));
+      const res = await footballLeaguesApi.setFavoriteLeagues(tokens.accessToken, leagues);
       // Patch-only refresh — see AuthContext.refreshProfile docstring.
       await refreshProfile({ favoriteLeagues: res.favoriteLeagues as any });
       navigation.goBack();
@@ -493,19 +575,17 @@ export function EditFavoriteLeaguesScreen() {
   }, [tokens?.accessToken, selected, navigation, refreshProfile]);
 
   // Check if something changed
-  const originalLeagueIds = useMemo(() => {
-    const ids = new Set<number>();
+  const originalLeagueKeys = useMemo(() => {
+    const keys = new Set<string>();
     if (user?.favoriteLeagues) {
-      for (const league of user.favoriteLeagues) {
-        ids.add(league.leagueApiId);
-      }
+      for (const league of user.favoriteLeagues) keys.add(favKey((league as any).sport, league.leagueApiId));
     }
-    return ids;
+    return keys;
   }, [user?.favoriteLeagues]);
 
   const hasChanges =
-    selected.size !== originalLeagueIds.size ||
-    Array.from(selected).some((id) => !originalLeagueIds.has(id));
+    selected.size !== originalLeagueKeys.size ||
+    Array.from(selected).some((k) => !originalLeagueKeys.has(k));
 
   const canSave = hasChanges;
   const sportLoading = !leagueCache[activeSport];
@@ -601,12 +681,12 @@ export function EditFavoriteLeaguesScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.favStripScroll}
           >
-            {selectedChips.map(({ apiId, meta }) => (
+            {selectedChips.map(({ key, sport, apiId, meta }) => (
               <TouchableOpacity
-                key={`fav-${apiId}`}
+                key={`fav-${key}`}
                 style={styles.favChip}
                 activeOpacity={0.7}
-                onPress={() => toggleLeague(apiId)}
+                onPress={() => (key === `${F1_KEY_PREFIX}*` ? clearF1() : toggleLeague(apiId, sport ?? activeSport))}
                 accessibilityRole="button"
                 accessibilityLabel={t('editFavorites.removeFromFavorites', {
                   league: meta?.name || `#${apiId}`,
@@ -700,13 +780,15 @@ export function EditFavoriteLeaguesScreen() {
                   trackTap('EditFavoriteLeagues', 'f1_season_toggle', {
                     value: f1Following ? 'off' : 'on',
                   });
-                  const allF1Ids = currentLeagues.map((l) => l.apiId);
+                  const allF1Keys = currentLeagues.map((l) => favKey('formula-1', l.apiId));
                   setSelected((prev) => {
                     const next = new Set(prev);
                     if (f1Following) {
-                      allF1Ids.forEach((id) => next.delete(id));
+                      allF1Keys.forEach((k) => next.delete(k));
+                      // Legacy wildcard entries that happen to be F1 ids.
+                      currentLeagues.forEach((l) => next.delete(favKey(undefined, l.apiId)));
                     } else {
-                      allF1Ids.forEach((id) => next.add(id));
+                      allF1Keys.forEach((k) => next.add(k));
                     }
                     return next;
                   });
@@ -748,7 +830,7 @@ export function EditFavoriteLeaguesScreen() {
           renderItem={({ item }) => (
             <LeagueCard
               league={item}
-              selected={selected.has(item.apiId)}
+              selected={isSelected(activeSport, item.apiId)}
               onToggle={toggleLeague}
             />
           )}
@@ -764,13 +846,8 @@ export function EditFavoriteLeaguesScreen() {
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionLabel}>{regionLabel}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                {selected.size > 0 && (
-                  <TouchableOpacity
-                    onPress={() => {
-                      trackTap('EditFavoriteLeagues', 'clear_all_button');
-                      setSelected(new Set());
-                    }}
-                  >
+                {filtered.some((l) => isSelected(activeSport, l.apiId)) && (
+                  <TouchableOpacity onPress={clearActiveSport}>
                     <Text style={styles.clearAllText}>{t('editFavorites.clearAll')}</Text>
                   </TouchableOpacity>
                 )}
@@ -789,16 +866,18 @@ export function EditFavoriteLeaguesScreen() {
         />
       )}
 
-      {/* Floating CTA */}
+      {/* Save CTA — in the layout flow (not absolute) so the ad banner rendered
+          below it can never cover the button. paddingBottom only needs the
+          home-indicator inset when there is no banner underneath. */}
       {hasChanges && (
-        <View style={[styles.ctaContainer, { paddingBottom: insets.bottom + 16 }]}>
+        <View style={[styles.ctaContainer, { paddingBottom: 12 }]}>
           <View style={styles.ctaSummary}>
             <Text style={styles.ctaSummaryText}>
-              {selected.size === 0
+              {selectedCount === 0
                 ? t('editFavorites.allLeaguesSelected')
-                : selected.size !== 1
-                ? t('editFavorites.leaguesSelectedPlural', { count: selected.size })
-                : t('editFavorites.leaguesSelected', { count: selected.size })}
+                : selectedCount !== 1
+                ? t('editFavorites.leaguesSelectedPlural', { count: selectedCount })
+                : t('editFavorites.leaguesSelected', { count: selectedCount })}
             </Text>
           </View>
 
@@ -1124,10 +1203,6 @@ const styles = StyleSheet.create({
 
   // CTA
   ctaContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     paddingHorizontal: 20,
     paddingTop: 10,
     backgroundColor: 'rgba(11,14,17,0.96)',

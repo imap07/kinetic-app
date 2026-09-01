@@ -22,7 +22,7 @@ export interface User {
   currentStreak: number;
   bestStreak: number;
   favoriteSports: string[];
-  favoriteLeagues: { leagueApiId: number; addedAt: string }[];
+  favoriteLeagues: { leagueApiId: number; sport?: string; addedAt: string }[];
   favoriteTeams: {
     sport: string;
     teamApiId: number;
