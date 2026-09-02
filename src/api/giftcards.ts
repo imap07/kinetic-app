@@ -13,6 +13,15 @@ export interface GiftcardCatalogItem {
 }
 
 export interface GiftcardCatalog {
+  /** Server-computed redemption requirements (absent on pre-v1.9 backends). */
+  eligibility?: {
+    enabled: boolean;
+    accountAgeDays: number;
+    minAccountAgeDays: number;
+    activePickDays: number;
+    minActivePickDays: number;
+    eligible: boolean;
+  };
   rate: number;
   rateDescription: string;
   holdHours: number;

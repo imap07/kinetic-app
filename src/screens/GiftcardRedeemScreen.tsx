@@ -78,6 +78,21 @@ export function GiftcardRedeemScreen() {
     trackTap('GiftcardRedeem', 'denomination_tile', {
       value: `${card.type}_${denomination.coins}`,
     });
+    const elig = catalog?.eligibility;
+    if (elig && !elig.eligible) {
+      Alert.alert(
+        t('coins.redeemLockedTitle'),
+        elig.enabled
+          ? t('coins.redeemLockedBody', {
+              days: elig.minAccountAgeDays,
+              picks: elig.minActivePickDays,
+              ageDays: Math.min(elig.accountAgeDays, elig.minAccountAgeDays),
+              pickDays: Math.min(elig.activePickDays, elig.minActivePickDays),
+            })
+          : t('coins.redeemDisabled'),
+      );
+      return;
+    }
     if (redeemableCoins < denomination.coins) {
       const deficit = denomination.coins - redeemableCoins;
       Alert.alert(
@@ -211,6 +226,21 @@ export function GiftcardRedeemScreen() {
       <Text style={styles.earnedOnlyNote}>
         {t('coins.earnedOnly')}
       </Text>
+      {catalog?.eligibility && !catalog.eligibility.eligible && (
+        <View style={styles.lockNote}>
+          <Feather name="lock" size={13} color="#FC5B00" />
+          <Text style={styles.lockNoteText}>
+            {catalog.eligibility.enabled
+              ? t('coins.redeemLockedBody', {
+                  days: catalog.eligibility.minAccountAgeDays,
+                  picks: catalog.eligibility.minActivePickDays,
+                  ageDays: Math.min(catalog.eligibility.accountAgeDays, catalog.eligibility.minAccountAgeDays),
+                  pickDays: Math.min(catalog.eligibility.activePickDays, catalog.eligibility.minActivePickDays),
+                })
+              : t('coins.redeemDisabled')}
+          </Text>
+        </View>
+      )}
 
       <View style={styles.tabs}>
         {(['catalog', 'history'] as const).map((tabKey) => (
@@ -356,6 +386,22 @@ export function GiftcardRedeemScreen() {
 }
 
 const styles = StyleSheet.create({
+  lockNote: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginHorizontal: 16,
+    marginTop: 8,
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: 'rgba(252,91,0,0.08)',
+  },
+  lockNoteText: {
+    flex: 1,
+    color: '#FC5B00',
+    fontSize: 12,
+    lineHeight: 16,
+  },
   container: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: 'row',

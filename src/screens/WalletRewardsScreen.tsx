@@ -28,6 +28,7 @@ import { coinsApi } from '../api/coins';
 import type { CoinTransaction } from '../api/coins';
 import type { ProfileStackParamList } from '../navigation/types';
 import { trackTap } from '../utils/analytics';
+import { apiClient } from '../api/client';
 
 // Gift-card redemption feature flag. Currently ON: redemptions are
 // processed manually via the admin dashboard's "Giftcards" tab — when
@@ -37,11 +38,24 @@ import { trackTap } from '../utils/analytics';
 // exhausted (would silently break the gold/diamond/legend reward
 // tier promise and the wallet's primary CTA — prefer pausing tier
 // claims server-side instead).
+// Local fallback; the backend can hide the surface remotely via the
+// `giftcards_enabled` feature flag (dashboard → Feature Flags).
 const GIFTCARDS_ENABLED = true;
 
 type Nav = NativeStackNavigationProp<ProfileStackParamList>;
 
 export function WalletRewardsScreen() {
+  // Remote kill switch (public /config endpoint). Defaults ON if the
+  // fetch fails so a config outage never hides a legitimate feature.
+  const [giftcardsFlag, setGiftcardsFlag] = React.useState(true);
+  React.useEffect(() => {
+    let alive = true;
+    apiClient
+      .get<{ flags?: Record<string, boolean> }>('/config')
+      .then((res) => { if (alive && res?.flags && res.flags.giftcards_enabled === false) setGiftcardsFlag(false); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
@@ -199,7 +213,7 @@ export function WalletRewardsScreen() {
             <Text style={styles.actionDesc}>{t('wallet.buyCoinsDesc')}</Text>
           </TouchableOpacity>
 
-          {GIFTCARDS_ENABLED && (
+          {GIFTCARDS_ENABLED && giftcardsFlag && (
             <TouchableOpacity
               style={styles.actionCard}
               onPress={() => {
