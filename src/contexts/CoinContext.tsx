@@ -23,6 +23,8 @@ interface CoinContextValue {
   totalSpent: number;
   earnedCoins: number;
   purchasedCoins: number;
+  /** Gameplay earnings redeemable for gift cards; falls back to earnedCoins on old backends. */
+  redeemableCoins: number;
   isLoading: boolean;
   refreshBalance: () => Promise<void>;
   refreshBalanceAfterPurchase: () => void;
@@ -44,6 +46,7 @@ export function CoinProvider({ children }: { children: React.ReactNode }) {
     totalSpent: 0,
     earnedCoins: 0,
     purchasedCoins: 0,
+    redeemableCoins: 0,
   });
   const [isLoading, setIsLoading] = useState(false);
   const [lastGain, setLastGain] = useState<CoinGainEvent | null>(null);
@@ -63,7 +66,7 @@ export function CoinProvider({ children }: { children: React.ReactNode }) {
       const data = await coinsApi.getBalance(tokens.accessToken);
       const prev = prevBalanceRef.current;
       prevBalanceRef.current = data.balance;
-      setWallet(data);
+      setWallet({ ...data, redeemableCoins: data.redeemableCoins ?? data.earnedCoins });
       if (skipNextGainRef.current) {
         skipNextGainRef.current = false;
       } else if (prev != null && data.balance > prev) {
@@ -85,7 +88,7 @@ export function CoinProvider({ children }: { children: React.ReactNode }) {
       prevBalanceRef.current = null;
       refreshBalance();
     } else {
-      setWallet({ balance: 0, lockedBalance: 0, available: 0, totalEarned: 0, totalSpent: 0, earnedCoins: 0, purchasedCoins: 0 });
+      setWallet({ balance: 0, lockedBalance: 0, available: 0, totalEarned: 0, totalSpent: 0, earnedCoins: 0, purchasedCoins: 0, redeemableCoins: 0 });
       prevBalanceRef.current = null;
       skipNextGainRef.current = true;
       setLastGain(null);
@@ -115,6 +118,8 @@ export function CoinProvider({ children }: { children: React.ReactNode }) {
 
   const value: CoinContextValue = {
     ...wallet,
+    // Old backends don't send redeemableCoins yet — assume all earned.
+    redeemableCoins: wallet.redeemableCoins ?? wallet.earnedCoins,
     isLoading,
     refreshBalance,
     refreshBalanceAfterPurchase,

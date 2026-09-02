@@ -173,9 +173,9 @@
     "earned": "Ganhas",
     "purchased": "Compradas",
     "redeemable": "Resgatáveis",
-    "earnedOnly": "Apenas moedas ganhas podem ser trocadas por recompensas",
+    "earnedOnly": "Apenas moedas ganhas jogando — prêmios de ligas, desafios e indicações — podem ser trocadas por gift cards. As de anúncios, check-ins e sequências continuam utilizáveis no app.",
     "purchasedNote": "Use em ligas e cosméticos",
-    "availableForRedemption": "Disponíveis para resgate",
+    "availableForRedemption": "Resgatáveis (ganhas jogando)",
     "needMore": "Você precisa de mais {{amount}} moedas ganhas"
   },
   "leagues": {

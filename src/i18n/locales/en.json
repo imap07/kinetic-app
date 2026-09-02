@@ -173,9 +173,9 @@
     "earned": "Earned",
     "purchased": "Purchased",
     "redeemable": "Redeemable",
-    "earnedOnly": "Only earned coins can be redeemed for rewards",
+    "earnedOnly": "Only coins won through gameplay — league winnings, challenges and referrals — can be redeemed for gift cards. Coins from ads, check-ins and streaks stay usable inside the app.",
     "purchasedNote": "Use for leagues and cosmetics",
-    "availableForRedemption": "Available for redemption",
+    "availableForRedemption": "Redeemable (gameplay winnings)",
     "needMore": "You need {{amount}} more earned coins"
   },
   "leagues": {

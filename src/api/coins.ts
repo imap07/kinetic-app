@@ -7,6 +7,8 @@ export interface WalletBalance {
   totalEarned: number;
   totalSpent: number;
   earnedCoins: number;
+  /** Gameplay earnings eligible for gift cards (subset of earnedCoins). Absent on pre-v1.9 backends. */
+  redeemableCoins?: number;
   purchasedCoins: number;
 }
 

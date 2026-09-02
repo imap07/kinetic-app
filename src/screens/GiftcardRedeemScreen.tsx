@@ -39,7 +39,7 @@ export function GiftcardRedeemScreen() {
   const { trackAction } = useAds();
   // For gift card redemption, only earned coins can be used. We still track
   // `available` for general display but gate redemption on `earnedCoins`.
-  const { available, earnedCoins, refreshBalance } = useCoins();
+  const { available, earnedCoins, redeemableCoins, refreshBalance } = useCoins();
   const { t } = useTranslation();
 
   const [tab, setTab] = useState<TabFilter>('catalog');
@@ -78,11 +78,11 @@ export function GiftcardRedeemScreen() {
     trackTap('GiftcardRedeem', 'denomination_tile', {
       value: `${card.type}_${denomination.coins}`,
     });
-    if (earnedCoins < denomination.coins) {
-      const deficit = denomination.coins - earnedCoins;
+    if (redeemableCoins < denomination.coins) {
+      const deficit = denomination.coins - redeemableCoins;
       Alert.alert(
         t('giftcard.insufficientCoins'),
-        `${t('coins.availableForRedemption')}: ${earnedCoins.toLocaleString()}\n\n${t('coins.needMore', { amount: deficit.toLocaleString() })}`,
+        `${t('coins.availableForRedemption')}: ${redeemableCoins.toLocaleString()}\n\n${t('coins.needMore', { amount: deficit.toLocaleString() })}`,
       );
       return;
     }
@@ -205,7 +205,7 @@ export function GiftcardRedeemScreen() {
       <View style={styles.balancePill}>
         <MaterialCommunityIcons name="circle-multiple" size={16} color={colors.primary} />
         <Text style={styles.balancePillText}>
-          {t('coins.availableForRedemption')}: {earnedCoins.toLocaleString()} {t('coins.earned').toLowerCase()}
+          {t('coins.availableForRedemption')}: {redeemableCoins.toLocaleString()}
         </Text>
       </View>
       <Text style={styles.earnedOnlyNote}>

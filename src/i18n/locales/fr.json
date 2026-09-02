@@ -173,9 +173,9 @@
     "earned": "Gagnées",
     "purchased": "Achetées",
     "redeemable": "Échangeables",
-    "earnedOnly": "Seules les pièces gagnées peuvent être échangées",
+    "earnedOnly": "Seules les pièces gagnées en jouant — gains de ligues, défis et parrainages — sont échangeables en cartes cadeaux. Celles des pubs, check-ins et séries restent utilisables dans l'app.",
     "purchasedNote": "Pour les ligues et cosmétiques",
-    "availableForRedemption": "Disponible pour l'échange",
+    "availableForRedemption": "Échangeables (gains de jeu)",
     "needMore": "Il vous faut {{amount}} pièces gagnées de plus"
   },
   "leagues": {

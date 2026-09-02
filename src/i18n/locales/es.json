@@ -173,9 +173,9 @@
     "earned": "Ganadas",
     "purchased": "Compradas",
     "redeemable": "Canjeables",
-    "earnedOnly": "Solo las monedas ganadas pueden canjearse por recompensas",
+    "earnedOnly": "Solo las coins ganadas jugando — premios de ligas, challenges y referidos — se canjean por gift cards. Las de anuncios, check-ins y rachas se usan dentro de la app.",
     "purchasedNote": "Para ligas y cosméticos",
-    "availableForRedemption": "Disponible para canjear",
+    "availableForRedemption": "Canjeables (ganadas jugando)",
     "needMore": "Necesitas {{amount}} monedas ganadas más"
   },
   "leagues": {
