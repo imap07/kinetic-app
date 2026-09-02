@@ -285,7 +285,12 @@ export const REFERRAL_QUALIFY_RESOLVED_PICKS = 3;
 // Mobile UI imports this so the "+N" badge can't drift from the
 // actual server grant (3 audits flagged the previous "+20" copy
 // while the server granted 30 → broken trust).
-export const REWARDED_AD_COINS = 30;
+// Lowered 30 → 10 on 2026-09-02: at 30 coins the payout implied ~12c of
+// in-app value per view against ~1-3c of ad revenue, making pure ad
+// grinding the dominant strategy (139 ads in 14 days, real incident).
+// Since coins from ads are in-app-only now, 10 keeps the surface as a
+// retention nudge without distorting the economy. UI reads this constant.
+export const REWARDED_AD_COINS = 10;
 
 // 8-char short code. Alphabet excludes O/0/I/1/L to avoid OCR
 // confusion when users read the code from a screenshot. Mongo index
