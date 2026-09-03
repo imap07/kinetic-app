@@ -23,7 +23,7 @@ import { useAuth } from '../contexts/AuthContext';
 import {
   footballLeaguesApi,
   FootballLeague,
-  REGION_LABELS,
+  regionLabelKey,
   REGION_ORDER,
 } from '../api/footballLeagues';
 import { sportsApi, SPORT_TABS, SportLeague } from '../api/sports';
@@ -159,6 +159,7 @@ function RegionPills({
   onSelect: (r: string) => void;
   regionCounts: Record<string, number>;
 }) {
+  const { t } = useTranslation();
   const allRegions = ['all', ...regions];
 
   return (
@@ -170,7 +171,7 @@ function RegionPills({
       >
         {allRegions.map((r) => {
           const isActive = active === r;
-          const label = r === 'all' ? 'All' : REGION_LABELS[r] || r;
+          const label = t(regionLabelKey(r));
           const count = r === 'all' ? undefined : regionCounts[r];
 
           return (
@@ -618,7 +619,7 @@ export function EditFavoriteLeaguesScreen() {
   const regionLabel = isFootball
     ? activeRegion === 'all'
       ? t('editFavorites.allLeagues')
-      : REGION_LABELS[activeRegion] || activeRegion
+      : t(regionLabelKey(activeRegion))
     : t('editFavorites.featuredLeagues');
 
   if (loading) {

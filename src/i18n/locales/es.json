@@ -793,7 +793,18 @@
     "f1SeasonTitle": "F1 Temporada {{season}}",
     "f1SeasonSub": "{{count}} carreras de Grand Prix",
     "f1Following": "Estás siguiendo toda la temporada de F1. Todas las carreras aparecerán en tu dashboard.",
-    "f1NotFollowing": "Activa para seguir todas las carreras de F1 esta temporada y recibir actualizaciones."
+    "f1NotFollowing": "Activa para seguir todas las carreras de F1 esta temporada y recibir actualizaciones.",
+    "regions": {
+      "all": "Todas",
+      "northAmerica": "Norteamérica",
+      "southAmerica": "Sudamérica",
+      "europe": "Europa",
+      "international": "Internacional",
+      "asia": "Asia",
+      "africa": "África",
+      "oceania": "Oceanía",
+      "other": "Otras"
+    }
   },
   "editFavoriteTeams": {
     "title": "EQUIPOS FAVORITOS",

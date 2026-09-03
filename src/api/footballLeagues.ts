@@ -26,18 +26,43 @@ export interface GlobalLeaguesResponse {
 
 // ─── Region display helpers ────────────────────────────────
 
-export const REGION_LABELS: Record<string, string> = {
-  latam: 'Latin America',
-  'north-america': 'North America',
-  europe: 'Europe',
-  asia: 'Asia',
-  africa: 'Africa',
-  oceania: 'Oceania',
-  world: 'FIFA',
-  other: 'Other',
+/**
+ * i18n key per region, NOT a literal — these are pill labels a user in ES/FR/PT
+ * reads. Resolve with `t(regionLabelKey(region))`.
+ *
+ * The backend groups leagues by CONFEDERATION (see
+ * `seeding.service.ts:regionForLeague`), so `north-america` is CONCACAF — Liga
+ * MX, the Leagues Cup and the CONCACAF Champions Cup sit there with MLS — and
+ * `latam` is CONMEBOL, hence "South America".
+ *
+ * `world` was labelled "FIFA" while holding all 58 World-country competitions,
+ * the Champions League and the Libertadores included. Those now route to their
+ * own confederation; what is left really is global, hence "International".
+ */
+const REGION_LABEL_KEYS: Record<string, string> = {
+  all: 'editFavorites.regions.all',
+  'north-america': 'editFavorites.regions.northAmerica',
+  latam: 'editFavorites.regions.southAmerica',
+  europe: 'editFavorites.regions.europe',
+  world: 'editFavorites.regions.international',
+  asia: 'editFavorites.regions.asia',
+  africa: 'editFavorites.regions.africa',
+  oceania: 'editFavorites.regions.oceania',
+  other: 'editFavorites.regions.other',
 };
 
-export const REGION_ORDER = ['latam', 'north-america', 'europe', 'world', 'asia', 'africa', 'oceania', 'other'];
+/**
+ * i18n key for a region pill. Falls back to `editFavorites.regions.other` for a
+ * region the backend adds before the app knows about it — better an honest
+ * "Other" than a raw slug like `north-america` in the UI.
+ */
+export function regionLabelKey(region: string): string {
+  return REGION_LABEL_KEYS[region] ?? REGION_LABEL_KEYS.other;
+}
+
+// Core market first: Kinetic's users are in the USA, Canada and Mexico, all
+// three of which are now the same pill.
+export const REGION_ORDER = ['north-america', 'europe', 'latam', 'world', 'asia', 'africa', 'oceania', 'other'];
 
 // ─── API ───────────────────────────────────────────────────
 

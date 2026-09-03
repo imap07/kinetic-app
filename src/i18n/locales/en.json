@@ -793,7 +793,18 @@
     "f1SeasonTitle": "F1 Season {{season}}",
     "f1SeasonSub": "{{count}} Grand Prix races",
     "f1Following": "You're following the full F1 season. All races will appear on your dashboard.",
-    "f1NotFollowing": "Toggle on to follow all F1 races this season and get updates on your dashboard."
+    "f1NotFollowing": "Toggle on to follow all F1 races this season and get updates on your dashboard.",
+    "regions": {
+      "all": "All",
+      "northAmerica": "North America",
+      "southAmerica": "South America",
+      "europe": "Europe",
+      "international": "International",
+      "asia": "Asia",
+      "africa": "Africa",
+      "oceania": "Oceania",
+      "other": "Other"
+    }
   },
   "editFavoriteTeams": {
     "title": "FAVORITE TEAMS",
