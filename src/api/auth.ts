@@ -360,11 +360,21 @@ export const authApi = {
     return apiClient.delete<MessageResponse>('/auth/account', { token });
   },
 
+  /**
+   * The refresh token goes in a header, never the query string. It is a
+   * long-lived credential, and a URL ends up in load-balancer and proxy access
+   * logs, CDN records, APM traces and error reports — all of which outlive the
+   * request and are read by people who should never see a session credential.
+   * The server only uses it to hash-compare and flag which session is "this
+   * device", so it never needs to be part of the addressable URL.
+   */
   getSessions(token: string, currentRefreshToken?: string) {
-    const query = currentRefreshToken
-      ? `?currentRefreshToken=${encodeURIComponent(currentRefreshToken)}`
-      : '';
-    return apiClient.get<SessionsResponse>(`/auth/sessions${query}`, { token });
+    return apiClient.get<SessionsResponse>('/auth/sessions', {
+      token,
+      headers: currentRefreshToken
+        ? { 'x-current-refresh-token': currentRefreshToken }
+        : undefined,
+    });
   },
 
   deleteSession(token: string, sessionId: string) {
