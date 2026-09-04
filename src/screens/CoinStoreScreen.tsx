@@ -43,7 +43,7 @@ export function CoinStoreScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { t } = useTranslation();
-  const { balance, available, earnedCoins, purchasedCoins, isLoading: balanceLoading, refreshBalanceAfterPurchase } = useCoins();
+  const { balance, available, earnedCoins, redeemableCoins, purchasedCoins, isLoading: balanceLoading, refreshBalanceAfterPurchase } = useCoins();
   const { currentOffering, purchasePackage, isProMember } = usePurchases();
   // First-purchase discount eligibility — driven by the server-side
   // flag `firstCoinPurchaseAt`. Drops to false the moment a webhook
@@ -185,7 +185,7 @@ export function CoinStoreScreen() {
             <View style={styles.breakdownItem}>
               <Ionicons name="star" size={12} color={colors.primary} />
               <Text style={styles.breakdownText}>
-                {earnedCoins.toLocaleString()} {t('coins.earned')} ({t('coins.redeemable').toLowerCase()})
+                {earnedCoins.toLocaleString()} {t('coins.earned')} ({redeemableCoins.toLocaleString()} {t('coins.redeemable').toLowerCase()})
               </Text>
             </View>
             <View style={styles.breakdownItem}>

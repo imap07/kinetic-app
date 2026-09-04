@@ -67,6 +67,7 @@ export function WalletRewardsScreen() {
     totalEarned,
     totalSpent,
     earnedCoins,
+    redeemableCoins,
     purchasedCoins,
     isLoading: balanceLoading,
     refreshBalance,
@@ -185,7 +186,7 @@ export function WalletRewardsScreen() {
             <View style={styles.balanceStat}>
               <Ionicons name="star" size={12} color={colors.primary} />
               <Text style={styles.balanceStatText}>
-                {earnedCoins.toLocaleString()} {t('coins.earned')} ({t('coins.redeemable').toLowerCase()})
+                {earnedCoins.toLocaleString()} {t('coins.earned')} ({redeemableCoins.toLocaleString()} {t('coins.redeemable').toLowerCase()})
               </Text>
             </View>
             <View style={styles.balanceStat}>

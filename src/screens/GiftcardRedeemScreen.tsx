@@ -38,8 +38,10 @@ export function GiftcardRedeemScreen() {
   const { tokens, requestBirthdatePrompt } = useAuth();
   const { trackAction } = useAds();
   // For gift card redemption, only earned coins can be used. We still track
-  // `available` for general display but gate redemption on `earnedCoins`.
-  const { available, earnedCoins, redeemableCoins, refreshBalance } = useCoins();
+  // `available` for general display but gate redemption on `redeemableCoins` —
+  // gameplay winnings only. `earnedCoins` also counts ads, check-ins, streaks
+  // and the welcome bonus, which are spendable in-app but never redeemable.
+  const { available, redeemableCoins, refreshBalance } = useCoins();
   const { t } = useTranslation();
 
   const [tab, setTab] = useState<TabFilter>('catalog');
@@ -291,7 +293,10 @@ export function GiftcardRedeemScreen() {
 
                 <View style={styles.denomGrid}>
                   {card.denominations.map((denom) => {
-                    const canAfford = earnedCoins >= denom.coins;
+                    // Gate on redeemableCoins, not earnedCoins: the handler
+                    // below and the server both check redeemable, so keying the
+                    // UI off `earned` offered denominations it would then reject.
+                    const canAfford = redeemableCoins >= denom.coins;
                     const isRedeeming = redeeming === `${card.type}-${denom.coins}`;
                     return (
                       <TouchableOpacity
